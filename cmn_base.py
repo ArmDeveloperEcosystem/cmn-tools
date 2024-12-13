@@ -1,0 +1,667 @@
+#!/usr/bin/python3
+
+"""
+CMN mesh interconnect
+
+Copyright (C) Arm Ltd. 2024. All rights reserved.
+SPDX-License-Identifier: Apache 2.0
+
+This module provides classes to model the structure of one or
+more CMN mesh interconnects. Each mesh consists of a rectangular
+grid of crosspoints (XPs), to which are attached devices such
+as requestors and home nodes.
+
+The classes (System, CMN, CMNNode and CPU) can be used directly,
+or subclassed to provide more detailed functionality.
+
+The CPU class is intended to help tools associate CPUs with RN-Fs.
+CMN itself has no knowledge of which CPUs are connected where.
+"""
+
+from __future__ import print_function
+
+from cmn_enum import *
+
+SYSTEM_DESC_VERSION = 1
+
+
+class NodeGroup:
+    """
+    Base class for a group of nodes, either one mesh or several.
+    """
+    def home_nodes(self, include_device=False):
+        for node in self.nodes():
+            if node.is_home_node(include_device=include_device):
+                yield node
+
+
+class System(NodeGroup):
+    """
+    Represent a complete system consisting of one or more CMN meshes,
+    and perhaps some uniquely numbered CPUs.
+    """
+    def __init__(self, filename=None):
+        self.filename = filename # Name of the descriptor file, if known
+        self.version = SYSTEM_DESC_VERSION
+        self.system_type = None  # SoC type, e.g. "Arm N1SDP"
+        self.CMNs = []           # CMN mesh instances - order should match kernel PMU "arm_cmn_<n>" numbering
+        self.cpu_node = {}       # CPU number -> CPU object
+        self._has_HNS = None     # system uses HN-S rather than HN-F - cached value
+
+    def cmn_version(self):
+        """
+        Assuming all the CMNs in a system are the same version,
+        return the version number. Conceivably a system might be
+        designed with different types of CMN.
+        """
+        v = None
+        for c in self.CMNs:
+            if c.product_config is None:
+                return None      # CMN with unknown version
+            if v is not None and c.product_config != v:
+                return None      # CMN version mismatch (possible, but unlikely)
+            v = c.product_config
+        return v
+
+    def cmn_at_base(self, addr):
+        """
+        Find CMN instance object by PERIPHBASE address.
+        """
+        for c in self.CMNs:
+            if addr == c.periphbase:
+                return c
+        return None
+
+    def create_CMN(self, dimX=None, dimY=None, extra_ports=None):
+        c = CMN(self, dimX=dimX, dimY=dimY, seq=len(self.CMNs), extra_ports=extra_ports)
+        self.CMNs.append(c)
+        return c
+
+    def has_cpu_mappings(self):
+        """
+        Return True if this system description object has been populated with CPU locations.
+        These are typically discovered empirically and may vary from instance to instance.
+        """
+        return bool(self.cpu_node)
+
+    def cpu(self, n):
+        assert self.has_cpu_mappings(), "description does not have CPU locations"
+        return self.cpu_node[n]
+
+    def cpus(self):
+        assert self.has_cpu_mappings()
+        for cn in sorted(self.cpu_node.keys()):
+            yield self.cpu_node[cn]
+
+    def discard_cpu_mappings(self):
+        for cpu in self.cpu_node.values():
+            cpu.port.cpus = []
+        self.cpu_node = {}
+        assert not self.has_cpu_mappings()
+
+    def set_cpu(self, cpu, port, id, lpid=0):
+        assert cpu not in self.cpu_node
+        assert isinstance(port, CMNPort)
+        co = CPU(cpu, port, id, lpid)
+        self.cpu_node[cpu] = co
+        port.add_cpu(co)
+
+    def ports(self, properties=0):
+        for c in self.CMNs:
+            for port in c.ports(properties=properties):
+                yield port
+
+    def nodes(self, properties=0):
+        for c in self.CMNs:
+            for node in c.nodes(properties=properties):
+                yield node
+
+    def has_HNS(self):
+        """
+        Return True if this system uses HN-S rather than HN-F.
+        (This impacts on named PMU events.)
+        """
+        if self._has_HNS is None:
+            for p in self.ports(properties=CMN_PROP_HNF):
+                self._has_HNS = (p.connected_type == CMN_PORT_DEVTYPE_HNS)
+        return self._has_HNS
+
+    def __str__(self):
+        s = "System %u x %s" % (len(self.CMNs), self.cmn_version().product_name(revision=True))
+        return s
+
+
+class CPU:
+    """
+    A CPU associated with an RN-F port. Multiple CPUs can be on the
+    same port but should be distinguished by LPID.
+    """
+    def __init__(self, cpu, port, id, lpid=0):
+        assert isinstance(port, CMNPort)
+        if id is not None:
+            assert port.is_valid_id(id)
+        else:
+            id = port.base_id()
+        self.cpu = cpu      # unique CPU number as known to OS
+        self.port = port
+        self.id = id        # CHI SRCID/TGTID - includes port and device bits
+        self.lpid = lpid
+
+    def CMN(self):
+        return self.port.CMN()
+
+    def __str__(self):
+        s = "CPU#%u at %s SRCID=0x%x LPID=%u" % (self.cpu, self.port, self.id, self.lpid)
+        return s
+
+
+PART_CMN600 = 0x434
+PART_CMN650 = 0x436
+PART_CMN700 = 0x43c
+PART_CI700  = 0x43a
+PART_CMN_S3 = 0x43e
+
+
+_cmn_product_names_by_id = {
+    0x434: "CMN-600",
+    0x436: "CMN-650",
+    0x43c: "CMN-700",
+    0x43a: "CI-700",
+    0x43e: "CMN S3",
+}
+
+
+cmn_products_by_name = {
+    "CMN-600": 0x434,
+    "CMN-650": 0x436,
+    "CMN-700": 0x43c,
+    "CI-700": 0x43a,
+    "CMN-S3": 0x43e,
+}
+
+
+# map the periph_id_2 codes on to releases.
+# Not systematic - CMN-600 r2p1 has a higher code than r3p0
+# TBD: the CMN-600 r2p1 and r3p2 TRMs disagree on the numbering.
+
+cmn_revisions = {
+    0x434: ["r1p0", "r1p1", "r1p2", "r1p3", "r2p0", "r3p0", "r2p1"],
+    0x436: ["r0p0", "r1p0", "r1p1", "r2p0", "r1p2"],
+    0x43c: ["r0p0", "r1p0", "r2p0", "r3p0"],
+    0x43a: ["r0p0", "r1p0", "r2p0"],
+    0x43e: ["r0p0", "r1p0", "r2p0", "r3p0"],
+}
+
+
+class CMNConfig:
+    """
+    CMN product and major configuration. This object models the overall
+    identity of the CMN product that we're dealing with, namely:
+      - which out of CMN-600, CMN-650, CMN-700, CI-700 etc.
+      - revision number
+    Instance-specific configuration e.g. X and Y dimensions,
+    is not modelled here.
+    """
+    def __init__(self, product_id=None, product_name=None, revision=None, chi_version=None, mpam_enabled=None):
+        self.product_id = product_id
+        if product_name is not None:
+            assert product_id is None
+            product_name = product_name.upper().replace(' ', '-')
+            self.product_id = cmn_products_by_name[product_name]
+        self.mpam_enabled = mpam_enabled
+        self.chi_version = chi_version
+        self.revision = revision
+
+    def product_name(self, revision=False):
+        s = _cmn_product_names_by_id[self.product_id]
+        if revision:
+            if self.revision is not None:
+                try:
+                    s += " " + cmn_revisions[self.product_id][self.revision]
+                except KeyError:
+                    s += " rev=%u?" % self.revision
+            else:
+                s += " rev?"
+        return s
+
+    def chi_version_str(self):
+        if self.chi_version is None:
+            return None
+        else:
+            return "CHI-" + ("?ABCDEFGHI"[self.chi_version])
+
+    def __eq__(self, b):
+        return self.product_id == b.product_id and self.mpam_enabled == b.mpam_enabled
+
+    def __ne__(self, b):
+        return not self == b
+
+    def __str__(self):
+        s = self.product_name()
+        if self.mpam_enabled:
+            s += " (MPAM)"
+        return s
+
+
+def cmn_version(s):
+    """
+    Given a string, e.g. "cmn-700", return a CMNConfig object.
+    """
+    if s.find('-') < 0:
+        s = "cmn-" + s
+    return CMNConfig(product_name=s)
+
+
+def id_coord_bits(dimX, dimY):
+    md = max(dimX, dimY)
+    if md > 8:
+        return 4
+    elif md > 4:
+        return 3
+    else:
+        return 2
+
+
+class CMN(NodeGroup):
+    """
+    A CMN rectangular mesh, comprising a set of crosspoints (XPs).
+
+    There may be multiple CMN meshes in a system.
+    """
+    def __init__(self, owner=None, dimX=None, dimY=None, seq=None, config=None, extra_ports=None):
+        self.owner = owner
+        self.product_config = config
+        self.seq = seq         # sequence number within the system
+        self.periphbase = None
+        self.dimX = dimX
+        self.dimY = dimY
+        self.id_coord_bits = id_coord_bits(self.dimX, self.dimY)
+        self.xy_xp = {}        # map (x, y) -> xp
+        self.id_xp = {}        # map xp id -> xp
+        self.debug_nodes = []
+        self.id_nodes = {}     # map node id -> (type -> node)
+        self.id_lpid_cpu = {}  # map (id, lpid) -> cpu
+        self.extra_ports = extra_ports    # set to True when we see an XP with >2 ports
+        self.frequency = None  # clock frequency not generally known (yet)
+
+    def XPs(self):
+        for xpi in sorted(self.id_xp.keys()):
+            yield self.id_xp[xpi]
+
+    def ports(self, properties=0):
+        """
+        Yield all CMNPort objects for the mesh
+        """
+        for xp in self.XPs():
+            for p in xp.ports():
+                if p.has_properties(properties):
+                    yield p
+
+    def cpus(self):
+        """
+        Yield all CPUs in this mesh
+        """
+        for cpu in self.owner.cpus():
+            if cpu.CMN() == self:
+                yield cpu
+
+    def port_at_id(self, base_id):
+        # Get the CMNPort object with a given base id.
+        for p in self.ports():
+            if p.base_id() == base_id:
+                return p
+        return None
+
+    def xp_ports(self):
+        # Yield (xp, n) pairs
+        for p in self.ports():
+            yield (p.xp, p.port)
+
+    def nodes(self, properties=0):
+        """
+        Yield CMN nodes matching properties. This does not include
+        RN-F and SN-F nodes, as these are external to the CMN.
+        """
+        for (xp, p) in self.xp_ports():
+            for node in xp.port_nodes(p):
+                if node.has_properties(properties):
+                    yield node
+
+    def ids(self, properties=0):
+        """
+        Yield CHI node ids for all nodes matching properties.
+        """
+        for p in self.ports(properties=properties):
+            for id in p.ids():
+                yield id
+
+    def rnf_ids(self):
+        """
+        Yield CHI node ids for all RN-Fs in this mesh.
+        RN-Fs are special, as there may be more than one on a port
+        but they don't have associated device nodes.
+        """
+        for id in self.ids(properties=CMN_PROP_RNF):
+            yield id
+
+    def sn_ids(self):
+        """
+        Yield CHI node ids for all SNs in this mesh.
+        SN-Fs are special, c.f. rnf_ids() above.
+        """
+        for id in self.ids(properties=CMN_PROP_SN):
+            yield id
+
+    def node_by_id_type(self, id, type):
+        if id not in self.id_nodes:
+            return None
+        elif type in self.id_nodes[id]:
+            return self.id_nodes[id][type]
+        else:
+            return None
+
+    def cpu_from_id(self, id, lpid=0):
+        return self.id_lpid_cpu.get((id, lpid), None)
+
+    def create_xp(self, x, y, id=None, n_ports=None, logical_id=None, dtc=None):
+        xp = CMNXP(owner=self, id=id, logical_id=logical_id, n_ports=n_ports, x=x, y=y)
+        xy = (x, y)
+        assert xy not in self.xy_xp, "XP (%u,%u) already registered" % (x, y)
+        self.xy_xp[xy] = xp
+        assert xp.id not in self.id_xp
+        self.id_xp[xp.id] = xp
+        xp.dtc = dtc
+        # If at least one XP has >2 ports, it changes the ID scheme for all devices
+        if n_ports > 2 and not self.extra_ports:
+            assert self.extra_ports is None
+            self.extra_ports = True
+        return xp
+
+    def create_node(self, type, type_s=None, port=None, xp=None, id=None, logical_id=None):
+        assert type != CMN_NODE_XP        # use create_xp to create XP node
+        pd = xp.port[port]
+        n = CMNNode(type=type, type_s=type_s, owner=pd, id=id, logical_id=logical_id)
+        pd.devices.append(n)
+        n.port = port
+        if n.id not in self.id_nodes:
+            self.id_nodes[n.id] = {}
+        self.id_nodes[n.id][type] = n
+        return n
+
+    def __str__(self):
+        s = "CMN#%u" % self.seq
+        s += " (%s)" % self.product_config.product_name()
+        if False and self.periphbase is not None:
+            # Show where the CMN lives in device space - experts only
+            s += " @0x%x" % self.periphbase
+        return s
+
+
+class CMNPort:
+    """
+    Not a separate device, but a port on an XP.
+    This may have a "connected device type".
+    """
+    def __init__(self, xp=None, port=None, type=None, type_s=None, cal=None):
+        assert isinstance(xp, CMNXP), "attempt to create port on non-XP: %s" % xp
+        assert port in [0, 1, 2, 3], "unexpected port number: %s" % port
+        self.xp = xp
+        self.port = port
+        self.connected_type = type
+        if type_s is None and type is not None:
+            type_s = cmn_port_device_type_strings[type]
+        self.connected_type_s = type_s
+        self.cal = cal
+        self.devices = []     # will be populated with connected CMNNodes
+        self.cpus = []        # for RN-Fs, will be populated with CPU objects
+
+    def base_id(self):
+        """
+        The base id for devices on this port. With a CAL, multiple devices
+        will be distinguished by LSBs. The port base id is itself distinguished
+        from the XP id, by bit 2 or bits 2:1.
+        """
+        return self.xp.node_id() + (self.port << self.xp.id_device_bits())
+
+    def ids(self):
+        """
+        The CHI id(s) for devices on this port.
+        """
+        yield self.base_id()
+        if self.cal:
+            yield self.base_id() + 1
+
+    def is_valid_id(self, id):
+        """
+        Check if a device id is valid for this port.
+        """
+        bid = self.base_id()
+        if not self.cal:
+            mask = 0
+        else:
+            mask = (1 << self.xp.id_device_bits()) - 1
+        return (id & ~mask) == bid
+
+    def add_cpu(self, co):
+        self.CMN().id_lpid_cpu[(co.id, co.lpid)] = co
+        self.cpus.append(co)
+
+    def XP(self):
+        return self.xp
+
+    def CMN(self):
+        return self.xp.owner
+
+    def properties(self):
+        return cmn_port_properties[self.connected_type]
+
+    def has_properties(self, props):
+        return (self.properties() & props) == props
+
+    def __str__(self):
+        """
+        String method identifies the port uniquely in the whole system
+        """
+        #s = "CMN#%u P%u: %s" % (self.CMN().seq, self.port, self.connected_type_s)
+        s = "%s P%u: %s" % (self.XP(), self.port, self.connected_type_s)
+        if self.cal:
+            s += " CAL"
+        return s
+
+
+class CMNNodeBase:
+    """
+    A CMN node, addressed by a node id. This may be an XP, or a
+    device node attached to an XP port.
+    """
+    def __init__(self, type=None, type_s=None, owner=None, id=None, logical_id=None):
+        self.owner = owner       # Either CMN (for XP) or port (for device node)
+        self._type = type
+        if type_s is None and type is not None:
+            type_s = cmn_node_type_strings[type]
+        self.type_s = type_s
+        self.id = id
+        # The logical ID is user-allocated and should be unique for a given type
+        self._logical_id = logical_id
+        self.is_external = None
+
+    def owning_cmn(self):
+        return self.XP().owner
+
+    def logical_id(self):
+        return self._logical_id
+
+    def type(self):
+        return self._type
+
+    def type_str(self):
+        return self.type_s
+
+    def properties(self):
+        return cmn_node_properties.get(self._type, CMN_PROP_none)
+
+    def has_properties(self, props):
+        return (self.properties() & props) == props
+
+    def node_id(self):
+        return self.id
+
+    def is_XP(self):
+        return self._type == CMN_NODE_XP
+
+    def XY(self):
+        xp = self.XP()
+        return (xp.x, xp.y)
+
+    def coords(self):
+        """
+        Return (x, y, port, device)
+        These are encoded into the 'id', but the encoding varies.
+        """
+        if self.is_XP():
+            return (self.x, self.y, 0, 0)
+        else:
+            (x, y) = (self.owner.xp.x, self.owner.xp.y)
+            return (x, y, self.owner.port, self.device)
+
+    def dtc_domain(self):
+        return self.XP().dtc
+
+    def __repr__(self):
+        return "%s(%x)" % (self.type_s, self.id)
+
+    def __str__(self):
+        """
+        String method should identify the node uniquely in the entire system.
+        """
+        (x, y, p, d) = self.coords()
+        if self.is_XP():
+            s = "%s: XP 0x%x(%u,%u)" % (self.owning_cmn(), self.id, x, y)
+        else:
+            s = "%s: P%u D%u %s" % (self.XP(), p, d, self.type_s)
+        if self._logical_id is not None:
+            # The logical id is generally unique within a given device class
+            s += " #%u" % self._logical_id
+        return s
+
+
+class CMNNode(CMNNodeBase):
+    """
+    A CMN device node (not XP), on a port of an XP.
+    """
+    def __init__(self, type=None, type_s=None, owner=None, id=None, logical_id=None):
+        assert isinstance(owner, CMNPort)
+        assert type != CMN_NODE_XP
+        device_mask = (1 << owner.XP().id_device_bits()) - 1
+        assert device_mask in [1, 3]
+        assert (id & ~device_mask) == owner.base_id()
+        CMNNodeBase.__init__(self, type=type, type_s=type_s, owner=owner, id=id, logical_id=logical_id)
+        self.device = id & device_mask
+
+    def XP(self):
+        return self.owner.xp
+
+    def is_home_node(self, include_device=False):
+        if include_device:
+            return self._type in CMN_NODE_all_HN
+        else:
+            return self.has_properties(CMN_PROP_HNF)
+
+
+# XP position in the mesh, which affects maximum number of ports.
+# All combinations are possible, because the mesh might be 1 in some dimension.
+POS_LEFT_EDGE    = 0x01
+POS_RIGHT_EDGE   = 0x02
+POS_BOTTOM_EDGE  = 0x04
+POS_TOP_EDGE     = 0x08
+
+_pos_n_links = [4, 3, 3, 2, 3, 2, 2, 1, 3, 2, 2, 1, 2, 1, 1, 0]
+
+# Corner XPs can have 4 ports, edge XPs can have 3, others can have max 2
+# This implies that the middle XP in a 3x1 mesh can only have 3 ports.
+_links_max_ports = [4, 4, 4, 3, 2]
+
+
+class CMNXP(CMNNodeBase):
+    """
+    A CMN crosspoint (XP). This has device ports - often two, but sometimes more
+    (for edge and corner crosspoints) or fewer.
+    """
+    def __init__(self, owner=None, id=None, logical_id=None, n_ports=None, x=None, y=None):
+        assert isinstance(owner, CMN)
+        calc_id = (x << (3 + owner.id_coord_bits)) | (y << 3)
+        if id is not None:
+            assert calc_id == id, "(%u,%u) should have id=0x%x, has 0x%x" % (x, y, calc_id, id)
+        else:
+            id = calc_id
+        CMNNodeBase.__init__(self, type=CMN_NODE_XP, type_s="XP", owner=owner, id=id, logical_id=logical_id)
+        self.port = {}
+        self.x = x
+        self.y = y
+        max_ports = _links_max_ports[self.n_links()]
+        assert n_ports <= max_ports, "%s: XP with %u links cannot have %u ports" % (self, self.n_links(), n_ports)
+        self.n_ports = n_ports
+
+    def XP(self):
+        return self
+
+    def position(self):
+        pos = 0
+        if self.x == 0:
+            pos |= POS_LEFT_EDGE
+        if self.x == self.owner.dimX-1:
+            pos |= POS_RIGHT_EDGE
+        if self.y == 0:
+            pos |= POS_BOTTOM_EDGE
+        if self.y == self.owner.dimY-1:
+            pos |= POS_TOP_EDGE
+        return pos
+
+    def n_links(self):
+        return _pos_n_links[self.position()]
+
+    def create_port(self, port, type=None, type_s=None, cal=None):
+        p = CMNPort(self, port, type=type, type_s=type_s, cal=cal)
+        self.port[port] = p
+        return p
+
+    def ports(self):
+        for pn in sorted(self.port.keys()):
+            yield self.port[pn]
+
+    def n_device_ports(self):
+        return self.n_ports
+
+    def id_device_bits(self):
+        """
+        How many bits are used for port number vs. device, on this XP?
+        The numbering scheme can be either 1:2 or 2:1. For an XP with more
+        than two ports, it must be 2:1, but the question is what applies
+        when some XPs in the mesh have more than two ports but this one
+        doesn't. Documentation (CMN-700 TRM 3.4.2) strongly suggests that
+        the scheme is mesh-wide, but in practice it turns out to be per-XP.
+        """
+        if True:
+            extra_ports = self.n_ports > 2
+        else:
+            extra_ports = self.CMN().extra_ports
+        return 1 if extra_ports else 2
+
+    def port_device_type(self, p):
+        return self.port[p].connected_type
+
+    def port_device_type_str(self, p):
+        return self.port[p].connected_type_s
+
+    def port_nodes(self, p):
+        return self.port[p].devices
+
+    def port_has_cal(self, p):
+        return self.port[p].cal
+
+    def port_base_id(self, p):
+        return self.port[p].base_id()
+
+
+if __name__ == "__main__":
+    assert False, "not designed to run as main program"
