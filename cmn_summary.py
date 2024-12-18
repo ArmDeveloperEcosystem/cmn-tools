@@ -19,6 +19,9 @@ import multiprocessing
 from dmi import DMI
 
 
+o_verbose = 0
+
+
 S = cmn_json.system_from_json_file()
 C = S.CMNs[0]
 
@@ -91,22 +94,27 @@ def cmn_frequency():
 
 class MemoryProperties:
     """
-    Get system memory properties by decoding DMI table
+    Get system memory properties by decoding DMI table.
+    Will generally require root privilege.
     """
     def __init__(self):
         self.speed = None          # MT/s
-        self.n_channels = 0
+        self.n_channels = None
         self.data_width = None
         try:
             for d in DMI().memory():
                 self.speed = d.c_speed
                 self.data_width = d.d_width
                 # DDR5 have 2 channels
+                if self.n_channels is None:
+                    self.n_channels = 0
                 self.n_channels += (2 if d.mem_type >= 0x20 else 1)
         except FileNotFoundError:
             pass
 
     def total_bandwidth(self):
+        if self.data_width is None:
+            return None
         n_bytes = self.data_width // 8
         return n_bytes * self.n_channels * (self.speed * 1000000)
 
@@ -176,8 +184,10 @@ groups = [
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Show major system parameters")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
+    o_verbose = opts.verbose
     for (gname, group) in groups:
         gname_printed = False
         for (pname, par) in group:
@@ -189,6 +199,10 @@ if __name__ == "__main__":
                     par = par()
                 except PermissionError:
                     par = "<no permission - rerun as sudo>"
+                except Exception as e:
+                    par = None
+                    if o_verbose:
+                        par = "<exception in script: %s>" % (type(e).__name__)
             if par is None:
                 par = "<not available>"
             print("  %30s: %s" % (pname, par))
