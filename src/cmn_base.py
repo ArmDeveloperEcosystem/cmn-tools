@@ -305,6 +305,9 @@ class CMN(NodeGroup):
             if cpu.CMN() == self:
                 yield cpu
 
+    def has_cpu_mappings(self):
+        return self.owner.has_cpu_mappings()
+
     def port_at_id(self, base_id):
         # Get the CMNPort object with a given base id.
         for p in self.ports():

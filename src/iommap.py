@@ -38,7 +38,7 @@ del real_mmap
 _libc = ctypes.CDLL(None, use_errno=True)
 _libc_mmap = _libc.mmap
 _libc_mmap.restype = ctypes.c_void_p
-_libc_mmap.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_ulonglong]
+_libc_mmap.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_size_t]
 _libc_munmap = _libc.munmap
 _libc_munmap.restype = ctypes.c_int
 _libc_munmap.argtypes = [ctypes.c_void_p, ctypes.c_size_t]

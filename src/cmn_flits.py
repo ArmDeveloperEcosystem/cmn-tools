@@ -118,8 +118,8 @@ CHI_SNP_opcodes = {
 CHI_DAT_opcodes = {
     0x00: "crtn",
     0x01: "SnRD",   # SnpRespData
-    0x02: "CBWD",   # CopyBackWrData
-    0x03: "NCWD",   # NonCopyBackWrData
+    0x02: "CBWD",   # CopyBackWriteData
+    0x03: "NCWD",   # NonCopyBackWriteData
     0x04: "CoDa",   # CompData
     0x05: "SRDP",   # SnpRespDataPtl
     0x06: "SRDF",   # SnpRespDataFwded
@@ -182,7 +182,15 @@ def CHI_memattr_str(ma, order, snpattr):
     return s
 
 
-DVM_op_str = ["TLBI", "BPI", "PICI", "VICI", "SYNC", "?5", "?6", "?7"]
+# DVM operation type
+DVM_op_str = [
+    "TLBI",      # TLB Invalidate
+    "BPI",       # Branch Predictor Invalidate
+    "PICI",      # Physical Instruction Cache Invalidate
+    "VICI",      # Virtual Instruction Cache Invalidate
+    "SYNC",      # Synchronization
+    "?5", "?6", "?7"
+]
 
 DVM_EL_str = ["EL21", "EL3", "EL1", "EL2"]
 
@@ -236,18 +244,23 @@ class CMNFlit:
                 if self.opcode != 0x14:
                     s += " %s" % (CHI_memattr_str(self.memattr, self.order, self.snpattr))
                 else:
-                    # DVMOp is special, and encodes the operation in the address
+                    # DVMOp REQ is special, and encodes the operation in the address
+                    # (as well as in the lower 8 bytes of data in a DAT packet,
+                    # which we don't have access to).
+                    # See "DVM message payload" in the CHI spec,
+                    # particularly the "DVM message packing" section.
+                    # See also SnpDVMOp below.
                     addr = self.addr
                     sec = BITS(addr,7,2)
                     EL = BITS(addr,9,2)
                     dvmop = BITS(addr,11,3)
-                    va_valid = BIT(addr,4)
+                    addr_valid = BIT(addr,4)
                     vmid_valid = BIT(addr,5)
                     asid_valid = BIT(addr,6)
                     range = BIT(addr,41)
                     s += " %s %s" % (DVM_op_str[dvmop], DVM_EL_str[EL])
-                    if va_valid:
-                        s += " VA"
+                    if addr_valid:
+                        s += " addr"
                     if range:
                         s += " range"
                     if vmid_valid:
@@ -271,23 +284,34 @@ class CMNFlit:
             elif self.group.VC == 2:
                 s += " fwdnid=0x%03x %s0x%012x" % (self.fwdnid, ["S:","  "][self.NS], self.addr)
                 if self.opcode == 0x0d:
+                    # SnpDVMOp is special
                     addr = self.addr >> 3    # recover original field
                     part = BIT(addr,0)
                     s += " #%u" % part
                     if part == 0:
-                        va_valid = BIT(addr,1)
+                        addr_valid = BIT(addr,1)
                         vmid_valid = BIT(addr,2)
                         asid_valid = BIT(addr,3)
                         sec = BITS(addr,4,2)
                         EL = BITS(addr,6,2)
                         dvmop = BITS(addr,8,3)
                         s += " %s %s" % (DVM_op_str[dvmop], DVM_EL_str[EL])
-                        if va_valid:
-                            s += " VA"
+                        if addr_valid:
+                            s += " addr"
                         if vmid_valid:
                             s += " vmid=0x%x" % BITS(addr,11,8)
                         if asid_valid:
                             s += " asid=0x%x" % BITS(addr,19,16)
+                    else:
+                        # SnpDVMOp part 1: often address[:6], but sometimes low
+                        # bits are used for other purposes e.g. IS, TTL, TG
+                        # Wthout seeing part 0, our heuristic is that if any bits
+                        # from bit 7 on are set, it's an address.
+                        if (addr >> 7) != 0:
+                            address = (addr >> 1) << 6
+                            s += " address=0x%x" % address
+                        elif addr != 0x1:
+                            s += " ?=0x%x" % addr
             elif self.group.VC == 3:
                 if self.opcode in [1, 5, 6]:
                     rs = CHI_DAT_resp_str_snoop(self.resp)

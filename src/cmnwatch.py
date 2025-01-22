@@ -211,7 +211,9 @@ class Watchpoint:
         else:
             m = self.wps[grp]
         m.set(val, pos, bits)
-        assert not m.is_open()
+        if m.is_open():
+            # group might be or have become open, e.g. "--field=0bxxxxx"
+            del self.wps[grp]
 
     def grps(self):
         """
@@ -299,10 +301,10 @@ class Watchpoint:
         return "Watchpoint(%s)" % str(self)
 
 
-class C: pass
+class _CKeys: pass
 
 def _dict_to_object(kwds):
-    o = C()
+    o = _CKeys()
     for (f, v) in kwds.items():
         setattr(o, f, v)
     return o
@@ -511,9 +513,11 @@ def apply_matches_obj_to_watchpoint(wp, o):
                         (grp, pos, width) = poses[0]
                         wp.set(grp, val, pos, width, exclusive=exclusive, field=k)
     """
-    Check whether the user specified any CHI fields inappropriate for the channel
+    Check whether the user specified any CHI fields inappropriate for the channel.
+    The user might have passed in an argparse.Namespace object so there may be
+    extraneous keywords, so we only check for the ones that are valid CHI fields.
     """
-    for k in [k for k in dir(o) if not callable(getattr(o, k)) and not k.startswith("__")]:
+    for k in [k for k in dir(o) if k in _all_fields]:
         if getattr(o, k, None) is not None and k not in fields and k != "exclusive":
             raise WatchpointBadValue(k, getattr(o, k), wp.chn, "field not valid for this channel")
     return wp
@@ -524,7 +528,7 @@ def apply_matches_to_watchpoint(wp, **kwds):
 
 
 def match_kwd(chn=0, up=None, cmn_version=None, **kwds):
-    return match_obj(_dict_to_object(kwds, _all_fields), chn=chn, up=up, cmn_version=cmn_version)
+    return match_obj(_dict_to_object(kwds), chn=chn, up=up, cmn_version=cmn_version)
 
 
 def _field_spec(s):
@@ -656,24 +660,25 @@ if __name__ == "__main__":
         if opts.dev is not None:
             devs = [opts.dev]
         else:
-            devs = [0, 1, 2, 3]
+            # On CMN-600, Linux driver won't catch wp_dev_sel=2 and will select device 0
+            devs = [0, 1, 2, 3] if cmn_version.product_id >= cmn_base.PART_CMN650 else [0, 1]
         if opts.no_name:
             name = None
         for d in devs:
             if name is not None:
-                dname = "%s.u%" % (name, d)
+                dname = "%s.%u" % (name, d)
             else:
                 dname = None
-            es += wp.perf_events(cmn_instance=opts.cmn_instance, nodeid=opts.nodeid, dev=d, name=name)
+            es += wp.perf_events(cmn_instance=opts.cmn_instance, nodeid=opts.nodeid, dev=d, name=dname)
         return es
     if opts.wps:
         for ws in opts.wps:
             try:
-                (dir, chn, spec) = ws.split(':', 2)
+                (wdir, chn, spec) = ws.split(':', 2)
             except ValueError:
-                (dir, chn) = ws.split(':')
+                (wdir, chn) = ws.split(':')
                 spec = ""
-            up = ["down", "up"].index(dir.lower())
+            up = ["down", "up"].index(wdir.lower())
             chn = ["req", "rsp", "snp", "dat"].index(chn.lower())
             if up < 0 or chn < 0:
                 print("** expected up:<channel>:xxx or down:<channel>:xxx: %s" % ws, file=sys.stderr)

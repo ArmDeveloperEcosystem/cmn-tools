@@ -53,7 +53,7 @@ parser.add_argument("-v", "--verbose", action="count", default=0, help="increase
 parser.add_argument("--decode-verbose", type=int, default=0)
 opts = parser.parse_args()
 
-C = cmn.CMN(cmn.cmn_instance(opts), check_writes=(not opts.no_check_writes), verbose=opts.verbose)
+C = cmn.CMN(cmn.cmn_instance(opts), check_writes=(not opts.no_check_writes), verbose=max(0, opts.verbose-1))
 if opts.list:
     cmn.show_cmn(C)
     sys.exit()
@@ -76,8 +76,10 @@ except cmnwatch.WatchpointBadValue as e:
     print("Can't do this watchpoint: %s" % e, file=sys.stderr)
     sys.exit(1)
 wps.finalize()
+
 if opts.verbose:
-    print("watchpoint: %s" % wps)
+    print("Watchpoint (groups %s)" % str(wps.grps()))
+    print("  %s" % wps)
 
 
 def cmn_desc(cmn_direct):
@@ -108,7 +110,13 @@ class CMNFlitGroupX(CMNFlitGroup):
 
     def id_str(self, id, lpid=0):
         s = CMNFlitGroup.id_str(self, id, lpid=lpid)
-        s += "(%-4s)" % self.id_map.get((id, lpid), "????")[:4]
+        ns = "????"
+        if (id, lpid) in self.id_map:
+            ns = self.id_map[(id, lpid)]
+        elif lpid != 0 and (id, 0) in self.id_map:
+            # e.g. RN-F where we haven't got CPU mappings for non-zero LPIDs
+            ns = self.id_map[(id, 0)]
+        s += "(%-4s)" % ns[:4]
         return s
 
     def addr_str(self, addr, NS):
@@ -138,7 +146,7 @@ class CMNVis:
                     id = base_id + device_id
                     self.id_map[(id, 0)] = desc
         self.cmn_desc = cmn_desc(cmn)
-        if self.cmn_desc is not None:
+        if self.cmn_desc is not None and self.cmn_desc.has_cpu_mappings():
             for cpu in self.cmn_desc.cpus():
                 self.id_map[(cpu.id, cpu.lpid)] = "#%-3u" % cpu.cpu
 
@@ -193,6 +201,7 @@ if True:
 # 'next_port' indicates the next port to do for this XP.
 for xp in xps:
     xp.next_port = 0
+
 
 for i in range(0, opts.iterations):
     C.dtc_disable()
@@ -272,7 +281,7 @@ for i in range(0, opts.iterations):
             else:
                 xp.write64(cmn.CMN_DTM_PMU_CONFIG, 0x03020100753100f1)
         # "The final step is to write 1'b1 to dtm_control.dtm_enable to enable the WP."
-        if opts.verbose:
+        if opts.verbose >= 2:
             print("enable DTM on %s" % xp)
         xp.dtm_enable()
 
