@@ -124,7 +124,7 @@ available through the ``perf_event_open`` interface and the ``perf``
 userspace tools. These should be sufficient for many purposes.
 
 In some cases it may be useful to construct CMN watchpoints to
-match and count certan types of interconnect traffic. This generally
+match and count certain types of interconnect traffic. This generally
 requires some level of knowledge of the CHI architecture.
 The ``cmnwatch.py`` script can be used to generate strings that
 match CHI flits. The strings can be passed to the ``perf`` command.

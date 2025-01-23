@@ -285,7 +285,7 @@ def prepare_system(S):
     if o_verbose:
         print("%u CPUs, %u RN-F ports" % (S.n_cpu, len(S.rnf_ports)))
     # We usually see a consistent number of CPUs per RN-F port, but not always
-    if (S.n_cpu % len(S.rnf_ports)) != 0:
+    if S.rnf_ports and (S.n_cpu % len(S.rnf_ports)) != 0:
         """
         A homogeneous system would have perhaps 1 or 2 CPUs per RN-F.
         If the number does not divide equally, it could indicate that:

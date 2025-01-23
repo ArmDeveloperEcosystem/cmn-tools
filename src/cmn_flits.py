@@ -305,7 +305,7 @@ class CMNFlit:
                     else:
                         # SnpDVMOp part 1: often address[:6], but sometimes low
                         # bits are used for other purposes e.g. IS, TTL, TG
-                        # Wthout seeing part 0, our heuristic is that if any bits
+                        # Without seeing part 0, our heuristic is that if any bits
                         # from bit 7 on are set, it's an address.
                         if (addr >> 7) != 0:
                             address = (addr >> 1) << 6

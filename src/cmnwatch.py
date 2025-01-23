@@ -325,7 +325,7 @@ Documentation in the TRMs, from "REQ channel: primary match group" onwards
    CMN-650: 7.1, tables 7-1 on
    CMN-700: 6.1, tables 6-1 on
 
-Some fields may exist in multple match groups, while others only exist
+Some fields may exist in multiple match groups, while others only exist
 in one. This gives us some flexibility in how we allocate fields.
 
 CMN-650, CMN-700 and CI-700 appear to be the same.
@@ -341,7 +341,7 @@ _req_fields = {
     "srcid":      (None,   [(0, 0, 11)],  [(0, 0, 11), (2, 0, 11)]),
     "tgtid":      (None,   [(0, 0, 11)],  [(0, 0, 11), (2, 0, 11)]),
     "returnnid":  (None,   [(0, 11, 11)], [(0, 11, 11)]),
-    "endian":     (None,   [(0, 22, 1)],  [(0, 22, 1)]),     # overlays wth stashnidvalid/deep
+    "endian":     (None,   [(0, 22, 1)],  [(0, 22, 1)]),     # overlays with stashnidvalid/deep
     "opcode":     (chi_spec.opcodes_REQ, [(0, 31, 6)],  [(0, 29, 7), (2, 11, 7)]),
     "size":       (None,   [(0, 37, 3)],  [(0, 36, 3)]),
     "ns":         (chi_spec.NS,   [(0, 40, 1)],  [(0, 39, 1)]),

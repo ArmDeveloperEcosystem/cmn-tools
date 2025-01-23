@@ -1,0 +1,24 @@
+name: ci
+on: [pull_request, push]
+jobs:
+  codespell_and_ruff:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: codespell-project/actions-codespell@v2
+        with:
+          ignore_words_list: nd
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: "--exit-zero"  # TODO: Fix the errors and remove this line
+
+  test_cmn_diagram:
+        runs-on: ubuntu-24.04-arm
+        steps:
+          - uses: actions/checkout@v4
+          - run: |
+              sudo src/cmn_discover.py
+              src/cmn_detect_cpu.py
+              src/cmn_diagram_py
+              echo "====="
+              cat ~/.cache/arm/cmn-system.json
