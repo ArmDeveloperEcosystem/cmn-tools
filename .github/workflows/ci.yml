@@ -16,7 +16,7 @@ jobs:
           - uses: actions/checkout@v4
           - run: |
               sudo src/cmn_discover.py
+              python -m json.tool ~/.cache/arm/cmn-system.json
+              echo "====="
               src/cmn_detect_cpu.py
               src/cmn_diagram_py
-              echo "====="
-              cat ~/.cache/arm/cmn-system.json
