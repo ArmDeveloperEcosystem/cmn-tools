@@ -8,9 +8,7 @@ jobs:
       - uses: codespell-project/actions-codespell@v2
         with:
           ignore_words_list: nd
-      - uses: astral-sh/ruff-action@v3
-        with:
-          args: "--exit-zero"  # TODO: Fix the errors and remove this line
+      # - uses: astral-sh/ruff-action@v3
 
   test_cmn_diagram:
         runs-on: ubuntu-24.04-arm
