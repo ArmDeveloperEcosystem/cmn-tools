@@ -29,9 +29,11 @@ Tools are provided to:
 The tools are mostly written in Python. Any recent version of
 Python3 should be sufficient. Some tools may work with Python2.
 
+All scripts are in the "src" subdirectory.
 
-Setup
-=====
+
+System discovery and setup
+==========================
 
 Some of the tools need a system topology description, to
 identify the specific configuration, topology and CPU locations

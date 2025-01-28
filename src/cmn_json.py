@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache 2.0
 
 from __future__ import print_function
 
-import sys, os, time, shutil
+import sys, os, time
 import json
 import cmn_base
 import cmn_enum
@@ -199,11 +199,27 @@ def json_from_system(S):
     return j
 
 
+def change_to_real_user_if_sudo(fn):
+    """
+    When writing a file as sudo, we might want it to be owned by the "real" user
+    to avoid complications when later using it as non-sudo.
+    """
+    if "SUDO_USER" in os.environ:
+        user = os.environ["SUDO_USER"]
+        if sys.version_info[0] >= 3:
+            import shutil
+            shutil.chown(fn, user=user, group=user)
+        else:
+            # Python2 shutil doesn't have chown().
+            import pwd, grp
+            os.chown(fn, pwd.getpwnam(user).pw_uid, grp.getgrnam(user).gr_gid)
+
+
 def json_dump_file_from_system(S, fn):
     """
     Dump the system description into a JSON file.
     This might be run after initial topology discovery,
-    or aftre CPU discovery.
+    or after CPU discovery.
     If it's the special cache file, check if we're running as sudo,
     and update the permissions to the 'real' user in that case.
     """
@@ -215,9 +231,8 @@ def json_dump_file_from_system(S, fn):
     else:
         with open(fn, "w") as f:
             json.dump(j, f, indent=4)
-        if "SUDO_USER" in os.environ and fn == cmn_config_filename():
-            user = os.environ["SUDO_USER"]
-            shutil.chown(fn, user=user, group=user)
+        if fn == cmn_config_filename():
+            change_to_real_user_if_sudo(fn)
 
 
 if __name__ == "__main__":
@@ -228,6 +243,7 @@ if __name__ == "__main__":
     parser.add_argument("--filename", action="store_true", help="display filename")
     parser.add_argument("--nodes", action="store_true", help="list all nodes")
     parser.add_argument("--ports", action="store_true", help="list all ports")
+    parser.add_argument("--requesters", action="store_true", help="list requesters")
     parser.add_argument("--home-nodes", action="store_true", help="list home nodes")
     parser.add_argument("--cpus", action="store_true", help="list CPUs")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
@@ -254,10 +270,13 @@ if __name__ == "__main__":
     if opts.output is not None:
         json_dump_file_from_system(S, opts.output)
     if opts.cpus:
-        print("CPUs:")
-        for cpu in S.cpus():
-            print("  %s" % cpu)
-            assert cpu.CMN().cpu_from_id(cpu.id, cpu.lpid) == cpu
+        if S.has_cpu_mappings():
+            print("CPUs:")
+            for cpu in S.cpus():
+                print("  %s" % cpu)
+                assert cpu.CMN().cpu_from_id(cpu.id, cpu.lpid) == cpu
+        else:
+            print("This CMN description does not have CPU mappings yet", file=sys.stderr)
     def property_str(x):
         s = []
         for (k, p) in cmn_enum.__dict__.items():
@@ -273,6 +292,14 @@ if __name__ == "__main__":
         print("Ports:")
         for port in S.ports():
             print("  %s: %s" % (port, property_str(port)))
+    if opts.requesters:
+        print("Requester nodes:")
+        for node in S.nodes(properties=cmn_enum.CMN_PROP_RN):
+            print("  %s" % node)
+        # RN-Fs aren't nodes in CMN, but we can list RN-F ports
+        print("RN-F ports:")
+        for port in S.ports(properties=cmn_enum.CMN_PROP_RNF):
+            print("  %s" % port)
     if opts.home_nodes:
         print("Home node ports:")
         for port in S.ports():

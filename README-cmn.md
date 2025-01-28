@@ -171,7 +171,7 @@ port has some impact on the ability of CMN watchpoints and
 counters to distinguish traffic from the two CPUs.
 
 Similarly, two CMN home nodes (each with a cache slice) may be
-multiplexed on to a single port.
+multiplexed on to a single port using a CAL.
 
 
 ### DSU: DynamIQ Shared Unit
@@ -189,8 +189,8 @@ For instance, the Arm N1 Software Development Platform (N1SDP)
 comprises a CMN interconnect and four Neoverse N1 CPUs. The CPUs
 are grouped in pairs each in a DSU with a DSU L3 cache. This then
 means that the CMN system cache is a Level 4 cache. However, this
-configuration is atypical. In the majority of systems, there is
-no DSU cache and the CMN system cache is at level 3.
+configuration is atypical. In the majority of CMN-based systems,
+there is no DSU cache and the CMN system cache is at level 3.
 
 
 Home nodes
@@ -216,24 +216,27 @@ The mapping of addresses to home nodes is fixed for a given
 system, but is not typically something that application developers
 should normally be concerned with. The mapping is configured in
 such a way that data is evenly split between the home nodes
-comprising the system.
+comprising the system. The mapping is typically a hash function
+of the physical address.
 
 Note that when the CPU reads cacheable data, it has no knowledge
 of whether that data needs to come from the home node's system
 cache slice, or from a memory controller, or from another CPU's
-cache. It always sends the request to the home node, and the
-home node is responsible for dealing with it.
+cache. It always sends the request to the home node for the address,
+and the home node is responsible for dealing with it.
 
 This also explains why CPUs have no outbound snoop channel
 (TXSNP) - a CPU never snoops data directly. Snoops are issued
-from the home node when necessary.
+from the home node when necessary. The home node has a directory
+called a snoop filter (SF) which keeps track of which lines
+need to be snooped and where from.
 
 
 ### Request optimizations
 
 We said above that the CPU always sends its request to the
 correct home node for that data, as determined by the SAM.
-The home node might contain a copy of the data in its system cache
+The home node might contain a copy of the data in its system cache.
 However, the data might reside elsewhere. CHI (and CMN)
 provide for two optimizations in this case:
 
@@ -284,3 +287,34 @@ kept in mind:
    "Security and Observability" above).
 
 
+Credits, retries and the CBusy indicator
+----------------------------------------
+
+The CMN has multiple flow-control and backpressure mechanisms to
+avoid it being overloaded with requests.
+
+Firstly, there is a credit-based scheme. A requrester may only send
+a request if it has a credit. It cannot queue up an arbitrary
+number of requests. The CHI protocol documents how credits are
+consumed and returned.
+
+Secondly, a responder (such as a home node) may respond indicating
+that it cannot immediately process the request, and that it must
+be later retried when a credit is available. At this point the
+requester has lost a credit and may not immediately retry the
+request. Subsequently, when the responder has capacity, it awards
+the requester a credit which (in this case) guarantees the responder
+can process the request this time. The requester retries the request,
+this time with the CHI field "allowretry=0". The responder is
+obliged to honor the request this time.
+
+Retries may indicate CMN congestion, and can be observed by the
+CMN tools.
+
+(Note that a specific type of request - PrefetchTgt - is always
+issued with allowretry=0. So, to filter retried requests the
+rule is "allowretry == 0 AND opcode != PrefetchTgt".)
+
+Lastly, a responder may indicate using the CBusy flag that it is
+experiencing high load and a requester may wish to throttle back
+its rate of requests.
