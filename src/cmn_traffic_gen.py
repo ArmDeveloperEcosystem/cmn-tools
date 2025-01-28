@@ -76,6 +76,29 @@ def _gen_generator():
     return g_generator_exe
 
 
+def check_cmn_pmu_events():
+    """
+    Check that CMN PMU events are available, and report any problems to stderr.
+    We could do this pre-emptively or after a problem.
+    perf's error reporting on trying to use CMN events is inconsistent:
+      - with perf_event_paranoid=2, it succeeds, but events are "<not supported>"
+      - with perf_event_paranoid=1, it fails with a message about privilege
+      - with perf_event_paranoid=0, it runs successfully
+    """
+    if not os.path.exists("/sys/bus/event_source/devices/arm_cmn_0"):
+        print("CMN PMU driver not loaded - load driver or reconfigure kernel", file=sys.stderr)
+        return False
+    p = int(open("/proc/sys/kernel/perf_event_paranoid").read())
+    if p > 0:
+        # Driver is there but we don't have permissions? Check perf_event_paranoid
+        # on the assumption we're an unprivileged user. If we're sudo then this
+        # should have worked regardless.
+        print("CMN PMU driver loaded, but you might not have permission to read hardware events", file=sys.stderr)
+        print("kernel.perf_event_paranoid=%d - use sysctl to set it lower" % p, file=sys.stderr)
+        return False
+    return True
+
+
 def cpu_gen_traffic(cpu, events=["instructions"], time=0.1, size_M=16):
     """
     Generate traffic, and return performance events
@@ -98,7 +121,10 @@ def cpu_gen_traffic(cpu, events=["instructions"], time=0.1, size_M=16):
         print("out: %s" % out, file=sys.stderr)
         print("err: %s" % err, file=sys.stderr)
     if p.returncode != 0:
-        print("%s" % err.decode(), file=sys.stderr)
+        if check_cmn_pmu_events():
+            # CMN PMU events appear to be available, so what happened?
+            errs = err.decode()
+            print("%s" % errs, file=sys.stderr)
         sys.exit(1)
     if not events:
         return []
@@ -108,6 +134,12 @@ def cpu_gen_traffic(cpu, events=["instructions"], time=0.1, size_M=16):
         if not e:
             continue
         f = e.split(',')
+        if f[0] == "<not supported>":
+            # We cannot get any further. Either the CMN events are not present
+            # or we don't have permission to use them.
+            print("CMN hardware events are not accessible: ", file=sys.stderr, end="")
+            check_cmn_pmu_events()
+            sys.exit(1)
         r = int(f[0])
         ecounts.append(r)
     if o_verbose >= 2:

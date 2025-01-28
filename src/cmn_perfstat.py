@@ -164,13 +164,26 @@ def _perf_rate1(event, time=None):
     return reading.rate if reading is not None else None
 
 
-def cmn_frequency(time=None):
+def cmn_frequency(instance=0, time=None):
     """
     Get the CMN frequency, in Hz. This relies on DTC counting continuously
     during the measurement period, which generally requires DTC clock-gating
     to be disabled. The kernel does this automatically from 6.12 onwards.
+
+    For a given CMN mesh, the kernel will only count one cycle regardless
+    of the number of DTCs.
+
+    However, with multiple meshes, there are consequences:
+
+      - if we ask for arm_cmn/dtc_cycles/, the perf tool will add up
+        dtc_cycles across multiple meshes (like any other CMN counter)
+
+      - the meshes could be running at different frequencies
+
+    For now, we avoid both problems by arbitrarily getting the frequency
+    from mesh #0, unless overridden.
     """
-    return _perf_rate1("arm_cmn/dtc_cycles/")
+    return _perf_rate1("arm_cmn_%u/dtc_cycles/" % instance)
 
 
 if __name__ == "__main__":
@@ -178,11 +191,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="get PMU events")
     parser.add_argument("--time", type=float, default=1.0, help="time to wait")
     parser.add_argument("--frequency", action="store_true", help="show CMN frequency")
+    parser.add_argument("--instance", type=int, default=0)
     parser.add_argument("-e", "--event", type=str, action="append", default=[], help="events to count")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
     if opts.frequency:
-        print("CMN frequency: %s" % cmn_frequency(time=opts.time))
+        print("CMN frequency: %s" % cmn_frequency(time=opts.time, instance=opts.instance))
     print(perf_stat(opts.event, time=opts.time))
 

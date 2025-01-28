@@ -282,6 +282,9 @@ def prepare_system(S):
                 if xp.port_device_type_str(p).startswith("RN-F"):
                     rnf = CMN_RNFPort(xp.port[p])
                     S.rnf_ports.append(rnf)
+        if not S.rnf_ports:
+            print("No RN-F ports found in system!", file=sys.stderr)
+            sys.exit(1)
     if o_verbose:
         print("%u CPUs, %u RN-F ports" % (S.n_cpu, len(S.rnf_ports)))
     # We usually see a consistent number of CPUs per RN-F port, but not always
@@ -412,7 +415,7 @@ if __name__ == "__main__":
             output_temp = True
             i = 0
             while True:
-                ofn = "./cmn-system" + ("-%u" if i >= 1 else "") + ".json"
+                ofn = "./cmn-system" + (("-%u" % i) if i >= 1 else "") + ".json"
                 if not os.path.exists(ofn):
                     break
                 i += 1
