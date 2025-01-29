@@ -52,6 +52,7 @@ def add_trace_arguments(parser):
     parser.add_argument("--diag", action="store_true")
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
+    parser.add_argument("--decode-verbose", type=int, default=0)
 
 
 def cmn_desc(cmn_direct):
