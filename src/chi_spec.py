@@ -152,3 +152,27 @@ opcodes = [
 
 
 NS = ["S", "NS"]
+
+
+DVM_type = [
+    "TLBI",
+    "BPI",
+    "PICI",
+    "VICI",
+    "sync",
+    "?5",
+    "?6",
+    "?7",
+]
+
+
+DVM_EL = ["hypguest", "EL3", "guest", "hyp"]
+
+
+if __name__ == "__main__":
+    # Check that opcodes are unique
+    for (i, ops1) in enumerate(opcodes[:-1]):
+        for op in ops1:
+            for ops2 in opcodes[i+1:]:
+                if op in ops2:
+                    print("duplicate: %s" % op)

@@ -31,6 +31,7 @@ def system_description():
         S.system_type = dmi.DMI().processor()
     except Exception:
         print("Note: could not get system name from DMI", file=sys.stderr)
+        S.system_type = "unknown"
     return S
 
 
@@ -43,6 +44,11 @@ if __name__ == "__main__":
     opts = parser.parse_args()
     o_verbose = opts.verbose
     S = system_description()
+    if not S.CMNs:
+        # This toolkit is currently specific to CMN, and it's not useful to save
+        # a system descriptor if the system doesn't have CMN.
+        print("CMN interconnects not found (system = \"%s\")" % S.system_type, file=sys.stderr)
+        sys.exit(1)
     for c in S.CMNs:
         print("Found %s" % c)
     if not opts.overwrite and os.path.exists(opts.output):

@@ -25,9 +25,11 @@ def cmn_config_cache(name=None):
     pcache = os.path.expanduser("~" + user + "/.cache")
     if not os.path.isdir(pcache):
         os.mkdir(pcache)
+        change_to_real_user_if_sudo(pcache)
     pcache = os.path.join(pcache, "arm")
     if not os.path.isdir(pcache):
         os.mkdir(pcache)
+        change_to_real_user_if_sudo(pcache)
     if name is not None:
         return os.path.join(pcache, name)
     return pcache
@@ -250,6 +252,12 @@ if __name__ == "__main__":
     opts = parser.parse_args()
     opts.input = cmn_config_default(opts.input)
     S = system_from_json_file(opts.input)
+    if opts.verbose:
+        print("System type: %s" % S.system_type)
+        print("CMN version: %s" % S.cmn_version())
+    if S.cmn_version() is None:
+        print("%s: CMN interconnect not found" % (S.filename), file=sys.stderr)
+        sys.exit(1)
     if not (opts.filename or opts.nodes or opts.ports or opts.home_nodes or opts.cpus or opts.output):
         print(S)
         for C in S.CMNs:

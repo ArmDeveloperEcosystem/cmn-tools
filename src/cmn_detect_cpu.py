@@ -276,15 +276,10 @@ def prepare_system(S):
     S.cpu_rnf_port = {}     # CMN_RNFPort object
     S.cpu_lpid = {}         # LPID for each cpu
     S.cpu_id = {}           # device id (SRCID/TGTID) for each CPU
-    for cmn in S.CMNs:
-        for xp in cmn.XPs():
-            for p in range(xp.n_device_ports()):
-                if xp.port_device_type_str(p).startswith("RN-F"):
-                    rnf = CMN_RNFPort(xp.port[p])
-                    S.rnf_ports.append(rnf)
-        if not S.rnf_ports:
-            print("No RN-F ports found in system!", file=sys.stderr)
-            sys.exit(1)
+    S.rnf_ports = [CMN_RNFPort(p) for p in S.ports(properties=CMN_PROP_RNF)]
+    if not S.rnf_ports:
+        print("No RN-F ports found in system!", file=sys.stderr)
+        sys.exit(1)
     if o_verbose:
         print("%u CPUs, %u RN-F ports" % (S.n_cpu, len(S.rnf_ports)))
     # We usually see a consistent number of CPUs per RN-F port, but not always

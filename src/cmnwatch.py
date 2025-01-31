@@ -41,20 +41,28 @@ SNP = 2
 DAT = 3
 
 
+_chi_channels = ["REQ", "RSP", "SNP", "DAT"]
+
+
 class WatchpointBadValue(ValueError):
-    def __init__(self, field, val, chn, reason):
+    def __init__(self, val, reason, field=None, chn=None):
+        assert chn in [None, 0, 1, 2, 3]
         self.field = field
         self.value = val
         self.chn = chn
         self.reason = reason
 
     def __str__(self):
-        return "%s: %s=%s (%s)" % (self.reason, self.field, self.value, chi_spec.channel[self.chn])
+        chn_name = _chi_channels[self.chn] if self.chn is not None else "chn?"
+        return "%s: %s=%s (%s)" % (self.reason, self.field, self.value, chn_name)
 
 
 def convert_value(v):
     """
-    Given a value specifier, return a pair of value and a don't-care mask.
+    Given a numeric or masked-numeric value specifier,
+    return a pair of a numeric value and a don't-care mask.
+
+    Table-lookup of enumerated values is assumed to have already been done.
 
     A value specifier might be a literal value, or a wildcard:
       0b1x00    -> (0x8, 0x4)
@@ -80,7 +88,7 @@ def convert_value(v):
         v1 = int(v[2:].replace('x', 'f'), 16)
         return (v0, v1-v0)
     else:
-        raise ValueError("expected integer or bitmask: %s" % v)
+        raise WatchpointBadValue(v, "expected integer or bitmask")
 
 
 assert convert_value(123) == (123, 0)
@@ -118,7 +126,7 @@ class MatchMask:
                 print("    setting [%u:%u] to %s" % (pos+bits-1, pos, val), file=sys.stderr)
             (val, dontcare) = convert_value(val)
             if val >= (1 << bits):
-                raise ValueError("value out of range for %u-bit field" % (bits))
+                raise WatchpointBadValue(val, ("value out of range for %u-bit field" % bits))
             dontcare &= ((1 << bits) - 1)
             mask = ((1 << bits) - 1) << pos
             # Remove any previous specification for this field
@@ -205,7 +213,7 @@ class Watchpoint:
         assert pos+bits <= 64
         if grp not in self.wps:
             if len(self.wps) == 2:
-                raise WatchpointBadValue(field, val, self.chn, "too many groups needed")
+                raise WatchpointBadValue(val, "too many groups needed", field, self.chn)
             m = MatchMask(grp, exclusive=exclusive)
             self.wps[grp] = m
         else:
@@ -420,8 +428,9 @@ _dat_fields = {
     "tu":         (None,   None,          [(1, 30, 2)]),
 }
 
-_fields = [_req_fields, _rsp_fields, _snp_fields, _dat_fields]
 
+# Use the product code to index into the field offset list - falling
+# back to the lsat entry, if the list isn't long enough.
 _field_selector = {
     cmn_base.PART_CMN600: 1,
     cmn_base.PART_CMN650: 2,
@@ -430,6 +439,66 @@ _field_selector = {
     cmn_base.PART_CMN_S3: 3,
 }
 
+
+# Add DVM fields as sub-fields of the address
+
+# DVM is encoded in the address field of REQ and SNP, regardless of CMN version
+# SNP packets don't contain the lower bits of the address. The offsets here
+# are relative to the address field in the packet.
+# For SNP we also need to match bit 0 of the address field, to select fragment #0,
+# which corresponds (mostly) to the REQ packet.
+_dvm_fields = [
+    ("vavalid",   None,              1, 4,  1, 0),
+    ("vmidvalid", None,              1, 5,  2, 0),
+    ("asidvalid", None,              1, 6,  3, 0),
+    ("sec",       None,              2, 7,  4, 0),
+    ("el",        chi_spec.DVM_EL,   2, 9,  6, 0),
+    ("type",      chi_spec.DVM_type, 3, 11, 8, 0),
+    ("vmid",      None,              8, 14, 11, 0),
+    ("asid",      None,              16, 22, 19, 0),
+]
+
+def fixdvmaddr(flds, fbits, off):
+    af = flds["addr"]
+    fs = list(af)[1:]
+    rf = []
+    for f in list(af)[1:]:
+        if f is not None:
+            f = [(grp, pos+off, fbits) for (grp, pos, _) in f]
+        rf.append(f)
+    return rf
+
+_dvm_frag = {}
+for (df, dlookup, dbits, reqoff, snpoff, frag) in _dvm_fields:
+    if frag == 0:
+        # For REQ, some DVM fields are only visible when they are in the first fragment,
+        # since in the second, they are in the DAT payload which we can't see.
+        _req_fields["dvm"+df] = tuple([dlookup] + fixdvmaddr(_req_fields, dbits, reqoff))
+    _snp_fields["dvm"+df] = tuple([dlookup] + fixdvmaddr(_snp_fields, dbits, snpoff))
+    _dvm_frag["dvm"+df] = frag
+
+
+# Selecting on DVM SNP fields should normally force fragment #0.
+# We might also want to select fragment #0 or #1 explicitly.
+_snp_fields["dvmfrag"] = tuple([None] + fixdvmaddr(_snp_fields, 1, 0))
+
+
+# Build a consolidated CHI opcodes table that maps opcodes to channel and value.
+# CHI architects have indicated that opcode names will remain unique across channels.
+_all_opcodes = {}
+for (chn, optab) in enumerate(chi_spec.opcodes):
+    for (i, op) in enumerate(optab):
+        if op[0] == '?':
+            continue
+        assert op not in _all_opcodes, "unexpected duplicate CHI opcode: %s" % op
+        _all_opcodes[op] = (chn, i)
+
+
+# Fields indexed by CHI channel
+_fields = [_req_fields, _rsp_fields, _snp_fields, _dat_fields]
+
+# Consolidated list of CHI fields (including DVM fields).
+# Used for e.g. constructing command-line arguments.
 chi_fields = list(set([k for flds in _fields for k in flds.keys()]))
 
 _all_fields = chi_fields + ["exclusive"]
@@ -443,6 +512,28 @@ def match_obj(o, chn=0, up=None, mask=None, cmn_version=None):
     if mask is not None and not mask.is_open():
         wp.wps[0] = mask     # allow caller to set up the primary mask directly
     return apply_matches_obj_to_watchpoint(wp, o)
+
+
+def fix_matches_obj_for_dvm(chn, o):
+    """
+    If there are any DVM fields, force the opcode and SNP fragment selector
+    """
+    opcode = [0x14, None, 0x0D, None][chn]
+    for dvmf in _fields[chn].keys():
+        if dvmf.startswith("dvm") and getattr(o, dvmf, None) is not None:
+            # Force opcode
+            cur_op = getattr(o, "opcode", None)
+            if cur_op is None:
+                o.opcode = opcode
+            elif cur_op != opcode:
+                #raise WatchpointBadValue(cur_op, "opcode not compatible with DVM field")
+                # caller might have specified opcode as string, hex code etc.
+                # only want to complain if it doesn't resolve to the right code. TBD.
+                pass
+            if chn == SNP and dvmf != "dvmfrag":
+                # apply the fragment selector
+                frag = _dvm_frag[dvmf]
+                o.dvmfrag = frag
 
 
 def apply_matches_obj_to_watchpoint(wp, o):
@@ -463,6 +554,7 @@ def apply_matches_obj_to_watchpoint(wp, o):
     fields = _fields[wp.chn]
     # Index of this CMN's field positions in the tuple
     mix = _field_selector[wp.cmn_version.product_id]
+    fix_matches_obj_for_dvm(wp.chn, o)
     for phase in [0, 1]:
         for (k, meta) in fields.items():
             val = getattr(o, k, None)
@@ -471,18 +563,19 @@ def apply_matches_obj_to_watchpoint(wp, o):
                     print("  setting chn=%u %s = %s" % (wp.chn, k, val), file=sys.stderr)
                 if k == "srcid":
                     if wp.up == True:
-                        raise WatchpointBadValue(k, val, wp.chn, "can't specify SRCID on upload")
+                        raise WatchpointBadValue(val, "can't specify SRCID on upload", k, wp.chn)
                     wp.up = False
                 if k == "tgtid":
                     if wp.up == False:
-                        raise WatchpointBadValue(k, val, wp.chn, "can't specify TGTID on download")
+                        raise WatchpointBadValue(val, "can't specify TGTID on download", k, wp.chn)
                     wp.up = True
                 # Currently, CMN-S3 is almost always the same as CMN-700, so we allow most
                 # fields to not bother with a separate CMN-S3 configuration.
                 eff_mix = min(mix, len(meta)-1)
                 if meta[eff_mix] is None:
-                    raise WatchpointBadValue(k, val, wp.chn, "field not supported in this product (%s)" % wp.cmn_version)
+                    raise WatchpointBadValue(val, ("field not supported in this product (%s)" % wp.cmn_version), k, wp.chn)
                 # Get the value-parsing function, so we can do e.g. "resp=UC"
+                # Each channel has its own opcode lookup function.
                 lookup = meta[0]
                 if lookup is not None:
                     if val in lookup:
@@ -493,25 +586,31 @@ def apply_matches_obj_to_watchpoint(wp, o):
                         val = "0b110xxx"     # 0x30 to 0x37
                 try:
                     _ = convert_value(val)
-                except ValueError:
-                    raise WatchpointBadValue(k, val, wp.chn, "bad value")
+                except WatchpointBadValue as e:
+                    if k == "opcode" and val in _all_opcodes:
+                        op_chn = _all_opcodes[val][0]
+                        e.reason = "opcode is for %s" % (_chi_channels[op_chn])
+                    raise WatchpointBadValue(val, e.reason, k, wp.chn)
                 # First do fields that only have one possible group
-                poses = meta[eff_mix]
-                if phase == 0 and len(poses) == 1:
-                    # Only one possible group for this field
-                    (grp, pos, width) = poses[0]
-                    wp.set(grp, val, pos, width, exclusive=exclusive, field=k)
-                elif phase == 1 and len(poses) > 1:
-                    # prefer a group that is already in use
-                    done = False
-                    for (grp, pos, width) in poses:
-                        if grp in wp.wps:
-                            wp.set(grp, val, pos, width, exclusive=exclusive, field=k)
-                            done = True
-                            break
-                    if not done:
+                try:
+                    poses = meta[eff_mix]
+                    if phase == 0 and len(poses) == 1:
+                        # Only one possible group for this field
                         (grp, pos, width) = poses[0]
                         wp.set(grp, val, pos, width, exclusive=exclusive, field=k)
+                    elif phase == 1 and len(poses) > 1:
+                        # prefer a group that is already in use
+                        done = False
+                        for (grp, pos, width) in poses:
+                            if grp in wp.wps:
+                                wp.set(grp, val, pos, width, exclusive=exclusive, field=k)
+                                done = True
+                                break
+                        if not done:
+                            (grp, pos, width) = poses[0]
+                            wp.set(grp, val, pos, width, exclusive=exclusive, field=k)
+                except WatchpointBadValue as e:
+                    raise WatchpointBadValue(val, e.reason, k, wp.chn)
     """
     Check whether the user specified any CHI fields inappropriate for the channel.
     The user might have passed in an argparse.Namespace object so there may be
@@ -519,7 +618,7 @@ def apply_matches_obj_to_watchpoint(wp, o):
     """
     for k in [k for k in dir(o) if k in _all_fields]:
         if getattr(o, k, None) is not None and k not in fields and k != "exclusive":
-            raise WatchpointBadValue(k, getattr(o, k), wp.chn, "field not valid for this channel")
+            raise WatchpointBadValue(getattr(o, k), "field not valid for this channel", k, wp.chn)
     return wp
 
 
@@ -544,7 +643,7 @@ def list_fields(S):
     List all CHI fields that can be matched.
     """
     mix = _field_selector[S.cmn_version().product_id]
-    for (chn, cf) in zip(["REQ", "RSP", "SNP", "DAT"], _fields):
+    for (chn, cf) in zip(_chi_channels, _fields):
         print("%s fields:" % chn)
         for (f, meta) in cf.items():
             eff_mix = min(mix, len(meta)-1)
@@ -557,7 +656,7 @@ def list_fields(S):
             else:
                 nbits = poses[0][2]
                 groups = ''.join([str(g) for (g, _, _) in poses])
-                print("%2u bits  grp %-3s" % (nbits, groups), end="")
+                print("%2u bits  grp %-4s" % (nbits, groups), end="")
             # Print any enumerator for this CHI field
             keys = meta[0]
             if keys is not None and not o_verbose:
@@ -600,9 +699,16 @@ if __name__ == "__main__":
         except KeyError:
             raise argparse.ArgumentTypeError("invalid CMN product identifier")
         return v
+    def arg_chi_channel(s):
+        if s in ["0", "1", "2", "3"]:
+            return int(s)
+        s = s.upper()
+        if s in _chi_channels:
+            return _chi_channels.index(s)
+        raise argparse.ArgumentTypeError("invalid CHI channel specifier")
     import argparse, os
     parser = argparse.ArgumentParser(description="CMN flit matching")
-    parser.add_argument("--chn", type=int, default=0, help="CHI channel (REQ/RSP/SNP/DAT)")
+    parser.add_argument("--chn", type=arg_chi_channel, default=0, help="CHI channel (REQ/RSP/SNP/DAT)")
     parser.add_argument("--REQ", action="store_const", const=0, dest="chn", help="REQ channel")
     parser.add_argument("--RSP", action="store_const", const=1, dest="chn", help="RSP channel")
     parser.add_argument("--SNP", action="store_const", const=2, dest="chn", help="SNP channel")
