@@ -128,7 +128,7 @@ class CMNVis:
             print("%s:" % xp)
             self.last_xp = xp
         print("  %s WP%u: " % ("><"[(wp>>1)&1], wp), end="")
-        (nid, DEV, wp, VC, format, _) = xp.dtm_wp_details(wp)
+        (nid, DEV, wp, VC, format, _) = xp.dtm.dtm_wp_details(wp)
         fg = CMNFlitGroupX(self.cfg, nodeid=nid, DEV=DEV, VC=VC, format=format, cc=cc, vis=self)
         fg.decode(data)
         print(fg)
@@ -170,8 +170,8 @@ class TraceSession:
         self.C.restore_dtc_status_on_deletion()
         self.C.dtc_enable(cc=self.opts.cc)   # need to enable CC in DTCs if we want timestamp in DTMs
         # First disable all the non-involved XPs
-        for xp in self.C.XPs():
-            xp.dtm_disable()
+        for dtm in self.C.DTMs():
+            dtm.dtm_disable()
         if self.opts.xp == [-1]:
             xps = []
         elif self.opts.xp is not None:
@@ -219,12 +219,12 @@ class TraceSession:
         """
         for xp1 in C.XPs():
             for xp2 in C.XPs():
-                xp2.dtm_disable()
-            xp1.dtm_enable()           # enable just xp1
+                xp2.dtm.dtm_disable()
+            xp1.dtm.dtm_enable()           # enable just xp1
             # check that only this one got enabled
             for xp2 in C.XPs():
-                assert xp2.dtm_is_enabled() == (xp1 == xp2), "aliasing check failed"
-            xp1.dtm_disable()
+                assert xp2.dtm.dtm_is_enabled() == (xp1 == xp2), "aliasing check failed"
+            xp1.dtm.dtm_disable()
 
     def configure_xp(self, xp):
         """
@@ -249,7 +249,7 @@ class TraceSession:
         # In read (non-ATB) mode, it appears that the FIFO starts filling as soon as
         # trace_no_atb is set, regardless of dtm_enable. So make sure the
         # watchpoints are configured and then clear the FIFO.
-        xp.dtm_disable()
+        xp.dtm.dtm_disable()
         if not self.atb:
             dtm_control = cmn.CMN_DTM_CONTROL_TRACE_NO_ATB
         else:
@@ -267,9 +267,9 @@ class TraceSession:
                     for j in range(len(grps)):
                         M = self.wps.wps[grps[j]]
                         combine = (self.wps.is_multigrp() and j==0)
-                        xp.dtm_set_watchpoint(wp+off+j, val=M.val, mask=M.mask, format=self.opts.format, cc=self.opts.cc, dev=dev, chn=self.wps.chn, group=M.grp, exclusive=M.exclusive, combine=combine)
+                        xp.dtm.dtm_set_watchpoint(wp+off+j, val=M.val, mask=M.mask, format=self.opts.format, cc=self.opts.cc, dev=dev, chn=self.wps.chn, group=M.grp, exclusive=M.exclusive, combine=combine)
                 else:
-                    xp.dtm_set_watchpoint(wp+off, gen=False)
+                    xp.dtm.dtm_set_watchpoint(wp+off, gen=False)
             xp.next_port += 1
             if xp.next_port == xp.n_device_ports():
                 xp.next_port = 0
@@ -281,25 +281,25 @@ class TraceSession:
         #xp.dtm_enable()
         if not self.atb:
             # Clearing the FIFO only works if trace_no_atb is already set
-            xp.set64(cmn.CMN_DTM_CONTROL, cmn.CMN_DTM_CONTROL_TRACE_NO_ATB)
-            xp.dtm_clear_fifo()
-        xp.write64(cmn.CMN_DTM_CONTROL, dtm_control)   # DTM is still disabled
+            xp.dtm.dtm_set64(cmn.CMN_DTM_CONTROL_off, cmn.CMN_DTM_CONTROL_TRACE_NO_ATB)
+            xp.dtm.dtm_clear_fifo()
+        xp.dtm.dtm_write64(cmn.CMN_DTM_CONTROL_off, dtm_control)   # DTM is still disabled
         if self.opts.count:
             # Program the four local counters to count the four WPs (events 0..3).
             # The DTC has eight global counters which can catch rollovers from the
             # local counters. We have eight DTC counters so we might as well distribute
             # the XP rollovers between them.
-            xp.write64(cmn.CMN_DTM_PMU_CONFIG, 0)     # disable PMU while we're programming it
-            xp.write64(cmn.CMN_DTM_PMU_PMEVCNT, 0)    # clear the four local counters
-            #xp.write64(cmn.CMN_DTM_PMU_CONFIG, 0x0302010000000001)
+            xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0)     # disable PMU while we're programming it
+            xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_PMEVCNT_off, 0)    # clear the four local counters
+            #xp.dtm_write64(cmn.CMN_DTM_PMU_CONFIG, 0x0302010000000001)
             if i & 1 == 0:
-                xp.write64(cmn.CMN_DTM_PMU_CONFIG, 0x03020100642000f1)
+                xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0x03020100642000f1)
             else:
-                xp.write64(cmn.CMN_DTM_PMU_CONFIG, 0x03020100753100f1)
+                xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0x03020100753100f1)
         # "The final step is to write 1'b1 to dtm_control.dtm_enable to enable the WP."
         if self.opts.verbose >= 2:
             print("enable DTM on %s" % xp)
-        xp.dtm_enable()
+        xp.dtm.dtm_enable()
 
     def trace_start(self):
         if self.opts.verbose:
@@ -308,10 +308,10 @@ class TraceSession:
         if False:
             # Reset all the XP DTMs (even the ones we're not interested in) and stop
             # them generating ATB trace packets.
-            for xp in self.C.XPs():
-                xp.dtm_disable()
-                xp.set64(cmn.CMN_DTM_CONTROL, cmn.CMN_DTM_CONTROL_TRACE_NO_ATB)
-                xp.dtm_clear_fifo()
+            for dtm in self.C.DTMs():
+                dtm.dtm_disable()
+                dtm.dtm_set64(cmn.CMN_DTM_CONTROL_off, cmn.CMN_DTM_CONTROL_TRACE_NO_ATB)
+                dtm.dtm_clear_fifo()
         self.C.dtc_enable()
         for xp in self.xps:
             # Here we are scanning just the XPs that we want to monitor.
@@ -355,14 +355,14 @@ class TraceSession:
             time.sleep(self.opts.sleep)
             if True:
                 for xp in self.xps:
-                    fe = xp.read64(cmn.CMN_DTM_FIFO_ENTRY_READY)
+                    fe = xp.dtm.dtm_fifo_ready()
                     for e in range(0, 4):
                         if fe & (1<<e):
-                            (data, cc) = xp.dtm_fifo_entry(e)
+                            (data, cc) = xp.dtm.dtm_fifo_entry(e)
                             if self.opts.immediate:
                                 TV.print_packet(xp, e, data, cc)
                             fifocap[xp][e].append((data, cc))
-                    xp.dtm_clear_fifo()
+                    xp.dtm.dtm_clear_fifo()
         self.trace_stop()
         return fifocap
 
@@ -379,7 +379,7 @@ class TraceSession:
         # Stop generating trace, and collect it
         self.C.dtc_disable()
         for xp in self.xps:
-            xp.dtm_disable()
+            xp.dtm.dtm_disable()
         if self.opts.verbose >= 3:
             self.show_status()
         elif self.opts.verbose >= 2:
@@ -404,14 +404,14 @@ class TraceSession:
         """
         # Show data from the FIFOs in the XPs
         for xp in self.xps:
-            self.show_fifo(xp)
+            self.show_fifo(xp.dtm)
 
-    def show_fifo(self, xp):
-        fe = xp.read64(cmn.CMN_DTM_FIFO_ENTRY_READY)
+    def show_fifo(self, dtm):
+        fe = dtm.dtm_fifo_ready()
         for e in range(0,4):
             if fe & (1<<e):
-                (data, cc) = xp.dtm_fifo_entry(e)
-                self.TV.print_packet(xp, e, data, cc)
+                (data, cc) = dtm.dtm_fifo_entry(e)
+                self.TV.print_packet(dtm.xp, e, data, cc)
 
     def show_status(self):
         """

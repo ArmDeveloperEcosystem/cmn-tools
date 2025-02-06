@@ -75,10 +75,13 @@ def map_read64(m, off):
 
 
 # Register offsets
-# 'any' generally means offset is valid for any node type, or any node type except XP.
+# 'any' generally means offset is valid for any node type,
+# or any node type except XP.
 CMN_any_NODE_INFO       = 0x0000
 CMN_any_CHILD_INFO      = 0x0080
 CMN_any_UNIT_INFO       = 0x0900
+
+# PMU event selector (por_xx_pmu_event_sel). In S3, this changes to 0xD900
 CMN_any_PMU_EVENT_SEL   = 0x2000     # for some nodes it's 0x2008
 
 CMN_CFG_PERIPH_01       = 0x0008
@@ -109,6 +112,8 @@ class CMNNode:
     """
     A single CMN node, at some offset in the overall peripheral space.
     Spans a 16K range of configuration registers.
+
+    Subclassed for XP and DT.
     """
     def __init__(self, cmn, node_offset, map=None, write=False, parent=None, is_external=False):
         self.C = cmn
@@ -256,6 +261,11 @@ class CMNNode:
     def is_home_node(self):
         return self.type() in [CMN_NODE_HNF, CMN_NODE_HNS]
 
+    def cache_geometry(self):
+        # move to subclass, if/when we have a HN subclass
+        assert self.is_home_node()
+        return hn_cache_geometry(self)
+
     def XY(self):
         id = self.node_id()
         cb = self.C.coord_bits
@@ -326,32 +336,43 @@ class CMNNode:
         return s
 
 
+#
+# DT-specific
+#
+
+CMN650_DTM_UNIT_INFO           =  0x910    # CMN-650
+CMN700_DTM_UNIT_INFO           =  0x960    # CMN-700
+
 # Debug/Trace Monitor registers in XP.
-CMN_DTM_CONTROL             = 0x2100
+# DTM base is at 0x2000 before S3, then at 0xD900.
+CMN_DTM_BASE_OLD   = 0x2000
+CMN_DTM_BASE_S3    = 0xD900
+
+CMN_DTM_CONTROL_off         = 0x100
 CMN_DTM_CONTROL_DTM_ENABLE             = 0x01
 CMN_DTM_CONTROL_TRACE_TAG_ENABLE       = 0x02     # set TraceTag on a match
 CMN_DTM_CONTROL_SAMPLE_PROFILE_ENABLE  = 0x04     # use PMSIRR/PMSICR countdown
 CMN_DTM_CONTROL_TRACE_NO_ATB           = 0x08     # trace to FIFO in XP
-CMN650_DTM_UNIT_INFO           =  0x910    # CMN-650
-CMN700_DTM_UNIT_INFO           =  0x960    # CMN-700
-CMN_DTM_FIFO_ENTRY_READY    = 0x2118     # write 1 to clear
-CMN_DTM_FIFO_ENTRY0_0       = 0x2120
-def CMN_DTM_FIFO_ENTRY(fn,dn):
-    return CMN_DTM_FIFO_ENTRY0_0 + (fn * 24) + (dn * 8)
-CMN_DTM_WP0_CONFIG          = 0x21A0
-CMN_DTM_WP0_VAL             = 0x21A8
-CMN_DTM_WP0_MASK            = 0x21B0    # 1 bit means ignore
-# CMN_DTM_WP1_CONFIG          = 0x21B8
-CMN_DTM_PMU_PMSICR          = 0x2200    # sampling interval counter
-CMN_DTM_PMU_PMSIRR          = 0x2208    # sampling interval reload (bits 7:0 must be zero)
-CMN_DTM_PMU_CONFIG          = 0x2210
+
+CMN_DTM_FIFO_ENTRY_READY_off    = 0x118     # write 1 to clear
+CMN_DTM_FIFO_ENTRY0_0_off       = 0x120
+def CMN_DTM_FIFO_ENTRY_off(fn,dn):
+    return CMN_DTM_FIFO_ENTRY0_0_off + (fn * 24) + (dn * 8)
+CMN_DTM_WP0_CONFIG_off          = 0x1A0
+CMN_DTM_WP0_VAL_off             = 0x1A8
+CMN_DTM_WP0_MASK_off            = 0x1B0    # 1 bit means ignore
+# CMN_DTM_WP1_CONFIG           = 0x1B8
+CMN_DTM_PMU_PMSICR_off          = 0x200    # sampling interval counter
+CMN_DTM_PMU_PMSIRR_off          = 0x208    # sampling interval reload (bits 7:0 must be zero)
+CMN_DTM_PMU_CONFIG_off          = 0x210
 CMN_DTM_PMU_CONFIG_PMU_EN              = 0x01   # DTM PMU enable - other fields are valid only when this is set
 CMN_DTM_PMU_CONFIG_PMEVCNT01_COMBINED  = 0x02   # combine PMU counters 0 and 1
 CMN_DTM_PMU_CONFIG_PMEVCNT23_COMBINED  = 0x04   # combine PMU counters 2 and 3
 CMN_DTM_PMU_CONFIG_PMEVENTALL_COMBINED = 0x08   # combine PMU counters 0,1,2 and 3
 CMN_DTM_PMU_CONFIG_CNTR_RST           = 0x100   # clear live counters upon assertion of snapshot
-CMN_DTM_PMU_PMEVCNT         = 0x2220    # DTM event counters 0 to 3: 16 bits each
-CMN_DTM_PMU_PMEVCNTSR       = 0x2240    # DTM event counter shadow
+CMN_DTM_PMU_PMEVCNT_off         = 0x220    # DTM event counters 0 to 3: 16 bits each
+CMN_DTM_PMU_PMEVCNTSR_off       = 0x240    # DTM event counter shadow
+
 
 # Port connectivity information.
 # For CMN-600/650 this is max 2 ports with east/north immediately following.
@@ -374,10 +395,7 @@ class CMNNodeXP(CMNNode):
     """
     def __init__(self, *args, **kwargs):
         CMNNode.__init__(self, *args, **kwargs)
-        # We maintain a cached copy of the DTM enable bit so we can fault writes
-        # to DTM configuration registers when enabled.
-        self._dtm_is_enabled = None
-        self._dtm_is_enabled = self.dtm_is_enabled()
+        self.dtm = CMNDTM(self)
 
     def port_nodes(self, rP):
         """
@@ -488,8 +506,44 @@ class CMNNodeXP(CMNNode):
         """
         Some DTM configuration registers are only writeable when the DTM is disabled.
         """
-        if off >= 0x2100 and off <= 0x22ff and off not in [CMN_DTM_CONTROL, CMN_DTM_FIFO_ENTRY_READY] and self._dtm_is_enabled:
+        if off >= self.C.DTM_BASE+0x100 and off <= self.C.DTM_BASE+0x2ff and (off-self.C.DTM_BASE) not in [CMN_DTM_CONTROL_off, CMN_DTM_FIFO_ENTRY_READY_off] and self.dtm._dtm_is_enabled:
             assert False, "try to write DTM programming register when DTM is enabled"
+
+
+class CMNDTM:
+    """
+    Debug/trace functionality within an XP.
+    Split out from XP partly motivated by register offsets having changed in S3.
+    """
+    def __init__(self, xp):
+        self.xp = xp
+        self.base = xp.C.DTM_BASE
+        self.C = xp.C
+        # We maintain a cached copy of the DTM enable bit so we can fault writes
+        # to DTM configuration registers when enabled.
+        self._dtm_is_enabled = None
+        self._dtm_is_enabled = self.dtm_is_enabled()
+
+    def __str__(self):
+        return "%s DTM" % (self.xp)
+
+    def dtm_read64(self, off):
+        return self.xp.read64(self.base+off)
+
+    def dtm_write64(self, off, value, check=None):
+        return self.xp.write64(self.base+off, value, check=check)
+
+    def dtm_set64(self, off, value, check=None):
+        return self.xp.set64(self.base+off, value, check=check)
+
+    def dtm_clear64(self, off, value, check=None):
+        return self.xp.clear64(self.base+off, value, check=check)
+
+    def dtm_test64(self, off, value):
+        return self.xp.test64(self.base+off, value)
+
+    def dtc_domain(self):
+        return self.xp.dtc_domain()
 
     def dtm_enable(self):
         """
@@ -497,11 +551,11 @@ class CMNNodeXP(CMNNode):
         all other DT configuration registers must be programmed; once this bit
         is set, other DT configuration registers must not be modified.
         """
-        self.set64(CMN_DTM_CONTROL, 0x1)
+        self.dtm_set64(CMN_DTM_CONTROL_off, 0x1)
         self._dtm_is_enabled = True
 
     def dtm_disable(self):
-        self.clear64(CMN_DTM_CONTROL, 0x1)
+        self.dtm_clear64(CMN_DTM_CONTROL_off, 0x1)
         self._dtm_is_enabled = False
 
     def dtm_is_enabled(self):
@@ -509,7 +563,7 @@ class CMNNodeXP(CMNNode):
         Check whether por_dtm_control.dtm_enable is set, indicating that DTM is enabled.
         "Once this bit is set, other DT configuration registers must not be modified."
         """
-        e = self.test64(CMN_DTM_CONTROL, CMN_DTM_CONTROL_DTM_ENABLE)
+        e = self.dtm_test64(CMN_DTM_CONTROL_off, CMN_DTM_CONTROL_DTM_ENABLE)
         if self._dtm_is_enabled is not None:
             assert e == self._dtm_is_enabled, "%s: cached DTM emable state out of sync" % self
         return e
@@ -520,16 +574,16 @@ class CMNNodeXP(CMNNode):
         Appears to be possible to do this even when the DTM is enabled.
         But it appears that data will still go into the FIFO if trace_no_atb is set.
         """
-        #print("%s: DTM control = 0x%x" % (self, self.read64(CMN_DTM_CONTROL)))
-        self.write64(CMN_DTM_FIFO_ENTRY_READY, 0xf, check=False)
-        #self.write64(CMN_DTM_FIFO_ENTRY_READY, 0x0, check=True)
-        fe = self.read64(CMN_DTM_FIFO_ENTRY_READY)
+        #print("%s: DTM control = 0x%x" % (self, self.dtm_read64(CMN_DTM_CONTROL_off)))
+        self.dtm_write64(CMN_DTM_FIFO_ENTRY_READY_off, 0xf, check=False)
+        #self.dtm_write64(CMN_DTM_FIFO_ENTRY_READY_off, 0x0, check=True)
+        fe = self.dtm_read64(CMN_DTM_FIFO_ENTRY_READY_off)
         if fe != 0:
-            ctl = self.read64(CMN_DTM_CONTROL)
+            ctl = self.dtm_read64(CMN_DTM_CONTROL_off)
             self.C.log("%s: FIFO not empty after clearing: 0x%x (control=0x%x)" % (self, fe, ctl))
 
     def dtm_fifo_ready(self):
-        return self.read64(CMN_DTM_FIFO_ENTRY_READY)
+        return self.dtm_read64(CMN_DTM_FIFO_ENTRY_READY_off)
 
     def dtm_fifo_entry(self, e):
         """
@@ -538,7 +592,7 @@ class CMNNodeXP(CMNNode):
         assert 0 <= e and e <= N_FIFO_ENTRIES
         ws = []
         for w in range(0, 3):
-            ws.append(self.read64(CMN_DTM_FIFO_ENTRY(e, w)))
+            ws.append(self.dtm_read64(CMN_DTM_FIFO_ENTRY_off(e, w)))
         #print("FIFO: 0x%016x 0x%016x 0x%016x" % (ws[0], ws[1], ws[2]))
         # The cycle count is at a fixed bit offset in register #2, but the
         # offset varies by part number, reflecting the FIFO data size
@@ -561,14 +615,14 @@ class CMNNodeXP(CMNNode):
         Counterpart of dtm_set_watchpoint()
         """
         assert 0 <= wp and wp <= N_WATCHPOINTS
-        cfg = self.read64(CMN_DTM_WP0_CONFIG+(wp*24))
+        cfg = self.dtm_read64(CMN_DTM_WP0_CONFIG_off+(wp*24))
         VC = BITS(cfg, 1, 2)
         dev = BIT(cfg, 0)
-        if self.n_device_ports() > 2:
+        if self.xp.n_device_ports() > 2:
             dev |= (BIT(cfg, 17) << 1)
         type = BITS(cfg, self.C.DTM_WP_PKT_TYPE_SHIFT, 3)
         cc = BIT(cfg, self.C.DTM_WP_PKT_TYPE_SHIFT+3)
-        return (self.node_id(), dev, wp, VC, type, cc)
+        return (self.xp.node_id(), dev, wp, VC, type, cc)
 
     def dtm_atb_packet_header(self, wp, lossy=0):
         """
@@ -582,13 +636,13 @@ class CMNNodeXP(CMNNode):
         return h
 
     def pmu_enable(self):
-        self.set64(CMN_DTM_PMU_CONFIG, CMN_DTM_PMU_CONFIG_PMU_EN)
+        self.dtm_set64(CMN_DTM_PMU_CONFIG_off, CMN_DTM_PMU_CONFIG_PMU_EN)
 
     def pmu_disable(self):
-        self.clear64(CMN_DTM_PMU_CONFIG, CMN_DTM_PMU_CONFIG_PMU_EN)
+        self.dtm_clear64(CMN_DTM_PMU_CONFIG_off, CMN_DTM_PMU_CONFIG_PMU_EN)
 
     def pmu_is_enabled(self):
-        return self.test64(CMN_DTM_PMU_CONFIG, CMN_DTM_PMU_CONFIG_PMU_EN)
+        return self.dtm_test64(CMN_DTM_PMU_CONFIG_off, CMN_DTM_PMU_CONFIG_PMU_EN)
 
     def pmu_event_input_selector_str(self, eis):
         if eis <= 0x03:
@@ -651,13 +705,13 @@ class CMNNodeXP(CMNNode):
             config |= self.C.DTM_WP_CC_EN
         if exclusive:
             config |= self.C.DTM_WP_EXCLUSIVE
-        self.write64(CMN_DTM_WP0_VAL+(wp*24), val)
-        self.write64(CMN_DTM_WP0_MASK+(wp*24), mask)
-        self.write64(CMN_DTM_WP0_CONFIG+(wp*24), config)
+        self.dtm_write64(CMN_DTM_WP0_VAL_off+(wp*24), val)
+        self.dtm_write64(CMN_DTM_WP0_MASK_off+(wp*24), mask)
+        self.dtm_write64(CMN_DTM_WP0_CONFIG_off+(wp*24), config)
 
     def show_dtm(self, show_pmu=True):
-        dtm_control = self.read64(CMN_DTM_CONTROL)
-        fifo = self.read64(CMN_DTM_FIFO_ENTRY_READY)
+        dtm_control = self.dtm_read64(CMN_DTM_CONTROL_off)
+        fifo = self.dtm_read64(CMN_DTM_FIFO_ENTRY_READY_off)
         dom = self.dtc_domain()
         print("  %s:" % self, end="")
         if dom is not None:
@@ -677,9 +731,9 @@ class CMNNodeXP(CMNNode):
         if not (dtm_control & CMN_DTM_CONTROL_TRACE_NO_ATB):
             fifo = 0xf    # if tracing to ATB, show all FIFO contents
         for wp in range(0, N_WATCHPOINTS):
-            wctl = self.read64(CMN_DTM_WP0_CONFIG+(wp*24))
-            wval = self.read64(CMN_DTM_WP0_VAL+(wp*24))
-            wmsk = self.read64(CMN_DTM_WP0_MASK+(wp*24))
+            wctl = self.dtm_read64(CMN_DTM_WP0_CONFIG_off+(wp*24))
+            wval = self.dtm_read64(CMN_DTM_WP0_VAL_off+(wp*24))
+            wmsk = self.dtm_read64(CMN_DTM_WP0_MASK_off+(wp*24))
             if wctl or wval or wmsk:
                 chn = BITS(wctl, 1, 3)
                 port = BIT(wctl, 0)      # wp_dev_sel
@@ -709,9 +763,9 @@ class CMNNodeXP(CMNNode):
                     (data, cc) = self.dtm_fifo_entry(e)
                     print("    FIFO #%u: %s cc=0x%04x" % (e, hexstr(data), cc))
         if show_pmu:
-            pmu_config = self.read64(CMN_DTM_PMU_CONFIG)
+            pmu_config = self.dtm_read64(CMN_DTM_PMU_CONFIG_off)
             if pmu_config:
-                pmu_pmevcnt = self.read64(CMN_DTM_PMU_PMEVCNT)
+                pmu_pmevcnt = self.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
                 print("    PMU config: 0x%016x" % (pmu_config))
                 print("    PMU counts: 0x%016x" % (pmu_pmevcnt))
                 show_dtm_pmu_config(self)
@@ -956,15 +1010,19 @@ class CMN:
         temp_m = self.D.map(self.periphbase+rootnode_offset, 0x4000)
         id01 = map_read64(temp_m, CMN_CFG_PERIPH_01)
         product_id = (BITS(id01, 32, 4) << 8) | BITS(id01, 0, 8)
-        # We can't get chi_version() until we've read unit_info, and
+        # We can't get chi_version() until we've read unit_info (por_info_global)
         self.product_config = cmn_base.CMNConfig(product_id=product_id)
         del temp_m
         self.rootnode = self.create_node(rootnode_offset)
-        self.unit_info = self.rootnode.read64(CMN_any_UNIT_INFO)
+        self.unit_info = self.rootnode.read64(CMN_any_UNIT_INFO)   # por_info_global
         # The release is e.g. r0p0, r1p2
         self.product_config.revision = BITS(self.rootnode.read64(CMN_CFG_PERIPH_23), 4, 4)
-        self.product_config.mpam_enabled = self.part_ge_650() and BIT(self.unit_info, 49)
+        self.product_config.mpam_enabled = self.part_ge_650() and (BIT(self.unit_info, 49) != 0)
         self.product_config.chi_version = self.chi_version()
+        if self.product_config.product_id != cmn_base.PART_CMN_S3:
+            self.DTM_BASE            = CMN_DTM_BASE_OLD
+        else:
+            self.DTM_BASE            = CMN_DTM_BASE_S3
         #
         # Now traverse the CMN space to discover all the nodes.
         #
@@ -1017,11 +1075,11 @@ class CMN:
         if restore_dtc_status:
             self.restore_dtc_status_on_deletion()
         if self.secure_accessible is None:
-            sa = self.rootnode.read64(CMN_any_SECURE_ACCESS)
-            self.secure_accessible = (sa == 1)
+            sa = self.rootnode.read64(CMN_any_SECURE_ACCESS)   # por_cfgm_secure_access
+            self.secure_accessible = (BIT(sa, 0) == 1)
         if self.verbose:
             sa = self.rootnode.read64(CMN_any_SECURE_ACCESS)
-            print("Access to Secure registers: 0x%x (at 0x%x)" % (sa, self.rootnode.node_base_addr+CMN_any_SECURE_ACCESS))
+            print("Access to Secure registers: 0x%x (%s) (at 0x%x)" % (sa, self.secure_accessible, self.rootnode.node_base_addr+CMN_any_SECURE_ACCESS))
 
     def contains_addr(self, addr):
         assert not self.creating
@@ -1079,7 +1137,11 @@ class CMN:
         return s
 
     def chi_version(self):
+        """
+        Discover the CHI version, where 1 is A, 2 is B etc.
+        """
         if not self.part_ge_650():
+            # In CMN-600 there's a single CHI-C flag
             return 2 + BIT(self.unit_info, 49)
         else:
             return BITS(self.unit_info, 60, 3)
@@ -1151,8 +1213,17 @@ class CMN:
             if n.type() == type:
                 yield n
 
+    def home_nodes(self):
+        for n in self.nodes():
+            if n.is_home_node():
+                yield n
+
     def XPs(self):
         return self.nodes_of_type(CMN_NODE_XP)
+
+    def DTMs(self):
+        for xp in self.XPs():
+            yield xp.dtm
 
     def dtc_enable(self, cc=None, pmu=None, clock_disable_gating=None):
         for d in self.debug_nodes:
@@ -1199,11 +1270,11 @@ def mem_size(n):
     return s
 
 
-def show_dtm_pmu_config(xp):
+def show_dtm_pmu_config(dtm):
     # Show dynamic configuration of the XP as an event collector (not generator)
-    pmu_config = xp.read64(CMN_DTM_PMU_CONFIG)
+    pmu_config = dtm.dtm_read64(CMN_DTM_PMU_CONFIG_off)
     if pmu_config != 0:
-        print("      PMU config: 0x%016x  counters: 0x%016x" % (pmu_config, xp.read64(CMN_DTM_PMU_PMEVCNT)))
+        print("      PMU config: 0x%016x  counters: 0x%016x" % (pmu_config, dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)))
         for i in range(0,4):
             eis = BITS(pmu_config,32+i*8,8)     # on CMN-6xx it's only 6 bits
             egc = BITS(pmu_config,16+i*4,3)
@@ -1211,7 +1282,35 @@ def show_dtm_pmu_config(xp):
             print("       %s%u:" % (" +"[paired], i), end="")
             if BIT(pmu_config,4+i):
                 print(" [global %u]" % egc, end="")
-            print(" event 0x%02x: %s" % (eis, xp.pmu_event_input_selector_str(eis)))
+            print(" event 0x%02x: %s" % (eis, dtm.pmu_event_input_selector_str(eis)))
+
+
+def hn_cache_geometry(n):
+    """
+    Retrieve the cache details for a home node, and create a
+    CacheGeometry object.
+    """
+    assert n.is_home_node()
+    info = n.read64(CMN_any_UNIT_INFO)
+    cg = cmn_base.CacheGeometry()
+    cg.n_ways = BITS(info, 8, 5)     # For CMN SLC, 16 or 12
+    slc_size_key = BITS(info, 0, 4)
+    sf_size_key = BITS(info, 4, 3)
+    if not n.C.part_ge_700():
+        cg.sf_n_ways = 16
+    else:
+        cg.sf_n_ways = BITS(info, 54, 6)
+    cg.sf_n_sets_log2 = sf_size_key + 9
+    if slc_size_key:
+        if not n.C.part_ge_700():
+            # Sets: None, 128, 256, 512, 1K, 2K, 4K (12-way), 4K
+            slc_sets_log2 = [None, 7, 8, 9, 10, 11, 12, 12]
+        else:
+            slc_sets_log2 = [None, 7, 8, 9, 10, 11, 11, 12, 12, 9]
+        cg.n_sets_log2 = slc_sets_log2[slc_size_key]
+    else:
+        cg.n_sets_log2 = None
+    return cg
 
 
 def show_cmn(cmn, verbose=0):
@@ -1230,11 +1329,14 @@ def show_cmn(cmn, verbose=0):
     print()
     print("  %s" % cmn.rootnode)
     for xp in cmn.XPs():
+        sec = xp.read64(CMN_any_SECURE_ACCESS)
         n_ports = xp.n_device_ports()
         print("    %s: n_ports=%u" % (xp, n_ports), end="")
         dtc_domain = xp.dtc_domain()
         if dtc_domain is not None:
             print(", dtc_domain=%d" % xp.dtc_domain(), end="")
+        if sec != 0:
+            print(", security=0x%x" % sec, end="")
         print()
         # Show XP information
         xp.show()
@@ -1244,6 +1346,7 @@ def show_cmn(cmn, verbose=0):
         # we group them by their device port.
         for p in range(0, n_ports):
             port_info = xp.port_info(p)
+            port_info_1 = xp.port_info(p, 1) if cmn.part_ge_700() else None
             connected_device_info = xp.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(p))
             connected_device_type = BITS(connected_device_info, 0, 5)
             print("      P%u:" % p, end="")
@@ -1254,6 +1357,8 @@ def show_cmn(cmn, verbose=0):
             print(" devices=%u" % num_dev, end="")
             if verbose:
                 print(" [port_info=0x%x, port_connect_info=0x%x]" % (port_info, connected_device_info), end="")
+                if port_info_1 is not None:
+                    print(" [port_info_1=0x%x]" % (port_info_1), end="")
             print()
             # On a port, there may be multiple nodes, which are
             # enumerated as child nodes of the XP.
@@ -1265,25 +1370,21 @@ def show_cmn(cmn, verbose=0):
             #    e.g. two HN-Fs. Their coordinates will differ in the 'device' number.
             for n in xp.port_nodes(p):
                 info = n.read64(CMN_any_UNIT_INFO)
-                print("        %s (info: 0x%x)" % (n, info))
+                sec = n.read64(CMN_any_SECURE_ACCESS)
+                print("        %s (info: 0x%x)" % (n, info), end="")
+                if sec:
+                    print(", security=0x%x" % sec, end="")
+                print()
                 assert n.XP() == xp
                 if n.is_home_node():
-                    slc_size = BITS(info, 0, 4)
-                    slc_ways = BITS(info, 8, 5)
-                    sf_size = BITS(info, 4, 3)
+                    cg = n.cache_geometry()
                     if not cmn.part_ge_700():
                         num_poc_entries = BITS(info, 32, 7)
-                        sf_ways = 16
                     else:
                         num_poc_entries = BITS(info, 31, 8)
-                        sf_ways = BITS(info, 54, 6)
-                    if slc_size:
-                        if not cmn.part_ge_700():
-                            slc_sizes = [None, "128K", "256K", "512K", "1M", "2M", "3M", "4M"]
-                        else:
-                            slc_sizes = [None, "128K", "256K", "512K", "1M", "1.5M", "2M", "3M", "4M", "384K"]
-                        print("          SLC: %s %u-way tag:%u data:%u" % (slc_sizes[slc_size], slc_ways, BITS(info,16,3), BITS(info,20,3)))
-                    print("          SF: %s per way, %u-way" % (mem_size(sf_size+15), sf_ways))
+                    if cg.exists():
+                        print("          SLC: %s tag:%u data:%u" % (cg.cache_str(), BITS(info,16,3), BITS(info,20,3)))
+                    print("          SF: %s" % cg.sf_str())
                     print("          POCQ entries: %u" % (num_poc_entries))
                     if cmn.product_config.mpam_enabled:
                         mpam_ns_pmg = BITS(info, 43, 1) + 1
@@ -1336,7 +1437,7 @@ def show_cmn(cmn, verbose=0):
                     pass      # not much interesting non-Secure info
                 else:
                     print("          <no information for node: %s>" % (n))
-                if n.type() in [CMN_NODE_HNF, CMN_NODE_HNS]:
+                if n.is_home_node():
                     # Show events generated by this node - meaning will depend on node type.
                     # We should really show this for XPs as well.
                     events = n.read64(CMN_any_PMU_EVENT_SEL)
@@ -1344,6 +1445,7 @@ def show_cmn(cmn, verbose=0):
                         print("          events: 0x%016x" % events)
                 elif n.type() == CMN_NODE_RNSAM:
                     if cmn.secure_accessible:
+                        print("          RNSAM details:")
                         def nonhash(r):
                             nhm = [0xC08, 0xC10, 0xC18, 0xC20, 0xC28, 0xCA0, 0xCA8, 0xCB0, 0xCB8, 0xCC0]
                             nhn = [0xC30, 0xC38, 0xC40, 0xCE0, 0xCE8]
@@ -1410,14 +1512,14 @@ class CMNDiagramPerf(CMNDiagram):
         self.pmu_config = {}
         CMNDiagram.__init__(self, cmn, small=small, update=False)
         for xp in cmn.XPs():
-            self.pmu_config[xp] = xp.read64(CMN_DTM_PMU_CONFIG)
+            self.pmu_config[xp] = xp.dtm.dtm_read64(CMN_DTM_PMU_CONFIG_off)
         self.pmu = {}
         self.capture_pmu()
         self.update()
 
     def capture_pmu(self):
         for xp in self.C.XPs():
-            self.pmu[xp] = xp.read64(CMN_DTM_PMU_PMEVCNT)
+            self.pmu[xp] = xp.dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
 
     def port_label_color(self, xp, p):
         (dev_label, dev_color) = CMNDiagram.port_label_color(self, xp, p)
@@ -1436,7 +1538,7 @@ class CMNDiagramPerf(CMNDiagram):
                 # Get the current PMU values, and calculate the deltas.
                 cfg = self.pmu_config[xp]
                 opd = self.pmu[xp]          # Previous snapshot
-                npd = xp.read64(CMN_DTM_PMU_PMEVCNT)
+                npd = xp.dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
                 tab = 0
                 for (ov, nv) in zip(pmu_counts(opd, cfg), pmu_counts(npd, cfg)):
                     dv = nv - ov
@@ -1467,14 +1569,14 @@ def cmn_enable_pmu(C):
       - program HN-F to export HN_CACHE_MISS event as node event #0
       - program XP DTM counter #0 to count HN-F's exported event #0
     """
-    for xp in C.XPs():
-        xp.write64(CMN_DTM_PMU_CONFIG, 0)
-    for hnf in C.nodes_of_type(CMN_NODE_HNF):
+    for dtm in C.DTMs():
+        dtm.dtm_write64(CMN_DTM_PMU_CONFIG_off, 0)
+    for hnf in C.home_nodes():
         hnf_evt0 = opts.e0
         hnf_evt1 = opts.e1
         hnf.write64(CMN_any_PMU_EVENT_SEL, (hnf_evt1 << 8) | (hnf_evt0))
         xp = hnf.XP()
-        pc = xp.read64(CMN_DTM_PMU_CONFIG)
+        pc = xp.dtm.dtm_read64(CMN_DTM_PMU_CONFIG_off)
         pc &= 0xffffffffffffff00   # mask out chaining bits etc.
         def xp_pmu_event(p,d,e):
             return ((p+1) << 4) | (d << 2) | e
@@ -1497,7 +1599,7 @@ def cmn_enable_pmu(C):
         pc |= CMN_DTM_PMU_CONFIG_PMU_EN
         if C.verbose:
             print("%s counting %s event %x" % (xp, hnf, pc))
-        xp.write64(CMN_DTM_PMU_CONFIG, pc)
+        xp.dtm.dtm_write64(CMN_DTM_PMU_CONFIG_off, pc)
     C.pmu_enable()
     C.dtc_enable()
 
@@ -1508,8 +1610,8 @@ def cmn_sample_pmu(C):
     We read PMU counters from the individual XP DTMs, not the DTC overflow counters.
     """
     snap = {}
-    for xp in C.XPs():
-        snap[xp] = xp.read64(CMN_DTM_PMU_PMEVCNT)
+    for dtm in C.DTMs():
+        snap[dtm] = dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
     time.sleep(0.01)
     delta = {}
     def dsub(a,b):
@@ -1518,11 +1620,11 @@ def cmn_sample_pmu(C):
             r += 65536
         return r
     # Read the PMU counters again and get the delta
-    for xp in C.XPs():
-        cr = xp.read64(CMN_DTM_PMU_PMEVCNT)
-        delta[xp] = [dsub(BITS(cr,i*16,16), BITS(snap[xp],i*16,16)) for i in range(0,4)]
-    for xp in C.XPs():
-        print("%s: %s" % (xp, delta[xp]))
+    for dtm in C.DTMs():
+        cr = dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
+        delta[dtm] = [dsub(BITS(cr,i*16,16), BITS(snap[dtm],i*16,16)) for i in range(0,4)]
+    for dtm in C.DTMs():
+        print("%s: %s" % (dtm, delta[dtm]))
 
 
 if __name__ == "__main__":
@@ -1551,7 +1653,7 @@ if __name__ == "__main__":
     parser.add_argument("--pmu-sample", action="store_true", help="show PMU counts")
     parser.add_argument("--pmu-snapshot", action="store_true", help="initiate a PMU snapshot")
     parser.add_argument("--dtc", type=int, default=0, help="select DTC node/domain, default DTC#0")
-    parser.add_argument("--secure-access", action="store_true", help="assume Secure registers are accessible")
+    parser.add_argument("--secure-access", action="store_true", default=None, help="assume Secure registers are accessible")
     parser.add_argument("--diag", action="store_true")    # internal diagnostics
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
@@ -1582,8 +1684,8 @@ if __name__ == "__main__":
         if opts.list_logical:
             list_logical(C, verbose=opts.verbose)
         if opts.dt_stat:
-            for xp in C.XPs():
-                xp.show_dtm()
+            for dtm in C.DTMs():
+                dtm.show_dtm()
             for dtc in C.debug_nodes:
                 dtc.show()
         if opts.diagram or opts.sketch:

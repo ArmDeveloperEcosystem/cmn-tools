@@ -666,5 +666,65 @@ class CMNXP(CMNNodeBase):
         return self.port[p].base_id()
 
 
+def memsize_str(n):
+    for u in range(4, 0, -1):
+        if n >= (1 << (u*10)):
+            return "%.3g%sb" % ((float(n)/(1<<(u*10))), "BKMGT"[u])
+    return str(n)
+
+
+assert memsize_str(1024*1024) == "1Mb"
+
+
+class CacheGeometry:
+    """
+    Represent the size, arrangement etc. of a cache or cache slice.
+    """
+    def __init__(self, n_ways=None, n_sets_log2=None, line_size=64):
+        self.n_ways = n_ways
+        self.n_sets_log2 = n_sets_log2
+        self.line_size = line_size
+        self.sf_ways = None
+        self.sf_n_sets_log2 = None
+
+    def exists(self):
+        return self.n_sets_log2 is not None
+
+    def __eq__(self, c):
+        return self.n_ways == c.n_ways and self.n_sets_log2 == c.n_sets_log2 and self.sf_ways == c.sf_ways and (self.sf_ways is None or self.sf_n_sets_log2 == c.sf_n_sets_log2)
+
+    @property
+    def n_sets(self):
+        return 1 << self.n_sets_log2
+
+    @property
+    def sf_n_sets(self):
+        return 1 << self.sf_n_sets_log2
+
+    @property
+    def size_bytes(self):
+        return self.n_ways * self.n_sets * self.line_size
+
+    @property
+    def sf_size(self):
+        return (1 << self.sf_n_sets_log2) * self.sf_n_ways
+
+    def cache_str(self):
+        if self.exists():
+            s = "%s %u-way" % (memsize_str(self.size_bytes), self.n_ways)
+        else:
+            s = "none"
+        return s
+
+    def sf_str(self):
+        return "%s %u-way" % (memsize_str(self.sf_size), self.sf_n_ways)
+
+    def __str__(self):
+        s = self.cache_str()
+        if self.n_sf_ways is not None:
+            s += " SF: " + self.sf_str()
+        return s
+
+
 if __name__ == "__main__":
     assert False, "not designed to run as main program"

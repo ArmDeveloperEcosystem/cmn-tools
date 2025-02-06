@@ -9,6 +9,8 @@ SPDX-License-Identifier: Apache 2.0
 
 from __future__ import print_function
 
+import chi_spec
+
 
 CHI_VC_strings = ["REQ", "RSP", "SNP", "DAT"]
 
@@ -137,12 +139,18 @@ CHI_opcodes = [
 ]
 
 
-def CHI_op_str(vc, n):
-    if n in CHI_opcodes[vc]:
-        return CHI_opcodes[vc][n]
+def CHI_op_str(vc, n, short=False):
+    if short:
+        if n in CHI_opcodes[vc]:
+            return CHI_opcodes[vc][n]
+        else:
+            #assert False, "unknown %s opcode 0x%02x" % (CHI_VC_strings[vc], n)
+            return "*%02x*" % n
     else:
-        #assert False, "unknown %s opcode 0x%02x" % (CHI_VC_strings[vc], n)
-        return "*%02x*" % n
+        if n < len(chi_spec.opcodes[vc]):
+            return chi_spec.opcodes[vc][n]
+        else:
+            return "*%02x" % n
 
 
 # CHI-F Table 13-35.
@@ -209,8 +217,14 @@ class CMNFlit:
         self.tracetag = tracetag
         self.data = data
 
-    def opcode_str(self):
-        return CHI_op_str(self.group.VC, self.opcode)
+    def opcode_str(self, short=False):
+        """
+        Return a string for the opcode.
+        """
+        if self.opcode is not None:
+            return CHI_op_str(self.group.VC, self.opcode, short=short)
+        else:
+            return None
 
     def short_str(self):
         """
@@ -218,7 +232,7 @@ class CMNFlit:
         """
         s = self.group.txnid_fmt % self.txnid
         if self.opcode is not None:
-            s = self.opcode_str() + ":" + s
+            s = self.opcode_str(short=True) + ":" + s
         if self.srcid is not None:
             src_lpid = self.lpid if self.group.VC == 0 else 0
             rs = self.group.id_str(self.srcid, lpid=src_lpid) + "->"
@@ -235,7 +249,7 @@ class CMNFlit:
             if self.group.VC == 3:
                 s += ".%u" % self.dataid
             s += (" %x" % self.qos) if self.qos else "  "
-            s += " %02x:%s" % (self.opcode, CHI_op_str(self.group.VC, self.opcode))
+            s += " %02x:%-20s" % (self.opcode, CHI_op_str(self.group.VC, self.opcode))
             if self.group.VC == 0:
                 s += " lpid=%02x" % self.lpid
                 s += " ret=%03x:" % self.returnnid

@@ -104,7 +104,7 @@ class DMI:
         """
         for d in self.structures(type=0x11):
             (_, harray, herr, d.t_width, d.d_width, sz, d.form_factor, _) = struct.unpack("<IHHHHHBB", d.raw[:16])
-            (_, _, d.mem_type, d.md, d.p_speed, mfr, _, _, part, d.rank, xsize, d.c_speed) = struct.unpack("<BBBHHBBBBBIH", d.raw[16:34])
+            (_, _, d.mem_type, d.md, d.p_speed_mts, mfr, _, _, part, d.rank, xsize, d.c_speed_mts) = struct.unpack("<BBBHHBBBBBIH", d.raw[16:34])
             if sz == 0xffff:
                 size = None   # unknown
             elif sz == 0:
@@ -116,6 +116,7 @@ class DMI:
             d.size = size
             d.mfr = d.string(mfr)
             d.part = d.string(part)
+            d.mem_type_str = DMI_memory_types.get(d.mem_type, "?")
             yield d
 
 
@@ -144,6 +145,30 @@ DMI_types = {
     0x2a: "Management Controller Host Interface",
     0x7f: "End Of Table",
 }
+
+
+DMI_memory_types = {
+    0x18: "DDR3",
+    0x1a: "DDR4",
+    0x1b: "LPDDR",
+    0x1c: "LPDDR2",
+    0x1d: "LPDDR3",
+    0x1e: "LPDDR4",
+    0x20: "HBM",
+    0x21: "HBM2",
+    0x22: "DDR5",
+    0x23: "LPDDR5",
+}
+
+
+def memsize_str(n):
+    for u in range(4, 0, -1):
+        if n >= (1 << (u*10)):
+            return "%.3g%sb" % ((float(n)/(1<<(u*10))), "BKMGT"[u])
+    return str(n)
+
+
+assert memsize_str(1024*1024) == "1Mb"
 
 
 def DMI_type_str(ty):
@@ -188,23 +213,20 @@ def print_DMI_detail(D, type=None):
 
 def print_DMI_memory(D):
     print("Memory:")
-    _types = {
-        0x18: "DDR3",
-        0x1a: "DDR4",
-        0x1b: "LPDDR",
-        0x1c: "LPDDR2",
-        0x1d: "LPDDR3",
-        0x1e: "LPDDR4",
-        0x20: "HBM",
-        0x21: "HBM2",
-        0x22: "DDR5",
-        0x23: "LPDDR5",
-    }
+    n_memory = 0
+    total_size = 0
+    total_bw = 0
     for d in D.memory():
-        print("  %s %u-bit %u-bit size=0x%x" % (_types.get(d.mem_type, "?"), d.t_width, d.d_width, d.size), end="")
-        print(" speed=%u/%u" % (d.p_speed, d.c_speed), end="")
+        print("  %s %u-bit %u-bit size=%s" % (d.mem_type_str, d.t_width, d.d_width, memsize_str(d.size)), end="")
+        print(" speed=%u/%u MT/s" % (d.p_speed_mts, d.c_speed_mts), end="")
         print("  %s %s" % (d.mfr, d.part), end="")
+        bw = d.c_speed_mts * d.d_width       # million bits per second (= bits per microsecond)
+        print(" - b/w=%u mbits/s, %u mbytes/s" % (bw, bw//8), end="")
         print()
+        total_size += d.size
+        total_bw += bw
+        n_memory += 1
+    print("Total memory %s, %u mcs, bandwidth %u mbits/s = %u mbytes/s" % (memsize_str(total_size), n_memory, total_bw, total_bw//8))
 
 
 if __name__ == "__main__":

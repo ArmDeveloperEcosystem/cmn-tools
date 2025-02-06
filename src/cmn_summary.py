@@ -103,13 +103,17 @@ class MemoryProperties:
         self.data_width = None
         try:
             for d in DMI().memory():
-                self.speed = d.c_speed
+                self.speed = d.c_speed_mts
                 self.data_width = d.d_width
-                # DDR5 have 2 channels
+                # DDR5 (DMI mem_type >= 0x20) physically have 2 32-bit channels,
+                # but in DMI reporting, they are reported as 64-bit.
+                # So we treat it as 1x64 rather than 2x32.
                 if self.n_channels is None:
                     self.n_channels = 0
-                self.n_channels += (2 if d.mem_type >= 0x20 else 1)
+                self.n_channels +=  1
         except FileNotFoundError:
+            if o_verbose:
+                print("Can't get memory properties from DMI", file=sys.stderr)
             pass
 
     def total_bandwidth(self):
