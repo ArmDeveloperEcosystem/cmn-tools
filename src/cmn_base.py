@@ -721,7 +721,7 @@ class CacheGeometry:
 
     def __str__(self):
         s = self.cache_str()
-        if self.n_sf_ways is not None:
+        if self.sf_n_ways is not None:
             s += " SF: " + self.sf_str()
         return s
 

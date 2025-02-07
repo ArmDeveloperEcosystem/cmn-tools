@@ -12,6 +12,11 @@ from __future__ import print_function
 import chi_spec
 
 
+REQ = 0
+RSP = 1
+SNP = 2
+DAT = 3
+
 CHI_VC_strings = ["REQ", "RSP", "SNP", "DAT"]
 
 
@@ -156,11 +161,19 @@ def CHI_op_str(vc, n, short=False):
 # CHI-F Table 13-35.
 # The Resp value is context-sensitive - we really need to know
 # whether it's a Snoop response, a Comp response etc.
-def CHI_DAT_resp_str(n):
+def CHI_DAT_resp_str_nonsnoop(n):
     return ["I", "SC", "UC", "?3", "?4", "?5", "UD_PD", "SD_PD"][n]
 
 def CHI_DAT_resp_str_snoop(n):
     return ["I", "SC", "UC/UD", "SD", "I_PD", "SC_PD", "UC_PD", "?7"][n]
+
+
+def CHI_DAT_resp_str(opcode, resp):
+    if opcode in [1, 5, 6]:
+        rs = CHI_DAT_resp_str_snoop(resp)
+    else:
+        rs = CHI_DAT_resp_str_nonsnoop(resp)
+    return rs
 
 
 def CHI_memattr_str(ma, order, snpattr):
@@ -223,6 +236,12 @@ class CMNFlit:
         """
         if self.opcode is not None:
             return CHI_op_str(self.group.VC, self.opcode, short=short)
+        else:
+            return None
+
+    def resp_str(self):
+        if self.group.VC == DAT and self.opcode is not None and self.resp is not None:
+            return CHI_DAT_resp_str(self.opcode, self.resp)
         else:
             return None
 
@@ -292,10 +311,12 @@ class CMNFlit:
                 if not self.allowretry:
                     s += " no-retry:%u" % (self.pcrdtype)
             elif self.group.VC == 1:
+                # RSP
                 s += " resp=%u/%u dbid=0x%02x" % (self.resp, self.resperr, self.dbid)
                 if self.opcode in [3, 7]:
                     s += " pcrdtype=%u" % (self.pcrdtype)
             elif self.group.VC == 2:
+                # SNP
                 s += " fwdnid=0x%03x %s0x%012x" % (self.fwdnid, ["S:","  "][self.NS], self.addr)
                 if self.opcode == 0x0d:
                     # SnpDVMOp is special
@@ -326,12 +347,8 @@ class CMNFlit:
                             s += " address=0x%x" % address
                         elif addr != 0x1:
                             s += " ?=0x%x" % addr
-            elif self.group.VC == 3:
-                if self.opcode in [1, 5, 6]:
-                    rs = CHI_DAT_resp_str_snoop(self.resp)
-                else:
-                    rs = CHI_DAT_resp_str(self.resp)
-                s += " resp=%s" % (rs)
+            elif self.group.VC == DAT:
+                s += " resp=%s" % (self.resp_str())
                 s += " dbid=0x%02x" % (self.dbid)
                 if self.ccid != 0:
                     s += " ccid=%u" % (self.ccid)
@@ -457,6 +474,10 @@ class CMNFlitGroup:
         flit.VC = self.VC
         self.flits.append(flit)
         return flit
+
+    def __iter__(self):
+        for flit in self.flits:
+            yield flit
 
     def context_str(self):
         s = ""

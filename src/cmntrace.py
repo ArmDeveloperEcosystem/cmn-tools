@@ -37,14 +37,13 @@ def add_trace_arguments(parser):
     parser.add_argument("--uploads", dest="up", action="store_true", default=None, help="capture uploaded flits only")
     parser.add_argument("--downloads", dest="up", action="store_false", default=None, help="capture downloaded flits only")
     parser.add_argument("--cc", action="store_true", help="enable cycle counts")
-    parser.add_argument("--ts", type=int, help="timestamp period, in cycles")
     parser.add_argument("--format", type=int, choices=range(8), default=4, help="trace packet format")
     parser.add_argument("--immediate", action="store_true", help="show FIFO contents immediately")
     parser.add_argument("--samples", type=int, default=1, help="number of FIFO samples to collect")
     parser.add_argument("--cg-disable", action="store_true")
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--count", action="store_true", help="program DTM PMU to count packets")
-    parser.add_argument("--sleep", type=float, default=0.1)
+    parser.add_argument("--sleep", type=float, default=0.01, help="wait time for packet collection")
     parser.add_argument("--no-sync", action="store_true", help="when decoding, don't look for sync packet")
     parser.add_argument("--list", action="store_true", help="list CMN nodes")
     parser.add_argument("--check-writes", action="store_true", help="check writes to CMN")
@@ -102,7 +101,10 @@ class CMNVis:
     """
     Print CMN trace in a human-readable form, one packet per line, minimizing clutter.
     """
-    def __init__(self, cmn):
+    def __init__(self):
+        self.cmn = None
+
+    def set_cmn(self, cmn):
         self.cmn = cmn
         config = cmn.product_config
         self.cfg = CMNTraceConfig(config.product_id, config.mpam_enabled)
@@ -123,15 +125,66 @@ class CMNVis:
             for cpu in self.cmn_desc.cpus():
                 self.id_map[(cpu.id, cpu.lpid)] = "#%-3u" % cpu.cpu
 
-    def print_packet(self, xp, wp, data, cc):
+    def handle_flitgroup(self, xp, wp, fg):
         if xp != self.last_xp:
             print("%s:" % xp)
             self.last_xp = xp
         print("  %s WP%u: " % ("><"[(wp>>1)&1], wp), end="")
+        print(fg)
+
+    def decode_packet(self, xp, wp, data, cc):
         (nid, DEV, wp, VC, format, _) = xp.dtm.dtm_wp_details(wp)
         fg = CMNFlitGroupX(self.cfg, nodeid=nid, DEV=DEV, VC=VC, format=format, cc=cc, vis=self)
         fg.decode(data)
-        print(fg)
+        self.handle_flitgroup(xp, wp, fg)
+
+
+class CMNHist(CMNVis):
+    """
+    Histogram to accmulate packet stats
+    """
+    def __init__(self):
+        CMNVis.__init__(self)
+        self.hist = {}
+        self.witness = {}     # a witness flit for each key
+
+    def handle_flitgroup(self, xp, wp, fg):
+        # Override, to accumulate histogram
+        for flit in fg:
+            key = self.flit_key(flit)
+            if key not in self.hist:
+                self.hist[key] = 0
+                self.witness[key] = flit
+            self.hist[key] += 1
+
+    def flit_key(self, flit):
+        # Construct a key to classify the flit into a sensible group.
+        # We use at least the source and target type, and the opcode.
+        stype = self.id_map[(flit.srcid, 0)]
+        if stype.startswith("#"):
+            stype = "RN-F"    # undo the CPU mapping!
+        if flit.tgtid is not None:
+            ttype = self.id_map[(flit.tgtid, 0)]
+            if ttype.startswith("#"):
+                ttype = "RN-F"
+        else:
+            ttype = "?"
+        op = flit.opcode_str()
+        if flit.group.VC == 3:
+            op += "_" + flit.resp_str()
+        key = (op, stype, ttype)
+        return key
+
+    def key_str(self, key):
+        (op, stype, ttype) = key
+        s = "%-5s %-5s  %-20s" % (stype, ttype, op)
+        return s
+
+    def print_histogram(self):
+        # Sort by descending order of counts
+        h = sorted(self.hist.items(), key=lambda x: -x[1])
+        for (key, n) in h:
+            print("%8u  %20s  %s" % (n, self.key_str(key), self.witness[key].long_str()))
 
 
 # The DTM behavior doesn't seem to correspond to the spec.
@@ -144,11 +197,12 @@ class TraceSession:
     """
     All the information we need to manage tracing flits.
     """
-    def __init__(self, opts, atb=False):
+    def __init__(self, opts, handler, atb=False):
         self.opts = opts
         self.atb = atb
         self.C = self.cmn_from_opts(opts)
-        self.TV = CMNVis(self.C)        # The trace visualizer
+        self.TV = handler
+        handler.set_cmn(self.C)        # The trace visualizer
         self.init_cmn()
 
     def cmn_from_opts(self, opts):
@@ -360,7 +414,7 @@ class TraceSession:
                         if fe & (1<<e):
                             (data, cc) = xp.dtm.dtm_fifo_entry(e)
                             if self.opts.immediate:
-                                TV.print_packet(xp, e, data, cc)
+                                TV.decode_packet(xp, e, data, cc)
                             fifocap[xp][e].append((data, cc))
                     xp.dtm.dtm_clear_fifo()
         self.trace_stop()
@@ -373,7 +427,7 @@ class TraceSession:
         for xp in self.xps:
             for e in range(0, 4):
                 for (data, cc) in fifocap[xp][e]:
-                    self.TV.print_packet(xp, e, data, cc)
+                    self.TV.decode_packet(xp, e, data, cc)
 
     def trace_stop(self):
         # Stop generating trace, and collect it
@@ -411,7 +465,7 @@ class TraceSession:
         for e in range(0,4):
             if fe & (1<<e):
                 (data, cc) = dtm.dtm_fifo_entry(e)
-                self.TV.print_packet(dtm.xp, e, data, cc)
+                self.TV.decode_packet(dtm.xp, e, data, cc)
 
     def show_status(self):
         """
@@ -433,8 +487,15 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="CMN flit capture demo")
     add_trace_arguments(parser)
+    parser.add_argument("--histogram", action="store_true", help="print histogram of packet types")
     opts = parser.parse_args()
-    ts = TraceSession(opts)
+    if opts.histogram:
+        vis = CMNHist()
+    else:
+        vis = CMNVis()
+    ts = TraceSession(opts, handler=vis)
     for i in range(opts.iterations):
         cap = ts.trace()
         ts.show_captured_trace(cap)
+    if opts.histogram:
+        vis.print_histogram()

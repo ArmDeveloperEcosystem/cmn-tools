@@ -695,7 +695,7 @@ class CMNDTM:
             config |= (dev0 << 0)
             if dev >= 2:
                 # dev_sel is actually the port number, not the device number
-                assert dev < self.n_device_ports(), "%s: invalid dev_sel=%u" % (self, dev)
+                assert dev < self.xp.n_device_ports(), "%s: invalid dev_sel=%u" % (self, dev)
                 dev1 = dev >> 1
                 config |= (dev1 << 17)
         if group is not None:
@@ -1393,6 +1393,13 @@ def show_cmn(cmn, verbose=0):
                     if cmn.secure_accessible:
                         aux_ctl = n.read64(0xA08)
                         print("          aux_ctl: 0x%x" % aux_ctl)
+                        pwpr = n.read64(0x1000)    # power policy register
+                        print("          pwpr: 0x%x" % pwpr, end="")
+                        print(" %s" % {0: "OFF", 2: "MEM_RET", 7: "FUNC_RET", 8: "ON"}[BITS(pwpr, 0, 4)], end="")
+                        print(" %s" % ["NOSFSLC", "SFONLY", "HAM", "FAM"][BITS(pwpr, 4, 4)], end="")
+                        if BIT(pwpr, 8):
+                            print(" dynamic", end="")
+                        print()
                 elif n.type() == CMN_NODE_HNI:
                     num_excl = BITS(info,0,8)
                     num_ax_reqs = BITS(info,8,8)
