@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache 2.0
 This module provides classes to model the structure of one or
 more CMN mesh interconnects. Each mesh consists of a rectangular
 grid of crosspoints (XPs), to which are attached devices such
-as requestors and home nodes.
+as requesters and home nodes.
 
 The classes (System, CMN, CMNNode and CPU) can be used directly,
 or subclassed to provide more detailed functionality.
