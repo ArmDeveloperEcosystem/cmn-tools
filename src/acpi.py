@@ -16,7 +16,9 @@ and use 'acpidump', 'acpixtract' and 'iasl'.
 
 from __future__ import print_function
 
-import os, sys, struct
+import os
+import sys
+import struct
 
 
 o_verbose = 0
@@ -65,7 +67,8 @@ class ACPITable:
         """
         Show generic information from an ACPI table.
         """
-        print("%-32s %s %6u v%02u  %-12s %-12s 0x%08x %-8s 0x%08x" % (self.fn, self.sig, self.size, self.rev, self.oemid, stripz(self.oemtabid), self.oemrev, self.aslid, self.aslrev))
+        print("%-32s %s %6u v%02u  %-12s %-12s 0x%08x %-8s 0x%08x" %
+              (self.fn, self.sig, self.size, self.rev, self.oemid, stripz(self.oemtabid), self.oemrev, self.aslid, self.aslrev))
         self.show_subclass()
 
     def show_subclass(self):

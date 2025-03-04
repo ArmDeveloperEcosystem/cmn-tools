@@ -191,6 +191,7 @@ _hns_events = {
     "hnf_sf_hit": "hns_sf_hit_all",
 }
 
+
 def hnf_event(S, e):
     if S.has_HNS():
         e = _hns_events.get(e, e)
@@ -256,7 +257,8 @@ def topdown_prefetch():
 
 
 if __name__ == "__main__":
-    import argparse, sys
+    import sys
+    import argparse
     parser = argparse.ArgumentParser(description="Top-down performance analysis for CMN interconnect")
     parser.add_argument("--level", type=str, action="append", default=[], help="run specified top-down level")
     parser.add_argument("--all", action="store_true", help="run all top-down levels")

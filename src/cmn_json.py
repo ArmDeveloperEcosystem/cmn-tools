@@ -9,8 +9,12 @@ SPDX-License-Identifier: Apache 2.0
 
 from __future__ import print_function
 
-import sys, os, time
+import sys
+import os
+import time
 import json
+import uuid
+
 import cmn_base
 import cmn_enum
 
@@ -46,6 +50,14 @@ def cmn_config_default(fn):
             print("Need CMN configuration in %s" % fn, file=sys.stderr)
             sys.exit(1)
     return fn
+
+
+def boot_time():
+    """
+    Get the boot time of the current system
+    """
+    t = time.time() - float(open("/proc/uptime").read().split()[0])
+    return t
 
 
 def cmn_from_json(j, S):
@@ -87,23 +99,67 @@ def cmn_from_json(j, S):
     return C
 
 
+def check_system_description_time(S):
+    """
+    Check and warn if the current system has rebooted since the
+    system description was created.
+    """
+    if S.timestamp is not None:
+        t_boot = boot_time()
+        if S.timestamp < t_boot:
+            print("Warning: system description dates from %s but system rebooted %s" %
+                  (time.ctime(S.timestamp), time.ctime(t_boot)),
+                  file=sys.stderr)
+
+
+def dmi_system_type():
+    """
+    Get the system type from DMI strings.
+    Because we might not be root, we use the kernel's DMI strings in sysfs.
+    """
+    try:
+        return " ".join([open(os.path.join("/sys/class/dmi/id", s)).read().strip()
+                         for s in ["sys_vendor", "product_name", "product_version"]])
+    except FileNotFoundError:
+        return None
+
+
 def system_from_json(j, filename=None):
+    """
+    Create a system description object from a JSON structure.
+    """
     S = cmn_base.System(filename=filename)
     S.system_type = j.get("system_type", None)
+    if S.system_type is not None:
+        os_type = dmi_system_type()
+        if os_type is not None and os_type != S.system_type:
+            print("CMN file might be for different system:", file=sys.stderr)
+            print("  This system:    %s" % os_type, file=sys.stderr)
+            print("  System in file: %s" % S.system_type, file=sys.stderr)
+    S.system_uuid = uuid.UUID(j["system_uuid"]) if "system_uuid" in j else None
+    S.processor_type = j.get("processor_type", None)
+    if "date" in j:
+        # Currently a float as per time.time()
+        S.timestamp = float(j["date"])
+    elif filename is not None:
+        S.timestamp = os.path.getmtime(filename)
     for e in j["elements"]:
         if e["type"] == "interconnect" and e["product"] == "CMN":
             cmn_from_json(e, S)   # this will add it to the System object
     return S
 
 
-def system_from_json_file(fn=None):
+def system_from_json_file(fn=None, check_timestamp=False):
     """
     Get the system description from a given file name or the standard cached location.
     """
     if fn is None:
         fn = cmn_config_filename()
     with open(fn) as f:
-        return system_from_json(json.load(f), filename=fn)
+        S = system_from_json(json.load(f), filename=fn)
+        if check_timestamp:
+            check_system_description_time(S)
+        return S
 
 
 def json_from_cpu(co):
@@ -133,9 +189,12 @@ def json_from_xp(xp):
         j["dtc"] = xp.dtc_domain()
     for i in range(xp.n_device_ports()):
         #p = xp.port[i]
+        dt = xp.port_device_type(i)
+        if dt is None:
+            continue     # unused port
         jp = {
             "port": i,
-            "type": xp.port_device_type(i),
+            "type": dt,
             "type_s": xp.port_device_type_str(i),
         }
         if xp.port_has_cal(i):
@@ -188,11 +247,15 @@ def json_from_system(S):
     j = {
         "version": S.version,
         "generator": os.path.basename(__file__),
-        "date": time.time(),
+        "date": S.timestamp,
         "elements": []
     }
     if S.system_type is not None:
         j["system_type"] = S.system_type
+    if S.system_uuid is not None:
+        j["system_uuid"] = str(S.system_uuid)
+    if S.processor_type is not None:
+        j["processor_type"] = S.processor_type
     for C in S.CMNs:
         jc = json_from_cmn(C)
         j["elements"].append(jc)
@@ -213,7 +276,8 @@ def change_to_real_user_if_sudo(fn):
             shutil.chown(fn, user=user, group=user)
         else:
             # Python2 shutil doesn't have chown().
-            import pwd, grp
+            import pwd
+            import grp
             os.chown(fn, pwd.getpwnam(user).pw_uid, grp.getgrnam(user).gr_gid)
 
 
@@ -244,10 +308,13 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", type=str, help="output JSON")
     parser.add_argument("--filename", action="store_true", help="display filename")
     parser.add_argument("--nodes", action="store_true", help="list all nodes")
+    parser.add_argument("--nodeid", type=(lambda s: int(s, 16)), help="look up node id")
     parser.add_argument("--ports", action="store_true", help="list all ports")
+    parser.add_argument("--xps", action="store_true", help="list all crosspoints")
     parser.add_argument("--requesters", action="store_true", help="list requesters")
     parser.add_argument("--home-nodes", action="store_true", help="list home nodes")
     parser.add_argument("--cpus", action="store_true", help="list CPUs")
+    parser.add_argument("--cmn-instance", type=int, help="select CMN instance")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     opts.input = cmn_config_default(opts.input)
@@ -258,8 +325,14 @@ if __name__ == "__main__":
     if S.cmn_version() is None:
         print("%s: CMN interconnect not found" % (S.filename), file=sys.stderr)
         sys.exit(1)
-    if not (opts.filename or opts.nodes or opts.ports or opts.home_nodes or opts.cpus or opts.output):
+    if not (opts.filename or (opts.nodeid is not None) or
+            opts.nodes or opts.ports or opts.home_nodes or opts.cpus or opts.xps or opts.output):
         print(S)
+    if opts.filename:
+        print(S.filename)
+    if opts.output is not None:
+        json_dump_file_from_system(S, opts.output)
+    if opts.xps:
         for C in S.CMNs:
             print("  %s" % C)
             for xp in C.XPs():
@@ -273,10 +346,6 @@ if __name__ == "__main__":
                         print("        %s" % d)
                     for co in p.cpus:
                         print("        %s" % co)
-    if opts.filename:
-        print(S.filename)
-    if opts.output is not None:
-        json_dump_file_from_system(S, opts.output)
     if opts.cpus:
         if S.has_cpu_mappings():
             print("CPUs:")
@@ -323,3 +392,16 @@ if __name__ == "__main__":
         print("Home nodes:")
         for node in S.home_nodes():
             print("  %s" % node)
+    if opts.nodeid is not None:
+        # Look up node by CHI srcid/tgtid
+        if opts.cmn_instance is None:
+            if S.has_multiple_cmn():
+                print("Defaulting to CMN#0, use --cmn-instance to specify instance",
+                      file=sys.stderr)
+            opts.cmn_instance = 0
+        C = S.CMNs[opts.cmn_instance]
+        p = C.port_at_id(opts.nodeid)
+        if p is not None:
+            print(p)
+        else:
+            print("No port matching ID 0x%02x" % opts.nodeid)

@@ -23,7 +23,10 @@ limitations under the License.
 
 from __future__ import print_function
 
-import os, ctypes, struct, errno
+import os
+import ctypes
+import struct
+import errno
 
 
 # Import the Python mmap module to get access to its constants.
@@ -48,7 +51,7 @@ class mmap:
     """
     Represent a single block of memory allocated by mmap.
     """
-    def __init__(self, fno, size, flags=MAP_SHARED, prot=(PROT_WRITE|PROT_READ), offset=0):
+    def __init__(self, fno, size, flags=MAP_SHARED, prot=(PROT_WRITE | PROT_READ), offset=0):
         assert size > 0
         assert (size % os.sysconf("SC_PAGE_SIZE")) == 0
         assert offset >= 0

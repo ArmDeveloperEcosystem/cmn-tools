@@ -13,22 +13,28 @@ into conflict with the Linux driver (drivers/perf/arm-cmn.c).
 
 from __future__ import print_function
 
-import os, sys, struct, time
+import os
+import sys
+import struct
+import time
 import traceback
 
 import iommap as mmap
 import cmn_devmem_find as cmn_find
 import cmn_base
 from cmn_enum import *
+import cmn_events
 
 from cmn_diagram import CMNDiagram
 
 
 def BITS(x,p,n):
-    return (x >> p) & ((1<<n)-1)
+    return (x >> p) & ((1 << n)-1)
+
 
 def BIT(x,p):
     return (x >> p) & 1
+
 
 def hexstr(x):
     s = ""
@@ -60,7 +66,7 @@ class DevMem:
     def map(self, physaddr, size, write=False):
         assert (size % self.page_size) == 0
         if write:
-            prot = (mmap.PROT_READ|mmap.PROT_WRITE)
+            prot = (mmap.PROT_READ | mmap.PROT_WRITE)
         else:
             prot = mmap.PROT_READ
         m = mmap.mmap(self.fno, size, mmap.MAP_SHARED, prot, offset=physaddr)
@@ -80,6 +86,7 @@ def map_read64(m, off):
 CMN_any_NODE_INFO       = 0x0000
 CMN_any_CHILD_INFO      = 0x0080
 CMN_any_UNIT_INFO       = 0x0900
+CMN_any_AUX_CTL         = 0x0A08
 
 # PMU event selector (por_xx_pmu_event_sel). In S3, this changes to 0xD900
 CMN_any_PMU_EVENT_SEL   = 0x2000     # for some nodes it's 0x2008
@@ -88,7 +95,6 @@ CMN_CFG_PERIPH_01       = 0x0008
 CMN_CFG_PERIPH_23       = 0x0010
 
 CMN_any_SECURE_ACCESS   = 0x0980
-
 
 
 def node_has_logical_id(nt):
@@ -106,6 +112,21 @@ class NotTestable:
 
     def __bool__(self):
         assert False, self.msg
+
+
+def node_type_has_pmu_events(nt):
+    return nt not in [CMN_NODE_DT, CMN_NODE_RNSAM] and not cmn_node_type_has_properties(nt, CMN_PROP_MPAM)
+
+
+def pmu_event_sel_offset(nt):
+    if nt == CMN_NODE_CCLA:
+        return [0x2008]
+    elif nt == CMN_NODE_CCLA_RNI or nt == CMN_NODE_HNP:
+        return [0x2000, 0x2008]
+    elif not node_type_has_pmu_events(nt):
+        return []
+    else:
+        return [0x2000]
 
 
 class CMNNode:
@@ -135,6 +156,10 @@ class CMNNode:
             self.C.himem = himem
         self.node_info = 0x0000     # in case we throw in the next line
         self.node_info = self.read64(CMN_any_NODE_INFO)
+        self.PMU_EVENT_SEL = pmu_event_sel_offset(self.type())
+        if self.is_child():
+            if (self.node_id() >> 3) != (parent.node_id() >> 3):
+                self.C.log("Parent XP %s child %s has odd coordinates" % (parent, self), level=0)
         self.child_info = self.read64(CMN_any_CHILD_INFO)
         #print("%s%s" % ((self.level()*"  "), self))
 
@@ -203,11 +228,15 @@ class CMNNode:
         return old
 
     def level(self):
+        """
+        Node level: 0 for config, 1 for XPs, 2 for child nodes.
+        """
         lv = 0
         node = self
         while node.parent is not None:
             node = node.parent
             lv += 1
+            assert lv <= 2
         return lv
 
     def discover_children(self):
@@ -223,20 +252,26 @@ class CMNNode:
         for i in range(0, self.n_children):
             child = self.read64(child_off + (i*8))
             child_offset = BITS(child, 0, cobits)
-            child_node = self.C.create_node(child_offset, parent=self)
+            child_node = self.C.create_node(child_offset, parent=self, is_external=BIT(child, 31))
             if child_node is None:
                 # Probably a child of a RN-F port
                 continue
-            child_node.is_external = BIT(child, 31)
             self.children.append(child_node)
 
     def type(self):
+        """
+        The node type e.g. CMN_NODE_XP, CMN_NODE_HNF from node_info.
+        Not to be confused with XP connected device type.
+        """
         return BITS(self.node_info, 0, 16)
 
     def type_str(self):
         return cmn_node_type_str(self.type())
 
     def node_id(self):
+        """
+        The node id, incorporating X/Y coordinates, port and device.
+        """
         return BITS(self.node_info, 16, 16)
 
     def logical_id(self):
@@ -258,6 +293,9 @@ class CMNNode:
         """
         return self if self.is_XP() else self.parent
 
+    def is_child(self):
+        return self.parent is not None and self.parent.is_XP()
+
     def is_home_node(self):
         return self.type() in [CMN_NODE_HNF, CMN_NODE_HNS]
 
@@ -266,13 +304,19 @@ class CMNNode:
         assert self.is_home_node()
         return hn_cache_geometry(self)
 
+    def has_pmu_events(self):
+        """
+        Can this node generate PMU events? I.e. does it have por_xxx_pmu_event_sel?
+        """
+        node_type_has_pmu_events(self.type())
+
     def XY(self):
         id = self.node_id()
         cb = self.C.coord_bits
         assert cb is not None, "can't get coordinates until mesh size is known"
         Y = BITS(id,3,cb)
         X = BITS(id,3+cb,cb)
-        return (X,Y)
+        return (X, Y)
 
     def coords(self):
         """
@@ -283,9 +327,12 @@ class CMNNode:
         """
         id = self.node_id()
         (X, Y) = self.XY()
-        # If the CMN has at least one XP with more than 2 device ports,
-        # all device ids use 2 bits for the port and one for the device.
-        # Otherwise it's 1 bit for the port and 2 for the device.
+        # Old rule (as per docs):
+        #   If the CMN has at least one XP with more than 2 device ports,
+        #   all device ids use 2 bits for the port and one for the device.
+        #   Otherwise it's 1 bit for the port and 2 for the device.
+        # Actual rule:
+        #   If this XP hsa more than 2 device ports, use 2 bits for the port.
         if self.parent is not None and self.XP().n_device_bits() == 1:
             D = BIT(id, 0)
             P = BITS(id, 1, 2)
@@ -604,7 +651,7 @@ class CMNDTM:
             dwidth = 176
         doff = dwidth - 128
         cc = BITS(ws[2], doff, 16)
-        b = struct.pack("QQQ", ws[0], ws[1], ws[2])[:(dwidth//8)]
+        b = struct.pack("<QQQ", ws[0], ws[1], ws[2])[:(dwidth//8)]
         return (b, cc)
 
     def dtm_wp_details(self, wp):
@@ -645,22 +692,41 @@ class CMNDTM:
         return self.dtm_test64(CMN_DTM_PMU_CONFIG_off, CMN_DTM_PMU_CONFIG_PMU_EN)
 
     def pmu_event_input_selector_str(self, eis):
+        """
+        Given a DTM event selector, return a descriptive string.
+        """
         if eis <= 0x03:
-            return "Watchpoint %u" % eis
+            # DTM is counting matches by one of its own watchpoints.
+            s = "Watchpoint %u" % eis
         elif eis <= 0x07:
+            # DTM is counting events within the XP, as selected by its own pmu_event_sel.
             xpen = eis - 4
             xpe = BITS(self.read64(CMN_any_PMU_EVENT_SEL),(xpen*8),8)
             chn = ["REQ","RSP","SNP","DAT","?4","?5","?6","?7"][BITS(xpe,5,3)]
             ifc = ["E","W","N","S","P0","P1","?6","?7"][BITS(xpe,2,3)]
             evt = ["none", "txvalid", "txstall", "partial"][BITS(xpe,0,2)]
             xpes = "xp-%s-%s-%s" % (ifc, chn, evt)
-            return "XP PMU Event %u (event=0x%02x: %s)" % (xpen, xpe, xpes)
+            s = "XP PMU Event %u (event=0x%02x: %s)" % (xpen, xpe, xpes)
         elif eis >= 0x10:
+            # DTM is counting events from one of its connected devices,
+            # selected by port number, device number, and event.
+            # The actual event will be selected by the device's pmu_event_sel.
+            # (Note that for a given (port, device) pair, there must be at
+            # most one device capable of exporting PMU events.)
             port = (eis >> 4) - 1
-            device = BITS(eis,2,2)
-            return "Port %u Device %u PMU Event %u" % (port, device, (eis&3))
+            device = BITS(eis, 2, 2)
+            eix = (eis & 3)
+            s = "Port %u Device %u PMU Event %u" % (port, device, eix)
+            (device_node, pix, event_number, filter) = self.device_pmu_event(port, device, eix)
+            if device_node is not None:
+                s += " - %s[%u] event 0x%x" % (device_node, pix, event_number)
+                if self.C.pmu_events is not None:
+                    ev = self.C.pmu_events.get_event(device_node.type(), event_number, pmu_index=pix, filter=filter)
+                    if ev is not None:
+                        s += " - %s" % ev.name()
         else:
-            return "?(eis=0x%x)" % eis
+            s = "?(eis=0x%x)" % eis
+        return s
 
     def dtm_set_control(self, control=0, atb=False, tag=False, enable=False):
         """
@@ -708,6 +774,27 @@ class CMNDTM:
         self.dtm_write64(CMN_DTM_WP0_VAL_off+(wp*24), val)
         self.dtm_write64(CMN_DTM_WP0_MASK_off+(wp*24), mask)
         self.dtm_write64(CMN_DTM_WP0_CONFIG_off+(wp*24), config)
+
+    def device_pmu_event(self, port, device, eix):
+        """
+        Assuming that we're counting a device event, find the actual device node
+        that is exporting the event, and the event number (and filter).
+        The DTM pmu_event_sel will indicate port and device.
+        But this isn't always enough to identify the actual device involved.
+        Sometimes there are multiple nodes with the same (port, device)
+        combination, each capable of exporting events.
+        In general, we must iterate through the connected devices and
+        find one that is exporting an event.
+        """
+        for n in self.xp.port_device_nodes(port, device):
+            for soff in n.PMU_EVENT_SEL:
+                pmu_sel = n.read64(soff)
+                pmu_filter = BITS(pmu_sel, 32, 8)
+                en = BITS(pmu_sel, eix*8, 8)
+                if en > 0:
+                    pix = (soff - CMN_any_PMU_EVENT_SEL) >> 3
+                    return (n, pix, en, pmu_filter)
+        return (None, None, None, None)
 
     def show_dtm(self, show_pmu=True):
         dtm_control = self.dtm_read64(CMN_DTM_CONTROL_off)
@@ -759,7 +846,7 @@ class CMNDTM:
             # Show FIFO contents. Note that in read mode (TRACECTL[3]==1), each FIFO entry is
             # allocated to the corresponding WP - i.e. each WP has a 1-entry FIFO.
             for e in range(0,N_FIFO_ENTRIES):
-                if fifo & (1<<e):
+                if fifo & (1 << e):
                     (data, cc) = self.dtm_fifo_entry(e)
                     print("    FIFO #%u: %s cc=0x%04x" % (e, hexstr(data), cc))
         if show_pmu:
@@ -769,6 +856,23 @@ class CMNDTM:
                 print("    PMU config: 0x%016x" % (pmu_config))
                 print("    PMU counts: 0x%016x" % (pmu_pmevcnt))
                 show_dtm_pmu_config(self)
+            # DTM may be counting events from connected devices.
+            for p in range(0, self.xp.n_device_ports()):
+                for n in self.xp.port_nodes(p):
+                    for soff in n.PMU_EVENT_SEL:
+                        pmu_sel = n.read64(soff)
+                        print("      %016x  %s" % (pmu_sel, n))
+                        pmu_filter = BITS(pmu_sel, 32, 8)
+                        for e in range(0, 4):
+                            esel = BITS(pmu_sel, e*8, 8)
+                            if esel != 0:
+                                print("        E%u: 0x%x" % (e, esel), end="")
+                                if self.C.pmu_events is not None:
+                                    pix = (soff - CMN_any_PMU_EVENT_SEL) >> 3
+                                    ev = self.C.pmu_events.get_event(n.type(), esel, pmu_index=pix, filter=pmu_filter)
+                                    if ev is not None:
+                                        print(" - %s" % ev.name(), end="")
+                                print()
 
 
 # Debug/Trace Controller registers (e.g. CMN-600 TRM Table 3-4)
@@ -946,8 +1050,8 @@ class CMNNodeDT(CMNNode):
                 print("%s  DTC PMU snapshot status: 0x%08x" % (pfx, ssr))
             for i in range(0, 8, 2):
                 cv = self.read64(rbase + 8*i)
-                c0a = (ecs[i>>1] & 0xffffffff)
-                c1a = (ecs[i>>1] >> 32)
+                c0a = (ecs[i >> 1] & 0xffffffff)
+                c1a = (ecs[i >> 1] >> 32)
                 c0b = (cv & 0xffffffff)
                 c1b = (cv >> 32)
                 c0x = (c0a != c0b)
@@ -965,9 +1069,13 @@ class CMN:
     There is usually one per die.
 
     The interconnect has a base address of the entire 256Mb (0x10000000) region,
-    and an address within that for the root region.
+    and an address within that for the root node region.
 
     Component regions are 16Mb for CMN-600/650 and 64Mb for CMN-700.
+
+    cmn_loc is generally a cmn_devmem_find.CMNLocator object.
+    It supplies the peripheral base address, and for CMN-600,
+    the address for the root node.
     """
     #DTM_WP_PKT_GEN            = 0x0100   # capture a packet (TBD: 0x400 on CMN-700)
     #DTM_WP_CC_EN              = 0x1000   # enable cycle count (TBD: 0x4000 on CMN-700)
@@ -1010,15 +1118,28 @@ class CMN:
         temp_m = self.D.map(self.periphbase+rootnode_offset, 0x4000)
         id01 = map_read64(temp_m, CMN_CFG_PERIPH_01)
         product_id = (BITS(id01, 32, 4) << 8) | BITS(id01, 0, 8)
+        if cmn_loc.product_id is not None:
+            assert cmn_loc.product_id == product_id, "expecting %s, found %s" % (cmn_base.product_id_str(cmn_loc.product_id), cmn_base.product_id_str(product_id))
         # We can't get chi_version() until we've read unit_info (por_info_global)
         self.product_config = cmn_base.CMNConfig(product_id=product_id)
         del temp_m
+        # Load the PMU event database, if available
+        pmu_event_fn = cmn_events.event_file_name(product_id)
+        if os.path.isfile(pmu_event_fn):
+            if verbose:
+                self.log("loading PMU events from %s" % pmu_event_fn)
+            self.pmu_events = cmn_events.load_events(pmu_event_fn)
+            if verbose:
+                self.log("loaded %s" % self.pmu_events)
+        else:
+            self.pmu_events = None
         self.rootnode = self.create_node(rootnode_offset)
         self.unit_info = self.rootnode.read64(CMN_any_UNIT_INFO)   # por_info_global
         # The release is e.g. r0p0, r1p2
         self.product_config.revision = BITS(self.rootnode.read64(CMN_CFG_PERIPH_23), 4, 4)
         self.product_config.mpam_enabled = self.part_ge_650() and (BIT(self.unit_info, 49) != 0)
         self.product_config.chi_version = self.chi_version()
+        assert self.product_config.chi_version >= 2, "failed to detect CHI version: info=0x%x" % self.unit_info
         if self.product_config.product_id != cmn_base.PART_CMN_S3:
             self.DTM_BASE            = CMN_DTM_BASE_OLD
         else:
@@ -1123,6 +1244,8 @@ class CMN:
         """
         Print a logging message. We do a level check here, but it might also be a
         good idea to check at the call site to avoid constructing the message.
+
+        Use level=0 for warning messages that should always be output.
         """
         if self.verbose >= level:
             if prefix is None:
@@ -1152,7 +1275,10 @@ class CMN:
     def node_size(self):
         return 0x10000 if self.part_ge_700() else 0x4000
 
-    def create_node(self, node_offset, parent=None):
+    def create_node(self, node_offset, parent=None, is_external=False):
+        """
+        Create a node, either the root node (parent=None) or an XP, or a child node.
+        """
         assert self.creating
         node_base_addr = self.periphbase + node_offset
         m = self.D.map(node_base_addr, self.node_size())
@@ -1175,18 +1301,21 @@ class CMN:
             # Crosspoint - parent of other nodes
             assert BITS(node_info, 16, 3) == 0, "expected 3 LSB of XP coordinates to be 0"
             n = CMNNodeXP(self, node_offset, map=None, parent=parent, write=True)
-            assert n.logical_id() not in self.logical_id_XP, "XPs have duplicate logical_id 0x%x" % n.logical_id()
-            self.logical_id_XP[n.logical_id()] = n
+            nid = n.logical_id()
+            if nid in self.logical_id_XP:
+                self.log("XPs have duplicate logical ID 0x%x: %s, %s" % (nid, self.logical_id_XP[nid], n), level=0)
+            self.logical_id_XP[nid] = n
             n.discover_children()
         elif node_info == 0:
             # Under XPs with RN-F ports, we sometimes see a valid child offset that points to zeroes
             n = None
         else:
-            n = CMNNode(self, node_offset, map=m, parent=parent)
+            n = CMNNode(self, node_offset, map=m, parent=parent, is_external=is_external)
         if n is not None and node_type != CMN_NODE_XP and node_has_logical_id(node_type):
             nid = n.logical_id()
-            nk = (node_type, n.logical_id())
-            assert nk not in self.logical_id, "Nodes have duplicate logical ID: %s, %s" % (self.logical_id[nk], n)
+            nk = (node_type, nid)
+            if nk in self.logical_id:
+                self.log("Nodes of type 0x%x have duplicate logical ID 0x%x: %s, %s" % (node_type, nid, self.logical_id[nk], n), level=0)
             self.logical_id[nk] = n
         return n
 
@@ -1276,11 +1405,11 @@ def show_dtm_pmu_config(dtm):
     if pmu_config != 0:
         print("      PMU config: 0x%016x  counters: 0x%016x" % (pmu_config, dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)))
         for i in range(0,4):
-            eis = BITS(pmu_config,32+i*8,8)     # on CMN-6xx it's only 6 bits
-            egc = BITS(pmu_config,16+i*4,3)
-            paired = [0,BIT(pmu_config,1)|BIT(pmu_config,3),BIT(pmu_config,3),BIT(pmu_config,2)|BIT(pmu_config,3)][i]
+            eis = BITS(pmu_config, 32+i*8, 8)     # on CMN-6xx it's only 6 bits
+            egc = BITS(pmu_config, 16+i*4, 3)
+            paired = [0, (BIT(pmu_config, 1) | BIT(pmu_config, 3)), BIT(pmu_config, 3), (BIT(pmu_config, 2) | BIT(pmu_config, 3))][i]
             print("       %s%u:" % (" +"[paired], i), end="")
-            if BIT(pmu_config,4+i):
+            if BIT(pmu_config, 4+i):
                 print(" [global %u]" % egc, end="")
             print(" event 0x%02x: %s" % (eis, dtm.pmu_event_input_selector_str(eis)))
 
@@ -1371,7 +1500,7 @@ def show_cmn(cmn, verbose=0):
             for n in xp.port_nodes(p):
                 info = n.read64(CMN_any_UNIT_INFO)
                 sec = n.read64(CMN_any_SECURE_ACCESS)
-                print("        %s (info: 0x%x)" % (n, info), end="")
+                print("        %s (node info: 0x%x, unit info: 0x%x)" % (n, n.node_info, info), end="")
                 if sec:
                     print(", security=0x%x" % sec, end="")
                 print()
@@ -1391,7 +1520,7 @@ def show_cmn(cmn, verbose=0):
                         mpam_ns_partid = 1 << BITS(info, 39, 4)
                         print("          MPAM(NS): %u PMG, %u PARTID" % (mpam_ns_pmg, mpam_ns_partid))
                     if cmn.secure_accessible:
-                        aux_ctl = n.read64(0xA08)
+                        aux_ctl = n.read64(CMN_any_AUX_CTL)
                         print("          aux_ctl: 0x%x" % aux_ctl)
                         pwpr = n.read64(0x1000)    # power policy register
                         print("          pwpr: 0x%x" % pwpr, end="")
@@ -1439,9 +1568,22 @@ def show_cmn(cmn, verbose=0):
                     print("          Request tracker depth: %u" % (request_tracker_depth))
                     # other config is Secure only
                 elif n.type() == CMN_NODE_CXLA:
-                    pass      # not much interesting non-Secure info
+                    db_present = BIT(info, 0)
+                    db_fifo_depth = BITS(info, 16, 5)
+                    if db_present:
+                        print("          Domain bridge FIFO depth: %u" % (db_fifo_depth))
+                    if cmn.secure_accessible:
+                        aux_ctl = n.read64(CMN_any_AUX_CTL)
+                        smp_mode_en = BIT(aux_ctl, 47)
+                        if smp_mode_en:
+                            print("          SMP mode enabled")
                 elif n.type() == CMN_NODE_DN:
                     pass      # not much interesting non-Secure info
+                elif n.type() in [CMN_NODE_MPAM_NS, CMN_NODE_HNS_MPAM_NS] or (n.type() in [CMN_NODE_MPAM_S, CMN_NODE_HNS_MPAM_S] and cmn.secure_accessible):
+                    idr = n.read64(0x1000)
+                    aidr = n.read64(0x1020)
+                    iidr = n.read64(0x1018)
+                    print("          MPAM architecture %u.%u, idr=0x%x, iidr=0x%x" % (BITS(aidr, 4, 4), BITS(aidr, 0, 4), idr, iidr))
                 else:
                     print("          <no information for node: %s>" % (n))
                 if n.is_home_node():
@@ -1457,9 +1599,9 @@ def show_cmn(cmn, verbose=0):
                             nhm = [0xC08, 0xC10, 0xC18, 0xC20, 0xC28, 0xCA0, 0xCA8, 0xCB0, 0xCB8, 0xCC0]
                             nhn = [0xC30, 0xC38, 0xC40, 0xCE0, 0xCE8]
                             i2 = n.read64(nhm[r//2])
-                            info = BITS(i2, (r&1)*32, 32)
+                            info = BITS(i2, (r & 1)*32, 32)
                             n4 = n.read64(nhn[r//4])
-                            nodeid = BITS(n4, (r&3)*12, 11)
+                            nodeid = BITS(n4, (r & 3)*12, 11)
                             return (info, nodeid)
                         for r in range(0, 20):
                             (info, nodeid) = nonhash(r)
@@ -1679,7 +1821,7 @@ if __name__ == "__main__":
 
     if opts.diag:
         for C in CS:
-            C.diag_trace |= (DIAG_READS|DIAG_WRITES)
+            C.diag_trace |= (DIAG_READS | DIAG_WRITES)
     #
     # Above was getting a list of CMNs to operate on.
     # Below is actually doing the operations.

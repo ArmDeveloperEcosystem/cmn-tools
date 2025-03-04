@@ -27,7 +27,7 @@ SYSTEM_DESC_VERSION = 1
 
 class NodeGroup:
     """
-    Base class for a group of nodes, either one mesh or several.
+    Abstract base class for a group of nodes, either one mesh or several.
     """
     def home_nodes(self, include_device=False):
         for node in self.nodes():
@@ -40,10 +40,13 @@ class System(NodeGroup):
     Represent a complete system consisting of one or more CMN meshes,
     and perhaps some uniquely numbered CPUs.
     """
-    def __init__(self, filename=None):
-        self.filename = filename # Name of the descriptor file, if known
+    def __init__(self, filename=None, timestamp=None):
+        self.filename = filename  # Name of the descriptor file, if known
         self.version = SYSTEM_DESC_VERSION
+        self.timestamp = timestamp    # discovery time of system info
         self.system_type = None  # SoC type, e.g. "Arm N1SDP"
+        self.system_uuid = None  # System UUID, if known - should be Python uuid.UUID object
+        self.processor_type = None  # Processor (CPU) type
         self.CMNs = []           # CMN mesh instances - order should match kernel PMU "arm_cmn_<n>" numbering
         self.cpu_node = {}       # CPU number -> CPU object
         self._has_HNS = None     # system uses HN-S rather than HN-F - cached value
@@ -62,6 +65,13 @@ class System(NodeGroup):
                 return None      # CMN version mismatch (possible, but unlikely)
             v = c.product_config
         return v
+
+    def has_multiple_cmn(self):
+        """
+        Return true if this system has multiple instances of CMN. In this case,
+        CHI SRCID/TGTID will need to be interpreted relative to an instance number.
+        """
+        return len(self.CMNs) > 1
 
     def cmn_at_base(self, addr):
         """
@@ -169,6 +179,26 @@ _cmn_product_names_by_id = {
     0x43a: "CI-700",
     0x43e: "CMN S3",
 }
+
+
+def product_id_str(n):
+    if n is None:
+        return "CMN-unknown"
+    elif n in _cmn_product_names_by_id:
+        return _cmn_product_names_by_id[n]
+    elif n in [600, 650, 700]:
+        return "CMN-%u" % n   # Legacy
+    return "CMN-0x%x??" % n
+
+
+def canon_product_id(n):
+    if n == 600:
+        return PART_CMN600
+    if n == 650:
+        return PART_CMN650
+    if n == 700:
+        return PART_CMN700
+    return n
 
 
 cmn_products_by_name = {
@@ -285,6 +315,10 @@ class CMN(NodeGroup):
         self.frequency = None  # clock frequency not generally known (yet)
 
     def XPs(self):
+        """
+        Yield all XPs in this mesh, sorted by node id, or equivalently,
+        sorted by (X, Y) tuple, i.e lower left first, then up, then right.
+        """
         for xpi in sorted(self.id_xp.keys()):
             yield self.id_xp[xpi]
 
@@ -308,15 +342,23 @@ class CMN(NodeGroup):
     def has_cpu_mappings(self):
         return self.owner.has_cpu_mappings()
 
-    def port_at_id(self, base_id):
-        # Get the CMNPort object with a given base id.
-        for p in self.ports():
-            if p.base_id() == base_id:
+    def port_at_id(self, id):
+        """
+        Get the CMNPort object which owns a given id.
+        """
+        xp_id = (id & ~7)
+        if xp_id not in self.id_xp:
+            return None
+        xp = self.id_xp[xp_id]
+        for p in xp.ports():
+            if p.is_valid_id(id):
                 return p
         return None
 
     def xp_ports(self):
-        # Yield (xp, n) pairs
+        """
+        Yield (xp, n) pairs
+        """
         for p in self.ports():
             yield (p.xp, p.port)
 
@@ -349,7 +391,7 @@ class CMN(NodeGroup):
 
     def sn_ids(self):
         """
-        Yield CHI node ids for all SNs in this mesh.
+        Yield CHI node ids for all subordinate nodes (SNs) in this mesh.
         SN-Fs are special, c.f. rnf_ids() above.
         """
         for id in self.ids(properties=CMN_PROP_SN):
@@ -551,13 +593,19 @@ class CMNNodeBase:
 class CMNNode(CMNNodeBase):
     """
     A CMN device node (not XP), on a port of an XP.
+
+    The device node has its own node id, which should match the X/Y coordinate
+    of the XP and the port number. Violations of this have been observed on
+    some CMN-600 silicon.
     """
     def __init__(self, type=None, type_s=None, owner=None, id=None, logical_id=None):
         assert isinstance(owner, CMNPort)
         assert type != CMN_NODE_XP
         device_mask = (1 << owner.XP().id_device_bits()) - 1
-        assert device_mask in [1, 3]
-        assert (id & ~device_mask) == owner.base_id()
+        assert device_mask in [0x1, 0x3]
+        if (id & ~device_mask) != owner.base_id():
+            if owner.CMN().product_config.product_id != PART_CMN600:
+                assert False, "unexpected node id 0x%03x on %s" % (id, owner)
         CMNNodeBase.__init__(self, type=type, type_s=type_s, owner=owner, id=id, logical_id=logical_id)
         self.device = id & device_mask
 
@@ -650,8 +698,11 @@ class CMNXP(CMNNodeBase):
             extra_ports = self.CMN().extra_ports
         return 1 if extra_ports else 2
 
+    def port_is_used(self, p):
+        return (p in self.port)
+
     def port_device_type(self, p):
-        return self.port[p].connected_type
+        return self.port[p].connected_type if self.port_is_used(p) else None
 
     def port_device_type_str(self, p):
         return self.port[p].connected_type_s
@@ -669,7 +720,7 @@ class CMNXP(CMNNodeBase):
 def memsize_str(n):
     for u in range(4, 0, -1):
         if n >= (1 << (u*10)):
-            return "%.3g%sb" % ((float(n)/(1<<(u*10))), "BKMGT"[u])
+            return "%.3g%sb" % ((float(n) / (1 << (u*10))), "BKMGT"[u])
     return str(n)
 
 
@@ -691,7 +742,10 @@ class CacheGeometry:
         return self.n_sets_log2 is not None
 
     def __eq__(self, c):
-        return self.n_ways == c.n_ways and self.n_sets_log2 == c.n_sets_log2 and self.sf_ways == c.sf_ways and (self.sf_ways is None or self.sf_n_sets_log2 == c.sf_n_sets_log2)
+        return (self.n_ways == c.n_ways and
+                self.n_sets_log2 == c.n_sets_log2 and
+                self.sf_ways == c.sf_ways and
+                (self.sf_ways is None or self.sf_n_sets_log2 == c.sf_n_sets_log2))
 
     @property
     def n_sets(self):

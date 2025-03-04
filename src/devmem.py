@@ -11,7 +11,9 @@ from __future__ import print_function
 
 import iommap as mmap
 
-import os, sys, struct
+import os
+import sys
+import struct
 
 
 class DevMemWriteFailed(Exception):
@@ -46,7 +48,7 @@ class DevMem:
     def mmap(self, pa, size, write=False):
         assert (size % self.page_size) == 0
         if write:
-            prot = (mmap.PROT_READ|mmap.PROT_WRITE)
+            prot = (mmap.PROT_READ | mmap.PROT_WRITE)
         else:
             prot = mmap.PROT_READ
         m = mmap.mmap(self.fd.fileno(), size, mmap.MAP_SHARED, prot, offset=pa)

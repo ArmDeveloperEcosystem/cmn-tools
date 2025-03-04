@@ -56,6 +56,7 @@ int main(int argc, char **argv)
 
 g_generator_exe = None
 
+
 def _gen_generator():
     global g_generator_exe
     if g_generator_exe is not None:

@@ -25,11 +25,11 @@ command-line tool to construct a watchpoint expression for "perf".
 
 from __future__ import print_function
 
+import sys
+
 import chi_spec
 import cmn_base
 import cmn_json
-
-import sys
 
 
 o_verbose = 0
@@ -44,7 +44,29 @@ DAT = 3
 _chi_channels = ["REQ", "RSP", "SNP", "DAT"]
 
 
-class WatchpointBadValue(ValueError):
+class WatchpointError(ValueError):
+    """
+    Some error occurred when trying to construct a watchpoint.
+    Since all errors detected at this stage are basically "user error",
+    we make them a subclass of ValueError.
+    """
+    pass
+
+
+class WatchpointNoDirection(WatchpointError):
+    """
+    Watchpoint fields are ok, but the user requested generation of "perf"
+    strings without explicitly or implicitly indicating a direction.
+    Currently the PMU driver needs this to be specified.
+    """
+    def __init__(self, wp):
+        self.wp = wp
+
+    def __str__(self):
+        return "must specify up/down direction if it cannot be inferred: %s" % self.wp
+
+
+class WatchpointBadValue(WatchpointError):
     def __init__(self, val, reason, field=None, chn=None):
         assert chn in [None, 0, 1, 2, 3]
         self.field = field
@@ -55,6 +77,18 @@ class WatchpointBadValue(ValueError):
     def __str__(self):
         chn_name = _chi_channels[self.chn] if self.chn is not None else "chn?"
         return "%s: %s=%s (%s)" % (self.reason, self.field, self.value, chn_name)
+
+
+class WatchpointBadShort(WatchpointError):
+    """
+    Bad short-form watchpoint specifier
+    """
+    def __init__(self, spec, reason):
+        self.spec = spec
+        self.reason = reason
+
+    def __str__(self):
+        return "bad short-form watchpoint specifier: \"%s\" (%s)" % (self.spec, self.reason)
 
 
 def convert_value(v):
@@ -77,7 +111,7 @@ def convert_value(v):
     try:
         v = int(v, 0)
         return (v, 0)
-    except:
+    except Exception:
         pass
     if v.startswith("0b"):
         v0 = int(v.replace('x', '0'), 2)
@@ -138,6 +172,9 @@ class MatchMask:
             self.mask |= (dontcare << pos)
 
     def __str__(self):
+        """
+        To describe the MatchMask, generate a perf-like string
+        """
         s = "wp_grp=%u,wp_val=0x%x,wp_mask=0x%016x" % (self.grp, self.val, self.mask)
         if self.exclusive:
             s += ",wp_exclusive=1"
@@ -150,6 +187,7 @@ def _perf_sanitize_name(s):
 
 
 _wp_combine = 1
+
 
 def alloc_combine():
     """
@@ -188,13 +226,15 @@ class Watchpoint:
     TBD: review name for the 'exclusive' mode of watchpoints, to avoid
     confusion with the 'excl' flag on CHI requests.
     """
-    def __init__(self, chn=0, up=None, cmn_version=None, grp=None, mask=None, **matches):
+    def __init__(self, chn=0, up=None, cmn_version=None, grp=None, mask=None, name=None, **matches):
         assert cmn_version is not None
+        #assert isinstance(cmn_version, cmn_base.CMNConfig)
         assert chn in [0, 1, 2, 3], "bad CHI channel, expected 0..3: %s" % chn
         self.cmn_version = cmn_version
         self.up = up
         self.chn = chn
         self.wps = {}        # {0,1,2} -> MatchMask object
+        self.name = name
         if mask is not None and not mask.is_open():
             assert grp is not None
             self.wps[grp] = mask
@@ -280,15 +320,20 @@ class Watchpoint:
             wspec += ",wp_combine=%u" % combine
         return [("%s," % (wspec)) + str(self.wps[grp]) for grp in self.grps()]
 
-    def perf_events(self, fields=None, combine=None, cmn_instance=None, name=None, nodeid=None, dev=None):
+    def perf_events(self, fields=None, combine=None, cmn_instance=None, name=None, nodeid=None, dev=None, allow_incomplete=False):
         """
         Return a list of complete perf event specifiers, for the current watchpoint:
           "arm_cmn/watchpoint_up,.../","arm_cmn/watchpoint_up,.../"
         """
         assert fields is None or isinstance(fields, str)
+        if not allow_incomplete:
+            if self.up is None:
+                raise WatchpointNoDirection(self)
         pmu = "arm_cmn"
         if cmn_instance is not None:
             pmu += "_" + str(cmn_instance)
+        if name is None:
+            name = self.name
         if name is not None or nodeid is not None or dev is not None:
             if fields is None:
                 fields = ""
@@ -302,14 +347,33 @@ class Watchpoint:
             fields = fields[1:]
         return [(pmu + "/" + s + "/") for s in self.perf_event_fields(fields=fields, combine=combine)]
 
+    def perf_event_string(self, fields=None, combine=None, cmn_instance=None, name=None, nodeid=None, dev=None, allow_incomplete=False):
+        """
+        Return a single string containing one, or possibly two, perf events
+        in the format needed for the Linux perf tool.
+        If two events are used, they are grouped with braces to ensure simultaneous scheduling.
+        """
+        es = self.perf_events(fields=fields, combine=combine, cmn_instance=cmn_instance, name=name,
+                              nodeid=nodeid, dev=dev, allow_incomplete=allow_incomplete)
+        s = ",".join(es)
+        if len(es) > 1:
+            s = "{" + s + "}"
+        return s
+
     def __str__(self):
-        return ','.join(self.perf_events())
+        """
+        To describe the Watchpoint, generate a string similar to perf events -
+        but without throwing an exception if incomplete.
+        """
+        return self.perf_event_string(allow_incomplete=True)
 
     def __repr__(self):
         return "Watchpoint(%s)" % str(self)
 
 
-class _CKeys: pass
+class _CKeys:
+    pass
+
 
 def _dict_to_object(kwds):
     o = _CKeys()
@@ -339,7 +403,7 @@ in one. This gives us some flexibility in how we allocate fields.
 CMN-650, CMN-700 and CI-700 appear to be the same.
 
 For each field we define:
-  (lookup, [CMN-600 positions], [CMN-650/700 positions])
+  (lookup, [CMN-600 positions], [CMN-650/700 positions], (optional: CMN-S3 positions))
 """
 
 _resperr = ["OK", "EXOK", "DERR", "NDERR"]
@@ -422,7 +486,6 @@ _dat_fields = {
     "devevent":   (None,   [(0, 53, 2)],  [(0, 62, 2), (1, 47, 2)],    [(1, 47, 2)]),
     "cah":        (None,   None,          None,          [(1, 49, 1)]),
     "rsvdc":      (None,   [(0, 55, 8)],  [(1, 49, 8)]),
-    "cbusy":      (None,   None,          [(0, 39, 3)]),
     "tagop":      (None,   None,          [(1, 20, 2)]),
     "tag":        (None,   None,          [(1, 22, 8)]),
     "tu":         (None,   None,          [(1, 30, 2)]),
@@ -458,9 +521,9 @@ _dvm_fields = [
     ("asid",      None,              16, 22, 19, 0),
 ]
 
-def fixdvmaddr(flds, fbits, off):
+
+def _fixdvmaddr(flds, fbits, off):
     af = flds["addr"]
-    fs = list(af)[1:]
     rf = []
     for f in list(af)[1:]:
         if f is not None:
@@ -468,19 +531,20 @@ def fixdvmaddr(flds, fbits, off):
         rf.append(f)
     return rf
 
+
 _dvm_frag = {}
 for (df, dlookup, dbits, reqoff, snpoff, frag) in _dvm_fields:
     if frag == 0:
         # For REQ, some DVM fields are only visible when they are in the first fragment,
         # since in the second, they are in the DAT payload which we can't see.
-        _req_fields["dvm"+df] = tuple([dlookup] + fixdvmaddr(_req_fields, dbits, reqoff))
-    _snp_fields["dvm"+df] = tuple([dlookup] + fixdvmaddr(_snp_fields, dbits, snpoff))
+        _req_fields["dvm"+df] = tuple([dlookup] + _fixdvmaddr(_req_fields, dbits, reqoff))
+    _snp_fields["dvm"+df] = tuple([dlookup] + _fixdvmaddr(_snp_fields, dbits, snpoff))
     _dvm_frag["dvm"+df] = frag
 
 
 # Selecting on DVM SNP fields should normally force fragment #0.
 # We might also want to select fragment #0 or #1 explicitly.
-_snp_fields["dvmfrag"] = tuple([None] + fixdvmaddr(_snp_fields, 1, 0))
+_snp_fields["dvmfrag"] = tuple([None] + _fixdvmaddr(_snp_fields, 1, 0))
 
 
 # Build a consolidated CHI opcodes table that maps opcodes to channel and value.
@@ -562,13 +626,13 @@ def apply_matches_obj_to_watchpoint(wp, o):
                 if o_verbose:
                     print("  setting chn=%u %s = %s" % (wp.chn, k, val), file=sys.stderr)
                 if k == "srcid":
-                    if wp.up == True:
+                    if wp.up is True:
                         raise WatchpointBadValue(val, "can't specify SRCID on upload", k, wp.chn)
-                    wp.up = False
+                    wp.up = False     # srcid specified, force watchpoint to "down"
                 if k == "tgtid":
-                    if wp.up == False:
+                    if wp.up is False:    # n.b. not None
                         raise WatchpointBadValue(val, "can't specify TGTID on download", k, wp.chn)
-                    wp.up = True
+                    wp.up = True      # tgtid specified, force watchpoint to "up"
                 # Currently, CMN-S3 is almost always the same as CMN-700, so we allow most
                 # fields to not bother with a separate CMN-S3 configuration.
                 eff_mix = min(mix, len(meta)-1)
@@ -638,11 +702,11 @@ def _field_spec(s):
     return s
 
 
-def list_fields(S):
+def list_fields(cmn_version):
     """
     List all CHI fields that can be matched.
     """
-    mix = _field_selector[S.cmn_version().product_id]
+    mix = _field_selector[cmn_version.product_id]
     for (chn, cf) in zip(_chi_channels, _fields):
         print("%s fields:" % chn)
         for (f, meta) in cf.items():
@@ -671,6 +735,48 @@ def list_fields(S):
                         print("            %s (%u)" % (k, i))
 
 
+def parse_short_watchpoint(ws, opts, cmn_version=None):
+    """
+    Parse a short-form watchpoint specifier into a Watchpoint object, e.g.
+
+       up:req:opcode=Evict:memattr=0bxx0x
+
+    'opts' supplies defaults as set on the command line.
+    """
+    try:
+        (wdir, chn, spec) = ws.split(':', 2)
+    except ValueError:
+        try:
+            (wdir, chn) = ws.split(':')
+            spec = ""
+        except ValueError:
+            raise WatchpointBadShort(ws, "expected <dir>:<channel>:<fields>")
+    up = ["down", "up"].index(wdir.lower())
+    if up < 0:
+        raise WatchpointBadShort(ws, "expected channel up/down")
+    chn = ["req", "rsp", "snp", "dat"].index(chn.lower())
+    if chn < 0:
+        raise WatchpointBadShort(ws, "expected channel REQ/RSP/SNP/DAT")
+    flds = {}
+    if spec.startswith("not:"):
+        flds["exclusive"] = True
+        spec = spec[4:]
+    for f in spec.split(':'):
+        if f:
+            try:
+                (k, v) = f.split('=', 1)
+            except ValueError:
+                raise WatchpointBadShort(ws, "expected field=value: '%s'" % f)
+            if k not in chi_fields:
+                raise WatchpointBadShort(ws, "'%s' is not a CHI field" % k)
+            flds[k] = v
+    for k in chi_fields:
+        if getattr(opts, k, None) is not None and k not in flds:
+            flds[k] = getattr(opts, k)
+    wp = match_kwd(chn=chn, up=up, cmn_version=cmn_version, **flds)
+    return wp
+
+
 def add_chi_arguments(parser):
     """
     Given an existing ArgumentParser object, add command-line arguments
@@ -696,6 +802,7 @@ if __name__ == "__main__":
     def arg_cmn_version(s):
         try:
             v = cmn_base.cmn_version(s)
+            assert isinstance(v, cmn_base.CMNConfig)
         except KeyError:
             raise argparse.ArgumentTypeError("invalid CMN product identifier")
         return v
@@ -706,7 +813,8 @@ if __name__ == "__main__":
         if s in _chi_channels:
             return _chi_channels.index(s)
         raise argparse.ArgumentTypeError("invalid CHI channel specifier")
-    import argparse, os
+    import argparse
+    import os
     parser = argparse.ArgumentParser(description="CMN flit matching")
     parser.add_argument("--chn", type=arg_chi_channel, default=0, help="CHI channel (REQ/RSP/SNP/DAT)")
     parser.add_argument("--REQ", action="store_const", const=0, dest="chn", help="REQ channel")
@@ -741,13 +849,12 @@ if __name__ == "__main__":
             assert cmn_version is not None
         except Exception:
             print("cannot discover CMN product version: run discovery tools", file=sys.stderr)
-            raise
             sys.exit(1)
     assert isinstance(cmn_version, cmn_base.CMNConfig)
     if opts.verbose:
         print("CMN version: %s" % cmn_version, file=sys.stderr)
     if opts.list:
-        list_fields(S)
+        list_fields(cmn_version)
         sys.exit()
     if opts.at_cpu is not None:
         if S is None:
@@ -775,50 +882,28 @@ if __name__ == "__main__":
                 dname = "%s.%u" % (name, d)
             else:
                 dname = None
-            es += wp.perf_events(cmn_instance=opts.cmn_instance, nodeid=opts.nodeid, dev=d, name=dname)
+            es.append(wp.perf_event_string(cmn_instance=opts.cmn_instance, nodeid=opts.nodeid, dev=d, name=dname))
         return es
     if opts.wps:
+        # Command line specified one or more "short" watchpoint specifiers
         for ws in opts.wps:
             try:
-                (wdir, chn, spec) = ws.split(':', 2)
-            except ValueError:
-                (wdir, chn) = ws.split(':')
-                spec = ""
-            up = ["down", "up"].index(wdir.lower())
-            chn = ["req", "rsp", "snp", "dat"].index(chn.lower())
-            if up < 0 or chn < 0:
-                print("** expected up:<channel>:xxx or down:<channel>:xxx: %s" % ws, file=sys.stderr)
-                sys.exit(1)
-            flds = {}
-            if spec.startswith("not:"):
-                flds["exclusive"] = True
-                spec = spec[4:]
-            for f in spec.split(':'):
-                if f:
-                    (k, v) = f.split('=', 1)
-                    if k not in chi_fields:
-                        print("** Bad value: '%s' is not a CHI field" % k, file=sys.stderr)
-                        sys.exit(1)
-                    flds[k] = v
-            for k in chi_fields:
-                if getattr(opts, k, None) is not None and k not in flds:
-                    flds[k] = getattr(opts, k)
-            try:
-                wp = match_kwd(chn=chn, up=up, cmn_version=cmn_version, **flds)
-            except WatchpointBadValue as wbv:
+                wp = parse_short_watchpoint(ws, opts, cmn_version=cmn_version)
+                events += wp_events(wp, opts, name=ws)
+            except WatchpointError as wbv:
                 print("** Bad value: %s" % wbv, file=sys.stderr)
                 sys.exit(1)
-            events += wp_events(wp, opts, name=ws)
     else:
+        # Construct a watchpoint from whatever fields were on the command line
         flds = _object_to_dict(opts, _all_fields)
         try:
             wp = match_kwd(chn=opts.chn, up=opts.up, cmn_version=cmn_version, **flds)
-        except WatchpointBadValue as wbv:
+            events += wp_events(wp, opts)
+        except WatchpointError as wbv:
             print("** Bad value: %s" % wbv, file=sys.stderr)
             sys.exit(1)
         if o_verbose:
             print("Watchpoint: %s" % wp)
-        events += wp_events(wp, opts)
     if not events:
         print("no perf events!")
         sys.exit(1)

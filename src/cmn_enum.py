@@ -29,13 +29,15 @@ CMN_PROP_D     = 0x0010     # non-coherent
 CMN_PROP_I     = 0x0020     # I/O coherent but not fully coherent
 CMN_PROP_F     = 0x0040     # Fully coherent
 CMN_PROP_CCG   = 0x0100     # Chip-to-chip gateway
-CMN_PROP_RNF   = CMN_PROP_RN|CMN_PROP_F
-CMN_PROP_RNI   = CMN_PROP_RN|CMN_PROP_I
+CMN_PROP_MPAM  = 0x0200     # MPAM configuration node
+
+CMN_PROP_RNF   = (CMN_PROP_RN | CMN_PROP_F)
+CMN_PROP_RNI   = (CMN_PROP_RN | CMN_PROP_I)
 CMN_PROP_RND   = CMN_PROP_RN
-CMN_PROP_HNF   = CMN_PROP_HN|CMN_PROP_F
-CMN_PROP_HNI   = CMN_PROP_HN|CMN_PROP_I
-CMN_PROP_HND   = CMN_PROP_HN|CMN_PROP_D
-CMN_PROP_SNF   = CMN_PROP_SN|CMN_PROP_F
+CMN_PROP_HNF   = (CMN_PROP_HN | CMN_PROP_F)
+CMN_PROP_HNI   = (CMN_PROP_HN | CMN_PROP_I)
+CMN_PROP_HND   = (CMN_PROP_HN | CMN_PROP_D)
+CMN_PROP_SNF   = (CMN_PROP_SN | CMN_PROP_F)
 
 
 # Node types. These are sub-objects within the CMN configuration space,
@@ -72,16 +74,31 @@ CMN_NODE_all_HN = [CMN_NODE_HNI, CMN_NODE_HNF, CMN_NODE_HNP, CMN_NODE_HNS]
 
 
 cmn_node_properties = {
+    CMN_NODE_DN          : CMN_PROP_none,
+    CMN_NODE_CFG         : CMN_PROP_none,
+    CMN_NODE_DT          : CMN_PROP_none,
     CMN_NODE_HNI         : CMN_PROP_HNI,
     CMN_NODE_HNF         : CMN_PROP_HNF,
+    CMN_NODE_XP          : CMN_PROP_none,
+    CMN_NODE_SBSX        : CMN_PROP_none,
+    CMN_NODE_MPAM_S      : CMN_PROP_MPAM,
+    CMN_NODE_MPAM_NS     : CMN_PROP_MPAM,
     CMN_NODE_RNI         : CMN_PROP_RNI,
     CMN_NODE_RND         : CMN_PROP_RN,
+    CMN_NODE_RNSAM       : CMN_PROP_none,
+    CMN_NODE_MTSX        : CMN_PROP_none,
     CMN_NODE_HNP         : CMN_PROP_HNI,
-    CMN_NODE_CXRA        : CMN_PROP_RN|CMN_PROP_CCG,
-    CMN_NODE_CXHA        : CMN_PROP_HN|CMN_PROP_CCG,
-    CMN_NODE_CCG_RA      : CMN_PROP_RN|CMN_PROP_CCG,
-    CMN_NODE_CCG_HA      : CMN_PROP_HN|CMN_PROP_CCG,
+    CMN_NODE_CXRA        : (CMN_PROP_RN | CMN_PROP_CCG),
+    CMN_NODE_CXHA        : (CMN_PROP_HN | CMN_PROP_CCG),
+    CMN_NODE_CXLA        : CMN_PROP_none,
+    CMN_NODE_CCG_RA      : (CMN_PROP_RN | CMN_PROP_CCG),
+    CMN_NODE_CCG_HA      : (CMN_PROP_HN | CMN_PROP_CCG),
+    CMN_NODE_CCLA        : CMN_PROP_none,
+    CMN_NODE_CCLA_RNI    : CMN_PROP_none,
     CMN_NODE_HNS         : CMN_PROP_HNF,
+    CMN_NODE_HNS_MPAM_S  : CMN_PROP_MPAM,
+    CMN_NODE_HNS_MPAM_NS : CMN_PROP_MPAM,
+    CMN_NODE_APB         : CMN_PROP_none,
 }
 
 
@@ -99,6 +116,14 @@ cmn_node_type_strings = {
 
 def cmn_node_type_str(n):
     return cmn_node_type_strings[n] if n in cmn_node_type_strings else "node(0x%x)" % n
+
+
+def cmn_node_type_properties(n):
+    return cmn_node_properties.get(n, CMN_PROP_none)
+
+
+def cmn_node_type_has_properties(n, p):
+    return (cmn_node_type_properties(n) & p) == p
 
 
 # Descriptions for the "connected device type" codes in the XP port.
@@ -188,9 +213,9 @@ cmn_port_properties = {
     CMN_PORT_DEVTYPE_HNF              : CMN_PROP_HNF,
     CMN_PORT_DEVTYPE_SNF_CHIE         : CMN_PROP_SNF,
     CMN_PORT_DEVTYPE_SNF_CHID         : CMN_PROP_SNF,
-    CMN_PORT_DEVTYPE_CXHA             : CMN_PROP_HN|CMN_PROP_CCG,
-    CMN_PORT_DEVTYPE_CXRA             : CMN_PROP_RN|CMN_PROP_CCG,
-    CMN_PORT_DEVTYPE_CXRH             : CMN_PROP_RN|CMN_PROP_CCG,
+    CMN_PORT_DEVTYPE_CXHA             : (CMN_PROP_HN | CMN_PROP_CCG),
+    CMN_PORT_DEVTYPE_CXRA             : (CMN_PROP_RN | CMN_PROP_CCG),
+    CMN_PORT_DEVTYPE_CXRH             : (CMN_PROP_RN | CMN_PROP_CCG),
     CMN_PORT_DEVTYPE_RNF_CHID         : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_RNF_CHID_ESAM    : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_RNF_CHIC         : CMN_PROP_RNF,

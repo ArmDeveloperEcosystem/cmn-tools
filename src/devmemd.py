@@ -24,7 +24,9 @@ limitations under the License.
 
 from __future__ import print_function
 
-import sys, socket, struct
+import sys
+import socket
+import struct
 
 # devmemd request codes: see devmemd.c
 REQ_NOP     = 0
@@ -173,4 +175,3 @@ if __name__ == "__main__":
             print("R <size> <addr>")
             print("W <size> <addr> <data>")
     m.close()
-

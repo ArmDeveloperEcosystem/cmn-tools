@@ -1,26 +1,34 @@
 #!/usr/bin/python3
 
 """
-CMN flit capture demo
+CMN flit capture tool
 
 Copyright (C) Arm Ltd. 2024. All rights reserved.
 SPDX-License-Identifier: Apache 2.0
+
+This tool captures CHI flits using the XP watchpoint FIFOs.
+
+For usage details, see README-capture.md.
 """
 
 from __future__ import print_function
+
+import sys
+import time
 
 import cmn_devmem as cmn
 import cmn_devmem_find
 import cmn_json
 import cmnwatch
-import cmn_diagram
 from cmn_flits import CMNTraceConfig, CMNFlitGroup
 
-import os, sys, time
+
+o_verbose = 0
 
 
 def bits(x, p, n):
     return (x >> p) & ((1 << n) - 1)
+
 
 # TBD: currently limited argument validation, while we're experimenting.
 def inthex(s):
@@ -39,7 +47,7 @@ def add_trace_arguments(parser):
     parser.add_argument("--cc", action="store_true", help="enable cycle counts")
     parser.add_argument("--format", type=int, choices=range(8), default=4, help="trace packet format")
     parser.add_argument("--immediate", action="store_true", help="show FIFO contents immediately")
-    parser.add_argument("--samples", type=int, default=1, help="number of FIFO samples to collect")
+    parser.add_argument("--samples", type=int, default=10, help="number of FIFO samples to collect")
     parser.add_argument("--cg-disable", action="store_true")
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--count", action="store_true", help="program DTM PMU to count packets")
@@ -52,6 +60,7 @@ def add_trace_arguments(parser):
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("--decode-verbose", type=int, default=0)
+    parser.add_argument("watchpoint", type=str, help="short-form watchpoint specifier")
 
 
 def cmn_desc(cmn_direct):
@@ -109,8 +118,11 @@ class CMNVis:
         config = cmn.product_config
         self.cfg = CMNTraceConfig(config.product_id, config.mpam_enabled)
         self.last_xp = None
+        self.build_id_map()
+
+    def build_id_map(self):
         self.id_map = {}     # (id, lpid) -> label
-        for xp in cmn.XPs():
+        for xp in self.cmn.XPs():
             n_ports = xp.n_device_ports()
             poff = 4 if n_ports <= 2 else 2
             for port in range(n_ports):
@@ -120,16 +132,28 @@ class CMNVis:
                 for device_id in range(device_ids):
                     id = base_id + device_id
                     self.id_map[(id, 0)] = desc
-        self.cmn_desc = cmn_desc(cmn)
+        self.cmn_desc = cmn_desc(self.cmn)
         if self.cmn_desc is not None and self.cmn_desc.has_cpu_mappings():
             for cpu in self.cmn_desc.cpus():
                 self.id_map[(cpu.id, cpu.lpid)] = "#%-3u" % cpu.cpu
+        if o_verbose:
+            print("ID map:")
+            n_on_line = 0
+            for k in sorted(self.id_map.keys()):
+                (id, lpid) = k
+                s = self.id_map[k]
+                if n_on_line == 8:
+                    print()
+                    n_on_line = 0
+                print("  %04x[%u]: %-6s" % (id, lpid, s), end="")
+                n_on_line += 1
+            print()
 
     def handle_flitgroup(self, xp, wp, fg):
         if xp != self.last_xp:
             print("%s:" % xp)
             self.last_xp = xp
-        print("  %s WP%u: " % ("><"[(wp>>1)&1], wp), end="")
+        print("  %s WP%u: " % ("><"[(wp >> 1) & 1], wp), end="")
         print(fg)
 
     def decode_packet(self, xp, wp, data, cc):
@@ -160,6 +184,8 @@ class CMNHist(CMNVis):
     def flit_key(self, flit):
         # Construct a key to classify the flit into a sensible group.
         # We use at least the source and target type, and the opcode.
+        if (flit.srcid, 0) not in self.id_map:
+            self.id_map[(flit.srcid, 0)] = "?%03x" % flit.srcid
         stype = self.id_map[(flit.srcid, 0)]
         if stype.startswith("#"):
             stype = "RN-F"    # undo the CPU mapping!
@@ -170,8 +196,13 @@ class CMNHist(CMNVis):
         else:
             ttype = "?"
         op = flit.opcode_str()
+        # For some opcodes, we can additionally differentiate
         if flit.group.VC == 3:
             op += "_" + flit.resp_str()
+        elif flit.is_DVM():
+            dop = flit.DVM_opcode_str()
+            if dop is not None:
+                op += "(%s)" % dop
         key = (op, stype, ttype)
         return key
 
@@ -200,10 +231,18 @@ class TraceSession:
     def __init__(self, opts, handler, atb=False):
         self.opts = opts
         self.atb = atb
+        self.C = None    # in case next line throws
         self.C = self.cmn_from_opts(opts)
         self.TV = handler
         handler.set_cmn(self.C)        # The trace visualizer
         self.init_cmn()
+
+    def __del__(self):
+        """
+        Always leave DTCs enabled, to avoid kernel PMU driver reading zeroes
+        """
+        if self.C is not None:
+            self.C.dtc_enable()
 
     def cmn_from_opts(self, opts):
         C = cmn.CMN(cmn.cmn_instance(opts), check_writes=(not opts.no_check_writes), verbose=max(0, opts.verbose-1))
@@ -219,10 +258,10 @@ class TraceSession:
         Iniitialize CMN for tracing
         """
         if self.opts.verbose:
-            print("cmntrace: initializing CMN %s" % self.C)
+            print("cmn_capture: initializing CMN %s" % self.C)
         # Enable all DTCs in the CMN
-        self.C.restore_dtc_status_on_deletion()
         self.C.dtc_enable(cc=self.opts.cc)   # need to enable CC in DTCs if we want timestamp in DTMs
+        self.C.restore_dtc_status_on_deletion()
         # First disable all the non-involved XPs
         for dtm in self.C.DTMs():
             dtm.dtm_disable()
@@ -257,8 +296,11 @@ class TraceSession:
         else:
             M = None
         try:
-            wps = cmnwatch.match_obj(self.opts, chn=self.opts.vc, up=self.opts.up, cmn_version=self.C.product_config, mask=M)
-        except cmnwatch.WatchpointBadValue as e:
+            if self.opts.watchpoint is not None:
+                wps = cmnwatch.parse_short_watchpoint(self.opts.watchpoint, opts, cmn_version=self.C.product_config)
+            else:
+                wps = cmnwatch.match_obj(self.opts, chn=self.opts.vc, up=self.opts.up, cmn_version=self.C.product_config, mask=M)
+        except cmnwatch.WatchpointError as e:
             print("Can't do this watchpoint: %s" % e, file=sys.stderr)
             sys.exit(1)
         wps.finalize()
@@ -271,12 +313,12 @@ class TraceSession:
         """
         Check for aliasing between XPs
         """
-        for xp1 in C.XPs():
-            for xp2 in C.XPs():
+        for xp1 in self.C.XPs():
+            for xp2 in self.C.XPs():
                 xp2.dtm.dtm_disable()
             xp1.dtm.dtm_enable()           # enable just xp1
             # check that only this one got enabled
-            for xp2 in C.XPs():
+            for xp2 in self.C.XPs():
                 assert xp2.dtm.dtm_is_enabled() == (xp1 == xp2), "aliasing check failed"
             xp1.dtm.dtm_disable()
 
@@ -316,12 +358,14 @@ class TraceSession:
         for wp in [0, 1]:
             dev = xp.next_port
             for (up, off) in [(True, 0), (False, 2)]:
-                grps = self.wps.grps()
                 if self.wps.up != (not up):          # i.e. wps is free or matches WPs type
-                    for j in range(len(grps)):
-                        M = self.wps.wps[grps[j]]
-                        combine = (self.wps.is_multigrp() and j==0)
-                        xp.dtm.dtm_set_watchpoint(wp+off+j, val=M.val, mask=M.mask, format=self.opts.format, cc=self.opts.cc, dev=dev, chn=self.wps.chn, group=M.grp, exclusive=M.exclusive, combine=combine)
+                    for (j, grp) in enumerate(self.wps.grps()):
+                        M = self.wps.wps[grp]
+                        combine = (self.wps.is_multigrp() and (j == 0))
+                        xp.dtm.dtm_set_watchpoint(wp+off+j, val=M.val, mask=M.mask,
+                                                  format=self.opts.format, cc=self.opts.cc,
+                                                  dev=dev, chn=self.wps.chn, group=M.grp,
+                                                  exclusive=M.exclusive, combine=combine)
                 else:
                     xp.dtm.dtm_set_watchpoint(wp+off, gen=False)
             xp.next_port += 1
@@ -345,8 +389,8 @@ class TraceSession:
             # the XP rollovers between them.
             xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0)     # disable PMU while we're programming it
             xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_PMEVCNT_off, 0)    # clear the four local counters
-            #xp.dtm_write64(cmn.CMN_DTM_PMU_CONFIG, 0x0302010000000001)
-            if i & 1 == 0:
+            #xp.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0x0302010000000001)
+            if wp == 0:
                 xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0x03020100642000f1)
             else:
                 xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0x03020100753100f1)
@@ -357,7 +401,7 @@ class TraceSession:
 
     def trace_start(self):
         if self.opts.verbose:
-            print("cmntrace: start...")
+            print("cmn_capture: start...")
         self.C.dtc_disable()
         if False:
             # Reset all the XP DTMs (even the ones we're not interested in) and stop
@@ -376,7 +420,7 @@ class TraceSession:
             # We've programmed the local PMUs in the DTMs, and even though we aren't
             # forwarding local counts to the DTC, the DTMs won't count until we set
             # the global PMU enable.
-            for dtc in C.debug_nodes:
+            for dtc in self.C.debug_nodes:
                 dtc.pmu_clear()
                 dtc.set64(cmn.CMN_DTC_PMCR, cmn.CMN_DTC_PMCR_PMU_EN)
 
@@ -387,7 +431,7 @@ class TraceSession:
         self.C.dtc_enable()
         if False:
             # Generate some more alignment packets in the ATB stream
-            for i in range(0,3):
+            for _ in range(0, 3):
                 self.C.dtc_disable()
                 self.C.dtc_enable()
 
@@ -411,10 +455,10 @@ class TraceSession:
                 for xp in self.xps:
                     fe = xp.dtm.dtm_fifo_ready()
                     for e in range(0, 4):
-                        if fe & (1<<e):
+                        if fe & (1 << e):
                             (data, cc) = xp.dtm.dtm_fifo_entry(e)
                             if self.opts.immediate:
-                                TV.decode_packet(xp, e, data, cc)
+                                self.TV.decode_packet(xp, e, data, cc)
                             fifocap[xp][e].append((data, cc))
                     xp.dtm.dtm_clear_fifo()
         self.trace_stop()
@@ -447,7 +491,7 @@ class TraceSession:
             # Show watchpoint counts
             for xp in self.xps:
                 # Read the local counters
-                c = xp.read64(cmn.CMN_DTM_PMU_PMEVCNT)
+                c = xp.dtm.dtm_read64(cmn.CMN_DTM_PMU_PMEVCNT_off)
                 for wp in range(0,4):
                     print(" %6u" % bits(c, wp*16, 16), end="")
                 print()
@@ -462,8 +506,8 @@ class TraceSession:
 
     def show_fifo(self, dtm):
         fe = dtm.dtm_fifo_ready()
-        for e in range(0,4):
-            if fe & (1<<e):
+        for e in range(0, 4):
+            if fe & (1 << e):
                 (data, cc) = dtm.dtm_fifo_entry(e)
                 self.TV.decode_packet(dtm.xp, e, data, cc)
 
@@ -478,23 +522,24 @@ class TraceSession:
 
     def show_dtm(self):
         for xp in self.xps:
-            xp.show_dtm()
+            xp.dtm.show_dtm()
         for dtc in self.C.debug_nodes:
             dtc.show()
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="CMN flit capture demo")
+    parser = argparse.ArgumentParser(description="CMN flit capture tool")
     add_trace_arguments(parser)
     parser.add_argument("--histogram", action="store_true", help="print histogram of packet types")
     opts = parser.parse_args()
+    o_verbose = opts.verbose
     if opts.histogram:
         vis = CMNHist()
     else:
         vis = CMNVis()
     ts = TraceSession(opts, handler=vis)
-    for i in range(opts.iterations):
+    for _ in range(opts.iterations):
         cap = ts.trace()
         ts.show_captured_trace(cap)
     if opts.histogram:

@@ -25,8 +25,13 @@ I.e. don't tell the user to run as root, if CMN isn't there anyway.
 
 from __future__ import print_function
 
-import os, sys, json
+import os
+import sys
+import json
+
+import cmn_base
 import cmn_json
+
 
 o_verbose = 0
 
@@ -87,7 +92,12 @@ def iomem_regions(iomem=None):
 
 
 # "ARMHC" prefix isn't enough, ARMHC502 is something different
-cmn_acpi_names = ["ARMHC600", "ARMHC650", "ARMHC700"]
+cmn_acpi_names = {
+    "ARMHC600": cmn_base.PART_CMN600,
+    "ARMHC650": cmn_base.PART_CMN650,
+    "ARMHC700": cmn_base.PART_CMN700,
+}
+
 
 def cmn_iomem_regions(iomem=None):
     for r in iomem_regions(iomem=iomem):
@@ -101,18 +111,16 @@ def cmn_iomem_regions(iomem=None):
 class CMNLocator:
     """
     Specification of where CMN is. This has the base address (PERIPHBASE),
-    root node address, and CMN product number (e.g. 700).
+    root node address, and CMN product number (e.g. cmn_base.PART_CMN700).
     We get it from /proc/iomem, ACPI tables, user override etc.
     """
-    def __init__(self, periphbase=None, rootnode_offset=None, version=None):
+    def __init__(self, periphbase=None, rootnode_offset=None, product_id=None):
         self.periphbase = periphbase
         self.rootnode_offset = rootnode_offset
-        self.version = version
+        self.product_id = cmn_base.canon_product_id(product_id)
 
     def __str__(self):
-        s = "CMN"
-        if self.version is not None:
-            s += "-%u" % self.version
+        s = cmn_base.product_id_str(self.product_id)
         s += " at 0x%x" % self.periphbase
         if self.rootnode_offset:
             s += " (root +0x%x)" % self.rootnode_offset
@@ -128,8 +136,9 @@ def cmn_locators_from_iomem(iomem=None):
     for ad in cmn_iomem_regions(iomem=iomem):
         if ad.level == 0:
             assert loc is None
-            loc = CMNLocator(periphbase=ad.addr, version=int(ad.name[5:]))
-            if loc.version >= 650:
+            product_id = cmn_acpi_names[ad.name]
+            loc = CMNLocator(periphbase=ad.addr, product_id=product_id)
+            if loc.product_id != cmn_base.PART_CMN600:
                 loc.rootnode_offset = 0
                 yield loc
                 locs.append(loc)
@@ -138,7 +147,7 @@ def cmn_locators_from_iomem(iomem=None):
                 # wait for the subordinate node to give the config address
                 pass
         elif loc is not None:
-            if loc.version == 600:
+            if loc.product_id == cmn_base.PART_CMN600:
                 loc.rootnode_offset = ad.addr - loc.periphbase
                 yield loc
                 locs.append(loc)
@@ -157,8 +166,8 @@ def cmn_locators_from_iomem(iomem=None):
                 jcmn = json.load(f)
             base = int(jcmn["base"], 16)
             offset = int(jcmn.get("root-offset", "0"), 16)
-            version = jcmn.get("version", 600)
-            yield CMNLocator(base, offset, version)
+            product_id = jcmn.get("version", 600)
+            yield CMNLocator(base, offset, product_id)
         else:
             #print("%s: no CMNs found, cache does not exist" % cpath, file=sys.stderr)
             pass
@@ -197,6 +206,16 @@ def cmn_at(base_addr):
         if c.periphbase == base_addr:
             return c
     return None
+
+
+def system_is_probably_guest():
+    """
+    Return true if this system appears to be a VM guest.
+    This might be useful in diagnostics if we don't find any CMNs.
+    """
+    if os.path.isdir("/sys/devices/platform/QEMU0002:00"):
+        return "KVM"
+    return False
 
 
 def add_cmnloc_arguments(parser):

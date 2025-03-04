@@ -9,18 +9,23 @@ SPDX-License-Identifier: Apache 2.0
 
 from __future__ import print_function
 
-import os, sys
+import os
+import sys
+import time
 
-import cmn_devmem, cmn_devmem_find
+import cmn_devmem
+import cmn_devmem_find
 import cmn_base
 import cmn_json
 import dmi
-import time
 
 
 def system_description():
     """
     Generate a complete system description, currently consisting only of the CMNs.
+
+    We annotate the description with some identification strings
+    scanned from the DMI table.
     """
     S = cmn_base.System()
     S.CMNs = [cmn_devmem.CMN(loc) for loc in cmn_devmem_find.cmn_locators()]
@@ -28,7 +33,15 @@ def system_description():
     for c in S.CMNs:
         c.frequency = c.estimate_frequency()
     try:
-        S.system_type = dmi.DMI().processor()
+        D = dmi.DMI()
+        dsys = D.system()
+        # System identification strngs aren't used consistently
+        # (e.g. product name vs. product version), so concatenate various fields
+        # or: sys_vendor + product_name + product_version
+        S.system_type = "%s %s %s" % (dsys.mfr, dsys.product, dsys.version)
+        # or: product_uuid (root only)
+        S.system_uuid = D.system().uuid     # n.b. Python uuid.UUID object
+        S.processor_type = D.processor()
     except Exception:
         print("Note: could not get system name from DMI", file=sys.stderr)
         S.system_type = "unknown"
@@ -48,6 +61,9 @@ if __name__ == "__main__":
         # This toolkit is currently specific to CMN, and it's not useful to save
         # a system descriptor if the system doesn't have CMN.
         print("CMN interconnects not found (system = \"%s\")" % S.system_type, file=sys.stderr)
+        guest_type = cmn_devmem_find.system_is_probably_guest()
+        if guest_type:
+            print("System appears to be running as a %s guest" % (guest_type), file=sys.stderr)
         sys.exit(1)
     for c in S.CMNs:
         print("Found %s" % c)

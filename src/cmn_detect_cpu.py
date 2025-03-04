@@ -24,7 +24,10 @@ complicate some kinds of traffic analysis.
 
 from __future__ import print_function
 
-import os, sys, multiprocessing, json
+import os
+import sys
+import multiprocessing
+
 import cmn_base
 import cmn_json
 import cmn_traffic_gen
@@ -253,7 +256,7 @@ def discover_cpus(S, cpu=None):
             # We could guard this with rp.lpid_clash, but we need to set the id
             # all the CPUs. Perhaps one of the CPUs on a CAL was fused out.
             for cpu in rp.cpus:
-                 discover_cpu_srcid(S, cpu)
+                discover_cpu_srcid(S, cpu)
     else:
         for c in iter_cpus(S):
             S.cpu_id[c] = S.cpu_rnf_port[c].port.base_id()
@@ -269,7 +272,8 @@ def prepare_system(S):
     S.n_cpu = multiprocessing.cpu_count()
     S.online_cpus = list_online_cpus()
     if S.online_cpus[-1] != S.n_cpu - 1:
-        print("Some CPUs may be offline: CPU numbers from %u to %u but %u are online" % (S.online_cpus[0], S.online_cpus[-1], S.n_cpu))
+        print("Some CPUs may be offline: CPU numbers from %u to %u but %u are online" %
+              (S.online_cpus[0], S.online_cpus[-1], S.n_cpu))
     S.rnf_ports = []
     # Our observations about where each CPU is,
     # progressively populated by watchpoint counting.

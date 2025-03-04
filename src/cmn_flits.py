@@ -9,6 +9,8 @@ SPDX-License-Identifier: Apache 2.0
 
 from __future__ import print_function
 
+import sys
+
 import chi_spec
 
 
@@ -164,6 +166,7 @@ def CHI_op_str(vc, n, short=False):
 def CHI_DAT_resp_str_nonsnoop(n):
     return ["I", "SC", "UC", "?3", "?4", "?5", "UD_PD", "SD_PD"][n]
 
+
 def CHI_DAT_resp_str_snoop(n):
     return ["I", "SC", "UC/UD", "SD", "I_PD", "SC_PD", "UC_PD", "?7"][n]
 
@@ -177,6 +180,9 @@ def CHI_DAT_resp_str(opcode, resp):
 
 
 def CHI_memattr_str(ma, order, snpattr):
+    """
+    Return a short string that summarizes the various memory attribute fields.
+    """
     Device = BIT(ma, 1)
     Allocate = BIT(ma, 3)
     Cacheable = BIT(ma, 2)
@@ -195,7 +201,7 @@ def CHI_memattr_str(ma, order, snpattr):
         elif not Cacheable:
             s = "nCB"
         else:
-            s = ["nS","S"][snpattr] + "WB" + ["nA","A"][Allocate]
+            s = ["nS", "S"][snpattr] + "WB" + ["nA", "A"][Allocate]
         if order != 0:
             s += ":ord%u" % order
     if s is None:
@@ -226,9 +232,13 @@ class CMNFlit:
         self.txnid = txnid         # CHI transaction id, always present: 8, 10 or 12 bits
         self.opcode = opcode       # meaning depends on channel
         self.srcid = srcid         # CHI source, 11 bits
+        self.lpid = None
         self.tgtid = tgtid         # CHI target, 11 bits
         self.tracetag = tracetag
         self.data = data
+
+    def is_DVM(self):
+        return (self.group.VC == REQ and self.opcode == 0x14) or (self.group.VC == SNP and self.opcode == 0x0d)
 
     def opcode_str(self, short=False):
         """
@@ -244,6 +254,14 @@ class CMNFlit:
             return CHI_DAT_resp_str(self.opcode, self.resp)
         else:
             return None
+
+    def DVM_opcode_str(self):
+        if self.is_DVM():
+            if self.group.VC == REQ:
+                return DVM_op_str[BITS(self.addr,11,3)]
+            elif self.group.VC == SNP and BIT(self.addr,0) == 0:
+                return DVM_op_str[BITS(self.addr,8,3)]
+        return None
 
     def short_str(self):
         """
@@ -273,7 +291,7 @@ class CMNFlit:
                 s += " lpid=%02x" % self.lpid
                 s += " ret=%03x:" % self.returnnid
                 s += self.group.txnid_fmt % self.returntxnid
-                s += " %16s %3u" % (self.group.addr_str(self.addr, self.NS), (1<<self.size))
+                s += " %16s %3u" % (self.group.addr_str(self.addr, self.NS), (1 << self.size))
                 if self.opcode != 0x14:
                     s += " %s" % (CHI_memattr_str(self.memattr, self.order, self.snpattr))
                 else:
@@ -324,6 +342,7 @@ class CMNFlit:
                     part = BIT(addr,0)
                     s += " #%u" % part
                     if part == 0:
+                        # SnpDVMOp part 0: same info as REQ DVMOp, but at different offset
                         addr_valid = BIT(addr,1)
                         vmid_valid = BIT(addr,2)
                         asid_valid = BIT(addr,3)
@@ -366,7 +385,7 @@ class CMNFlit:
 
 
 def BITS(x,p,n):
-    return (x >> p) & ((1<<n)-1)
+    return (x >> p) & ((1 << n)-1)
 
 
 def BIT(x,p):
@@ -382,13 +401,25 @@ def bytes_hex(x):
 
 def bytes_as_int(s):
     """
-    Given a byte string, form an integer such that the earliest bytes in
+    Given a byte string or byte-producing iterator
+    (Python2: str or bytearray, Python3: bytes or bytearray),
+    form an integer such that the later bytes in
     the string appear at the highest positions.
     """
+    if sys.version_info[0] >= 3:
+        return int.from_bytes(s, byteorder="little")
     n = 0
     for (i, b) in enumerate(s):
+        try:
+            b = ord(b)
+        except TypeError:
+            pass
         n |= (b << (i*8))
     return n
+
+
+assert bytes_as_int(b"\x12\x34\x56\x78\x9a") == 0x9a78563412
+assert bytes_as_int(bytearray(b"\x12\x34\x56\x78\x9a")) == 0x9a78563412
 
 
 def bytes_as_chunks(payload, size):
@@ -516,9 +547,10 @@ class CMNFlitGroup:
             s += "%s " % CHI_VC_strings[self.VC]
         if self.payload is not None:
             if self.flits:
+                sep = "  " if self.format == 2 else " "
                 if self.format == 0:
                     s += "TXNID: "
-                s += " ".join([f.long_str() for f in self.flits])
+                s += sep.join([f.long_str() for f in self.flits])
             elif self.format in [5, 6]:
                 s += "DATA(%s): %36s" % (["lo", "hi"][self.format-5], bytes_hex(reversed(self.payload)))
             else:
@@ -770,13 +802,14 @@ class CMNFlitGroup:
 
 
 if __name__ == "__main__":
-    import argparse, random
-    parser = argparse.ArgumentParser(description="CMN CHI flit decoder")
-    parser.add_argument("--cmn-version", type=int, help="set CMN version")
-    parser.add_argument("--no-mpam", action="store_true")
+    import argparse
+    import random
+    parser = argparse.ArgumentParser(description="CMN CHI flit decoder (self-tests)")
+    parser.add_argument("--cmn-version", type=int, help="set CMN version", required=True)
+    parser.add_argument("--no-mpam", action="store_true", help="indicate MPAM not present")
     parser.add_argument("--format", type=int)
-    parser.add_argument("--vc", type=int)
-    parser.add_argument("--tests", type=int, default=1000)
+    parser.add_argument("--vc", type=int, help="CHI channel (REQ/RSP/SNP/DAT)")
+    parser.add_argument("--tests", type=int, default=1000, help="number of tests to run")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     cfg = CMNTraceConfig(opts.cmn_version, not opts.no_mpam)
@@ -787,7 +820,7 @@ if __name__ == "__main__":
         wbytes = trace_size_bits(cfg) // 8
         def randbytes(n):
             x = 0
-            for i in range(n // 2):
+            for _ in range(n // 2):
                 x = (x << 16) | random.randrange(0xffff)
             return x.to_bytes(n, 'big')
         g.decode(randbytes(wbytes))

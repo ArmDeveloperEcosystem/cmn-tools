@@ -1,0 +1,228 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "title": "System description for Arm CMN-based system",
+    "type": "object",
+    "required": ["version", "elements"],
+    "additionalProperties": false,
+    "properties": {
+        "version": {
+            "description": "System descriptor JSON version (currently 1)",
+            "type": "integer"
+        },
+        "generator": {
+            "description": "Tool that generated the descriptor file",
+            "type": "string"
+        },
+        "date": {
+            "description": "Date/time generated, seconds since Linux epoch",
+            "type": "number"
+        },
+        "system_type": {
+            "description": "System type, e.g. vendor string from BIOS",
+            "type": "string"
+        },
+        "system_uuid": {
+            "description": "System UUID, from BIOS",
+            "type": "string"
+        },
+        "processor_type": {
+            "description": "Processor type",
+            "type": "string"
+        },
+        "elements": {
+            "description": "System elements, currently all CMNs",
+            "type": "array",
+            "items": {
+                "title": "System element",
+                "type": "object",
+                "required": ["type", "product"],
+                "additionalProperties": false,
+                "properties": {
+                    "type": {
+                        "description": "Element type e.g. interconnect",
+                        "type": "string",
+                        "enum": ["interconnect"]
+                    },
+                    "product": {
+                        "description": "Product name e.g. CMN",
+                        "type": "string"
+                    },
+                    "version": {
+                        "description": "Full product name e.g. CMN-700",
+                        "type": "string"
+                    },
+                    "revision": {
+                        "description": "Product revision",
+                        "type": "integer"
+                    },
+                    "frequency": {
+                        "description": "Current measured CMN frequency",
+                        "type": "number"
+                    },
+                    "config": {
+                        "description": "Product-specific configuration",
+                        "type": "object",
+                        "required": ["X", "Y", "chi_version", "xps"],
+                        "additionalProperties": false,
+                        "properties": {
+                            "base": {
+                                "description": "CMN base address as hex string",
+                                "type": "string"
+                            },
+                            "chi_version": {
+                                "description": "CHI version e.g. 5 = CHI-E",
+                                "type": "integer"
+                            },
+                            "mpam_enabled": {
+                                "type": "boolean"
+                            },
+                            "X": {
+                                "description": "X dimension",
+                                "type": "integer"
+                            },
+                            "Y": {
+                                "description": "Y dimension",
+                                "type": "integer"
+                            },
+                            "extra_ports": {
+                                "description": "(deprecated) true if some XPs have extra ports",
+                                "type": "boolean"
+                            },
+                            "xps": {
+                                "description": "CMN crosspoints",
+                                "type": "array",
+                                "items": {
+                                    "title": "CMN crosspoint",
+                                    "type": "object",
+                                    "required": ["X", "Y", "n_ports"],
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "X": {
+                                            "description": "X coordinate",
+                                            "type": "integer"
+                                        },
+                                        "Y": {
+                                            "description": "Y coordinate",
+                                            "type": "integer"
+                                        },
+                                        "n_ports": {
+                                            "description": "Number of XP ports",
+                                            "type": "integer"
+                                        },
+                                        "id": {
+                                            "description": "XP's CMN node id",
+                                            "type": "integer"
+                                        },
+                                        "logical_id": {
+                                            "description": "Logical ID",
+                                            "type": "integer"
+                                        },
+                                        "dtc": {
+                                            "description": "DTC domain",
+                                            "type": "integer"
+                                        },
+                                        "ports": {
+                                            "description": "XP ports",
+                                            "type": "array",
+                                            "items": {
+                                                "title": "CMN XP port",
+                                                "type": "object",
+                                                "required": ["port", "type"],
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "port": {
+                                                        "description": "XP port number",
+                                                        "type": "integer"
+                                                    },
+                                                    "type": {
+                                                        "description": "Port connected device type",
+                                                        "type": "integer"
+                                                    },
+                                                    "type_s": {
+                                                        "description": "Port connected device type",
+                                                        "type": "string"
+                                                    },
+                                                    "cal": {
+                                                        "description": "True if port has a Component Aggregation Layer (CAL)",
+                                                        "type": "boolean"
+                                                    },
+                                                    "devices": {
+                                                        "description": "Devices connected to port",
+                                                        "type": "array",
+                                                        "items": {
+                                                            "title": "CMN device node",
+                                                            "type": "object",
+                                                            "required": ["id", "type"],
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "id": {
+                                                                    "description": "Device node id",
+                                                                    "type": "integer"
+                                                                },
+                                                                "logical_id": {
+                                                                    "description": "Logical ID",
+                                                                    "type": "integer"
+                                                                },
+                                                                "type": {
+                                                                    "description": "Device type",
+                                                                    "type": "integer"
+                                                                },
+                                                                "type_s": {
+                                                                    "description": "Device type",
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "attached": {
+                                                        "description": "Attached external devices e.g. CPUs",
+                                                        "type": "array",
+                                                        "items": {
+                                                            "title": "Attached external device",
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "cpus": {
+            "description": "CPUs, as known to OS",
+            "type": "array",
+            "items": {
+                "title": "CPU",
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "description": "type",
+                        "type": "string",
+                        "enum": ["cpu"]
+                    },
+                    "cpu": {
+                        "description": "CPU number, as known to OS",
+                        "type": "integer"
+                    },
+                    "mseq": {
+                        "description": "CMN instance number",
+                        "type": "integer"
+                    },
+                    "id": {
+                        "description": "CHI srcid/tgtid",
+                        "type": "integer"
+                    },
+                    "lpid": {
+                        "description": "CHI LPID value",
+                        "type": "integer"
+                    }
+                }
+            }
+        }
+    }
+}

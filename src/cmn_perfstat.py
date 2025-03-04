@@ -11,7 +11,10 @@ CMN events will generally need sysctl kernel.perf_event_paranoid=0.
 
 from __future__ import print_function
 
+import sys
 import subprocess
+import time
+
 
 o_verbose = 0
 
@@ -56,7 +59,7 @@ class Reading:
         return s
 
 
-def perf_raw(events, time=None, command=None):
+def perf_raw(events, time=None, command=None, system_wide=True):
     """
     Given a list of PMU event specifiers (e.g. "arm_cmn/hnf_cache_miss/")
     return a list of Reading objects.
@@ -65,11 +68,15 @@ def perf_raw(events, time=None, command=None):
 
     The default perf subprocess is "sleep" so will generally be unscheduled during
     the measurement period - reading CPU events will not return sensible values.
+
+    By default we count system-wide counts. This is correct for CMN.
     """
     if time is None:
         time = o_time
     sep = '|'
     cmd = ["perf", "stat", "-x"+sep]
+    if system_wide:
+        cmd += ["-a"]
     for event in events:
         cmd += ["-e", event]
     cmd += ["--"]
@@ -105,7 +112,9 @@ def perf_raw(events, time=None, command=None):
         else:
             # perf stat has already scaled the value to account for partial scheduling.
             scaled_value = float(toks[0])
-            r = Reading(scaled_value=scaled_value, time_running_ns=toks[3], fraction_running=float(toks[4])/100.0, event=toks[2], time=time)
+            r = Reading(scaled_value=scaled_value,
+                        time_running_ns=toks[3], fraction_running=float(toks[4])/100.0,
+                        event=toks[2], time=time)
             n_valid += 1
             counts.append(r)
     # The returned list is always one-for-one with the input event list, but may contain None's
@@ -159,8 +168,8 @@ def perf_rate(events, time=None):
     return [(r.rate if r is not None else None) for r in readings]
 
 
-def _perf_rate1(event, time=None):
-    reading = perf_raw([event], time=time)[0]
+def _perf_rate1(event, time=None, system_wide=True, command=None):
+    reading = perf_raw([event], time=time, system_wide=system_wide, command=command)[0]
     return reading.rate if reading is not None else None
 
 
@@ -183,7 +192,16 @@ def cmn_frequency(instance=0, time=None):
     For now, we avoid both problems by arbitrarily getting the frequency
     from mesh #0, unless overridden.
     """
-    return _perf_rate1("arm_cmn_%u/dtc_cycles/" % instance)
+    return _perf_rate1("arm_cmn_%u/dtc_cycles/" % instance, time=time)
+
+
+def cpu_frequency(time=None):
+    """
+    Get the CPU frequency of a random CPU. We can't just count cpu_cycles,
+    because it doesn't count in WFx waits.
+    """
+    cmd = "%s %s --xx-spin" % ("python", __file__)
+    return _perf_rate1("cpu_cycles", time=time, system_wide=False, command=cmd)
 
 
 if __name__ == "__main__":
@@ -194,9 +212,15 @@ if __name__ == "__main__":
     parser.add_argument("--instance", type=int, default=0)
     parser.add_argument("-e", "--event", type=str, action="append", default=[], help="events to count")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
+    parser.add_argument("--xx-spin", action="store_true", help=argparse.SUPPRESS)
     opts = parser.parse_args()
     o_verbose = opts.verbose
+    if opts.xx_spin:
+        t_end = time.time() + opts.time
+        while time.time() < t_end:
+            pass
+        sys.exit()
     if opts.frequency:
+        print("CPU frequency: %s" % cpu_frequency(time=opts.time))
         print("CMN frequency: %s" % cmn_frequency(time=opts.time, instance=opts.instance))
     print(perf_stat(opts.event, time=opts.time))
-

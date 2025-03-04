@@ -18,6 +18,12 @@ from cmn_enum import *
 import multiprocessing
 from dmi import DMI
 
+import sys
+
+if sys.version_info[0] == 2:
+    PermissionError = OSError
+    FileNotFoundError = IOError
+
 
 o_verbose = 0
 
@@ -29,7 +35,7 @@ C = S.CMNs[0]
 def memsize_str(n):
     for u in range(4, 0, -1):
         if n >= (1 << (u*10)):
-            return "%.3g%sb" % ((float(n)/(1<<(u*10))), "BKMGT"[u])
+            return "%.3g%sb" % ((float(n) / (1 << (u*10))), "BKMGT"[u])
     return str(n)
 
 
@@ -63,7 +69,9 @@ def slc_size():
     for i in range(0, 9):
         try:
             level = int(cpu_prop("cache/index%u/level" % i))
-        except FileNotFoundError:
+        except FileNotFoundError as e:
+            if o_verbose >= 2:
+                print("file not found: %s" % (e), file=sys.stderr)
             break
         if level > max_level:
             max_index = i
@@ -82,7 +90,7 @@ def n_sockets():
 
 
 def cpu_frequency():
-    return None
+    return cmn_perfstat.cpu_frequency()
 
 
 def cmn_frequency():
@@ -110,7 +118,7 @@ class MemoryProperties:
                 # So we treat it as 1x64 rather than 2x32.
                 if self.n_channels is None:
                     self.n_channels = 0
-                self.n_channels +=  1
+                self.n_channels += 1
         except FileNotFoundError:
             if o_verbose:
                 print("Can't get memory properties from DMI", file=sys.stderr)
@@ -124,6 +132,7 @@ class MemoryProperties:
 
 
 g_mem = None
+
 
 def mem_props():
     global g_mem
@@ -206,7 +215,10 @@ if __name__ == "__main__":
                 except Exception as e:
                     par = None
                     if o_verbose:
-                        par = "<exception in script: %s>" % (type(e).__name__)
+                        if o_verbose >= 2:
+                            par = "<exception (%s): %s>" % (type(e).__name__, str(e))
+                        else:
+                            par = "<exception in script: %s>" % (type(e).__name__)
             if par is None:
                 par = "<not available>"
             print("  %30s: %s" % (pname, par))

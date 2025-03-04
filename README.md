@@ -2,8 +2,8 @@ CMN System Investigation Tools
 ==============================
 
 These tools help developers understand system performance on
-systems based on Arm's CMN family interconnects (CMN-600, CMN-650,
-CMN-700, CI-700 etc.).
+systems based on Arm&reg;'s CoreLink&trade; CMN family interconnects
+(CMN-600, CMN-650, CMN-700, CI-700 etc.).
 
 The tools are aimed at developers of complex multithreaded
 applications and middleware, and at system administrators and
@@ -38,7 +38,8 @@ System discovery and setup
 Some of the tools need a system topology description, to
 identify the specific configuration, topology and CPU locations
 for your system. This may already be available for your system.
-If not, it can be created using the discovery tools (see below).
+If not, it can be created using the discovery tools (see below),
+including cmn_discover.py and cmn_detect_cpu.py .
 
 The default location for this file in your home directory is:
 
@@ -118,15 +119,15 @@ Top-down analysis is currently at an experimental stage and will
 be significantly enhanced in upcoming releases of these tools.
 
 
-Constructing CHI watchpoint strings
------------------------------------
+Constructing CHI watchpoint strings for perf
+--------------------------------------------
 
 If the Linux CMN PMU driver is installed, CMN perf events are
 available through the ``perf_event_open`` interface and the ``perf``
 userspace tools. These should be sufficient for many purposes.
 
 In some cases it may be useful to construct CMN watchpoints to
-match and count certan types of interconnect traffic. This generally
+match and count certain types of interconnect traffic. This generally
 requires some level of knowledge of the CHI architecture.
 The ``cmnwatch.py`` script can be used to generate strings that
 match CHI flits. The strings can be passed to the ``perf`` command.
@@ -140,6 +141,24 @@ selected fields.
 Watchpoints can refer to a subset of CHI fields. Not all fields
 can be matched.
 
+Some field combinations may requiring simultaneous matching on
+two watchpoint filters, using CMN's watchpoint combination feature.
+``cmnwatch.py`` will automatically use the ``wp_combine``
+attribute in this case. For example,
+
+    perf stat -e `python cmnwatch.py up:req:opcode=ReadNoSnp:memattr=0bx00x`
+
+will match on opcode and memory attributes. These are in filter
+groups 0 and 1 respectively, so a combination watchpoint is needed.
+
+
+Capturing CHI traffic
+---------------------
+
+Watchpoints can also be used to capture CHI packet headers for
+analysis, and a tool ``cmn_capture.py`` is provided. For more
+details see README-capture.md .
+
 
 Troubleshooting
 ===============
@@ -148,10 +167,10 @@ It is difficult to cover all possible problems that might be
 encountered but we can cover some common issues:
 
  - the system might not be based on an Arm CMN interconnect.
-   cmn_discover.py will report this.
+   ``cmn_discover.py`` will report this.
 
  - the Linux CMN PMU driver might not be installed and enabled.
-   Check for /sys/devices/arm_cmn_0. (A future version of this
+   Check for ``/sys/devices/arm_cmn_0``. (A future version of this
    guide might explain how to enable the CMN PMU driver.)
 
  - insufficient privilege to see CMN PMU events. Try this:
@@ -162,7 +181,7 @@ encountered but we can cover some common issues:
    Some use cases for advanced watchpoints will not be
    available.
 
-Please also see TODO.md which lists some known limitations that
+Please also see ``TODO.md`` which lists some known limitations that
 may be addressed in future releases.
 
 
@@ -183,3 +202,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+
+Copyright Information
+=====================
+
+Arm is a registered trademark of Arm Limited (or its subsidiaries or affiliates).

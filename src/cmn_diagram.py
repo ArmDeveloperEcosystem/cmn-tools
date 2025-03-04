@@ -194,4 +194,4 @@ if __name__ == "__main__":
     C = S.CMNs[opts.cmn_instance]
     D = CMNDiagram(C, small=(not opts.large), xwidth=opts.xwidth, xheight=opts.xheight)
     D.update()
-    print(D.str_color(no_color=(opts.color=="never"), force_color=(opts.color=="always"), for_file=sys.stdout), end="")
+    print(D.str_color(no_color=(opts.color == "never"), force_color=(opts.color == "always"), for_file=sys.stdout), end="")

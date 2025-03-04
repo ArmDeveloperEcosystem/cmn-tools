@@ -11,7 +11,8 @@ Coordinates are the usual math orientation, i.e. (1,1) is north-east of (0,0).
 
 from __future__ import print_function
 
-import os, sys
+import os
+import sys
 import atexit     # if we hide the cursor, restore it on exit
 
 RED      = 1
@@ -37,6 +38,7 @@ _ANSI_RESET = "\x1b[0m"
 
 # Turn an integer into a printable character
 _alphameric = " 123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
 
 def _color_key(s):
     """
