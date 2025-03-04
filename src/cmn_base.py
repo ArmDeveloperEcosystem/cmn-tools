@@ -409,6 +409,12 @@ class CMN(NodeGroup):
         return self.id_lpid_cpu.get((id, lpid), None)
 
     def create_xp(self, x, y, id=None, n_ports=None, logical_id=None, dtc=None):
+        """
+        Create a new XP within this CMN instance.
+        n_ports indicates the configured number of ports, which might not
+        all be in use. E.g. if the XP is configured with 3 ports of which P0 and P2
+        are in use, pass in n_ports=3.
+        """
         xp = CMNXP(owner=self, id=id, logical_id=logical_id, n_ports=n_ports, x=x, y=y)
         xy = (x, y)
         assert xy not in self.xy_xp, "XP (%u,%u) already registered" % (x, y)

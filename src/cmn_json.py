@@ -15,6 +15,11 @@ import time
 import json
 import uuid
 
+try:
+    FileNotFoundError
+except NameError:
+    FileNotFoundError = IOError      # Python2
+
 import cmn_base
 import cmn_enum
 
@@ -87,7 +92,11 @@ def cmn_from_json(j, S):
             xp.dtc = jxp["dtc"]
         for jp in jxp["ports"]:
             p = jp["port"]
-            po = xp.create_port(port=p, type=jp["type"], type_s=jp["type_s"])
+            p_type = jp["type"]
+            # We now omit unconnected ports in the JSON, but some old files had "null" here
+            if p_type is None:
+                continue        # unconnected port
+            po = xp.create_port(port=p, type=p_type, type_s=jp["type_s"])
             po.cal = jp.get("cal", False)
             if "devices" in jp:
                 for jd in jp["devices"]:
@@ -130,14 +139,14 @@ def system_from_json(j, filename=None):
     """
     S = cmn_base.System(filename=filename)
     S.system_type = j.get("system_type", None)
-    if S.system_type is not None:
+    S.system_uuid = uuid.UUID(j["system_uuid"]) if "system_uuid" in j else None
+    S.processor_type = j.get("processor_type", None)
+    if S.system_type is not None and S.processor_type is not None:
         os_type = dmi_system_type()
         if os_type is not None and os_type != S.system_type:
             print("CMN file might be for different system:", file=sys.stderr)
             print("  This system:    %s" % os_type, file=sys.stderr)
             print("  System in file: %s" % S.system_type, file=sys.stderr)
-    S.system_uuid = uuid.UUID(j["system_uuid"]) if "system_uuid" in j else None
-    S.processor_type = j.get("processor_type", None)
     if "date" in j:
         # Currently a float as per time.time()
         S.timestamp = float(j["date"])
