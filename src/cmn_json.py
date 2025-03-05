@@ -147,7 +147,7 @@ def system_from_json(j, filename=None):
             print("CMN file might be for different system:", file=sys.stderr)
             print("  This system:    %s" % os_type, file=sys.stderr)
             print("  System in file: %s" % S.system_type, file=sys.stderr)
-    if "date" in j:
+    if "date" in j and j["date"] is not None:
         # Currently a float as per time.time()
         S.timestamp = float(j["date"])
     elif filename is not None:
@@ -256,7 +256,7 @@ def json_from_system(S):
     j = {
         "version": S.version,
         "generator": os.path.basename(__file__),
-        "date": S.timestamp,
+        "date": S.timestamp,     # currently a float
         "elements": []
     }
     if S.system_type is not None:

@@ -29,6 +29,7 @@ def system_description():
     """
     S = cmn_base.System()
     S.CMNs = [cmn_devmem.CMN(loc) for loc in cmn_devmem_find.cmn_locators()]
+    S.timestamp = time.time()
     # Try to discover the CMN clock frequency
     for c in S.CMNs:
         c.frequency = c.estimate_frequency()
