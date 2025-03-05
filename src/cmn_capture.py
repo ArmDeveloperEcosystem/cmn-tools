@@ -60,7 +60,7 @@ def add_trace_arguments(parser):
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("--decode-verbose", type=int, default=0)
-    parser.add_argument("watchpoint", type=str, help="short-form watchpoint specifier")
+    parser.add_argument("watchpoint", type=str, nargs="?", help="short-form watchpoint specifier")
 
 
 def cmn_desc(cmn_direct):
