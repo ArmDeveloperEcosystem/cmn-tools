@@ -9,12 +9,13 @@ SPDX-License-Identifier: Apache 2.0
 
 from __future__ import print_function
 
+import sys
+
 import cmn_json
 import cmn_perfstat
 import cmnwatch
 from cmn_enum import *
-
-import sys
+import cmn_perfcheck
 
 
 o_verbose = 0
@@ -274,6 +275,10 @@ if __name__ == "__main__":
         opts.level = ["1"]
     if opts.all:
         opts.level = ["1", "2", "3"]
+    if not cmn_perfcheck.check_cmn_pmu_events():
+        print("CMN perf events not available - can't do top-down analysis",
+              file=sys.stderr)
+        sys.exit(1)
     print("CMN Top-down performance analysis")
     print("=================================")
     for level in opts.level:

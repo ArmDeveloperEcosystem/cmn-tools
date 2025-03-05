@@ -33,8 +33,9 @@ import cmn_json
 import cmn_traffic_gen
 from cmn_enum import *
 import cmn_diagram
-
+import cmn_perfcheck
 import cmnwatch
+
 
 # Verbosity levels (command-line defaults to 1 when running interactive):
 #   0: very quiet
@@ -377,6 +378,10 @@ if __name__ == "__main__":
     o_force_lpid = opts.force_discover
     o_force_srcid = opts.force_discover
     cmn_traffic_gen.o_verbose = opts.verbose >= 3
+    if not cmn_perfcheck.check_cmn_pmu_events():
+        print("CPU detection requires kernel support for CMN PMU events",
+              file=sys.stderr)
+        sys.exit(1)
     S = cmn_json.system_from_json_file(opts.json)
     if S.has_cpu_mappings():
         print("%s: already has CPU mappings - " % opts.json, end="")

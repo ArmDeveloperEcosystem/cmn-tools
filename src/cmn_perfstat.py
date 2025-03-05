@@ -6,7 +6,9 @@ Collect perf values for a set of CMN events (or events in general).
 Copyright (C) Arm Ltd. 2024. All rights reserved.
 SPDX-License-Identifier: Apache 2.0
 
-CMN events will generally need sysctl kernel.perf_event_paranoid=0.
+CMN events will need the arm-cmn module to be built or installed
+into the kernel, and also generally need
+  sysctl kernel.perf_event_paranoid=0.
 """
 
 from __future__ import print_function
@@ -14,6 +16,8 @@ from __future__ import print_function
 import sys
 import subprocess
 import time
+
+import cmn_perfcheck
 
 
 o_verbose = 0
@@ -216,6 +220,7 @@ if __name__ == "__main__":
     opts = parser.parse_args()
     o_verbose = opts.verbose
     if opts.xx_spin:
+        # only used when we invoke ourselves recursively
         t_end = time.time() + opts.time
         while time.time() < t_end:
             pass
