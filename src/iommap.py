@@ -3,7 +3,7 @@
 """
 Reimplementation of the standard Python mmap module with better
 control over access width, to support memory-mapped I/O.
-
+Also implements mprotect - see Python issue #114233
 
 Copyright (C) ARM Ltd. 2019.  All rights reserved.
 
@@ -39,12 +39,18 @@ del real_mmap
 
 
 _libc = ctypes.CDLL(None, use_errno=True)
+
 _libc_mmap = _libc.mmap
 _libc_mmap.restype = ctypes.c_void_p
 _libc_mmap.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_size_t]
+
 _libc_munmap = _libc.munmap
 _libc_munmap.restype = ctypes.c_int
 _libc_munmap.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+
+_libc_mprotect = _libc.mprotect
+_libc.mprotect.restype = ctypes.c_int
+_libc.mprotect.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int]
 
 
 class mmap:
@@ -66,6 +72,11 @@ class mmap:
 
     def close(self):
         rc = _libc_munmap(self.addr, self.size)
+        if rc != 0:
+            raise OSError
+
+    def mprotect(self, prot):
+        rc = _libc_mprotect(self.addr, self.size, prot)
         if rc != 0:
             raise OSError
 

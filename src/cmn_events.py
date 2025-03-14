@@ -17,9 +17,10 @@ E.g. CMN-600 HN-F, event 0xf (POCQ occupancy), uses the filter.
 
 from __future__ import print_function
 
-from cmn_enum import *
-
 import os
+import sys
+
+from cmn_enum import *
 
 
 o_verbose = 0
@@ -79,14 +80,15 @@ class Events:
         s = "{CMN PMU events: %u events, node types: %u}" % (len(list(self.events_by_node_ix.keys())), len(list(self.node_types())))
         return s
 
-    def add(self, node_type=None, pmu_index=0, event_number=None, pmu_event_name=None, filter=None, description=None, add_name=True):
+    def add(self, node_type=None, pmu_index=0, event_number=None, pmu_event_name=None, filter=None, description=None, add_name=True, allow_duplicates=True):
         if filter is not None:
             k = (node_type, pmu_index, event_number, filter)
         else:
             k = (node_type, pmu_index, event_number)
         if k in self.events_by_node_ix:
             e = self.events_by_node_ix[k]
-            #assert False, "duplicate %s and %s" % (e, pmu_event_name)
+            if not allow_duplicates:
+                assert False, "duplicate %s and %s" % (e, pmu_event_name)
         else:
             e = Event(self, node_type=node_type, pmu_index=pmu_index,
                       event_number=event_number, pmu_event_name=pmu_event_name, filter=filter,
@@ -152,34 +154,48 @@ class Events:
         with open(fn) as f:
             for ln in f:
                 x = ln.strip().split(',')
-                nt = int(x[0], 16)
-                pi = int(x[1])
-                en = int(x[2], 16)
-                fi = int(x[3], 16) if x[3] else None
-                mn = x[4] if x[4] else None
+                nt = int(x[0], 16)        # node type
+                pi = int(x[1])            # PMU index (usually zero)
+                en = int(x[2], 16)        # event number
+                fi = int(x[3], 16) if x[3] else None   # sub-field value
+                mn = x[4] if x[4] else None      # mnemonic
                 de = x[5] if x[5] else None
-                e = self.add(node_type=nt, pmu_index=pi, event_number=en, filter=fi, pmu_event_name=mn, description=de)
+                e = self.add(node_type=nt, pmu_index=pi, event_number=en, filter=fi, pmu_event_name=mn, description=de, allow_duplicates=False)
                 assert e == self.get_event(nt, en, pmu_index=pi, filter=fi), "bad load %s" % e
                 n_added += 1
         if o_verbose:
-            print("cmn_events: %u events added from %s" % (n_added, fn))
+            print("cmn_events: %u events added from %s" % (n_added, fn),
+                  file=sys.stderr)
         return self
+
+    def dump_f(self, f):
+        """
+        Dump the event set to a CSV file (takes file object).
+        """
+        n_written = 0
+        for e in self.events():
+            flds = [hex(e.node_type), str(e.pmu_index), hex(e.event_number)]
+            flds.append(hex(e.filter) if e.filter is not None else "")
+            flds.append(e.pmu_event_name if e.pmu_event_name is not None else "")
+            flds.append(e.description if e.description is not None else "")
+            print(','.join(flds), file=f)
+            n_written += 1
+        return n_written
 
     def dump(self, fn):
         """
-        Dump the event set to a CSv file.
+        Dump the event set to a CSv file. Handles "-" meaning stdout.
+        (There doesn't seem to be a nice pattern for this.)
         """
-        n_written = 0
-        with open(fn, "w") as f:
-            for e in self.events():
-                flds = [hex(e.node_type), str(e.pmu_index), hex(e.event_number)]
-                flds.append(hex(e.filter) if e.filter is not None else "")
-                flds.append(e.pmu_event_name if e.pmu_event_name is not None else "")
-                flds.append(e.description if e.description is not None else "")
-                print(','.join(flds), file=f)
-                n_written += 1
+        if fn == "-":
+            n_written = self.dump_f(sys.stdout)
+            fn = "stdout"
+        else:
+            with open(fn, "w") as f:
+                n_written = self.dump_f(f)
         if o_verbose:
-            print("cmn_events: %u events written to %s" % (n_written, fn))
+            print("cmn_events: %u events written to %s" % (n_written, fn),
+                  file=sys.stderr)
 
 
 def load_events(fn):
@@ -241,7 +257,8 @@ def _add_sysfs_events(E):
             E.add(node_type=CMN_NODE_CCLA_RNI, pmu_index=1, event_number=en, pmu_event_name=e, filter=fi, add_name=False)
         n_added += 1
     if o_verbose:
-        print("cmn_events: %u events added from sysfs" % n_added)
+        print("cmn_events: %u events added from sysfs" % n_added,
+              file=sys.stderr)
     return E
 
 
@@ -263,6 +280,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", type=str, help="input CSV file")
     parser.add_argument("--add-sysfs", action="store_true", help="add events from sysfs")
+    parser.add_argument("--list", action="store_true", help="list all events")
     parser.add_argument("-o", "--output", type=str, help="output CSV file")
     parser.add_argument("-v", "--verbose", action="count", default=0)
     opts = parser.parse_args()
@@ -272,10 +290,11 @@ if __name__ == "__main__":
         E.load(opts.input)
     if opts.add_sysfs or not opts.input:
         _add_sysfs_events(E)
-    if opts.verbose:
-        print("cmn_events: %u events, %u node types" % (len(list(E.events())), len(list(E.node_types()))))
-        print("cmn_events: node types: %s" % str(E.node_types()))
+    if opts.verbose or not (opts.list or opts.output):
+        print("cmn_events: %u events, %u node types" %
+              (len(list(E.events())), len(list(E.node_types()))), file=sys.stderr)
+        print("cmn_events: node types: %s" % str(E.node_types()), file=sys.stderr)
     if opts.output:
-        E.dump(opts.output)
-    else:
+        E.dump(opts.output)    # Dump to CSV file
+    if opts.list:
         E.print()

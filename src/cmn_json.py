@@ -20,32 +20,13 @@ try:
 except NameError:
     FileNotFoundError = IOError      # Python2
 
+import app_data
 import cmn_base
 import cmn_enum
 
 
-def cmn_config_cache(name=None):
-    """
-    Get the default location for CMN JSON description files,
-    ensuring that the subdirectory exists.
-    We allow for the fact that this script is likely to be run under 'sudo'.
-    """
-    user = os.environ.get("SUDO_USER", os.environ.get("USER"))
-    pcache = os.path.expanduser("~" + user + "/.cache")
-    if not os.path.isdir(pcache):
-        os.mkdir(pcache)
-        change_to_real_user_if_sudo(pcache)
-    pcache = os.path.join(pcache, "arm")
-    if not os.path.isdir(pcache):
-        os.mkdir(pcache)
-        change_to_real_user_if_sudo(pcache)
-    if name is not None:
-        return os.path.join(pcache, name)
-    return pcache
-
-
 def cmn_config_filename():
-    return cmn_config_cache("cmn-system.json")
+    return app_data.app_data_cache("cmn-system.json")
 
 
 def cmn_config_default(fn):
@@ -273,23 +254,6 @@ def json_from_system(S):
     return j
 
 
-def change_to_real_user_if_sudo(fn):
-    """
-    When writing a file as sudo, we might want it to be owned by the "real" user
-    to avoid complications when later using it as non-sudo.
-    """
-    if "SUDO_USER" in os.environ:
-        user = os.environ["SUDO_USER"]
-        if sys.version_info[0] >= 3:
-            import shutil
-            shutil.chown(fn, user=user, group=user)
-        else:
-            # Python2 shutil doesn't have chown().
-            import pwd
-            import grp
-            os.chown(fn, pwd.getpwnam(user).pw_uid, grp.getgrnam(user).gr_gid)
-
-
 def json_dump_file_from_system(S, fn):
     """
     Dump the system description into a JSON file.
@@ -307,7 +271,7 @@ def json_dump_file_from_system(S, fn):
         with open(fn, "w") as f:
             json.dump(j, f, indent=4)
         if fn == cmn_config_filename():
-            change_to_real_user_if_sudo(fn)
+            app_data.change_to_real_user_if_sudo(fn)
 
 
 if __name__ == "__main__":

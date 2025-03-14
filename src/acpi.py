@@ -96,9 +96,16 @@ class APIC_GICC:
 
 class APIC(ACPITable):
     """
-    Interrupt controller definition
+    APIC: Interrupt controller definition
     """
     type_names = {
+        0x00: "proc local",
+        0x01: "I/O APIC",
+        0x02: "interrupt source",
+        0x03: "NMI source",
+        0x04: "local APIC NMI",
+        0x09: "proc x2APIC",
+        0x0a: "local x2APIC NMI",
         0x0b: "GICC",
         0x0c: "GICD",
         0x0e: "GICR",
@@ -121,12 +128,14 @@ class APIC(ACPITable):
             id = ih + self.f.read(ilen-2)
             assert len(id) == ilen
             if o_verbose:
-                print("  type:%02x (%s)  data:%s" % (itype, self.type_names[itype], hexstr(id)))
+                print("  APIC type:%02x (%s)  len:%2u  data:%s" % (itype, self.type_names.get(itype, "?"), ilen, hexstr(id)))
             # Dispatch on IRQ node type. Some of these are Arm-specific, but it is not obvious
             # how to work out from the APIC header that we're dealing with an Arm system.
             # At least the Arm-specific codes are allocated in the main ACPI specs, and don't
             # seem to mean entirely different things on different architectures.
-            if itype == 0xB:
+            if itype == 0x9:
+                (self.x2apic_id, self.flags, self.acpi_processor_uid) = struct.unpack("<III", id[4:16])
+            elif itype == 0xB:
                 (_, cpuif, cpuid, flags, _, pmu_irq, pp_addr, base_addr, gicv_addr, gich_addr, vgic_irq, gicr_addr, mpidr, pclass, _, spe_irq) = struct.unpack("<IIIIIIQQQQIQQBBH", id[:80])
                 if spe_irq == 0:
                     spe_irq = None
@@ -234,7 +243,7 @@ class PPTTStruct:
 
 class PPTT(ACPITable):
     """
-    Processor Properties Topology Table
+    PPTT: Processor Properties Topology Table
 
     Topological structure of processors, and their shared resources, such as caches.
     """
@@ -267,7 +276,7 @@ class PPTT(ACPITable):
 
 class SLIT(ACPITable):
     """
-    System Locality Distance Information Table
+    SLIT: System Locality Distance Information Table
 
     This is a matrix representing latency between localities
     """
@@ -313,8 +322,16 @@ class SRATStruct:
 
 class SRAT(ACPITable):
     """
-    System resources affinity
+    SRAT: System resources affinity
     """
+    type_names = {
+        0x00: "cpu",
+        0x01: "mem",
+        0x02: "x2apic",
+        0x03: "gicc",
+        0x04: "its",
+    }
+
     def __init__(self, fn=None, handle=None, sig=b"SRAT"):
         ACPITable.__init__(self, fn, handle=handle, sig=sig)
         self.structs = []
@@ -326,9 +343,11 @@ class SRAT(ACPITable):
             (itype, ilen) = struct.unpack("<BB", ih)
             id = ih + self.f.read(ilen-2)
             assert len(id) == ilen
+            if o_verbose:
+                print("  SRAT type:%02x (%s)  len:%2u  data:%s" % (itype, self.type_names.get(itype, "?"), ilen, hexstr(id)))
             s = SRATStruct(itype)
             if itype == 0:
-                (_, pd0, s.apic_id, s.flags, spd, s.cd, s.enabled) = struct.unpack("<HBBIIIB", id[:17])
+                (_, pd0, s.apic_id, s.flags, spd, s.cd) = struct.unpack("<HBBIII", id[:16])
                 s.pd = (spd & 0xffffff00) | pd0
                 s.sapic_eid = spd & 0xff
             elif itype == 1:

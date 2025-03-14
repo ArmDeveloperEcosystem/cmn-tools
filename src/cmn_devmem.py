@@ -19,7 +19,7 @@ import struct
 import time
 import traceback
 
-import iommap as mmap
+import devmem
 import cmn_devmem_find as cmn_find
 import cmn_base
 from cmn_enum import *
@@ -50,34 +50,6 @@ assert hexstr(b"\x12\x34") == "1234"
 DIAG_DEFAULT  = 0x00
 DIAG_READS    = 0x01     # Trace all device reads
 DIAG_WRITES   = 0x02     # Trace all device writes
-
-
-class DevMem:
-    def __init__(self):
-        self.page_size = os.sysconf("SC_PAGE_SIZE")
-        self.fd = None
-        self.fd = open("/dev/mem", "r+b")
-        self.fno = self.fd.fileno()
-
-    def __del__(self):
-        if self.fd is not None:
-            self.fd.close()
-
-    def map(self, physaddr, size, write=False):
-        assert (size % self.page_size) == 0
-        if write:
-            prot = (mmap.PROT_READ | mmap.PROT_WRITE)
-        else:
-            prot = mmap.PROT_READ
-        m = mmap.mmap(self.fno, size, mmap.MAP_SHARED, prot, offset=physaddr)
-        return m
-
-
-def map_read64(m, off):
-    assert (off % 8) == 0, "invalid offset: 0x%x" % off
-    raw = m[off:off+8]
-    x = struct.unpack("<Q", raw)[0]
-    return x
 
 
 # Register offsets
@@ -143,7 +115,6 @@ class CMNNode:
         self.is_external = is_external
         assert node_offset not in self.C.offset_node, "node already discovered: %s" % self.C.offset_node[node_offset]
         self.C.offset_node[node_offset] = self
-        self.write = write
         self.node_base_addr = cmn.periphbase + node_offset
         if self.C.verbose >= 2:
             self.C.log("created node at 0x%x" % self.node_base_addr, level=2)
@@ -170,16 +141,18 @@ class CMNNode:
         return (self.diag_trace | self.C.diag_trace) & DIAG_WRITES
 
     def ensure_writeable(self):
-        if not self.write:
-            self.m = self.C.D.map(self.node_base_addr, self.C.node_size(), write=True)
-            self.write = True
+        if not self.m.writing:
+            self.m = self.m.ensure_writeable()
+
+    def set_secure_access(self, is_secure):
+        self.m.set_secure_access(is_secure)
 
     def read64(self, off):
         if self.do_trace_reads():
             print()
             print("at %s" % self.C.source_line())
             self.C.log("%s: read 0x%x (0x%x)" % (str(self), off, self.node_base_addr+off), end="")
-        data = map_read64(self.m, off)
+        data = self.m.read64(off)
         if self.do_trace_reads():
             self.C.log(" => 0x%x" % data, prefix=None)
         return data
@@ -195,17 +168,17 @@ class CMNNode:
         pass
 
     def write64(self, off, data, check=None):
+        """
+        Write to a device register. N.b. we automatically upgrade the
+        mapping to writeable, i.e. remove write-protection, on the
+        assumption that the caller knows what they are doing.
+        """
         self.ensure_writeable()
         self.check_reg_is_writeable(off)
-        if check is None:
-            check = self.C.check_writes
         if self.do_trace_writes():
             print("at %s" % self.C.source_line())
             self.C.log("%s: write 0x%x := 0x%x" % (str(self), off, data))
-        self.m[off:off+8] = struct.pack("Q", data)
-        if check:
-            ndata = self.read64(off)
-            assert ndata == data, "%s: at 0x%04x wrote 0x%x, read back 0x%x" % (self, off, data, ndata)
+        self.m.write64(off, data, check=check)
 
     def set64(self, off, mask, check=None):
         old = self.read64(off)
@@ -1081,7 +1054,6 @@ class CMN:
     #DTM_WP_CC_EN              = 0x1000   # enable cycle count (TBD: 0x4000 on CMN-700)
 
     def __init__(self, cmn_loc, check_writes=False, verbose=0, restore_dtc_status=False, secure_accessible=None):
-        self.check_writes = check_writes
         self.verbose = verbose
         self.diag_trace = DIAG_WRITES if (verbose >= 2) else DIAG_DEFAULT
         self._restore_dtc_status = restore_dtc_status
@@ -1095,7 +1067,7 @@ class CMN:
         # CMNProductConfig object will be created when we read CMN_CFG_PERIPH_01
         # from the root node
         self.product_config = None
-        self.D = DevMem()
+        self.D = devmem.DevMem(write=False, check=check_writes)
         self.offset_node = {}     # nodes indexed by register space offset
         # How do we find the dimensions?
         # We could look at the maximum X,Y across all XPs. But to decode X,Y
@@ -1116,7 +1088,7 @@ class CMN:
         # know that until we've mapped the root config node...
         # create a temporary 16K mapping to get out of that.
         temp_m = self.D.map(self.periphbase+rootnode_offset, 0x4000)
-        id01 = map_read64(temp_m, CMN_CFG_PERIPH_01)
+        id01 = temp_m.read64(CMN_CFG_PERIPH_01)
         product_id = (BITS(id01, 32, 4) << 8) | BITS(id01, 0, 8)
         if cmn_loc.product_id is not None:
             assert cmn_loc.product_id == product_id, "expecting %s, found %s" % (cmn_base.product_id_str(cmn_loc.product_id), cmn_base.product_id_str(product_id))
@@ -1282,7 +1254,7 @@ class CMN:
         assert self.creating
         node_base_addr = self.periphbase + node_offset
         m = self.D.map(node_base_addr, self.node_size())
-        node_info = map_read64(m, CMN_any_NODE_INFO)
+        node_info = m.read64(CMN_any_NODE_INFO)
         node_type = BITS(node_info, 0, 16)
         if parent is None:
             # Expecting the configuration node. If we see something else,
@@ -1294,7 +1266,7 @@ class CMN:
         # For some node types, we create a subclass object.
         if node_type == CMN_NODE_DT:
             # Debug/Trace Controller - one or more of these, generally in a corner of the mesh
-            n = CMNNodeDT(self, node_offset, map=None, parent=parent, write=True)
+            n = CMNNodeDT(self, node_offset, map=None, parent=parent, write=False)
             assert n not in self.debug_nodes
             self.debug_nodes.append(n)
         elif node_type == CMN_NODE_XP:
@@ -1598,9 +1570,9 @@ def show_cmn(cmn, verbose=0):
                         def nonhash(r):
                             nhm = [0xC08, 0xC10, 0xC18, 0xC20, 0xC28, 0xCA0, 0xCA8, 0xCB0, 0xCB8, 0xCC0]
                             nhn = [0xC30, 0xC38, 0xC40, 0xCE0, 0xCE8]
-                            i2 = n.read64(nhm[r//2])
+                            i2 = n.read64(nhm[r // 2])
                             info = BITS(i2, (r & 1)*32, 32)
-                            n4 = n.read64(nhn[r//4])
+                            n4 = n.read64(nhn[r // 4])
                             nodeid = BITS(n4, (r & 3)*12, 11)
                             return (info, nodeid)
                         for r in range(0, 20):
@@ -1682,7 +1654,7 @@ class CMNDiagramPerf(CMNDiagram):
     def update(self):
         CMNDiagram.update(self)
         for xp in self.C.XPs():
-            if xp.pmu_is_enabled():
+            if xp.dtm.pmu_is_enabled():
                 (cx, cy) = self.XP_xy(xp)
                 # Get the current PMU values, and calculate the deltas.
                 cfg = self.pmu_config[xp]
