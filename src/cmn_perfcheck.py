@@ -27,9 +27,17 @@ class CMNNoPerf(OSError):
 
 def is_cmn_pmu_installed():
     """
-    Check if the arm-cmn driver has loaded and registered.
+    Return true if the arm-cmn driver has loaded and registered.
     """
     return os.path.exists("/sys/bus/event_source/devices/arm_cmn_0")
+
+
+def check_cmn_pmu_installed():
+    """
+    Check that the arm-cmn driver is loaded, else throw CMNNoPerf.
+    """
+    if not is_cmn_pmu_installed():
+        raise CMNNoPerf
 
 
 def perf_event_paranoid():

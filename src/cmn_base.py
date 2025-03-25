@@ -25,6 +25,10 @@ from cmn_enum import *
 SYSTEM_DESC_VERSION = 1
 
 
+def BITS(x, p, n):
+    return (x >> p) & ((1 << n) - 1)
+
+
 class NodeGroup:
     """
     Abstract base class for a group of nodes, either one mesh or several.
@@ -283,6 +287,10 @@ def cmn_version(s):
 
 
 def id_coord_bits(dimX, dimY):
+    """
+    The number of bits used for both X and Y coordinates in device ids
+    is derived from the larger of the two dimensions.
+    """
     md = max(dimX, dimY)
     if md > 8:
         return 4
@@ -299,7 +307,7 @@ class CMN(NodeGroup):
     There may be multiple CMN meshes in a system.
     """
     def __init__(self, owner=None, dimX=None, dimY=None, seq=None, config=None, extra_ports=None):
-        self.owner = owner
+        self.owner = owner     # e.g. System
         self.product_config = config
         self.seq = seq         # sequence number within the system
         self.periphbase = None
@@ -321,6 +329,24 @@ class CMN(NodeGroup):
         """
         for xpi in sorted(self.id_xp.keys()):
             yield self.id_xp[xpi]
+
+    def XP_at(self, x, y):
+        """
+        Return the XP at a specific (x, y) coordinate.
+        """
+        return self.xy_xp[(x, y)]
+
+    def xy_id(self, x, y):
+        """
+        Calculate the XP id from coordinates
+        """
+        return (x << (3 + self.id_coord_bits)) | (y << 3)
+
+    def id_xy(self, id):
+        """
+        Calculate the (X, Y) coordinates from a device id
+        """
+        return (BITS(id, 3+self.id_coord_bits, self.id_coord_bits), BITS(id, 3, self.id_coord_bits))
 
     def ports(self, properties=0):
         """
@@ -646,7 +672,7 @@ class CMNXP(CMNNodeBase):
     """
     def __init__(self, owner=None, id=None, logical_id=None, n_ports=None, x=None, y=None):
         assert isinstance(owner, CMN)
-        calc_id = (x << (3 + owner.id_coord_bits)) | (y << 3)
+        calc_id = owner.xy_id(x, y)
         if id is not None:
             assert calc_id == id, "(%u,%u) should have id=0x%x, has 0x%x" % (x, y, calc_id, id)
         else:
@@ -714,7 +740,20 @@ class CMNXP(CMNNodeBase):
         return self.port[p].connected_type_s
 
     def port_nodes(self, p):
+        """
+        The list of all device nodes for a given port. Indexes in this list
+        are not the "device number" - the list may include several CMN nodes
+        for a given device number.
+        """
         return self.port[p].devices
+
+    def port_nodes_by_device(self, p, d):
+        """
+        All device nodes with a given device number.
+        """
+        for dev in self.port[p].devices:
+            if dev.device == d:
+                yield dev
 
     def port_has_cal(self, p):
         return self.port[p].cal

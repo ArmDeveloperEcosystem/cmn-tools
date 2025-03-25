@@ -136,10 +136,10 @@ cmn_port_device_type_strings = {
     # 0x00 is reserved, but seems to mean that there is no device on the port
     0x01: "RN-I",            # Non-caching requester
     0x02: "RN-D",            # RN-I that can accept snoops on the DVM channel
-    0x04: "RN-F_CHIB",       # CHI Issue B processor/cluster with built-in SAM
-    0x05: "RN-F_CHIB_ESAM",  # CHI Issue B processor/cluster with external SAM
-    0x06: "RN-F_CHIA",       # CHI Issue A processor/cluster with built-in SAM
-    0x07: "RN-F_CHIA_ESAM",  # CHI Issue A processor/cluster with external SAM
+    0x04: "RN-F_B",          # CHI Issue B processor/cluster with built-in SAM
+    0x05: "RN-F_B_E",        # CHI Issue B processor/cluster with external SAM
+    0x06: "RN-F_A",          # CHI Issue A processor/cluster with built-in SAM
+    0x07: "RN-F_A_E",        # CHI Issue A processor/cluster with external SAM
     0x08: "HN-T",            # HN-I with debug/trace control
     0x09: "HN-I",            # Home Node I/O, non-coherent
     0x0a: "HN-D",            # HN-T, with CFG and DVM, power control etc.
@@ -147,17 +147,17 @@ cmn_port_device_type_strings = {
     0x0c: "SN-F",            # Memory controller
     0x0d: "SBSX",            # CHI to AXI bridge
     0x0e: "HN-F",            # Home Node Full, fully coherent, with SLC and/or SF
-    0x0f: "SN-F_CHIE",
-    0x10: "SN-F_CHID",
+    0x0f: "SN-F_E",
+    0x10: "SN-F_D",
     0x11: "CXHA",
     0x12: "CXRA",
     0x13: "CXRH",
-    0x14: "RN-F_CHID",
-    0x15: "RN-F_CHID_ESAM",
-    0x16: "RN-F_CHIC",
-    0x17: "RN-F_CHIC_ESAM",
-    0x18: "RN-F_CHIE",
-    0x19: "RN-F_CHIE_ESAM",
+    0x14: "RN-F_D",
+    0x15: "RN-F_D_E",
+    0x16: "RN-F_C",
+    0x17: "RN-F_C_E",
+    0x18: "RN-F_E",
+    0x19: "RN-F_E_E",
     0x1a: "HN-S",
     0x1b: "LCN",
     0x1c: "MTSX",

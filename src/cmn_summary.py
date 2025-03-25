@@ -12,13 +12,13 @@ Note: some figures reported are per mesh instance, not system-wide.
 
 from __future__ import print_function
 
+import os
+import sys
+
 import cmn_json
 import cmn_perfstat
 from cmn_enum import *
-import multiprocessing
 from dmi import DMI
-
-import sys
 
 if sys.version_info[0] == 2:
     PermissionError = OSError
@@ -29,7 +29,7 @@ o_verbose = 0
 
 
 S = cmn_json.system_from_json_file()
-C = S.CMNs[0]
+C = S.CMNs[0] if S.CMNs else None
 
 
 def memsize_str(n):
@@ -52,7 +52,11 @@ def cpu_identification():
 
 
 def n_cpus():
-    return multiprocessing.cpu_count()
+    """
+    Return the number of CPUs, including offline CPUs.
+    (multiprocessing.cpu_count() only returns online CPUs.)
+    """
+    return os.sysconf(os.sysconf_names["SC_NPROCESSORS_CONF"])
 
 
 def popcount(x):
@@ -108,11 +112,17 @@ class MemoryProperties:
     def __init__(self):
         self.speed = None          # MT/s
         self.n_channels = None
-        self.data_width = None
+        self.data_width_bits = None
+        self.discover()
+
+    def is_valid(self):
+        return self.speed is not None
+
+    def discover(self):
         try:
             for d in DMI().memory():
                 self.speed = d.c_speed_mts
-                self.data_width = d.d_width
+                self.data_width_bits = d.d_width
                 # DDR5 (DMI mem_type >= 0x20) physically have 2 32-bit channels,
                 # but in DMI reporting, they are reported as 64-bit.
                 # So we treat it as 1x64 rather than 2x32.
@@ -125,19 +135,25 @@ class MemoryProperties:
             pass
 
     def total_bandwidth(self):
-        if self.data_width is None:
+        if self.data_width_bits is None:
             return None
-        n_bytes = self.data_width // 8
+        n_bytes = self.data_width_bits // 8
         return n_bytes * self.n_channels * (self.speed * 1000000)
 
 
 g_mem = None
 
 
+class NoMemProperties(OSError):
+    pass
+
+
 def mem_props():
     global g_mem
     if g_mem is None:
         g_mem = MemoryProperties()
+    if not g_mem.is_valid():
+        raise NoMemProperties
     return g_mem
 
 
@@ -149,6 +165,11 @@ def mem_speed():
 def mem_channels():
     m = mem_props()
     return m.n_channels if m is not None else None
+
+
+def mem_width():
+    m = mem_props()
+    return m.data_width_bits if m is not None else None
 
 
 def mem_bandwidth():
@@ -170,7 +191,8 @@ group_CMN = [
 
 group_Memory = [
     ("Memory channels",       lambda: mem_channels()),
-    ("DDR speed",             lambda: mem_speed()),
+    ("DDR width",             lambda: ("%s bits" % (mem_width()))),
+    ("DDR speed",             lambda: ("%s MT/s" % (mem_speed()))),
     ("Total bandwidth",       lambda: ("%s / s" % memsize_str(mem_bandwidth()))),
 ]
 

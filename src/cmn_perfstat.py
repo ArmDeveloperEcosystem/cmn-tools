@@ -196,16 +196,21 @@ def cmn_frequency(instance=0, time=None):
     For now, we avoid both problems by arbitrarily getting the frequency
     from mesh #0, unless overridden.
     """
+    cmn_perfcheck.check_cmn_pmu_installed()
     return _perf_rate1("arm_cmn_%u/dtc_cycles/" % instance, time=time)
 
 
 def cpu_frequency(time=None):
     """
-    Get the CPU frequency of a random CPU. We can't just count cpu_cycles,
-    because it doesn't count in WFx waits.
+    Get the CPU frequency of a random CPU, by counting cpu-cycles for a
+    fixed duration. We can't just count cpu_cycles while waiting, because
+    on Arm this doesn't count in WFx waits. So we invoke ourselves as a
+    subprocess running a spin loop.
+    Use "cpu-cycles" so that we use the generic perf event. On Arm this
+    should map to the "cpu_cycles" named hardware event.
     """
     cmd = "%s %s --xx-spin" % ("python", __file__)
-    return _perf_rate1("cpu_cycles", time=time, system_wide=False, command=cmd)
+    return _perf_rate1("cpu-cycles", time=time, system_wide=False, command=cmd)
 
 
 if __name__ == "__main__":

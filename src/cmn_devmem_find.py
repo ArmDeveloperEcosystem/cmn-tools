@@ -31,13 +31,14 @@ import json
 
 import cmn_base
 import cmn_json
+import app_data
 
 
 o_verbose = 0
 
 
 def _cmn_location_cache():
-    return cmn_json.cmn_config_cache("cmn-locations.json")
+    return app_data.app_data_cache("cmn-locations.json")
 
 
 class IOmem_region:

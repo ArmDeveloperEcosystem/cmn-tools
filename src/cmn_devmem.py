@@ -287,8 +287,8 @@ class CMNNode:
         id = self.node_id()
         cb = self.C.coord_bits
         assert cb is not None, "can't get coordinates until mesh size is known"
-        Y = BITS(id,3,cb)
-        X = BITS(id,3+cb,cb)
+        Y = BITS(id, 3, cb)
+        X = BITS(id, 3+cb, cb)
         return (X, Y)
 
     def coords(self):
@@ -1476,7 +1476,10 @@ def show_cmn(cmn, verbose=0):
                 if sec:
                     print(", security=0x%x" % sec, end="")
                 print()
-                assert n.XP() == xp
+                assert n.XP() == xp           # True by construction from traversal
+                if n.XY() != xp.XY():
+                    # Has been seen with CXLA (external) nodes on CMN-600
+                    print("            ** node has anomalous coordinates: %s, expected %s" % (str(n.XY()), str(xp.XY())))
                 if n.is_home_node():
                     cg = n.cache_geometry()
                     if not cmn.part_ge_700():
