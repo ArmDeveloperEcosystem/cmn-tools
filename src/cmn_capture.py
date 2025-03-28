@@ -228,13 +228,14 @@ class TraceSession:
     """
     All the information we need to manage tracing flits.
     """
-    def __init__(self, opts, handler, atb=False):
+    def __init__(self, opts, handler=None, atb=False):
         self.opts = opts
         self.atb = atb
         self.C = None    # in case next line throws
         self.C = self.cmn_from_opts(opts)
         self.TV = handler
-        handler.set_cmn(self.C)        # The trace visualizer
+        if handler is not None:
+            handler.set_cmn(self.C)        # The trace visualizer
         self.init_cmn()
 
     def __del__(self):

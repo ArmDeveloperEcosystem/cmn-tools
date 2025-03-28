@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     int x = 0;
     int volatile *m = (int *)malloc(sz);
     memset((void *)m, 0xcc, sz);      /* avoid sharing a zero page */
-    fprintf(stderr, "generating load %luMb\\n", size_M);  /* match lmbench */
+    fprintf(stderr, "generating load %luMB\\n", size_M);  /* match lmbench */
     for (i = 0; i < N*12; ++i) {
         long j;
         for (j = 0; j < size_M*1024*1024/sizeof(int); j += 4) {
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="generate traffic from CPU")
     parser.add_argument("--cpu", type=int, help="pin generator to CPU")
     parser.add_argument("--time", type=float, default=1.0, help="approximate run time")
-    parser.add_argument("--size", type=int, default=16, help="workload size in Mb")
+    parser.add_argument("--size", type=int, default=16, help="workload size in MB")
     parser.add_argument("--lmbench-bin", type=str, default=None, help="path to lmbench bin")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()

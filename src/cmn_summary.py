@@ -35,11 +35,11 @@ C = S.CMNs[0] if S.CMNs else None
 def memsize_str(n):
     for u in range(4, 0, -1):
         if n >= (1 << (u*10)):
-            return "%.3g%sb" % ((float(n) / (1 << (u*10))), "BKMGT"[u])
+            return "%.3g%sB" % ((float(n) / (1 << (u*10))), "BKMGT"[u])
     return str(n)
 
 
-assert memsize_str(1024*1024) == "1Mb"
+assert memsize_str(1024*1024) == "1MB"
 
 
 def cpu_prop(s, cpu=0):

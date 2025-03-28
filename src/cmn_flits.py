@@ -395,6 +395,10 @@ def BIT(x,p):
 def bytes_hex(x):
     s = ""
     for b in x:
+        try:
+            b = ord(b)
+        except TypeError:
+            pass
         s += ("%02x" % b)
     return s
 

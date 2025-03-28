@@ -222,7 +222,8 @@ def system_is_probably_guest():
 def add_cmnloc_arguments(parser):
     """
     Add command-line arguments to an argparse.ArgumentParser
-    object to allow the CMN address to be overridden
+    object to allow the CMN address to be overridden.
+    Use in conjunction with cmn_devmem.cmn_from_opts().
     """
     def inthex(s):
         return int(s, 16)
@@ -231,6 +232,9 @@ def add_cmnloc_arguments(parser):
     parser.add_argument("--cmn-instance", type=int, help="CMN instance e.g. 0, 1, ...")
     parser.add_argument("--cmn-version", type=int, help="CMN product number")
     parser.add_argument("--cmn-iomem", type=str, default="/proc/iomem", help="/proc/iomem file (for testing)")
+    parser.add_argument("--secure-access", action="store_true", default=None, help="assume Secure registers are accessible")
+    parser.add_argument("--list-cmn", action="store_true", help="list all CMN devices in system")
+    parser.add_argument("--cmn-diag", action="store_true")    # CMN driver internal diagnostics
 
 
 if __name__ == "__main__":
