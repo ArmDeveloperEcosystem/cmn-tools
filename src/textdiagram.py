@@ -13,6 +13,7 @@ from __future__ import print_function
 
 import os
 import sys
+import platform
 import atexit     # if we hide the cursor, restore it on exit
 
 RED      = 1
@@ -94,6 +95,24 @@ def _key_ansi(c):
     else:
         a.append("3" + str(code))
     return "\x1b[" + ";".join(a) + "m"
+
+
+g_in_eclipse = None
+
+def _in_eclipse():
+    """
+    Check if we're running under Eclipse. We only need to do this if we're
+    in Jython, but this distinguishes Eclipse from e.g. Arm Debugger CLI.
+    """
+    global g_in_eclipse
+    if g_in_eclipse is None:
+        try:
+            # Matt Sealey's suggestion for detecting Eclipse
+            from org.eclipse.ui.console import AbstractConsole as __AC
+            g_in_eclipse = True
+        except ImportError:
+            g_in_eclipse = False
+    return g_in_eclipse
 
 
 class TextDiagram():
@@ -187,11 +206,11 @@ class TextDiagram():
         elif force_color:
             with_colors = True
         elif for_file is not None:
-            try:
+            if platform.python_implementation() != "Jython":
                 with_colors = os.isatty(for_file.fileno())
-            except AttributeError:
-                # environments like DS Jython without fileno()
-                with_colors = None
+            else:
+                # os.isatty() might work, but return False for stdout
+                with_colors == (for_file == sys.stdout and not _in_eclipse())
         if not with_colors:
             s = self.str_mono()
         else:

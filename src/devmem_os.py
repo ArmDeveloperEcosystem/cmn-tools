@@ -92,9 +92,9 @@ class DevMemDevMap(DevMap):
     def _ensure_writeable(self):
         self.m.mprotect(mmap.PROT_READ | mmap.PROT_WRITE)
 
-    def set_secure_access(self, is_secure):
-        if is_secure:
-            raise DevMemNoSecure(self)
+    def _set_secure_access(self, secure):
+        if secure != "NS":
+            raise DevMemNoSecure(self, secure)
 
     def _read(self, off, n, fmt=None):
         if fmt is None:

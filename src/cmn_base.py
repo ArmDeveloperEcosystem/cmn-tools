@@ -715,6 +715,14 @@ class CMNXP(CMNNodeBase):
     def n_device_ports(self):
         return self.n_ports
 
+    @property
+    def n_children(self):
+        return sum([len(p.devices) for p in self.ports()])
+
+    @property
+    def children(self):
+        return [d for p in self.ports() for d in p.devices]
+
     def id_device_bits(self):
         """
         How many bits are used for port number vs. device, on this XP?

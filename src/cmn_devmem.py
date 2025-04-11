@@ -116,6 +116,11 @@ class CMNNode:
             if (self.node_id() >> 3) != (parent.node_id() >> 3):
                 self.C.log("Parent XP %s child %s has odd coordinates" % (parent, self), level=0)
         self.child_info = self.read64(CMN_any_CHILD_INFO)
+        self.n_children = BITS(self.child_info, 0, 16)
+        assert self.n_children < 200, "CMN discovery found too many node children: %s" % self
+        # We haven't yet discovered this node's children.
+        # For an XP in S3, with node isolation, we might never do so.
+        self.children = []
         #print("%s%s" % ((self.level()*"  "), self))
 
     def do_trace_reads(self):
@@ -128,8 +133,8 @@ class CMNNode:
         if not self.m.writing:
             self.m = self.m.ensure_writeable()
 
-    def set_secure_access(self, is_secure):
-        self.m.set_secure_access(is_secure)
+    def set_secure_access(self, secure):
+        return self.m.set_secure_access(secure)
 
     def read64(self, off):
         if self.do_trace_reads():
@@ -140,6 +145,17 @@ class CMNNode:
         if self.do_trace_reads():
             self.C.log(" => 0x%x" % data, prefix=None)
         return data
+
+    def read64_secure(self, off):
+        if self.C.secure_accessible:
+            return self.read64(off)
+        try:
+            old = self.set_secure_access(self.C.root_security)
+        except Exception:
+            return None
+        x = self.read64(off)
+        self.set_secure_access(old)
+        return x
 
     def test64(self, off, x):
         return (self.read64(off) & x) == x
@@ -201,13 +217,31 @@ class CMNNode:
         From the configuration node, iterate the XPs;
         from an XP, iterate the child (device) nodes.
         """
-        self.children = []
-        self.n_children = BITS(self.child_info, 0, 16)
         child_off = BITS(self.child_info, 16, 16)
-        assert self.n_children < 200, "CMN discovery found too many node children"
         cobits = 30 if self.C.part_ge_650() else 28
+        if self.is_XP() and self.C.isolation_enabled:
+            # In S3, scanning isolated child HNs will fault and lock up the system.
+            # From S3 r2p0 on, child isolation status is flagged in the child offsets.
+            # Before then, we could check if there are any HN connected ports,
+            # and abandon the scan if so. Or we could try and make a secure
+            # access to por_mxp_device_port_disable and check if any ports are disabled.
+            # We could even try to infer the port numbers from the offsets and skip
+            # just disabled ports (from por_mxp_device_port_disable) or all HN ports.
+            # Otherwise, all we can do is abandon the scan and miss not just all
+            # home nodes (whether isolated or not) but any nodes on the same XP.
+            if self.C.product_config.revision < 2 and self.has_any_ports(CMN_PROP_HN):
+                pd = self.read64_secure(0x0A70)
+                if pd is None:
+                    if self.C.verbose:
+                        self.C.log("%s has HNs and couldn't determine node isolation status - skip" % self)
+                    return
+                if pd != 0:
+                    if self.C.verbose:
+                        self.C.log("%s has HNs and node isolation map is 0x%x - skip" % (self, pd))
+                    return
         for i in range(0, self.n_children):
             child = self.read64(child_off + (i*8))
+            # TBD for S3 r2p0 on, test for isolated child
             child_offset = BITS(child, 0, cobits)
             child_node = self.C.create_node(child_offset, parent=self, is_external=BIT(child, 31))
             if child_node is None:
@@ -356,7 +390,10 @@ class CMNNodeXP(CMNNode):
     """
     def __init__(self, *args, **kwargs):
         CMNNode.__init__(self, *args, **kwargs)
+        # TBD: multiple-DTM configuration
         self.dtm = CMNDTM(self)
+        # At this point, child nodes are not yet discovered.
+        # In CMN S3, discovery may be hindered by node isolation.
 
     def port_nodes(self, rP):
         """
@@ -424,6 +461,17 @@ class CMNNodeXP(CMNNode):
             return cmn_port_device_type_str(dt)
         else:
             return "?"
+
+    def has_any_ports(self, props):
+        """
+        Return True if this port has any HN ports.
+        This should be usable before scanning child nodes.
+        """
+        for p in range(0, 4):
+            pt = self.port_device_type(p)
+            if pt is not None and (cmn_port_properties[pt] & props) == props:
+                return True
+        return False
 
     def port_has_cal(self, rP):
         """
@@ -965,9 +1013,11 @@ class CMN:
     #DTM_WP_PKT_GEN            = 0x0100   # capture a packet (TBD: 0x400 on CMN-700)
     #DTM_WP_CC_EN              = 0x1000   # enable cycle count (TBD: 0x4000 on CMN-700)
 
-    def __init__(self, cmn_loc, check_writes=False, verbose=0, restore_dtc_status=False, secure_accessible=None):
+    def __init__(self, cmn_loc, check_writes=False, verbose=0, restore_dtc_status=False, secure_accessible=None, diag_trace=None):
         self.verbose = verbose
-        self.diag_trace = DIAG_WRITES if (verbose >= 2) else DIAG_DEFAULT
+        if diag_trace is None:
+            diag_trace = DIAG_WRITES if (verbose >= 2) else DIAG_DEFAULT
+        self.diag_trace = diag_trace
         self._restore_dtc_status = restore_dtc_status
         self.secure_accessible = secure_accessible    # if None, will be found from CFG
         self.periphbase = cmn_loc.periphbase
@@ -1019,6 +1069,15 @@ class CMN:
             self.pmu_events = None
         self.rootnode = self.create_node(rootnode_offset)
         self.unit_info = self.rootnode.read64(CMN_any_UNIT_INFO)   # por_info_global
+        # For S3, we need to check if this CMN has enabled device isolation,
+        # which may cause problems when discovering child nodes.
+        self.isolation_enabled = BIT(self.unit_info, 44)    # S3 onwards
+        if verbose and self.isolation_enabled:
+            self.log("node isolation is enabled - discovery might be affected")
+        # Some registers are only accessible at a higher privilege level.
+        # Pre CCA this was Secure. With CCA it's Root, unless LEGACY_TZ_EN.
+        # TBD currently we don't discover LEGACY_TZ_EN.
+        self.root_security = "ROOT" if self.part_ge_S3() else "S"
         # The release is e.g. r0p0, r1p2
         self.product_config.revision = BITS(self.rootnode.read64(CMN_CFG_PERIPH_23), 4, 4)
         self.product_config.mpam_enabled = self.part_ge_650() and (BIT(self.unit_info, 49) != 0)
@@ -1098,6 +1157,10 @@ class CMN:
         # everything except CMN-600 and CMN-650
         return self.product_config.product_id not in [cmn_base.PART_CMN600, cmn_base.PART_CMN650]
 
+    def part_ge_S3(self):
+        # everything from S3 onwards
+        return self.product_config.product_id == cmn_base.PART_CMN_S3
+
     def __str__(self):
         s = "%s at 0x%x" % (self.product_str(), self.periphbase)
         if self.dimX is not None:
@@ -1122,7 +1185,9 @@ class CMN:
         """
         st = traceback.extract_stack(limit=10)     # get a StackSummary
         fr = st[-1-depth]
-        return "%s.%u: %s" % (os.path.basename(fr.filename), fr.lineno, fr.line)
+        if sys.version_info[0] >= 3:
+            fr = (fr.filename, fr.lineno, None, fr.line)
+        return "%s.%u: %s" % (os.path.basename(fr[0]), fr[1], fr[3])
 
     def log(self, msg, prefix="CMN: ", end=None, level=1):
         """
@@ -1470,10 +1535,8 @@ def cmn_from_opts(opts):
         for c in clocs:
             print("  %s" % (c))
         sys.exit()
-    CS = [CMN(cl, verbose=opts.verbose, secure_accessible=opts.secure_access) for cl in clocs]
-    if opts.cmn_diag:
-        for C in CS:
-            C.diag_trace |= (DIAG_READS | DIAG_WRITES)
+    diag_trace = (DIAG_READS | DIAG_WRITES) if opts.cmn_diag else 0
+    CS = [CMN(cl, verbose=opts.verbose, diag_trace=diag_trace, secure_accessible=opts.secure_access) for cl in clocs]
     return CS
 
 

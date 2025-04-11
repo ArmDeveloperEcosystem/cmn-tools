@@ -97,6 +97,9 @@ class APIC_GICC:
 class APIC(ACPITable):
     """
     APIC: Interrupt controller definition
+
+    In the ACPI spec, this table is called MADT, the "Multiple APIC Description Table".
+    But the signature and Linux filename is "APIC".
     """
     type_names = {
         0x00: "proc local",

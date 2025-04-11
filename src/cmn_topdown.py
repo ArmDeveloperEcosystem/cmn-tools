@@ -21,6 +21,7 @@ import cmn_perfcheck
 o_verbose = 0
 
 o_no_adjust = False
+o_dominance_level = 0.95
 
 
 S = cmn_json.system_from_json_file()
@@ -37,7 +38,7 @@ class Topdown:
     This is basically a set of categories with event rates per category.
     Categories are normally mutually exclusive.
     """
-    def __init__(self, cats, name=None):
+    def __init__(self, cats, name=None, dominance_level=None):
         self.name = name
         self.categories = cats
         self.rate = {}
@@ -45,6 +46,11 @@ class Topdown:
             self.rate[c] = 0.0
         self.rate[None] = 0.0
         self.total_rate = 0.0
+        self.dominance_level = dominance_level if dominance_level is not None else o_dominance_level
+
+    def __str__(self):
+        s = "Topdown(%s, name=\"%s\", dominance_level=%.2f)" % (str(self.categories), self.name, self.dominance_level)
+        return s
 
     def accumulate(self, cat, rate):
         self.total_rate += rate
@@ -71,15 +77,20 @@ class Topdown:
                 self.rate[cat] = 0.0
             self.total_rate += self.rate[cat]
 
-    def dominator(self, level=0.95):
-        assert level > 0.5     # if it's less, we might have >1 matching category
+    def dominator(self):
+        assert self.dominance_level > 0.5     # if it's less, we might have >1 matching category
         for c in self.categories:
-            if self.proportion(c) >= level:
+            if self.proportion(c) >= self.dominance_level:
                 return c
         return None
 
 
 def print_topdown(td):
+    """
+    Complete a top-down analysis and print the results.
+    """
+    if o_verbose:
+        print("%s: completing top-down analysis" % td)
     if not o_no_adjust:
         td.adjust()
     if td.name is not None:
@@ -96,7 +107,7 @@ def print_topdown(td):
     if dom is not None:
         print("Dominant category: %s" % dom)
     else:
-        print("No dominant category")
+        print("No dominant category at %.0f%% level" % (td.dominance_level*100.0))
 
 
 # Level 1 aims to find the dominant requester type (RN-F, RN-I, RN-D, CCG)
@@ -264,11 +275,13 @@ if __name__ == "__main__":
     parser.add_argument("--level", type=str, action="append", default=[], help="run specified top-down level")
     parser.add_argument("--all", action="store_true", help="run all top-down levels")
     parser.add_argument("--time", type=float, default=0.5, help="measurement time for top-down")
+    parser.add_argument("--dominance-level", type=float, default=0.95, help="threshold for traffic to be considered dominant")
     parser.add_argument("--no-adjust", action="store_true")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
     o_no_adjust = opts.no_adjust
+    o_dominance_level = opts.dominance_level
     cmn_perfstat.o_verbose = max(0, opts.verbose-1)
     cmn_perfstat.o_time = opts.time
     if not opts.level:
@@ -285,7 +298,10 @@ if __name__ == "__main__":
         if level == "1":
             topdown_level1()
         elif level == "2":
-            topdown_level2()
+            if len(S.CMNs) == 1 and opts.all:
+                print("Skipping Level 2 because system has only one interconnect")
+            else:
+                topdown_level2()
         elif level == "3":
             topdown_level3_rnf()
         elif level == "prefetch":

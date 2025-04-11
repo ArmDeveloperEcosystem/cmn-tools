@@ -6,7 +6,7 @@ Read DMI file from /sys/firmware/dmi/tables/DMI
 Copyright (C) Arm Ltd. 2024. All rights reserved.
 SPDX-License-Identifier: Apache 2.0
 
-The format is defined in the DMTF publication:
+The format is defined in the DMTF publication DSP0134:
   "System Management BIOS (SMBIOS) Reference Specification"
 
 Functionality is similar to the "dmidecode" tool.
@@ -33,6 +33,8 @@ DEFAULT_DMI = "/sys/firmware/dmi/tables/DMI"
 
 DEFAULT_DMI_STRINGS = "/sys/class/dmi/id"
 
+DDR_MTS = 1000000    # DDR megatransfers = 1 million (not 2**20)
+
 
 DMI_BIOS                   = 0x00
 DMI_SYSTEM                 = 0x01
@@ -53,7 +55,7 @@ DMI_END_OF_TABLE           = 0x7f
 class DMIStructure:
     """
     A single entry in a DMI file, with a unique handle.
-    'type' indicates the type of entry.
+    'type' indicates the type of entry e.g. DMI_SYSTEM.
     Any entry may have an array of strings, indexed from 1.
     """
 
@@ -68,8 +70,9 @@ class DMIStructure:
     def string(self, n):
         """
         Return the n'th string (indexed from 1) pertaining to this entry.
+        "If a string field references no string, a null (0) is placed in that string field."
         """
-        return self.strings[n].decode()
+        return self.strings[n].decode() if n != 0 else None
 
     def string_at(self, p):
         if p >= len(self.raw):
@@ -278,7 +281,22 @@ class DMI:
         """
         if o_verbose:
             print("DMI: opening %s..." % self.fn, file=sys.stderr)
-        with open(self.fn, "rb") as f:
+        if self.fn == "-":
+            # Read stdin as binary, e.g. piped from "xxd -r".
+            bin = sys.stdin.buffer if sys.version_info[0] >= 3 else sys.stdin
+            for s in self.raw_structures_stream(bin):
+                yield s
+        else:
+            with open(self.fn, "rb") as f:
+                for s in self.raw_structures_stream(f):
+                    yield s
+
+    def raw_structures_stream(self, f):
+        """
+        Yield all DMI structures from a stream. The only reason for
+        factoring this out is so we can handle "-" meaning sys.stdin.
+        """
+        if True:
             while True:
                 hdr = f.read(2)
                 if len(hdr) < 2:
@@ -500,9 +518,9 @@ def print_DMI_memory(D):
             print("  0x%012x - 0x%012x  %6s" % (dm.start, dm.end, memsize_str(dm.end - dm.start)), end="")
             print("  row %u  i/l %u  depth %u" % (dm.row, dm.interleave, dm.depth), end="")
         print()
-        bw = d.c_speed_mts * d.d_width       # million bits per second (= bits per microsecond)
+        bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
         print("      speed=%u/%u MT/s" % (d.p_speed_mts, d.c_speed_mts), end="")
-        print(" - b/w=%u mbits/s, %u mbytes/s" % (bw, bw//8), end="")
+        print(" - b/w=%u Mbits/s, %u MB/s" % (bw//0x100000, bw//0x100000//8), end="")
         print("  %s %s %s %s" % (d.mfr, d.part, d.device_locator, d.bank_locator))
 
     print("Memory:")
@@ -521,12 +539,18 @@ def print_DMI_memory(D):
     for d in D.structures(type=DMI_MEMORY_DEVICE):
         if d.h_array is None:
             print_memory_device(d)    # not seen this one already
-        bw = d.c_speed_mts * d.d_width       # million bits per second (= bits per microsecond)
+        bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
         total_size += d.size
         total_bw += bw
         n_memory += 1
-    print("  Total memory %s, %u mcs, bandwidth %u mbits/s = %u mbytes/s" %
-          (memsize_str(total_size), n_memory, total_bw, total_bw//8))
+    total_bw_Mb = total_bw // 0x100000
+    n_sockets = len(list(D.processors()))
+    print("  Total memory: %s, %u mcs" % (memsize_str(total_size), n_memory))
+    print("  Bandwidth:    %u Mbits/s = %s/s" % (total_bw_Mb, memsize_str(total_bw//8)))
+    if n_sockets > 1:
+        bwps = total_bw // n_sockets
+        bwps_Mb = total_bw_Mb // n_sockets
+        print("    per socket: %u Mbits/s = %s/s" % (bwps_Mb, memsize_str(bwps//8)))
     print("Processor caches:")
     for dp in D.processors():
         print("  %s:" % dp.socket)
@@ -540,16 +564,19 @@ def print_DMI_memory(D):
             print("    L%u %3u-way  %s" % (d.level, d.assoc, memsize_str(d.inst_size)))
 
 
-def print_DMI_system(D):
+def print_DMI_system(D, file_is_local=True):
     """
-    Print some basic information about the system
+    Print some basic information about the system from its DMI info.
     """
     dsys = D.system()
     print("System:    %s %s %s" % (dsys.mfr, dsys.product, dsys.version))
-    sys_from_os = (os_dmi_string("sys_vendor") + " " +
-                   os_dmi_string("product_name") + " " +
-                   os_dmi_string("product_version"))
-    print("(from OS): %s" % sys_from_os)
+    # Compare with whatever the kernel has got - although this only makes
+    # sense if the DMI file we read was from the current system.
+    if file_is_local and os.path.isdir(DEFAULT_DMI_STRINGS):
+        sys_from_os = (os_dmi_string("sys_vendor") + " " +
+                       os_dmi_string("product_name") + " " +
+                       os_dmi_string("product_version"))
+        print("(from OS): %s" % sys_from_os)
     print("UUID:      %s" % D.system().uuid)
     print("Processors:")
     for d in D.processors():
@@ -559,8 +586,8 @@ def print_DMI_system(D):
 
 def os_dmi_string(s):
     """
-    As an alternative to scanning the DMI table directly,
-    we can get some strings from the kernel.
+    As an alternative to scanning the current system's DMI table directly,
+    we can get some strings from the kernel, in /sys/class/dmi/id.
     """
     fn = os.path.join(DEFAULT_DMI_STRINGS, s)
     if os.path.isfile(fn):
@@ -592,7 +619,7 @@ if __name__ == "__main__":
     if opts.memory:
         print_DMI_memory(D)
     if opts.system:
-        print_DMI_system(D)
+        print_DMI_system(D, file_is_local=(opts.input == DEFAULT_DMI))
     if opts.uuid:
         # Bare UUID - should be same as /sys/class/dmi/id/product_uuid
         print("%s" % D.system().uuid)

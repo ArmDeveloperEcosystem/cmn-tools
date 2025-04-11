@@ -11,6 +11,11 @@ SPDX-License-Identifier: Apache 2.0
 from __future__ import print_function
 
 
+# Security states for memory access. Rather than inventing an enum,
+# we use strings.
+security_levels = ["NS", "S", "ROOT", "REALM"]
+
+
 class DevMemException(Exception):
     def __init__(self, dev, addr=None):
         assert isinstance(dev, DevMap), "unexpected device type: %s" % type(dev)
@@ -46,11 +51,12 @@ class DevMemWriteProtected(DevMemException):
 
 
 class DevMemNoSecure(DevMemException):
-    def __init__(self, dev):
+    def __init__(self, dev, secure="S"):
         DevMemException.__init__(self, dev)
+        self.requested_secure = secure
 
     def __str__(self):
-        return "%s: memory provider does not support Secure access" % (self.dev)
+        return "%s: memory provider does not support %s access" % (self.dev, self.requested_secure)
 
 
 class DevMapFactory:
@@ -77,7 +83,7 @@ class DevMap:
     """
     Abstract base class for a mapping object that maps a specific area of memory.
     """
-    def __init__(self, pa, size, owner=None, name=None, write=False, check=None, secure=False):
+    def __init__(self, pa, size, owner=None, name=None, write=False, check=None, secure="NS"):
         assert isinstance(owner, DevMapFactory)
         self.owner = owner
         if name is None:
@@ -87,7 +93,7 @@ class DevMap:
         self.size = size
         self.writing = write
         self.checking = check
-        self.is_secure = None
+        self.secure = None
         self.set_secure_access(secure)
 
     def __str__(self):
@@ -109,12 +115,22 @@ class DevMap:
         """
         pass
 
-    def set_secure_access(self, is_secure):
+    def set_secure_access(self, secure):
         """
         Update the Secure/Non-Secure security setting.
         Subclass should override and raise DevMemNoSecure if it can't do this.
         """
-        self.secure = is_secure
+        assert secure in security_levels, "Bad security %s: expected in %s" % (secure, str(security_levels))
+        self._set_secure_access(secure)
+        o_secure = self.secure
+        self.secure = secure
+        return o_secure
+
+    def _set_secure_access(self, secure):
+        """
+        Default implementation is to do nothing. Subclass might add a check.
+        """
+        pass
 
     def read64(self, off):
         if off >= self.size:

@@ -68,12 +68,19 @@ class CMNDiagram(textdiagram.TextDiagram):
         return oy * self.yw + 4
 
     def xp_label_color(self, xp):
+        """
+        For an XP, return (label text, label color) as a tuple.
+        """
         xp_color = ""
         xp_label = self._id_fmt % xp.node_id()
         if True:
             (X, Y, P, D) = xp.coords()
             assert P == 0 and D == 0
             xp_label += "(%u,%u)" % (X,Y)
+        if len(xp.children) < xp.n_children:
+            # We didn't discover all children
+            xp_label += "?"
+            xp_color = "red"
         return (xp_label, xp_color)
 
     def port_label_color(self, xp, p):

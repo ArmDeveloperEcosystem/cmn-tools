@@ -291,7 +291,7 @@ class CMNFlit:
                 s += " lpid=%02x" % self.lpid
                 s += " ret=%03x:" % self.returnnid
                 s += self.group.txnid_fmt % self.returntxnid
-                s += " %16s %3u" % (self.group.addr_str(self.addr, self.NS), (1 << self.size))
+                s += " %17s %3u" % (self.group.addr_str(self.addr, self.NS), (1 << self.size))
                 if self.opcode != 0x14:
                     s += " %s" % (CHI_memattr_str(self.memattr, self.order, self.snpattr))
                 else:

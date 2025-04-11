@@ -17,7 +17,7 @@ import cmn_flits
 
 
 if __name__ == "__main__":
-    import argparse   
+    import argparse
     parser = argparse.ArgumentParser(description="decode a binary CMN ATB trace file")
     parser.add_argument("-i", "--input", type=str, help="input trace binary", required=True)
     parser.add_argument("--cmn-version", type=(lambda x: int(x, 0)), help="CMN version", required=True)
