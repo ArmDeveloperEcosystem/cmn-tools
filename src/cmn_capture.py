@@ -21,6 +21,7 @@ import cmn_devmem_find
 import cmn_json
 import cmnwatch
 from cmn_flits import CMNTraceConfig, CMNFlitGroup
+import cmn_dtstat
 
 
 o_verbose = 0
@@ -47,7 +48,7 @@ def add_trace_arguments(parser):
     parser.add_argument("--cc", action="store_true", help="enable cycle counts")
     parser.add_argument("--format", type=int, choices=range(8), default=4, help="trace packet format")
     parser.add_argument("--immediate", action="store_true", help="show FIFO contents immediately")
-    parser.add_argument("--samples", type=int, default=10, help="number of FIFO samples to collect")
+    parser.add_argument("--samples", type=int, default=100, help="number of FIFO samples to collect")
     parser.add_argument("--cg-disable", action="store_true")
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--count", action="store_true", help="program DTM PMU to count packets")
@@ -81,11 +82,11 @@ class CMNFlitGroupX(CMNFlitGroup):
     """
     Subclass CMN flit decode to provide more annotation of CHI source and target ids.
     """
-    def __init__(self, cfg, nodeid=None, DEV=None, VC=None, format=None, cc=0, vis=None):
+    def __init__(self, cfg, cmn_seq=None, nodeid=None, DEV=None, VC=None, format=None, cc=0, vis=None):
         assert VC is not None
         assert DEV is not None
         assert format is not None
-        CMNFlitGroup.__init__(self, cfg, nodeid=nodeid, DEV=DEV, VC=VC, format=format, cc=cc, debug=opts.decode_verbose)
+        CMNFlitGroup.__init__(self, cfg, cmn_seq=cmn_seq, nodeid=nodeid, DEV=DEV, VC=VC, format=format, cc=cc, debug=opts.decode_verbose)
         self.vis = vis
         self.id_map = vis.id_map
 
@@ -102,7 +103,7 @@ class CMNFlitGroupX(CMNFlitGroup):
 
     def addr_str(self, addr, NS):
         if self.vis.cmn.contains_addr(addr):
-            return "<CMN>"
+            return "<CMN:%06x>" % (addr & 0xffffff)
         return CMNFlitGroup.addr_str(self, addr, NS)
 
 
@@ -158,7 +159,7 @@ class CMNVis:
 
     def decode_packet(self, xp, wp, data, cc):
         (nid, DEV, wp, VC, format, _) = xp.dtm.dtm_wp_details(wp)
-        fg = CMNFlitGroupX(self.cfg, nodeid=nid, DEV=DEV, VC=VC, format=format, cc=cc, vis=self)
+        fg = CMNFlitGroupX(self.cfg, cmn_seq=self.cmn.seq, nodeid=nid, DEV=DEV, VC=VC, format=format, cc=cc, vis=self)
         fg.decode(data)
         self.handle_flitgroup(xp, wp, fg)
 
@@ -246,7 +247,11 @@ class TraceSession:
             self.C.dtc_enable()
 
     def cmn_from_opts(self, opts):
-        C = cmn.CMN(cmn.cmn_instance(opts), check_writes=(not opts.no_check_writes), verbose=max(0, opts.verbose-1))
+        loc = cmn.cmn_instance(opts)
+        if loc is None:
+            print("Can't locate CMN")
+            sys.exit(1)
+        C = cmn.CMN(loc, check_writes=(not opts.no_check_writes), verbose=max(0, opts.verbose-1))
         if opts.list:
             cmn.show_cmn(C)
             sys.exit()
@@ -341,6 +346,8 @@ class TraceSession:
         #
         # Also, matching on SRCID or TGTID restricts us to only download or upload.
         #
+        if o_verbose >= 2:
+            print("%s: configure trace (next_port=%d)" % (xp, xp.next_port))
         if xp.n_device_ports() == 0:
             return
         # In read (non-ATB) mode, it appears that the FIFO starts filling as soon as
@@ -363,6 +370,8 @@ class TraceSession:
                     for (j, grp) in enumerate(self.wps.grps()):
                         M = self.wps.wps[grp]
                         combine = (self.wps.is_multigrp() and (j == 0))
+                        if o_verbose >= 2:
+                            print("%s: set watchpoint WP%u" % (xp, wp+off+j))
                         xp.dtm.dtm_set_watchpoint(wp+off+j, val=M.val, mask=M.mask,
                                                   format=self.opts.format, cc=self.opts.cc,
                                                   dev=dev, chn=self.wps.chn, group=M.grp,
@@ -518,14 +527,14 @@ class TraceSession:
         """
         for xp in self.C.XPs():
             xp.show()
-        for d in self.C.debug_nodes:
-            d.show()
+        for dtc in self.C.DTCs():
+            cmn_dtstat.print_dtc(dtc)
 
     def show_dtm(self):
         for xp in self.xps:
-            xp.dtm.show_dtm()
-        for dtc in self.C.debug_nodes:
-            dtc.show()
+            cmn_dtstat.print_dtm_list(xp)
+        for dtc in self.C.DTCs():
+            cmn_dtstat.print_dtc(dtc)
 
 
 if __name__ == "__main__":

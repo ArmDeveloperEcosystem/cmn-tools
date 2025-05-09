@@ -25,6 +25,7 @@ o_verbose = 0
 o_chunk_size = 1000
 
 o_time = 0.1
+o_perf_bin = "perf"
 
 
 class Reading:
@@ -65,8 +66,8 @@ class Reading:
 
 def perf_raw(events, time=None, command=None, system_wide=True):
     """
-    Given a list of PMU event specifiers (e.g. "arm_cmn/hnf_cache_miss/")
-    return a list of Reading objects.
+    Given a list of PMU event specifiers (e.g. "arm_cmn/hnf_cache_miss/"),
+    and an optional command to run, return a list of Reading objects.
     The event list can be arbitrarily long and we rely on the kernel perf subsystem
     to rotate counters.
 
@@ -78,7 +79,7 @@ def perf_raw(events, time=None, command=None, system_wide=True):
     if time is None:
         time = o_time
     sep = '|'
-    cmd = ["perf", "stat", "-x"+sep]
+    cmd = [o_perf_bin, "stat", "-x"+sep]
     if system_wide:
         cmd += ["-a"]
     for event in events:
@@ -91,6 +92,7 @@ def perf_raw(events, time=None, command=None, system_wide=True):
     if o_verbose:
         print(">> %s" % (' '.join(cmd)))
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # Block, waiting for the subcommand to finish
     (out, err) = p.communicate()
     rc = p.returncode
     if rc != 0 or o_verbose:
@@ -209,7 +211,7 @@ def cpu_frequency(time=None):
     Use "cpu-cycles" so that we use the generic perf event. On Arm this
     should map to the "cpu_cycles" named hardware event.
     """
-    cmd = "%s %s --xx-spin" % ("python", __file__)
+    cmd = "%s %s --xx-spin" % (sys.executable, __file__)
     return _perf_rate1("cpu-cycles", time=time, system_wide=False, command=cmd)
 
 

@@ -78,7 +78,10 @@ def cmn_from_json(j, S):
             if p_type is None:
                 continue        # unconnected port
             po = xp.create_port(port=p, type=p_type, type_s=jp["type_s"])
-            po.cal = jp.get("cal", False)
+            po.cal = jp.get("cal", 0)
+            if isinstance(po.cal, bool):
+                # handle older JSON schema, pre CAL4
+                po.cal = 2 if po.cal else 0
             if "devices" in jp:
                 for jd in jp["devices"]:
                     n = C.create_node(type=jd["type"], type_s=jd["type_s"], xp=xp, port=p, id=jd["id"], logical_id=jd.get("logical_id", None))
@@ -139,17 +142,25 @@ def system_from_json(j, filename=None):
     return S
 
 
-def system_from_json_file(fn=None, check_timestamp=False):
+def system_from_json_file(fn=None, check_timestamp=False, exit_if_not_found=True):
     """
     Get the system description from a given file name or the standard cached location.
     """
     if fn is None:
         fn = cmn_config_filename()
-    with open(fn) as f:
-        S = system_from_json(json.load(f), filename=fn)
-        if check_timestamp:
-            check_system_description_time(S)
-        return S
+    try:
+        with open(fn) as f:
+            S = system_from_json(json.load(f), filename=fn)
+            if check_timestamp:
+                check_system_description_time(S)
+            return S
+    except FileNotFoundError:
+        # Typically, whoever's calling this really needs the topology,
+        # and there's no point continuing if it's not there.
+        if exit_if_not_found:
+            print("%s: file not found: run cmn_discover" % fn, file=sys.stderr)
+            sys.exit(1)
+        return None
 
 
 def json_from_cpu(co):
@@ -188,7 +199,7 @@ def json_from_xp(xp):
             "type_s": xp.port_device_type_str(i),
         }
         if xp.port_has_cal(i):
-            jp["cal"] = True
+            jp["cal"] = xp.port_has_cal(i)
         if list(xp.port_nodes(i)):
             jp["devices"] = []
             for d in xp.port_nodes(i):

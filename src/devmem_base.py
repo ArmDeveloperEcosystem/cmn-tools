@@ -64,10 +64,16 @@ class DevMapFactory:
     Abstract base class for a factory object that will return mappings to
     specified areas of memory, and own any common resources needed to
     construct and handle those mappings.
+
+    Subclass must:
+      - implement map()
+      - set is_local if mappings access memory on the local system
     """
-    def __init__(self, write=False, check=False):
+    def __init__(self, write=False, check=False, is_local=None):
         self.writing = write
         self.checking = check
+        if is_local is not None:
+            self.is_local = is_local
 
     def __str__(self):
         return "device"

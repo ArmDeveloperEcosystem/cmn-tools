@@ -23,7 +23,7 @@ class DevMemFactory(DevMapFactory):
     and owner of a file handle to /dev/mem.
     """
     def __init__(self, write=False, check=True):
-        DevMapFactory.__init__(self, write=write, check=check)
+        DevMapFactory.__init__(self, write=write, check=check, is_local=True)
         self.page_size = os.sysconf("SC_PAGE_SIZE")
         self.fd = None
         try:

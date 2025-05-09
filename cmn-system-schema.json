@@ -143,8 +143,8 @@
                                                         "type": "string"
                                                     },
                                                     "cal": {
-                                                        "description": "True if port has a Component Aggregation Layer (CAL)",
-                                                        "type": "boolean"
+                                                        "description": "Component Aggregation Layer (CAL) width",
+                                                        "type": ["boolean", "integer"]
                                                     },
                                                     "devices": {
                                                         "description": "Devices connected to port",

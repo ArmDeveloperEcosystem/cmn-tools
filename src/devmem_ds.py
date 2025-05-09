@@ -29,7 +29,7 @@ class DSMemFactory(DevMapFactory):
     Factory class for mapping memory ranges using DS.
     """
     def __init__(self, write=False, check=True, space=None):
-        DevMapFactory.__init__(self, write=write, check=check)
+        DevMapFactory.__init__(self, write=write, check=check, is_local=False)
         self.dbg = Debugger()
         if space is None:
             space = default_address_space()

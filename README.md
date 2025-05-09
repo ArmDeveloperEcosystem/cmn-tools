@@ -159,6 +159,10 @@ Watchpoints can also be used to capture CHI packet headers for
 analysis, and a tool ``cmn_capture.py`` is provided. For more
 details see README-capture.md .
 
+To capture multiple CHI packets involved in a single transaction,
+showing latency (in cycles) between different packets, use
+the ``cmn_latency.py`` tool. For more details see README-latency.md .
+
 
 Troubleshooting
 ===============

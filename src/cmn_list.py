@@ -18,6 +18,7 @@ from cmn_devmem import CMN, cmn_from_opts
 from cmn_devmem_regs import *
 import cmn_devmem_find
 from cmn_enum import *
+import cmn_dtstat
 
 
 def BITS(x,p,n):
@@ -41,6 +42,10 @@ def show_cmn(cmn, verbose=0):
         print(", R2", end="")
     if cmn.product_config.mpam_enabled:
         print(", MPAM", end="")
+    if cmn.multiple_dtms:
+        print(", multiple-DTMs", end="")
+    if cmn.isolation_enabled:
+        print(", device-isolation", end="")
     print()
     print("  %s" % cmn.rootnode)
     for xp in cmn.XPs():
@@ -55,8 +60,9 @@ def show_cmn(cmn, verbose=0):
         print()
         # Show XP information
         xp.show()
-        if False:
-            show_dtm_pmu_config(xp)
+        # Show XP DTM information
+        for dtm in xp.DTMs():
+            cmn_dtstat.print_dtm(dtm, pfx="      ")
         # Show the XP's child devices. Although these are discovered directly from the XP,
         # we group them by their device port.
         for p in range(0, n_ports):
@@ -65,11 +71,20 @@ def show_cmn(cmn, verbose=0):
             connected_device_info = xp.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(p))
             connected_device_type = BITS(connected_device_info, 0, 5)
             print("      P%u:" % p, end="")
+            if connected_device_type == 0:
+                # The TRM says "reserved", but it evidently means the port is not connected.
+                # Ports are connected or not, by the implementer. With n_ports=2,
+                # we've observed all combinations of P0+P1, P0 only, P1 only, no ports.
+                print(" no devices")
+                continue
             print(" %s" % cmn_port_device_type_str(connected_device_type), end="")
-            if BIT(connected_device_info, 7):
-                print(" (CAL)", end="")
+            # For a port with a CAL, num_dev indicates CAL2 vs CAL4.
+            # A CCG has num_dev=1 but also has child nodes with device numbers 0 and 1.
             num_dev = BITS(port_info, 0, 3)
-            print(" devices=%u" % num_dev, end="")
+            if BIT(connected_device_info, 7):
+                print(" (CAL%u)" % num_dev, end="")
+            elif num_dev != 1:
+                print(" devices=%u" % num_dev, end="")
             if verbose:
                 print(" [port_info=0x%x, port_connect_info=0x%x]" % (port_info, connected_device_info), end="")
                 if port_info_1 is not None:
@@ -141,7 +156,7 @@ def show_cmn(cmn, verbose=0):
                     num_hnf = BITS(info,0,8)
                     print("          Hashed targets: %u, cache groups: %u, non-hash groups: %u" % (num_hnf, num_sys_cache_group, num_nhm))
                 elif n.type() == CMN_NODE_DT:
-                    n.show(pfx="        ")
+                    cmn_dtstat.print_dtc(n, pfx="          ")
                 elif n.type() == CMN_NODE_CXHA:
                     rdb_depth = BITS(info, 9, 9)
                     wdb_depth = BITS(info, 18, 9)

@@ -24,6 +24,8 @@ import sys
 
 o_dry_run = False
 
+o_verbose = 0
+
 
 def home_dir():
     """
@@ -43,7 +45,10 @@ def app_data_cache(fn=None, app="arm"):
     """
     if "LOCALAPPDATA" in os.environ:
         # Windows, or Jython-under-Windows
+        # To ensure this is seen when we're sudo, use "sudo -E"
         pcache = os.environ["LOCALAPPDATA"]
+        if o_verbose:
+            print("app_data: set from LOCALAPPDATA=%s" % pcache)
     else:
         pcache = os.path.join(home_dir(), ".cache")
         ensure_directory_exists(pcache)
@@ -51,7 +56,9 @@ def app_data_cache(fn=None, app="arm"):
         pcache = os.path.join(pcache, app)
         ensure_directory_exists(pcache)
     if fn is not None:
-        return os.path.join(pcache, fn)
+        pcache = os.path.join(pcache, fn)
+    if o_verbose:
+        print("app_data: app_data_cache = \"%s\"" % pcache)
     return pcache
 
 
@@ -61,6 +68,8 @@ def ensure_directory_exists(dir):
     Will likely throw an error if the path exists as a file.
     """
     if not os.path.isdir(dir) and not o_dry_run:
+        if o_verbose:
+            print("app_data: mkdir %s" % dir)
         os.mkdir(dir)
         change_to_real_user_if_sudo(dir)
     return dir
@@ -73,6 +82,8 @@ def change_to_real_user_if_sudo(fn):
     """
     if "SUDO_USER" in os.environ:
         user = os.environ["SUDO_USER"]
+        if o_verbose:
+            print("app_data: as sudo, changing permissions to %u" % user)
         if sys.version_info[0] >= 3:
             import shutil
             shutil.chown(fn, user=user, group=user)
@@ -89,7 +100,9 @@ if __name__ == "__main__":
     parser.add_argument("--create", action="store_true", help="create dirs if necessary")
     parser.add_argument("--app", default="arm", type=str, help="application/organization")
     parser.add_argument("--name", default="appdatatest", type=str)
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
+    o_verbose = opts.verbose
     o_dry_run = not opts.create
     fn = app_data_cache(opts.name, app=opts.app)
     print("file: %s" % fn)

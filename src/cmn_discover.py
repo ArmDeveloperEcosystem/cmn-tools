@@ -18,6 +18,11 @@ import cmn_devmem_find
 import cmn_base
 import cmn_json
 import dmi
+import cmn_perfcheck
+
+
+def system_is_remote(S):
+    return S.CMNs and not S.CMNs[0].is_local
 
 
 def system_description():
@@ -30,6 +35,11 @@ def system_description():
     S = cmn_base.System()
     S.CMNs = [cmn_devmem.CMN(loc) for loc in cmn_devmem_find.cmn_locators()]
     S.timestamp = time.time()
+    if system_is_remote(S):
+        # If accessing remotely, don't try to add local information
+        print("Target is being accessed remotely, some information not discoverable",
+              file=sys.stderr)
+        return S
     # Try to discover the CMN clock frequency
     for c in S.CMNs:
         c.frequency = c.estimate_frequency()
@@ -68,8 +78,15 @@ if __name__ == "__main__":
         sys.exit(1)
     for c in S.CMNs:
         print("Found %s" % c)
+    ok = True
     if not opts.overwrite and os.path.exists(opts.output):
         print("File already exists (rerun with --overwrite): %s" % opts.output, file=sys.stderr)
+        ok = False
+    else:
+        print("Writing system configuration to %s..." % opts.output)
+        cmn_json.json_dump_file_from_system(S, opts.output)
+    if not system_is_remote(S):
+        if not cmn_perfcheck.check_cmn_pmu_events():
+            ok = False
+    if not ok:
         sys.exit(1)
-    print("Writing system configuration to %s..." % opts.output)
-    cmn_json.json_dump_file_from_system(S, opts.output)

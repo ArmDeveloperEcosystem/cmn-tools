@@ -10,8 +10,10 @@ Generally requires root privilege, if directly accessing tables in /sys/firmware
 
 https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/21_ACPI_Data_Tables_and_Table_Def_Language/ACPI_Data_Tables.html
 
-For human-readable dumping of ACPI tables, see the acpica-tools package,
-and use 'acpidump', 'acpixtract' and 'iasl'.
+For human-readable dumping of ACPI tables, install the acpica-tools package,
+and use 'acpidump', 'acpixtract' and 'iasl'. Note that this will only decode
+tables standardized in the ACPI specification, not vendor-defined tables
+including Arm MPAM.
 """
 
 from __future__ import print_function
@@ -37,12 +39,18 @@ def stripz(bs):
     return str(bs).replace("\\x00",".")
 
 
+class System:
+    def __init__(self):
+        pass
+
+
 class ACPITable:
     """
     Base class for all ACPI table types. Often the caller will have already
     opened the file and know its type, and be constructing a subclass instance.
     """
-    def __init__(self, fn, handle=None, sig=None):
+    def __init__(self, fn, handle=None, sig=None, system=None):
+        self.system = system
         self.f = handle      # set early so that destructor sees it
         self.f_we_opened = False
         if fn is None:
@@ -115,8 +123,8 @@ class APIC(ACPITable):
         0x0f: "GITS"
     }
 
-    def __init__(self, fn=None, handle=None, sig=b"APIC"):
-        ACPITable.__init__(self, fn, handle=handle, sig=sig)
+    def __init__(self, fn=None, handle=None, sig=b"APIC", system=None):
+        ACPITable.__init__(self, fn, handle=handle, sig=sig, system=system)
         self.gicc = {}
         self.gicd_address = None
         self.gicr = {}
@@ -250,8 +258,8 @@ class PPTT(ACPITable):
 
     Topological structure of processors, and their shared resources, such as caches.
     """
-    def __init__(self, fn=None, handle=None, sig=b"PPTT"):
-        ACPITable.__init__(self, fn, handle=handle, sig=sig)
+    def __init__(self, fn=None, handle=None, sig=b"PPTT", system=None):
+        ACPITable.__init__(self, fn, handle=handle, sig=sig, system=system)
         self.structs = {}         # Indexed by offset
         off = 36
         while True:
@@ -335,8 +343,8 @@ class SRAT(ACPITable):
         0x04: "its",
     }
 
-    def __init__(self, fn=None, handle=None, sig=b"SRAT"):
-        ACPITable.__init__(self, fn, handle=handle, sig=sig)
+    def __init__(self, fn=None, handle=None, sig=b"SRAT", system=None):
+        ACPITable.__init__(self, fn, handle=handle, sig=sig, system=system)
         self.structs = []
         self.f.read(12)
         while True:
@@ -372,7 +380,142 @@ class SRAT(ACPITable):
             print("    %s" % s)
 
 
-def ACPI(fn):
+class MSC:
+    """
+    MPAM Memory System Controller
+
+    "From a software viewpoint, an MSC is a container of resources."
+    """
+    MSC_MMIO = 0
+    MSC_PCC  = 0x0A
+
+    def __init__(self, itype, uid, mbase, msize, oirq, eirq, ldev, owner=None):
+        self.owner = owner
+        self.itype = itype
+        self.uid = uid
+        self.mbase = mbase
+        self.msize = msize
+        self.ovf_irq = oirq
+        self.err_irq = eirq
+        self.linked_device = ldev
+        self.resources = []
+
+    def add_resource(self, **kw):
+        """
+        Add a resource controlled by this MSC.
+        """
+        r = MSCResource(self, **kw)
+        self.resources.append(r)
+        return r
+
+    def __str__(self):
+        s = "MSC 0x%x" % self.uid
+        if self.itype == self.MSC_MMIO:
+            s += " at 0x%x size 0x%x" % (self.mbase, self.msize)
+        elif self.itype == self.MSC_PCC:
+            s += " PCC subspace 0x%x" % self.mbase
+        else:
+            s += " type %u?" % self.itype
+        if self.ovf_irq:
+            s += " overflow IRQ %u" % self.ovf_irq
+        if self.err_irq:
+            s += " error IRQ %u" % self.err_irq
+        if self.linked_device:
+            s += " linked to HID 0x%x" % self.linked_device
+        if self.resources:
+            s += " resources: " + ' '.join([str(r) for r in self.resources])
+        return s
+
+
+class MSCResource:
+    """
+    MPAM Resource, contained in an MSC (see above)
+    """
+    _ltypes = {
+        0x00: "processor cache",
+        0x01: "memory",
+        0x02: "SMMU",
+        0x03: "memory-side cache",
+        0x04: "ACPI device",
+        0x05: "interconnect",
+    }
+
+    def __init__(self, msc, rid, ltype, loc1, loc2):
+        self.msc = msc
+        self.rid = rid
+        self.location_type = ltype
+        self.deps = []
+        self.loc1 = loc1
+        self.loc2 = loc2
+
+    def __str__(self):
+        s = "id 0x%x " % self.rid
+        if self.location_type in self._ltypes:
+            s += self._ltypes[self.location_type]
+        else:
+            s += "type 0x%x?" % self.location_type
+        s += " (0x%x,0x%x)" % (self.loc1, self.loc2)
+        if self.deps:
+            s += " depends: " + str(self.deps)
+        return s
+
+
+class MPAM(ACPITable):
+    """
+    MPAM: Memory Partitioning and Monitoring
+    This table is defined by Arm Platform Design Document DEN0065B.
+    """
+    def __init__(self, fn=None, handle=None, sig=b"MPAM", system=None):
+        ACPITable.__init__(self, fn, handle=handle, sig=sig, system=system)
+        self.msc = {}        # MSCs indexed by unique MSC id
+        self.resource = {}   # Resources indexed by unique resource id
+        msg_dup_resource_id = False
+        # Read an array of MSC descriptors
+        while True:
+            ih = self.f.read(2)
+            if not ih:
+                break
+            nlen = struct.unpack("<H", ih)[0]
+            id = ih + self.f.read(nlen-2)
+            if o_verbose >= 2:
+                print("%s  " % hexstr(id), end="")
+            (_, itype, _, uid, mbase, msize, oirq, oirqf, _, oirqa, eirq, eirqf, _, eirqa, _, ldev, ldevi, nres) = struct.unpack("<HBBIQIIIIIIIIIIQII", id[:72])
+            msc = MSC(itype, uid, mbase, msize, oirq, eirq, ldev, owner=self)
+            if uid in self.msc:
+                print("MPAM: unexpected duplicate MSC ID: %s vs. %s" % (self.msc[uid], msc), file=sys.stderr)
+            self.msc[uid] = msc
+            rd = id[72:]           # 24-byte resource nodes, followed by supplementary data
+            if o_verbose >= 2:
+                print("  %s with %u resource nodes, %u bytes" % (msc, nres, len(rd)))
+            for i in range(nres):
+                # Read the MSC's resources. "An MSC has resource partitioning controls that operate on resources."
+                (rid, rix, _, _, ltype, loc1, loc2, ndep) = struct.unpack("<IBBBBQII", rd[:24])
+                rd = rd[24:]
+                # "Each resource in the system must be assigned an identifier that is
+                #  globally unique among all resources in the system."
+                r = msc.add_resource(rid=rid, ltype=ltype, loc1=loc1, loc2=loc2)
+                if rid in self.resource:
+                    if not msg_dup_resource_id:
+                        print("MPAM: unexpected duplicate resource ID: %s vs. %s" % (self.resource[rid], r), file=sys.stderr)
+                        msg_dup_resource_id = True
+                self.resource[rid] = r
+                # now read the functional dependency descriptors
+                for j in range(ndep):
+                    (prod, _) = struct.unpack("<II", rd[:8])
+                    rd = rd[8:]
+                    r.deps.append(prod)
+            if len(rd) != 0:
+                print("%s: unexpected %u bytes data" % (self, len(rd)), file=sys.stderr)
+                sys.exit(1)
+            if o_verbose:
+                print("  %s" % msc)
+
+    def show_subclass(self):
+        for msc_id in sorted(self.msc.keys()):
+            print("  %s" % self.msc[msc_id])
+
+
+def ACPI(fn, system=None):
     """
     Open an ACPI file, returning an ACPITable or subclass thereof.
     """
@@ -381,16 +524,18 @@ def ACPI(fn):
     with open(fn, "rb") as f:
         sig = f.read(4)
         if sig == b"APIC":
-            return APIC(fn, handle=f, sig=sig)
+            return APIC(fn, handle=f, sig=sig, system=system)
         elif sig == b"PPTT":
-            return PPTT(fn, handle=f, sig=sig)
+            return PPTT(fn, handle=f, sig=sig, system=system)
         elif sig == b"SLIT":
-            return SLIT(fn, handle=f, sig=sig)
+            return SLIT(fn, handle=f, sig=sig, system=system)
         elif sig == b"SRAT":
-            return SRAT(fn, handle=f, sig=sig)
+            return SRAT(fn, handle=f, sig=sig, system=system)
+        elif sig == b"MPAM":
+            return MPAM(fn, handle=f, sig=sig, system=system)
         else:
             # Other tables not handled specially
-            return ACPITable(fn, handle=f, sig=sig)
+            return ACPITable(fn, handle=f, sig=sig, system=system)
 
 
 if __name__ == "__main__":
@@ -401,12 +546,15 @@ if __name__ == "__main__":
     opts = parser.parse_args()
     o_verbose = opts.verbose
     if not os.path.isdir(opts.input):
+        # Build a single ACPI table object from a single file
         A = ACPI(opts.input)
         A.show()
     else:
-        acpi_dir = "/sys/firmware/acpi/tables"
+        # Build a collection of ACPI table objects from a directory
+        S = System()
+        acpi_dir = opts.input
         for fn in sorted(os.listdir(acpi_dir)):
             fn = os.path.join(acpi_dir, fn)
             if os.path.isfile(fn):
-                A = ACPI(fn)
+                A = ACPI(fn, system=S)
                 A.show()

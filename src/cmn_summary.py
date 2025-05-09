@@ -67,6 +67,7 @@ def slc_size():
     """
     Get the system cache size by looking at a CPU's last-level cache
     as described in the topology description - generally from ACPI PPTT.
+    We ignore L1 and L2.
     """
     max_level = 0
     max_index = None
@@ -77,9 +78,11 @@ def slc_size():
             if o_verbose >= 2:
                 print("file not found: %s" % (e), file=sys.stderr)
             break
-        if level > max_level:
+        if level >= 3 and level > max_level:
             max_index = i
             max_level = level
+    if max_index is None:
+        return None
     slc = "cache/index%u/" % max_index
     n_ways = int(cpu_prop(slc + "ways_of_associativity"))
     line   = int(cpu_prop(slc + "coherency_line_size"))

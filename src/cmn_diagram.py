@@ -93,9 +93,10 @@ class CMNDiagram(textdiagram.TextDiagram):
             if ix > 0:
                 dev_label = dev_label[:ix]
         dev_color = self.dev_type_color(dev_label)
-        if xp.port_has_cal(p):
-            dev_label = "2x" + dev_label     # two identical devices on this port
-            # TBD: handle later CALs
+        port_cal = xp.port_has_cal(p)
+        if port_cal:
+            dev_label = str(port_cal) + "x" + dev_label   # multiple devices on this port
+            # TBD: handle HCALs
         dev_label = (self._id_fmt + ":%s") % (xp.port_base_id(p), dev_label)
         if xp.port_device_type_str(p).startswith("RN-F"):
             try:

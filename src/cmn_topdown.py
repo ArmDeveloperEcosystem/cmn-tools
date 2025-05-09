@@ -9,27 +9,29 @@ SPDX-License-Identifier: Apache 2.0
 
 from __future__ import print_function
 
+
 import sys
+import subprocess
+import atexit
+
 
 import cmn_json
 import cmn_perfstat
 import cmnwatch
 from cmn_enum import *
 import cmn_perfcheck
+from cmn_summary import memsize_str
 
 
 o_verbose = 0
 
 o_no_adjust = False
 o_dominance_level = 0.95
+o_print_rate_bandwidth = False
+o_print_percent = True
 
 
 S = cmn_json.system_from_json_file()
-
-
-def port_watchpoint_events(port, wp):
-    wp_events = wp.perf_events(cmn_instance=port.CMN().seq, nodeid=port.XP().node_id(), dev=port.port)
-    return wp_events
 
 
 class Topdown:
@@ -45,19 +47,51 @@ class Topdown:
         for c in cats:
             self.rate[c] = 0.0
         self.rate[None] = 0.0
-        self.total_rate = 0.0
+        self.total_rate = None
         self.dominance_level = dominance_level if dominance_level is not None else o_dominance_level
+        self.is_measured = False
 
     def __str__(self):
-        s = "Topdown(%s, name=\"%s\", dominance_level=%.2f)" % (str(self.categories), self.name, self.dominance_level)
+        if o_verbose >= 2:
+            s = "%s, name=\"%s\", dominance_level=%.2f" % (str(self.categories), self.name, self.dominance_level)
+        else:
+            s = "\"%s\"" % self.name
+        s = "Topdown(%s)" % s
         return s
 
-    def accumulate(self, cat, rate):
-        self.total_rate += rate
+    def measure(self):
+        pass
+
+    @staticmethod
+    def get_categories(cats):
+        """
+        Given a list of categories to be adjusted by some metric,
+        return the individual category names, possibly prefixed with '-' indicating subtraction.
+        """
+        return [cat.strip() for cat in cats.split(',')]
+
+    def add_category(self, cat):
         if cat not in self.rate:
             self.categories.append(cat)
             self.rate[cat] = 0.0
-        self.rate[cat] += rate
+
+    def add_categories(self, cats):
+        for cat in self.get_categories(cats):
+            if cat.startswith("-"):
+                cat = cat[1:]
+            self.add_category(cat)
+
+    def accumulate(self, cat, rate):
+        """
+        Accumulate a metric measure,ment into the ongoing topdown analysis.
+        Metrics can be negative, if they are intended to subtract from some other metric
+        to give an overall category metric.
+        """
+        if cat.startswith("-"):
+            cat = cat[1:]
+            self.rate[cat] -= rate
+        else:
+            self.rate[cat] += rate
 
     def proportion(self, cat):
         return self.rate[cat] / self.total_rate
@@ -75,20 +109,123 @@ class Topdown:
         for cat in self.categories:
             if self.rate[cat] < 0.0:
                 self.rate[cat] = 0.0
-            self.total_rate += self.rate[cat]
+            if not cat.startswith("*"):
+                self.total_rate += self.rate[cat]
 
     def dominator(self):
         assert self.dominance_level > 0.5     # if it's less, we might have >1 matching category
         for c in self.categories:
+            if c is not None and c.startswith("*"):
+                continue
             if self.proportion(c) >= self.dominance_level:
                 return c
         return None
 
 
-def print_topdown(td):
+def port_watchpoint_events(port, wp):
+    wp_events = wp.perf_events(cmn_instance=port.CMN().seq, nodeid=port.XP().node_id(), dev=port.port)
+    return wp_events
+
+
+def port_watchpoint_event(port, wp):
+    wp_events = port_watchpoint_events(port, wp)
+    assert len(wp_events) == 1, "bad events: %s" % wp_events
+    wp_event = wp_events[0]
+    if o_verbose >= 2:
+        print("  event: %s" % wp_event)
+    return wp_event
+
+
+_hns_events = {
+    "hnf_slc_sf_cache_access": "hns_slc_sf_cache_access_all",
+    "hnf_cache_miss": "hns_cache_miss_all",
+    "hnf_sf_hit": "hns_sf_hit_all",
+    "hnf_mc_reqs": "hns_mc_reqs_local_all",
+    "hnf_mc_retries": "hns_mc_retries_local",
+    "hnf_pocq_reqs_recvd": "hns_pocq_reqs_recvd_all",
+    "hnf_pocq_retry": "hns_pocq_retry_all",
+}
+
+
+class TopdownPerf(Topdown):
+    """
+    Topdown analysis from PMU events
+    """
+    def __init__(self, S, cats, **kw):
+        Topdown.__init__(self, cats, **kw)
+        self.S = S
+        self.has_HNS = self.S.has_HNS()
+        self.events = []     # these two lists are in 1:1 correspondence
+        self.catlist = []
+
+    def add(self, cat, event):
+        if o_verbose:
+            print("%s: add \"%s\" = %s" % (self, cat, event))
+        self.add_categories(cat)
+        self.catlist.append(cat)
+        self.events.append(event)
+
+    def add_cmn_event(self, cat, e):
+        if self.has_HNS:
+            e = _hns_events.get(e, e)
+        e = "arm_cmn/%s/" % e
+        self.add(cat, e)
+
+    def add_port_watchpoint(self, cat, port, **kw):
+        try:
+            wp = cmnwatch.Watchpoint(cmn_version=self.S.cmn_version(), **kw)
+        except cmnwatch.WatchpointError as e:
+            # This shouldn't occur, but given that the recipes are data-driven,
+            # and may be user-modified or user-written, we should avoid crashing
+            # out with a Python backtrace.
+            print("%s: unexpected bad watchpoint: %s" % (self, e), file=sys.stderr)
+            sys.exit(1)
+        event = port_watchpoint_event(port, wp)
+        self.add(cat, event)
+
+    def measure(self):
+        """
+        Set up some perf measurements on CMN, and then process the resulting data.
+        """
+        rates = cmn_perfstat.perf_rate(self.events)
+        for (cats, rate) in zip(self.catlist, rates):
+            for cat in self.get_categories(cats):
+                if cat is not None and cat.startswith("-"):
+                    self.accumulate(cat[1:], -rate)
+                else:
+                    self.accumulate(cat, rate)
+        self.is_measured = True
+        return self
+
+
+def gen_Topdown(d):
+    td = TopdownPerf(S, d["categories"], name=d["name"])
+    for m in d["measure"]:
+        cat = m["measure"]
+        if "event" in m:
+            td.add_cmn_event(cat, m["event"])
+        elif "ports" in m:
+            for port in S.ports(properties=m["ports"]):
+                if "watchpoint_up" in m:
+                    td.add_port_watchpoint(cat, port, up=True, **m["watchpoint_up"])
+                elif "watchpoint_down" in m:
+                    td.add_port_watchpoint(cat, port, up=False, **m["watchpoint_down"])
+                else:
+                    td.add_port_watchpoint(cat, port, **m["watchpoint"])
+        else:
+            assert False, "invalid analysis recipe: %s" % m
+    td.measure()
+    return td
+
+
+def print_topdown_measurement(recipe):
     """
     Complete a top-down analysis and print the results.
     """
+    td = gen_Topdown(recipe)
+    if not td.is_measured:
+        td.measure()
+    print_rate_bandwidth = recipe.get("print_rate_bandwidth", o_print_rate_bandwidth)
     if o_verbose:
         print("%s: completing top-down analysis" % td)
     if not o_no_adjust:
@@ -100,60 +237,57 @@ def print_topdown(td):
         cname = c if c is not None else "uncategorized"
         if c is None and not td.rate[c]:
             continue
-        print("  %-12s %12.2f %6.3f" % (cname, td.rate[c], td.proportion(c)), end="")
+        if c is not None and c.startswith("*"):
+            # internal category - don't print
+            continue
+        print("  %-13s" % (cname), end="")
+        # These numbers can get pretty big. Potentially things happening
+        # at 1GHz in 1000 places, so rates may be around 1e12.
+        # It might be better to print the rates per microsecond,
+        # or use scientific notation.
+        if print_rate_bandwidth:
+            print(" %12s/s" % memsize_str(64*td.rate[c]), end="")
+        else:
+            print(" %14.2f" % (td.rate[c]), end="")
+        if o_print_percent:
+            print(" %6.1f%%" % (td.proportion(c) * 100.0), end="")
+        else:
+            print(" %6.3f" % (td.proportion(c)), end="")
         if c == dom:
-            print("  ** dominant **", end="")
+            print(" **", end="")
         print()
     if dom is not None:
         print("Dominant category: %s" % dom)
     else:
         print("No dominant category at %.0f%% level" % (td.dominance_level*100.0))
+    if o_verbose:
+        print()
 
+
+def print_topdown(recipe):
+    if "measure" in recipe:
+        print_topdown_measurement(recipe)
+    if "subrecipes" in recipe:
+        for r in recipe["subrecipes"]:
+            print_topdown(r)
+
+
+#
+# From here onwards are individual topdown recipes.
+#
 
 # Level 1 aims to find the dominant requester type (RN-F, RN-I, RN-D, CCG)
 
-def topdown_level1_ports():
-    # For level 1, only interested in requests from RNs and CCG - not HN-F requests to SN-F
-    for port in S.ports():
-        if port.has_properties(CMN_PROP_RN) or port.has_properties(CMN_PROP_CCG):
-            yield port
-
-
-def topdown_level1_port_cat(port):
-    cat = None
-    if port.has_properties(CMN_PROP_CCG):
-        cat = "CCG"
-    elif port.has_properties(CMN_PROP_RNF):
-        cat = "RN-F"
-    elif port.has_properties(CMN_PROP_RNI):
-        cat = "RN-I"
-    elif port.has_properties(CMN_PROP_RND):
-        cat = "RN-D"
-    return cat
-
-
-def topdown_level1():
-    events = []
-    for port in topdown_level1_ports():
-        wp = cmnwatch.Watchpoint(chn=cmnwatch.REQ, up=True, cmn_version=S.cmn_version(), opcode="PrefetchTgt", exclusive=True)
-        if o_verbose:
-            print("watchpoint: %s" % wp)
-        wp_events = port_watchpoint_events(port, wp)
-        assert len(wp_events) == 1
-        wp_event = wp_events[0]
-        if o_verbose:
-            print("  event: %s" % wp_event)
-        events.append(wp_event)
-    req_rates = cmn_perfstat.perf_rate(events)
-    td = Topdown(["RN-F", "RN-I", "RN-D", "CCG"], name="Level 1 analysis")
-    for (port, rate) in zip(topdown_level1_ports(), req_rates):
-        if not rate:
-            continue
-        cat = topdown_level1_port_cat(port)
-        if cat is None:
-            print("unexpected rate from %s" % port)
-        td.accumulate(cat, rate)
-    print_topdown(td)
+recipe_level1 = {
+    "name": "Level 1 analysis",
+    "categories": ["RN-F", "RN-I", "RN-D", "CCG"],
+    "measure": [
+        { "measure": "CCG", "ports": CMN_PROP_CCG, "watchpoint_up": { "opcode": "PrefetchTgt", "exclusive": True } },
+        { "measure": "RN-F", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "PrefetchTgt", "exclusive": True } },
+        { "measure": "RN-I", "ports": CMN_PROP_RNI, "watchpoint_up": { "opcode": "PrefetchTgt", "exclusive": True } },
+        { "measure": "RN-D", "ports": CMN_PROP_RND, "watchpoint_up": { "opcode": "PrefetchTgt", "exclusive": True } },
+    ]
+}
 
 
 # Level 2 aims to distinguish local from remote traffic.
@@ -165,30 +299,17 @@ def topdown_level1():
 # Exclude PrefetchTgt as it is in addition to normal requests but
 # takes atypical routes direct from RN-F to CCG or CCG to SN-F.
 
-def topdown_level2_ports():
-    for port in S.ports():
-        if port.has_properties(CMN_PROP_HNF) or port.has_properties(CMN_PROP_CCG):
-            yield port
 
-
-def topdown_level2():
-    events = []
-    for port in topdown_level2_ports():
-        wp = cmnwatch.Watchpoint(chn=cmnwatch.REQ, up=False, cmn_version=S.cmn_version(), opcode="PrefetchTgt", exclusive=True)
-        wp_events = port_watchpoint_events(port, wp)
-        wp_event = wp_events[0]
-        if o_verbose:
-            print("  event: %s" % wp_event)
-        events.append(wp_event)
-    req_rates = cmn_perfstat.perf_rate(events)
-    td = Topdown(["local", "remote"], name="Level 2 analysis")
-    for (port, rate) in zip(topdown_level2_ports(), req_rates):
-        if port.has_properties(CMN_PROP_CCG):
-            td.accumulate("remote", rate)
-            td.accumulate("local", -rate)
-        else:
-            td.accumulate("local", rate)
-    print_topdown(td)
+recipe_level2 = {
+    "name": "Level 2 analysis",
+    "categories": ["local", "remote"],
+    "run_if": ["multisocket"],
+    "measure": [
+        { "measure": "local",         "ports": CMN_PROP_HNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "PrefetchTgt", "exclusive": True } },
+        # { "measure": "local",            "ports": CMN_PROP_HNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNotSharedDirty" } },
+        { "measure": "remote,-local,-local", "ports": CMN_PROP_CCG, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "PrefetchTgt", "exclusive": True } },
+    ]
+}
 
 
 # Level 3 aims to find where RN-F requests are going - HN-F, I/O or CCG.
@@ -196,76 +317,72 @@ def topdown_level2():
 # we interpret this as wanting to count requests to HN-F that miss in SLC
 # and generate requests from HN-F to SN-F - but this is approximate, since
 # a miss in SLC might instead be resolved by a snoop.
+# Note that hnf_slc_sf_cache_access does not count evicts (even with data),
+# but hnf_mc_reqs does count writes. So we need to be clear whether we
+# are calculating a breakdown of just reads (including CPUs bringing lines
+# in to modify) or all traffic from CPU to home nodes.
 
-_hns_events = {
-    "hnf_slc_sf_cache_access": "hns_slc_sf_cache_access_all",
-    "hnf_cache_miss": "hns_cache_miss_all",
-    "hnf_sf_hit": "hns_sf_hit_all",
+
+recipe_level3_rnf = {
+    "name": "Level 3 request analysis",
+    "categories": ["HN-F hit", "HN-F snoop", "HN-F DRAM", "HN-I", "HN-D"],
+    "measure": [
+        { "measure": "*all,HN-F hit",    "event": "hnf_slc_sf_cache_access" },
+        { "measure": "*miss,HN-F snoop,-HN-F hit",  "event": "hnf_cache_miss" },
+        { "measure": "HN-F DRAM,-HN-F snoop", "ports": CMN_PROP_SNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnp" } },
+        { "measure": "HN-F DRAM,-HN-F snoop", "ports": CMN_PROP_SNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnpSep" } },
+        { "measure": "HN-I",      "ports": CMN_PROP_HNI, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnp" } },
+        { "measure": "HN-D",      "ports": CMN_PROP_HND, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnp" } },
+    ]
 }
 
 
-def hnf_event(S, e):
-    if S.has_HNS():
-        e = _hns_events.get(e, e)
-    return e
+recipe_prefetch = {
+    "name": "PrefetchTgt request analysis",
+    "categories": ["normal", "prefetch"],
+    "measure": [
+        { "measure": "normal",   "ports": CMN_PROP_RNF, "watchpoint_up": { "chn": cmnwatch.REQ, "opcode": "PrefetchTgt", "exclusive": True } },
+        { "measure": "prefetch", "ports": CMN_PROP_RNF, "watchpoint_up": { "chn": cmnwatch.REQ, "opcode": "PrefetchTgt", "exclusive": False } },
+    ]
+}
 
 
-def topdown_level3_rnf():
-    td = Topdown(["HN-F hit", "HN-F DRAM", "HN-I", "HN-D"], name="Level 3 request analysis")
-    hnf_access_rate = cmn_perfstat.perf_rate(["arm_cmn/%s/" % hnf_event(S, "hnf_slc_sf_cache_access")])[0]
-    hnf_sf_hit_rate = cmn_perfstat.perf_rate(["arm_cmn/%s/" % hnf_event(S, "hnf_sf_hit")])[0]
-    hnf_miss_rate   = cmn_perfstat.perf_rate(["arm_cmn/%s/" % hnf_event(S, "hnf_cache_miss")])[0]
-    hnf_dram_rate = hnf_access_rate - hnf_sf_hit_rate
-    td.accumulate("HN-F hit", hnf_sf_hit_rate)
-    #td.accumulate("HN-F miss", hnf_miss_rate)
-    td.accumulate("HN-F DRAM", hnf_dram_rate)
-    events = []
-    def level3_hnd_ports():
-        for port in S.ports():
-            if port.has_properties(CMN_PROP_HNI) or port.has_properties(CMN_PROP_HND):
-                yield port
-    for port in level3_hnd_ports():
-        wp = cmnwatch.Watchpoint(chn=cmnwatch.REQ, up=False, cmn_version=S.cmn_version())
-        wp_events = port_watchpoint_events(port, wp)
-        wp_event = wp_events[0]
-        if o_verbose:
-            print("  event: %s" % wp_event)
-        events.append(wp_event)
-    req_rates = cmn_perfstat.perf_rate(events)
-    for (port, rate) in zip(level3_hnd_ports(), req_rates):
-        cat = None
-        if port.has_properties(CMN_PROP_HNI):
-            cat = "HN-I"
-        elif port.has_properties(CMN_PROP_HND):
-            cat = "HN-D"
-        td.accumulate(cat, rate)
-    print_topdown(td)
+recipe_bandwidth = {
+    "name": "DRAM bandwidth",
+    "categories": ["read", "write"],
+    "print_rate_bandwidth": True,
+    "measure": [
+        { "measure": "read", "ports": CMN_PROP_SNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnp" } },
+        { "measure": "read", "ports": CMN_PROP_SNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnpSep" } },
+        { "measure": "write", "ports": CMN_PROP_SNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "WriteNoSnpFull" } },
+    ],
+}
 
 
-def topdown_prefetch_ports():
-    for port in S.ports(properties=CMN_PROP_RNF):
-        yield port
+recipe_retries_hnf = {
+    "name": "Retried requests from CPU to SLC",
+    "categories": ["retry", "non-retry"],
+    "measure": [
+        { "measure": "non-retry",  "event": "hnf_pocq_reqs_recvd" },
+        { "measure": "retry,-non-retry", "event": "hnf_pocq_retry" },
+    ]
+}
 
 
-def topdown_prefetch():
-    td = Topdown(["normal", "prefetch"], name="PrefetchTgt request analysis")
-    events = []
-    catlist = []
-    for port in topdown_prefetch_ports():
-        wp = cmnwatch.Watchpoint(chn=cmnwatch.REQ, up=True, cmn_version=S.cmn_version(), opcode="PrefetchTgt", exclusive=True)
-        wp_events = port_watchpoint_events(port, wp)
-        wp_event = wp_events[0]
-        events.append(wp_event)
-        catlist.append("normal")
-        wp = cmnwatch.Watchpoint(chn=cmnwatch.REQ, up=True, cmn_version=S.cmn_version(), opcode="PrefetchTgt", exclusive=False)
-        wp_events = port_watchpoint_events(port, wp)
-        wp_event = wp_events[0]
-        events.append(wp_event)
-        catlist.append("prefetch")
-    req_rates = cmn_perfstat.perf_rate(events)
-    for (cat, rate) in zip(catlist, req_rates):
-        td.accumulate(cat, rate)
-    print_topdown(td)
+recipe_retries_snf = {
+    "name": "Retried requests from SLC to DRAM",
+    "categories": ["retry", "non-retry"],
+    "measure": [
+        { "measure": "non-retry",  "event": "hnf_mc_reqs" },
+        { "measure": "retry,-non-retry", "event": "hnf_mc_retries" },
+    ]
+}
+
+
+recipe_retries = {
+    "name": "Retried requests",
+    "subrecipes": [recipe_retries_hnf, recipe_retries_snf],
+}
 
 
 if __name__ == "__main__":
@@ -276,36 +393,57 @@ if __name__ == "__main__":
     parser.add_argument("--all", action="store_true", help="run all top-down levels")
     parser.add_argument("--time", type=float, default=0.5, help="measurement time for top-down")
     parser.add_argument("--dominance-level", type=float, default=0.95, help="threshold for traffic to be considered dominant")
-    parser.add_argument("--no-adjust", action="store_true")
+    parser.add_argument("--percentage", action="store_true", help="print as percentages")
+    parser.add_argument("--bandwidth", action="store_true", help="print request counts as bandwidth")
+    parser.add_argument("--no-adjust", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--perf-bin", type=str, default="perf", help="perf command")
+    parser.add_argument("--cmd", type=str, help="microbenchmark to run (will be killed on exit)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
     o_no_adjust = opts.no_adjust
     o_dominance_level = opts.dominance_level
+    if opts.percentage:
+        o_print_percent = True
+    if opts.bandwidth:
+        o_print_rate_bandwidth = True
     cmn_perfstat.o_verbose = max(0, opts.verbose-1)
     cmn_perfstat.o_time = opts.time
+    cmn_perfstat.o_perf_bin = opts.perf_bin
     if not opts.level:
         opts.level = ["1"]
-    if opts.all:
-        opts.level = ["1", "2", "3"]
-    if not cmn_perfcheck.check_cmn_pmu_events():
+    if opts.all or opts.level == ["all"]:
+        opts.level = ["1", "2", "3", "bandwidth", "retries"]
+    if not cmn_perfcheck.check_cmn_pmu_events(check_rsp_dat=False):
         print("CMN perf events not available - can't do top-down analysis",
               file=sys.stderr)
         sys.exit(1)
+    if opts.cmd:
+        # Run a subprocess while doing top-down. Unlike "perf stat" etc. we don't
+        # time the top-down analysis to the subprocess - we simply start it, hope it
+        # keeps running, and then kill it. Typically it would be a microbenchmark
+        # like "lmbench" or "stream".
+        p = subprocess.Popen(opts.cmd.split())
+        # Subprocess will be killed on exit. This is harmless if it's already terminated.
+        atexit.register(lambda p: p.kill(), p)
     print("CMN Top-down performance analysis")
     print("=================================")
     for level in opts.level:
         if level == "1":
-            topdown_level1()
-        elif level == "2":
+            print_topdown(recipe_level1)
+        elif level == "2" or level == "c2c":
             if len(S.CMNs) == 1 and opts.all:
                 print("Skipping Level 2 because system has only one interconnect")
             else:
-                topdown_level2()
+                print_topdown(recipe_level2)
         elif level == "3":
-            topdown_level3_rnf()
+            print_topdown(recipe_level3_rnf)
         elif level == "prefetch":
-            topdown_prefetch()
+            print_topdown(recipe_prefetch)
+        elif level == "bandwidth":
+            print_topdown(recipe_bandwidth)
+        elif level == "retries":
+            print_topdown(recipe_retries)
         else:
             print("bad topdown level %s" % level, file=sys.stderr)
             sys.exit(1)

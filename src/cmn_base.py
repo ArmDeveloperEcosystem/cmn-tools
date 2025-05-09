@@ -821,18 +821,18 @@ class CacheGeometry:
 
     def cache_str(self):
         if self.exists():
-            s = "%s %u-way" % (memsize_str(self.size_bytes), self.n_ways)
+            s = "%s (%u sets) %u-way" % (memsize_str(self.size_bytes), self.n_sets, self.n_ways)
         else:
             s = "none"
         return s
 
     def sf_str(self):
-        return "%s %u-way" % (memsize_str(self.sf_size), self.sf_n_ways)
+        return "%s (%u sets) %u-way" % (memsize_str(self.sf_size), self.sf_n_sets, self.sf_n_ways)
 
     def __str__(self):
         s = self.cache_str()
         if self.sf_n_ways is not None:
-            s += " SF: " + self.sf_str()
+            s += ", SF: " + self.sf_str()
         return s
 
 

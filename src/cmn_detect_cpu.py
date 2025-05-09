@@ -45,8 +45,9 @@ import cmnwatch
 o_verbose = 0
 
 o_time = 1.0      # Measurement run time - increase if system is noisy
-o_factor = 5
+o_factor = 5.0
 o_retries = 3
+o_retry_multiplier = 2.0
 
 o_force_lpid = False
 o_force_srcid = False
@@ -67,7 +68,7 @@ class CMN_RNFPort:
 
     def perf_events(self, **matches):
         w = cmnwatch.Watchpoint(cmn_version=self.port.CMN().product_config, up=True, **matches)
-        flds = "nodeid=%u,bynodeid=1,wp_dev_sel=%u" % (self.xp_id, self.port.port)
+        flds = "nodeid=0x%x,bynodeid=1,wp_dev_sel=%u" % (self.xp_id, self.port.port)
         return w.perf_events(flds, cmn_instance=self.port.CMN().seq)
 
     def __str__(self):
@@ -78,7 +79,8 @@ class CMN_RNFPort:
 def max_index(x):
     """
     Given a list of event counts, return the index of the count that is
-    much bigger than the rest. If there's no clear winner, return None.
+    much bigger (by a factor of 'o_factor') than the rest.
+    If there's no clear winner, return None.
     """
     if len(x) == 1:
         return 0        # degenerate case
@@ -97,16 +99,16 @@ def get_max_event(cpu, events, time=o_time):
     on the CPU and return the index of whichever event is the clear winner.
     """
     t = time
-    for i in range(o_retries):
+    for i in range(o_retries+1):
         er = cmn_traffic_gen.cpu_gen_traffic(cpu, events, time=t)
         if o_verbose >= 3:
             print("CPU %3u: %s" % (cpu, er))
         ix = max_index(er)
         if ix is not None:
             return ix
-        t = t * 2
+        t = t * o_retry_multiplier
         if o_verbose >= 1:
-            print("retrying...")
+            print("retrying (%u/%u)..." % (i, o_retries))
     print("no clear winner after %u retries, system too busy?" % o_retries, file=sys.stderr)
     sys.exit(1)
 
@@ -188,7 +190,7 @@ def discover_cpu_srcid(S, cpu):
     events = []
     for id in ids:
         w = cmnwatch.Watchpoint(cmn_version=cmn.product_config, up=False, srcid=id)
-        flds = "nodeid=%u,bynodeid=1,wp_dev_sel=%u" % (hnf.XP().node_id(), hnf.port)
+        flds = "nodeid=0x%x,bynodeid=1,wp_dev_sel=%u" % (hnf.XP().node_id(), hnf.port)
         e = w.perf_events(flds, cmn_instance=cmn.seq)
         assert len(e) == 1
         events += e
@@ -359,24 +361,33 @@ def print_cpus(S):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Discover where CPUs are located in system mesh")
+    parser = argparse.ArgumentParser(description="Discover where CPUs are located in system mesh",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--json", type=str, default=cmn_json.cmn_config_filename(), help="JSON system description")
     parser.add_argument("--update", action="store_true", help="update JSON system description")
     parser.add_argument("--discard", action="store_true", help="discard any previous CPU mappings")
     parser.add_argument("-o", "--output", type=str, help="output JSON filename")
     parser.add_argument("--cpu", type=int, help="discover one CPU")
     parser.add_argument("--time", type=float, default=1.0, help="measurement time")
+    parser.add_argument("--detection-level", type=float, default=o_factor, help="traffic detection sensitivity")
+    parser.add_argument("--retries", type=int, default=o_retries, help="number of times to retry")
+    parser.add_argument("--retry-multiplier", type=float, default=o_retry_multiplier, help="retry time multiplier")
     parser.add_argument("-N", type=int, help="number of CPUs")
     parser.add_argument("--diagram", action="store_true", help="visualize CPU discovery")
     parser.add_argument("--force-discover", action="store_true")
+    parser.add_argument("--perf-bin", type=str, default="perf", help="path to perf command")
     parser.add_argument("--lmbench-bin", type=str, default=None, help="bin directory for lmbench")
     parser.add_argument("-v", "--verbose", action="count", default=1, help="increase verbosity")
     opts = parser.parse_args()
+    cmn_traffic_gen.o_perf_bin = opts.perf_bin
     cmn_traffic_gen.o_lmbench = opts.lmbench_bin
     o_verbose = opts.verbose
     o_time = opts.time
     o_force_lpid = opts.force_discover
     o_force_srcid = opts.force_discover
+    o_retries = opts.retries
+    o_retry_multiplier = opts.retry_multiplier
+    o_factor = opts.detection_level
     cmn_traffic_gen.o_verbose = opts.verbose >= 3
     if not cmn_perfcheck.check_cmn_pmu_events():
         print("CPU detection requires kernel support for CMN PMU events",

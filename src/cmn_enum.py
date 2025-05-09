@@ -25,18 +25,22 @@ CMN_PROP_none  = 0
 CMN_PROP_RN    = 0x0001     # Requester e.g. RN-F, RN-I. Does not include HN-F.
 CMN_PROP_HN    = 0x0002     # Home node e.g. HN-F, HN-I
 CMN_PROP_SN    = 0x0004     # Memory controller
-CMN_PROP_D     = 0x0010     # non-coherent
+#CMN_PROP_D     = 0x0010     # non-coherent
 CMN_PROP_I     = 0x0020     # I/O coherent but not fully coherent
 CMN_PROP_F     = 0x0040     # Fully coherent
 CMN_PROP_CCG   = 0x0100     # Chip-to-chip gateway
 CMN_PROP_MPAM  = 0x0200     # MPAM configuration node
+CMN_PROP_T     = 0x0400     # Debug/trace features
+CMN_PROP_SBSX  = 0x0800     # AXI/ACE-Lite bridge
+CMN_PROP_DN    = 0x1000     # DVM node
 
-CMN_PROP_RNF   = (CMN_PROP_RN | CMN_PROP_F)
-CMN_PROP_RNI   = (CMN_PROP_RN | CMN_PROP_I)
-CMN_PROP_RND   = CMN_PROP_RN
+CMN_PROP_RNF   = (CMN_PROP_RN | CMN_PROP_F)   # Fully coherent requester
+CMN_PROP_RNI   = (CMN_PROP_RN | CMN_PROP_I)   # I/O coherent requester
+CMN_PROP_RND   = (CMN_PROP_RN | CMN_PROP_I)   # I/O coherent requester that accepts DVM
 CMN_PROP_HNF   = (CMN_PROP_HN | CMN_PROP_F)
 CMN_PROP_HNI   = (CMN_PROP_HN | CMN_PROP_I)
-CMN_PROP_HND   = (CMN_PROP_HN | CMN_PROP_D)
+CMN_PROP_HNT   = (CMN_PROP_HN | CMN_PROP_I | CMN_PROP_T)
+CMN_PROP_HND   = (CMN_PROP_HN | CMN_PROP_I | CMN_PROP_T | CMN_PROP_DN)
 CMN_PROP_SNF   = (CMN_PROP_SN | CMN_PROP_F)
 
 
@@ -80,7 +84,7 @@ cmn_node_properties = {
     CMN_NODE_HNI         : CMN_PROP_HNI,
     CMN_NODE_HNF         : CMN_PROP_HNF,
     CMN_NODE_XP          : CMN_PROP_none,
-    CMN_NODE_SBSX        : CMN_PROP_none,
+    CMN_NODE_SBSX        : CMN_PROP_SBSX,
     CMN_NODE_MPAM_S      : CMN_PROP_MPAM,
     CMN_NODE_MPAM_NS     : CMN_PROP_MPAM,
     CMN_NODE_RNI         : CMN_PROP_RNI,
@@ -204,12 +208,12 @@ cmn_port_properties = {
     CMN_PORT_DEVTYPE_RNF_CHIB_ESAM    : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_RNF_CHIA         : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_RNF_CHIA_ESAM    : CMN_PROP_RNF,
-    CMN_PORT_DEVTYPE_HNT              : CMN_PROP_HND,
+    CMN_PORT_DEVTYPE_HNT              : CMN_PROP_HNT,
     CMN_PORT_DEVTYPE_HNI              : CMN_PROP_HNI,
     CMN_PORT_DEVTYPE_HND              : CMN_PROP_HND,
     CMN_PORT_DEVTYPE_HNP              : CMN_PROP_HNI,
     CMN_PORT_DEVTYPE_SNF              : CMN_PROP_SNF,
-    CMN_PORT_DEVTYPE_SBSX             : CMN_PROP_none,
+    CMN_PORT_DEVTYPE_SBSX             : CMN_PROP_SBSX,
     CMN_PORT_DEVTYPE_HNF              : CMN_PROP_HNF,
     CMN_PORT_DEVTYPE_SNF_CHIE         : CMN_PROP_SNF,
     CMN_PORT_DEVTYPE_SNF_CHID         : CMN_PROP_SNF,

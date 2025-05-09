@@ -26,16 +26,18 @@ in the "AXI" address space. It may be necessary to adjust this.
 This can be done by setting the ARMDS_CMN_SPACE environment variable.
 
 
-Scripts that will work with DS
-------------------------------
+Scripts that are expected to work with DS
+-----------------------------------------
 
 cmn_devmem.py         - low-level access to CMN
 
 cmn_discover.py       - generate JSON system description
 
-cmn_diagram.py        - print JSON system description
+cmn_diagram.py        - print JSON system description as a 2-D map
 
 cmn_capture.py        - capture and decode CHI flits
+
+cmn_latency.py        - use trace tagging to capture related flits
 
 
 Scripts that will not work with DS

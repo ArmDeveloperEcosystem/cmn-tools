@@ -125,10 +125,32 @@ def convert_value(v):
         raise WatchpointBadValue(v, "expected integer or bitmask")
 
 
+def unconvert_value_mask(v, m):
+    """
+    Inverse of convert_value - given a (value, mask) tuple, convert it back into
+    a single object - either an integer, or a string.
+    """
+    if m == 0:
+        return v
+    else:
+        s = ""
+        while m or v:
+            if m & 1:
+                s = "x" + s
+            else:
+                s = str(v & 1) + s
+            v >>= 1
+            m >>= 1
+        return "0b" + s
+
+
 assert convert_value(123) == (123, 0)
 assert convert_value("123") == (123, 0)
 assert convert_value("0x123") == (0x123, 0)
 assert convert_value("0bx1xx") == (4, 0b1011)
+
+assert unconvert_value_mask(123, 0) == 123
+assert unconvert_value_mask(4, 0b1011) == "0bx1xx"
 
 
 class MatchMask:
@@ -229,6 +251,10 @@ class Watchpoint:
     def __init__(self, chn=0, up=None, cmn_version=None, grp=None, mask=None, name=None, **matches):
         assert cmn_version is not None
         #assert isinstance(cmn_version, cmn_base.CMNConfig)
+        try:
+            chn = _chi_channels.index(chn.upper())
+        except Exception:
+            pass
         assert chn in [0, 1, 2, 3], "bad CHI channel, expected 0..3: %s" % chn
         self.cmn_version = cmn_version
         self.up = up
@@ -383,6 +409,13 @@ def _dict_to_object(kwds):
 
 
 def _object_to_dict(obj, fields):
+    """
+    Given an object (e.g. a class of some kind) and a list of field names,
+    return a dictionary mapping field names that occur as attributes,
+    to their corresponding values.
+      e.g. x.a==1, x.b==2, return {"a":1, "b":2}
+    Used for retrieving CHI fields from an argparse.Namespace object.
+    """
     flds = {}
     for f in fields:
         v = getattr(obj, f)
@@ -451,6 +484,23 @@ _rsp_fields = {
     "tagop":      (None,   None,          [(0, 47, 2)]),
 }
 
+
+def snp_addr(s):
+    """
+    For convenience, we allow the user to specify a line byte address,
+    which we convert to the field value in a SNP packet.
+    TBD: For CMN-600, the full SNP address field is split across two match groups -
+    we don't handle this yet.
+    """
+    (v, m) = convert_value(s)
+    (v, m) = (v >> 3, m >> 3)
+    return unconvert_value_mask(v, m)
+
+
+assert snp_addr(0x8000) == 0x1000
+assert snp_addr("0xxx40") == "0bxxxxxxxx01000"
+
+
 _snp_fields = {
     "tracetag":   (None,   [(0, 27, 1)],  [(0, 38, 1)]),
     "srcid":      (None,   [(0, 0, 11), (1, 0, 11)],  [(0, 0, 11), (1, 0, 11)]),
@@ -458,7 +508,7 @@ _snp_fields = {
     "ns":         (chi_spec.NS,   [(0, 24, 1), (1, 24, 1)],  [(0, 35, 1)]),
     "donotgotosd":(None,   [(0, 25, 1), (1, 25, 1)],  [(0, 36, 1)]),
     "rettosrc":   (None,   [(0, 26, 1), (1, 26, 1)],  [(0, 37, 1)]),
-    "addr":       (None,   [(0, 28, 36)], [(1, 11, 49)]),
+    "addr":       (snp_addr,   [(0, 28, 36)], [(1, 11, 49)]),
     "addr13":     (None,   [(1, 32, 32)],  None),
     "mpam":       (None,   None,          [(0, 43, 11)]),
     "qos":        (None,   None,          [(0, 39, 4)]),
@@ -642,7 +692,10 @@ def apply_matches_obj_to_watchpoint(wp, o):
                 # Each channel has its own opcode lookup function.
                 lookup = meta[0]
                 if lookup is not None:
-                    if val in lookup:
+                    # The lookup function may be a table, or a callable.
+                    if callable(lookup):
+                        val = lookup(val)
+                    elif val in lookup:
                         val = lookup.index(val)
                     elif wp.chn == 0 and val == "AtomicStore":
                         val = "0b101xxx"     # 0x28 to 0x2f

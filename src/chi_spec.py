@@ -72,7 +72,50 @@ opcodes_REQ = [
     "AtomicSwap",
     "AtomicCompare",
     "PrefetchTgt",
-    # ... a lot more, including the ones with Opcode[6] == 1
+    "?0x3B",
+    "?0x3C",
+    "?0x3D",
+    "?0x3E",
+    "?0x3F",
+    "?0x40",
+    "MakeReadUnique",
+    "WriteEvictOrEvict",
+    "WriteUniqueZero",
+    "WriteNoSnpZero",
+    "?0x45",
+    "?0x46",
+    "StashOnceSepShared",
+    "StashOnceSepUnique",
+    "?0x49",
+    "?0x4A",
+    "?0x4B",
+    "ReadPreferUnique",
+    "?0x4D",
+    "?0x4E",
+    "?0x4F",
+    "WriteNoSnpFullCleanSh",
+    "WriteNoSnpFullCleanInv",
+    "WriteNoSnpFullCleanShPerSep",
+    "?0x53",
+    "WriteUniqueFullCleanSh",
+    "?0x55",
+    "WriteUniqueFullCleanShPerSep",
+    "?0x57",
+    "WriteBackFullCleanSh",
+    "WriteBackFullCleanInv",
+    "WriteBackFullCleanShPerSep",
+    "?0x5B",
+    "WriteCleanFullCleanSh",
+    "?0x5D",
+    "WriteCleanFullCleanShPerSep",
+    "?0x5F",
+    "WriteNoSnpPtlCleanSh",
+    "WriteNoSnpPtlCleanInv",
+    "WriteNoSnpPtlCleanShPerSep",
+    "?0x63",
+    "WriteUniquePtlCleanSh",
+    "?0x65",
+    "WriteUniquePtlCleanShPerSep",
 ]
 
 opcodes_RSP = [
@@ -146,6 +189,7 @@ opcodes_DAT = [
     "?0xF",
 ]
 
+
 opcodes = [
     opcodes_REQ, opcodes_RSP, opcodes_SNP, opcodes_DAT
 ]
@@ -173,6 +217,8 @@ if __name__ == "__main__":
     # Check that opcodes are unique
     for (i, ops1) in enumerate(opcodes[:-1]):
         for op in ops1:
+            if op.startswith("?"):
+                continue
             for ops2 in opcodes[i+1:]:
                 if op in ops2:
                     print("duplicate: %s" % op)

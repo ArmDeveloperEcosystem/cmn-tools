@@ -115,7 +115,8 @@ class CMNLocator:
     root node address, and CMN product number (e.g. cmn_base.PART_CMN700).
     We get it from /proc/iomem, ACPI tables, user override etc.
     """
-    def __init__(self, periphbase=None, rootnode_offset=None, product_id=None):
+    def __init__(self, periphbase=None, rootnode_offset=None, product_id=None, seq=None):
+        self.seq = seq
         self.periphbase = periphbase
         self.rootnode_offset = rootnode_offset
         self.product_id = cmn_base.canon_product_id(product_id)
@@ -138,7 +139,7 @@ def cmn_locators_from_iomem(iomem=None):
         if ad.level == 0:
             assert loc is None
             product_id = cmn_acpi_names[ad.name]
-            loc = CMNLocator(periphbase=ad.addr, product_id=product_id)
+            loc = CMNLocator(periphbase=ad.addr, product_id=product_id, seq=len(locs))
             if loc.product_id != cmn_base.PART_CMN600:
                 loc.rootnode_offset = 0
                 yield loc
@@ -227,14 +228,15 @@ def add_cmnloc_arguments(parser):
     """
     def inthex(s):
         return int(s, 16)
-    parser.add_argument("--cmn-base", type=inthex, help="CMN base address")
-    parser.add_argument("--cmn-root-offset", type=inthex, default=0, help="CMN root node offset")
-    parser.add_argument("--cmn-instance", type=int, help="CMN instance e.g. 0, 1, ...")
-    parser.add_argument("--cmn-version", type=int, help="CMN product number")
-    parser.add_argument("--cmn-iomem", type=str, default="/proc/iomem", help="/proc/iomem file (for testing)")
-    parser.add_argument("--secure-access", action="store_true", default=None, help="assume Secure registers are accessible")
-    parser.add_argument("--list-cmn", action="store_true", help="list all CMN devices in system")
-    parser.add_argument("--cmn-diag", action="store_true")    # CMN driver internal diagnostics
+    ag = parser.add_argument_group("CMN location arguments")
+    ag.add_argument("--cmn-base", type=inthex, help="CMN base address")
+    ag.add_argument("--cmn-root-offset", type=inthex, default=0, help="CMN root node offset")
+    ag.add_argument("--cmn-instance", type=int, help="CMN instance e.g. 0, 1, ...")
+    ag.add_argument("--cmn-version", type=int, help="CMN product number")
+    ag.add_argument("--cmn-iomem", type=str, default="/proc/iomem", help="/proc/iomem file (for testing)")
+    ag.add_argument("--secure-access", action="store_true", default=None, help="assume Secure registers are accessible")
+    ag.add_argument("--list-cmn", action="store_true", help="list all CMN devices in system")
+    ag.add_argument("--cmn-diag", action="store_true")    # CMN driver internal diagnostics
 
 
 if __name__ == "__main__":
