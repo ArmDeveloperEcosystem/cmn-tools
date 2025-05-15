@@ -560,7 +560,7 @@ class CMNNodeXP(CMNNode):
     def dtc_domain(self):
         """
         Return the DTC domain number of this XP, if known.
-        TBD: Recent CMN allows an XP to have multiple DTMs, with a corrresponding
+        TBD: Recent CMN allows an XP to have multiple DTMs, with a corresponding
         dtm_unit_info register for each one - implying an XP's DTMs could be in
         different domains. We have not observed this.
         """
@@ -696,7 +696,7 @@ class CMNDTM:
         """
         e = self.dtm_test64(CMN_DTM_CONTROL_off, CMN_DTM_CONTROL_DTM_ENABLE)
         if self._dtm_is_enabled is not None:
-            assert e == self._dtm_is_enabled, "%s: cached DTM emable state out of sync" % self
+            assert e == self._dtm_is_enabled, "%s: cached DTM enable state out of sync" % self
         return e
 
     def dtm_clear_fifo(self):
