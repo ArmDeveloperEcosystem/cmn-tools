@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-Manage details of CMN PMU events.
+Manage details of CMN PMU events, and load details from a CSV file.
 
 Copyright (C) Arm Ltd. 2025. All rights reserved.
 SPDX-License-Identifier: Apache 2.0
@@ -273,6 +273,21 @@ def event_file_name(product_id):
     """
     fn = "cmn-events-%04x.csv" % (product_id)
     return os.path.join(os.path.dirname(__file__), fn)
+
+
+hns_events = {
+    "hnf_slc_sf_cache_access": "hns_slc_sf_cache_access_all",
+    "hnf_cache_miss": "hns_cache_miss_all",
+    "hnf_sf_hit": "hns_sf_hit_all",
+    "hnf_mc_reqs": "hns_mc_reqs_local_all",
+    "hnf_mc_retries": "hns_mc_retries_local",
+    "hnf_pocq_reqs_recvd": "hns_pocq_reqs_recvd_all",
+    "hnf_pocq_retry": "hns_pocq_retry_all",
+    "hnf_qos_pocq_occupancy_all": "hns_qos_pocq_occupancy_all",
+    "hnf_qos_pocq_occupancy_read": "hns_qos_pocq_occupancy_read",
+    "hnf_qos_pocq_occupancy_write": "hns_qos_pocq_occupancy_write",
+    "hnf_qos_pocq_occupancy_atomic": "hns_qos_pocq_occupancy_atomic",
+}
 
 
 if __name__ == "__main__":

@@ -129,7 +129,8 @@ class CMNVis:
             for port in range(n_ports):
                 base_id = xp.node_id() + (port * poff)
                 desc = xp.port_device_type_str(port)[:4]
-                device_ids = 2 if xp.port_has_cal(port) else 1
+                cal = xp.port_has_cal(port)
+                device_ids = cal if cal else 1
                 for device_id in range(device_ids):
                     id = base_id + device_id
                     self.id_map[(id, 0)] = desc
@@ -191,9 +192,14 @@ class CMNHist(CMNVis):
         if stype.startswith("#"):
             stype = "RN-F"    # undo the CPU mapping!
         if flit.tgtid is not None:
-            ttype = self.id_map[(flit.tgtid, 0)]
-            if ttype.startswith("#"):
-                ttype = "RN-F"
+            key = (flit.tgtid, 0)
+            try:
+                ttype = self.id_map[(flit.tgtid, 0)]
+                if ttype.startswith("#"):
+                    ttype = "RN-F"
+            except KeyError:
+                # Unexpected: a target-id that we didn't know about
+                ttype = "?"
         else:
             ttype = "?"
         op = flit.opcode_str()

@@ -2,7 +2,7 @@
 
 """
 Generate a 2-D map of the CMN mesh in the format of the Linux PMU driver
-(main author Robin.Murphy@arm.com). This is mainly for cross-checking
+(main author Robin Murphy). This is mainly for cross-checking
 the bare-metal tools against the driver.
 
 Copyright (C) Arm Ltd. 2024. All rights reserved.
@@ -74,18 +74,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="generate Linux-style CMN diagram")
     parser.add_argument("-i", "--input", type=str, default=cmn_json.cmn_config_filename(), help="CMN JSON")
     parser.add_argument("--cmn-instance", type=int, default=0, help="select CMN number")
-    parser.add_argument("--diff", action="store_true")
+    parser.add_argument("--diff", action="store_true", help="diff our map against the kernel's map")
+    parser.add_argument("--kernel-map", type=str, default=DEBUG_CMN_MAP, help="file containing kernel debug map")
     parser.add_argument("--diff-opts", type=str, default="", help="options for 'diff' command")
     opts = parser.parse_args()
     S = cmn_json.system_from_json_file(opts.input)
     C = S.CMNs[opts.cmn_instance]
     m = gen_debugmap(C)
     if not opts.diff:
-        print("\n".join(m) + "\n")
+        print("\n".join(m))
     else:
         with open("temp.cmnmap", "w") as f:
             f.write("\n".join(m) + "\n")
-        rc = os.system("diff %s %s %s" % (opts.diff_opts, DEBUG_CMN_MAP, "temp.cmnmap"))
+        rc = os.system("diff %s %s %s" % (opts.diff_opts, opts.kernel_map, "temp.cmnmap"))
         if rc == 0:
             print("Successfully reproduced the kernel driver map")
         else:

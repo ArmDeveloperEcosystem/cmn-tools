@@ -116,22 +116,29 @@ def _check_perf(e):
 
 
 def check_perf():
+    """
+    Check that the "perf" command is installed.
+    """
     try:
         _check_perf("dummy")
         return True
     except FileNotFoundError:
+        # "perf" command not installed
         return False
     except Exception:
         return False
 
 
 def check_cmn_perf():
+    """
+    Check that perf can access CMN PMU events.
+    """
     return _check_perf("arm_cmn/hnf_pocq_reqs_recvd/") or _check_perf("arm_cmn/hns_pocq_reqs_recvd_all/")
 
 
 def check_watchpoints(chn=0):
     """
-    Check if watchpoints generally work.
+    Check if CMN watchpoints generally work, by setting up an open watchpoint on a given channel.
     """
     wp = "watchpoint_up,wp_chn_sel=%u,wp_dev_sel=0,wp_grp=0,wp_val=0,wp_mask=0xffffffffffffffff" % chn
     return _check_perf("arm_cmn/%s/" % wp)

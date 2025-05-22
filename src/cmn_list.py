@@ -60,9 +60,10 @@ def show_cmn(cmn, verbose=0):
         print()
         # Show XP information
         xp.show()
-        # Show XP DTM information
-        for dtm in xp.DTMs():
-            cmn_dtstat.print_dtm(dtm, pfx="      ")
+        if verbose >= 1:
+            # Show XP DTM information
+            for dtm in xp.DTMs():
+                cmn_dtstat.print_dtm(dtm, pfx="      ")
         # Show the XP's child devices. Although these are discovered directly from the XP,
         # we group them by their device port.
         for p in range(0, n_ports):

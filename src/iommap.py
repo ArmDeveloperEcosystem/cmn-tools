@@ -24,6 +24,7 @@ limitations under the License.
 from __future__ import print_function
 
 import os
+import sys
 import ctypes
 import struct
 import errno
@@ -67,6 +68,7 @@ class mmap:
             # Mapping failed. Possible reasons:
             #  - CONFIG_IO_STRICT_DEVMEM and area is forbidden
             if ctypes.get_errno() == errno.EPERM:
+                print("Mapping failed: kernel may be built with CONFIG_IO_STRICT_DEVMEM?", file=sys.stderr)
                 raise OSError(ctypes.get_errno(), os.strerror(ctypes.get_errno()))
             raise EnvironmentError
 

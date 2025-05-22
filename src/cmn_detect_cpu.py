@@ -181,7 +181,7 @@ def discover_cpu_srcid(S, cpu):
         print("discovering SRCID for CPU#%u on %s" % (cpu, rp))
     bid = rp.port.base_id()
     if rp.port.cal:
-        ids = [bid, bid+1]
+        ids = list(range(bid, bid+rp.port.cal))
     else:
         ids = [bid]
     hnf = pick_any_hnf_port(S, cmn.seq)
@@ -380,6 +380,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", action="count", default=1, help="increase verbosity")
     opts = parser.parse_args()
     cmn_traffic_gen.o_perf_bin = opts.perf_bin
+    cmn_perfcheck.o_perf_bin = opts.perf_bin
     cmn_traffic_gen.o_lmbench = opts.lmbench_bin
     o_verbose = opts.verbose
     o_time = opts.time

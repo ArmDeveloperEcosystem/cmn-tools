@@ -29,6 +29,15 @@ def BITS(x, p, n):
     return (x >> p) & ((1 << n) - 1)
 
 
+class CMNException(Exception):
+    pass
+
+
+class CMNNoCPUMappings(CMNException):
+    def __str__(self):
+        return "System description has no CPU locations - run cmn_detect_cpu.py"
+
+
 class NodeGroup:
     """
     Abstract base class for a group of nodes, either one mesh or several.
@@ -99,11 +108,13 @@ class System(NodeGroup):
         return bool(self.cpu_node)
 
     def cpu(self, n):
-        assert self.has_cpu_mappings(), "description does not have CPU locations"
+        if not self.has_cpu_mappings():
+            raise CMNNoCPUMappings()
         return self.cpu_node[n]
 
     def cpus(self):
-        assert self.has_cpu_mappings()
+        if not self.has_cpu_mappings():
+            raise CMNNoCPUMappings()
         for cn in sorted(self.cpu_node.keys()):
             yield self.cpu_node[cn]
 

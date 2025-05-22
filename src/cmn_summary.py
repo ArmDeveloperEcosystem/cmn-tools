@@ -116,6 +116,7 @@ class MemoryProperties:
         self.speed = None          # MT/s
         self.n_channels = None
         self.data_width_bits = None
+        self.size = 0
         self.discover()
 
     def is_valid(self):
@@ -124,6 +125,7 @@ class MemoryProperties:
     def discover(self):
         try:
             for d in DMI().memory():
+                self.size += d.size
                 self.speed = d.c_speed_mts
                 self.data_width_bits = d.d_width
                 # DDR5 (DMI mem_type >= 0x20) physically have 2 32-bit channels,
@@ -160,6 +162,11 @@ def mem_props():
     return g_mem
 
 
+def mem_size():
+    m = mem_props()
+    return m.size if m is not None else None
+
+
 def mem_speed():
     m = mem_props()
     return m.speed if m is not None else None
@@ -193,6 +200,7 @@ group_CMN = [
 
 
 group_Memory = [
+    ("Size",                  lambda: memsize_str(mem_size())),
     ("Memory channels",       lambda: mem_channels()),
     ("DDR width",             lambda: ("%s bits" % (mem_width()))),
     ("DDR speed",             lambda: ("%s MT/s" % (mem_speed()))),

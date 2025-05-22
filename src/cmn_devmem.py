@@ -114,20 +114,20 @@ class CMNNode:
         himem = self.node_base_addr + self.C.node_size()
         if himem > self.C.himem:
             self.C.himem = himem
-        if self.C.verbose >= 2:
-            self.C.log("created node at 0x%x" % (self.node_base_addr), level=2)
+        if self.C.verbose >= 3:
+            self.C.log("created node at 0x%x" % (self.node_base_addr), level=3)
         if map is not None:
             self.m = map
         else:
             self.m = self.C.D.map(self.node_base_addr, self.C.node_size(), write=write)
         self.node_info = 0x0000     # in case we throw in the next line
         self.node_info = self.read64(CMN_any_NODE_INFO)
-        if self.C.verbose >= 2:
-            self.C.log("  node: %s" % (self), level=2)
+        if self.C.verbose >= 3:
+            self.C.log("  node: %s" % (self), level=3)
         self.PMU_EVENT_SEL = pmu_event_sel_offset(self.type())
         if self.is_child():
             if (self.node_id() >> 3) != (parent.node_id() >> 3):
-                self.C.log("Parent XP %s child %s has odd coordinates" % (parent, self), level=0)
+                self.C.log("Parent XP %s child %s has odd coordinates" % (parent, self), level=1)
         self.child_info = self.read64(CMN_any_CHILD_INFO)
         self.n_children = BITS(self.child_info, 0, 16)
         assert self.n_children < 200, "CMN discovery found too many node children: %s" % self
@@ -254,19 +254,19 @@ class CMNNode:
             if self.C.product_config.revision < 2 and self.has_any_ports(CMN_PROP_HN):
                 pd = self.read64_secure(0x0A70)
                 if pd is None:
-                    if self.C.verbose:
-                        self.C.log("%s has HNs and couldn't determine node isolation status - skip" % self)
+                    if self.C.verbose >= 1:
+                        self.C.log("%s has HNs and couldn't determine node isolation status - skip" % self, level=1)
                     return
                 if pd != 0:
-                    if self.C.verbose:
-                        self.C.log("%s has HNs and node isolation map is 0x%x - skip" % (self, pd))
+                    if self.C.verbose >= 1:
+                        self.C.log("%s has HNs and node isolation map is 0x%x - skip" % (self, pd), level=1)
                     return
         skip_external = self.is_XP() and self.has_any_ports(CMN_PROP_RNF) and self.C.skip_external_if_RNF
         for i in range(0, self.n_children):
             child = self.read64(child_off + (i*8))
             is_external = BIT(child, 31)
             if is_external and skip_external:
-                self.C.log("%s: skipping external device at 0x%x" % (self, child_offset))
+                self.C.log("%s: skipping external device at 0x%x" % (self, child_offset), level=1)
                 continue
             # TBD for S3 r2p0 on, test for isolated child
             child_offset = BITS(child, 0, cobits)
@@ -388,7 +388,7 @@ class CMNNode:
         if self.is_external:
             s += "(ext)"
         s += ":0x%x" % self.node_id()
-        if self.C.verbose:
+        if self.C.verbose > 0:
             s = "@0x%x:%s" % (self.node_base_addr, s)
         if self.C.coord_bits is not None:
             (X, Y, P, D) = self.coords()
@@ -598,7 +598,7 @@ class DTMWatchpoint:
     """
     Current configuration of a DTM watchpoint.
     """
-    def __init__(self, dtm=None, *, up=None, wp=None, cfg=None, value=None, mask=None):
+    def __init__(self, dtm=None, up=None, wp=None, cfg=None, value=None, mask=None):
         self.dtm = dtm
         self.C = self.dtm.C
         self.wp = wp
@@ -911,7 +911,7 @@ class CMNNodeDT(CMNNode):
         return BITS(self.read64(CMN_DTC_TRACEID),0,7)
 
     def set_atb_traceid(self, x):
-        if self.C.verbose:
+        if self.C.verbose > 0:
             self.C.log("ATB ID 0x%02x: %s" % (x, self))
         self.write64(CMN_DTC_TRACEID, x)
 
@@ -974,7 +974,21 @@ class CMNNodeDT(CMNNode):
         return [self.pmu_counter(i, snapshot=snapshot) for i in range(0, 8)]
 
     def pmu_cc(self):
+        """
+        Read the fixed-function cycle counter. Currently this is 40 bits,
+        so at a typical frequency of 2Ghz we might expect a rollover every
+        ten minutes.
+        """
         return self.read64(CMN_DTC_PMCCNTR)
+
+    def pmu_cc_subtract(self, t1, t0):
+        """
+        Return a delta (t1-t0) between two cycle counts, assuming they were read
+        close together. TBD: we assume 40-bit counters.
+        """
+        if t1 < t0:
+            t1 += 0x10000000000
+        return t1 - t0
 
     def pmu_snapshot(self):
         """
@@ -982,7 +996,7 @@ class CMNNodeDT(CMNNode):
         Return the status flags, or None if the snapshot did not complete.
         """
         status = None
-        if self.C.verbose:
+        if self.C.verbose > 0:
             self.C.log("PMU snapshot from %s" % (self))
         c0 = self.pmu_cc()
         s0 = self.read64(CMN_DTC_PMSSR)
@@ -998,7 +1012,7 @@ class CMNNodeDT(CMNNode):
                 break
         assert status is not None, "%s: snapshot did not complete after %u reads" % (self, i)
         c1 = self.pmu_cc()
-        if self.C.verbose:
+        if self.C.verbose > 0:
             self.C.log("PMU snapshot complete: 0x%x (cyc=0x%x) => 0x%x (cyc=0x%x) => 0x%x, %u reads" % (s0, c0, s1, c1, ssr, i))
         return status
 
@@ -1034,7 +1048,7 @@ class CMN:
     def __init__(self, cmn_loc, check_writes=False, verbose=0, restore_dtc_status=False, secure_accessible=None, diag_trace=None):
         self.verbose = verbose
         if diag_trace is None:
-            diag_trace = DIAG_WRITES if (verbose >= 2) else DIAG_DEFAULT
+            diag_trace = DIAG_WRITES if (verbose >= 3) else DIAG_DEFAULT
         self.diag_trace = diag_trace
         self._restore_dtc_status = restore_dtc_status
         self.secure_accessible = secure_accessible    # if None, will be found from CFG
@@ -1043,8 +1057,8 @@ class CMN:
         rootnode_offset = cmn_loc.rootnode_offset
         assert rootnode_offset >= 0 and rootnode_offset < 0x4000000
         self.himem = self.periphbase       # will be updated as we discover nodes
-        if verbose:
-            print("CMN: PERIPHBASE=0x%x, CONFIG=0x%x" % (self.periphbase, self.periphbase+rootnode_offset))
+        if verbose >= 1:
+            self.log("PERIPHBASE=0x%x, CONFIG=0x%x" % (self.periphbase, self.periphbase+rootnode_offset), level=1)
         # CMNProductConfig object will be created when we read CMN_CFG_PERIPH_01
         # from the root node
         self.product_config = None
@@ -1061,7 +1075,7 @@ class CMN:
         self.dimY = None
         self.coord_XP = {}        # XPs indexed by (X,Y)
         self.logical_id_XP = {}   # XPs indexed by logical ID
-        self.logical_id = {}      # Non-XP nodes indexed by (type, logical_id)
+        self.logical_id = {}      # Nodes indexed by (type, logical_id)
         self.debug_nodes = []     # DTC(s), in random order. A large mesh might have more than one.
         self.extra_ports = NotTestable("shouldn't calculate device ids before all XPs seen")
         # Discovery phase.
@@ -1080,17 +1094,17 @@ class CMN:
         # Load the PMU event database, if available
         pmu_event_fn = cmn_events.event_file_name(product_id)
         if os.path.isfile(pmu_event_fn):
-            if verbose:
+            if verbose > 0:
                 self.log("loading PMU events from %s" % pmu_event_fn)
             self.pmu_events = cmn_events.load_events(pmu_event_fn)
-            if verbose:
+            if verbose > 0:
                 self.log("loaded %s" % self.pmu_events)
         else:
             self.pmu_events = None
         self.rootnode = self.create_node(rootnode_offset)
         self.unit_info = self.rootnode.read64(CMN_any_UNIT_INFO)   # por_info_global
         self.multiple_dtms = BIT(self.unit_info, 63)
-        if verbose and self.multiple_dtms:
+        if verbose > 0 and self.multiple_dtms:
             self.log("multiple DTMs enabled")
 
         # If any CPUs are offline, don't discover external children of XPs which have RN-F ports
@@ -1170,9 +1184,9 @@ class CMN:
         if self.secure_accessible is None:
             sa = self.rootnode.read64(CMN_any_SECURE_ACCESS)   # por_cfgm_secure_access
             self.secure_accessible = (BIT(sa, 0) == 1)
-        if self.verbose:
+        if self.verbose >= 2:
             sa = self.rootnode.read64(CMN_any_SECURE_ACCESS)
-            print("Access to Secure registers: 0x%x (%s) (at 0x%x)" % (sa, self.secure_accessible, self.rootnode.node_base_addr+CMN_any_SECURE_ACCESS))
+            self.log("Access to Secure registers: 0x%x (%s) (at 0x%x)" % (sa, self.secure_accessible, self.rootnode.node_base_addr+CMN_any_SECURE_ACCESS))
 
     def contains_addr(self, addr):
         assert not self.creating
@@ -1218,10 +1232,14 @@ class CMN:
             fr = (fr.filename, fr.lineno, None, fr.line)
         return "%s.%u: %s" % (os.path.basename(fr[0]), fr[1], fr[3])
 
-    def log(self, msg, prefix="CMN: ", end=None, level=1):
+    def log(self, msg, prefix="CMN: ", end=None, level=2):
         """
         Print a logging message. We do a level check here, but it might also be a
         good idea to check at the call site to avoid constructing the message.
+
+        Use level=1 for warning messages that should be output in discovery
+        (where someone is likely to be interested in the message) but not in
+        other tools (where someone just wants to get a job done).
 
         Use level=0 for warning messages that should always be output.
         """
@@ -1265,9 +1283,14 @@ class CMN:
         if parent is None:
             # Expecting the configuration node. If we see something else,
             # the root node offset was probably wrong.
+            # This is fatal, since without the configuration node we can't proceed further.
             assert node_type == CMN_NODE_CFG, "expected root node: 0x%x (%s)" % (node_base_addr, cmn_node_type_str(node_type))
-        else:
-            assert node_type != CMN_NODE_CFG, "unexpected root node at 0x%x" % node_base_addr
+        elif node_type == CMN_NODE_CFG:
+            # Unexpectedly returned to the configuration node while traversing child list.
+            # Perhaps this is a zero offset in the child list?
+            # For CMN-600 at least, a non-CFG node might be valid at offset 0 from PERIPHBASE.
+            self.log("Encountered configuration node as child of %s" % (parent), level=1)
+            return None
         assert (node_type == CMN_NODE_CFG) == (parent is None)
         # For some node types, we create a subclass object.
         if node_type == CMN_NODE_DT:
@@ -1286,7 +1309,7 @@ class CMN:
             n = CMNNodeXP(self, node_offset, map=None, parent=parent, write=True)
             nid = n.logical_id()
             if nid in self.logical_id_XP:
-                self.log("XPs have duplicate logical ID 0x%x: %s, %s" % (nid, self.logical_id_XP[nid], n), level=0)
+                self.log("XPs have duplicate logical ID 0x%x: %s, %s" % (nid, self.logical_id_XP[nid], n), level=1)
             self.logical_id_XP[nid] = n
             n.discover_children()
         elif node_info == 0:
@@ -1294,11 +1317,11 @@ class CMN:
             n = None
         else:
             n = CMNNode(self, node_offset, map=m, parent=parent, is_external=is_external)
-        if n is not None and node_type != CMN_NODE_XP and node_has_logical_id(node_type):
+        if n is not None and node_has_logical_id(node_type):
             nid = n.logical_id()
             nk = (node_type, nid)
             if nk in self.logical_id:
-                self.log("Nodes of type 0x%x have duplicate logical ID 0x%x: %s, %s" % (node_type, nid, self.logical_id[nk], n), level=0)
+                self.log("Nodes of type 0x%x have duplicate logical ID 0x%x: %s, %s" % (node_type, nid, self.logical_id[nk], n), level=1)
             self.logical_id[nk] = n
         return n
 
@@ -1332,6 +1355,10 @@ class CMN:
         for n in self.nodes():
             if n.type() == type:
                 yield n
+
+    def node_by_type_and_logical_id(self, node_type, nid):
+        nk = (node_type, nid)
+        return self.logical_id[nk]
 
     def home_nodes(self):
         for n in self.nodes():
@@ -1379,6 +1406,7 @@ class CMN:
         """
         dtc = self.debug_nodes[0]
         dtc.dtc_enable()
+        dtc.pmu_enable()
         old = dtc.clock_disable_gating(disable_gating=True)
         t0 = dtc.pmu_cc()
         time.sleep(td)
@@ -1386,7 +1414,7 @@ class CMN:
         time.sleep(td*2)
         t2 = dtc.pmu_cc()
         dtc.clock_disable_gating(disable_gating=old)
-        return ((t2 - t1) - (t1 - t0)) / td
+        return (dtc.pmu_cc_subtract(t2, t1) - dtc.pmu_cc_subtract(t1, t0)) / td
 
 
 def hn_cache_geometry(n):
@@ -1526,7 +1554,7 @@ def cmn_enable_pmu(C):
             pc = (evt1 << 56) | (evt1 << 48) | (evt0 << 40) | (evt0 << 32)
             pc |= CMN_DTM_PMU_CONFIG_PMEVCNT01_COMBINED | CMN_DTM_PMU_CONFIG_PMEVCNT23_COMBINED
         pc |= CMN_DTM_PMU_CONFIG_PMU_EN
-        if C.verbose:
+        if C.verbose > 0:
             print("%s counting %s event %x" % (xp, hnf, pc))
         xp.dtm.dtm_write64(CMN_DTM_PMU_CONFIG_off, pc)
     C.pmu_enable()

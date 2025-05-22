@@ -52,6 +52,17 @@ DMI_INACTIVE               = 0x7e
 DMI_END_OF_TABLE           = 0x7f
 
 
+DMI_CPU_ENABLED         = 1
+
+
+def BITS(x, p, n):
+    return (x >> p) & ((1 << n) - 1)
+
+
+def BIT(x, p):
+    return (x >> p) & 1
+
+
 class DMIStructure:
     """
     A single entry in a DMI file, with a unique handle.
@@ -67,12 +78,27 @@ class DMIStructure:
         self.strings = strs
         self._decoded = False
 
+    @property
+    def n_strings(self):
+        """
+        Return the number of strings, i.e. if we have strings #1 and #2, return 2.
+        A suitable range to iterate over the strings is range(1, n_strings+1).
+        """
+        return len(self.strings)
+
     def string(self, n):
         """
         Return the n'th string (indexed from 1) pertaining to this entry.
         "If a string field references no string, a null (0) is placed in that string field."
         """
-        return self.strings[n].decode() if n != 0 else None
+        if n == 0:
+            return None
+        sb = self.strings[n]
+        try:
+            s = sb.decode()
+        except UnicodeDecodeError:
+            s = "<Unicode decode error>"
+        return s
 
     def string_at(self, p):
         if p >= len(self.raw):
@@ -82,8 +108,8 @@ class DMIStructure:
 
     def __str__(self):
         s = "handle=0x%04x type=0x%04x %s" % (self.handle, self.type, DMI_type_str(self.type))
-        for x in self.strings[1:]:
-            s += " \"%s\"" % x.decode()
+        for i in range(1, self.n_strings+1):
+            s += " \"%s\"" % self.string(i)
         return s
 
     def decode(self):
@@ -135,7 +161,9 @@ def _decode_processor(d):
     d.mfr = d.string(pmfr)
     d.version = d.string(vsn)
     d.h_cache = {}
-    (d.max_speed, d.cur_speed, _, _, h_L1, h_L2, h_L3) = struct.unpack("<HHBBHHH", d.raw[0x14:0x20])
+    (d.max_speed, d.cur_speed, flags, _, h_L1, h_L2, h_L3) = struct.unpack("<HHBBHHH", d.raw[0x14:0x20])
+    d.is_populated = BIT(flags, 6)
+    d.cpu_status = BITS(flags, 0, 3)    # e.g. DMI_CPU_ENABLED
     d.h_cache[1] = h_L1 if h_L1 != 0xffff else None
     d.h_cache[2] = h_L2 if h_L2 != 0xffff else None
     d.h_cache[3] = h_L3 if h_L3 != 0xffff else None
@@ -356,12 +384,13 @@ class DMI:
         """
         return self.structure(type=DMI_SYSTEM)
 
-    def processors(self):
+    def processors(self, include_unpopulated=False):
         """
         Yield the processor entries.
         """
         for d in self.structures(type=DMI_PROCESSOR):
-            yield d
+            if d.is_populated or include_unpopulated:
+                yield d
 
     def memory(self, include_uninstalled=False):
         """
@@ -494,10 +523,10 @@ def print_DMI_detail(D, type=None, include_std=True):
                 if i % 16 < 15:
                     print(" ", end="")
             print()
-            if len(d.strings) > 1:
+            if d.n_strings > 0:
                 print("        Strings:")
-                for s in d.strings[1:]:
-                    print("                \"%s\"" % s.decode())
+                for i in range(1, d.n_strings+1):
+                    print("                \"%s\"" % d.string(i))
 
 
 def print_DMI_memory(D):
@@ -579,9 +608,14 @@ def print_DMI_system(D, file_is_local=True):
         print("(from OS): %s" % sys_from_os)
     print("UUID:      %s" % D.system().uuid)
     print("Processors:")
-    for d in D.processors():
+    for d in D.processors(include_unpopulated=True):
         print("  %s: %s - %uMHz (max %uMHz), %u cores, %u threads" %
-              (d.socket, d.version, d.cur_speed, d.max_speed, d.n_cores, d.n_threads))
+              (d.socket, d.version, d.cur_speed, d.max_speed, d.n_cores, d.n_threads), end="")
+        if not d.is_populated:
+            print(" **unpopulated**", end="")
+        elif d.cpu_status != DMI_CPU_ENABLED:
+            print(" status=%u" % d.cpu_status, end="")
+        print()
 
 
 def os_dmi_string(s):

@@ -99,13 +99,13 @@ def print_dtm(dtm, pfx="", detail=0, show_pmu=True):
     if dctl & CMN_DTM_CONTROL_SAMPLE_PROFILE_ENABLE:
         print(" (sample profile)", end="")
     print(" (%s)" % ("FIFO" if (dctl & CMN_DTM_CONTROL_TRACE_NO_ATB) else "ATB"), end="")
-    print(" FIFO: 0x%x" % (fifo), end="")
+    print("%s FIFO: 0x%x" % (pfx, fifo), end="")
     print()
     if show_pmu:
-        print_dtm_pmu(dtm)
-    print_dtm_watchpoints(dtm)
+        print_dtm_pmu(dtm, pfx=(pfx+"    "))
+    print_dtm_watchpoints(dtm, pfx=(pfx+"    "))
     if fifo:
-        print_dtm_fifo(dtm, fifo)
+        print_dtm_fifo(dtm, fifo=fifo, pfx=(pfx+"    "))
 
 
 def print_dtm_list(x, pfx="", detail=0):
@@ -118,11 +118,11 @@ def print_dtm_list(x, pfx="", detail=0):
 
 N_WATCHPOINTS = 4
 
-def print_dtm_watchpoints(dtm):
+def print_dtm_watchpoints(dtm, pfx="    "):
     for wp in range(0, N_WATCHPOINTS):
         w = dtm.dtm_wp_config(wp)
         if w.cfg or w.value or w.mask:
-            print("    WP #%u: ctrl=0x%016x comp=0x%016x mask=0x%016x" % (wp, w.cfg, w.value, w.mask), end="")
+            print("%sWP #%u: ctrl=0x%016x comp=0x%016x mask=0x%016x" % (pfx, wp, w.cfg, w.value, w.mask), end="")
             chn_name = ["REQ", "RSP", "SNP", "DAT"][w.chn]    # values 4..7 are reserved
             dir = ["up", "up", "dn", "dn"][w.wp]
             print(" P%u %s %s type=%u" % (w.dev, dir, chn_name, w.type), end="")
@@ -138,51 +138,51 @@ def print_dtm_watchpoints(dtm):
             print()
 
 
-def print_dtm_fifo(dtm, fifo=None):
+def print_dtm_fifo(dtm, pfx="", fifo=None):
     if fifo is None:
         fifo = dtm.dtm_fifo_ready()
     if fifo != 0:
         for e in range(0, 4):
             if fifo & (1 << e):
                 (data, cc) = dtm.dtm_fifo_entry(e)
-                print("    FIFO #%u: %s cc=0x%04x" % (e, hexstr(data), cc))
+                print("%s    FIFO #%u: %s cc=0x%04x" % (pfx, e, hexstr(data), cc))
 
 
-def print_dtm_pmu_config(dtm):
+def print_dtm_pmu_config(dtm, pfx="    "):
     """
     Print dynamic configuration of the DTM as an event collector (not generator)
     """
     pcfg = dtm.dtm_read64(CMN_DTM_PMU_CONFIG_off)
     if pcfg != 0:
         cnt = dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
-        print("    PMU config: 0x%016x, counts: 0x%016x" % (pcfg, cnt))
+        print("%sPMU config: 0x%016x, counts: 0x%016x" % (pfx, pcfg, cnt))
         for i in range(0, 4):
             eis = BITS(pcfg, 32+i*8, 8)    # on CMN-6xx it's only 6 bits
             egc = BITS(pcfg, 16+i*4, 3)
             paired = [0, (BIT(pcfg, 1) | BIT(pcfg, 3)), BIT(pcfg, 3), (BIT(pcfg, 2) | BIT(pcfg, 3))][i]
-            print("        %s%u:" % (" *"[paired], i), end="")
+            print("%s    %s%u:" % (pfx, " *"[paired], i), end="")
             if BIT(pcfg, 4+i):
                 print(" [DTC%u global %u]" % (dtm.dtc_domain(), egc), end="")
             print(" event 0x%02x: %s" % (eis, dtm.pmu_event_input_selector_str(eis)))
     return pcfg
 
 
-def print_dtm_pmu(dtm):
+def print_dtm_pmu(dtm, pfx="    "):
     """
     Show DTM PMU configuration and counts
     """
-    print_dtm_pmu_config(dtm)
+    print_dtm_pmu_config(dtm, pfx=pfx)
     # DTM may be counting events from connected devices.
     for p in range(0, dtm.xp.n_device_ports()):
         for n in dtm.xp.port_nodes(p):
             for soff in n.PMU_EVENT_SEL:
                 pmu_sel = n.read64(soff)
-                print("      %016x  %s" % (pmu_sel, n))
+                print("%s      %016x  %s" % (pfx, pmu_sel, n))
                 pmu_filter = BITS(pmu_sel, 32, 8)
                 for e in range(0, 4):
                     esel = BITS(pmu_sel, e*8, 8)
                     if esel != 0:
-                        print("          E%u: 0x%x" % (e, esel), end="")
+                        print("%s          E%u: 0x%x" % (pfx, e, esel), end="")
                         if dtm.C.pmu_events is not None:
                             pix = (soff - CMN_any_PMU_EVENT_SEL) >> 3
                             ev = dtm.C.pmu_events.get_event(n.type(), esel, pmu_index=pix, filter=pmu_filter)

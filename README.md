@@ -168,10 +168,16 @@ Troubleshooting
 ===============
 
 It is difficult to cover all possible problems that might be
-encountered but we can cover some common issues:
+encountered, but we can cover some common issues:
 
  - the system might not be based on an Arm CMN interconnect.
    ``cmn_discover.py`` will report this.
+
+ - the kernel may have been built with CONFIG_IO_STRICT_DEVMEM=y.
+   This will prevent direct access to CMN device space, including
+   CMN topology discovery and packet capture. It may be possible
+   to gain access by unloading the kernel PMU driver with
+   "rmmod arm-cmn", which releases kernel access to CMN device space.
 
  - the Linux CMN PMU driver might not be installed and enabled.
    Check for ``/sys/devices/arm_cmn_0``. (A future version of this

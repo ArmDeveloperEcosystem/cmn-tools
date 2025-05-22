@@ -24,18 +24,25 @@ MAGENTA  = 5
 CYAN     = 6
 
 _color_map = {
-    "none": 0, "": 0, "white": 0,
+    "none": 0, "": 0, "black": 0,
     "red": 1,
     "green": 2,
     "yellow": 3,
     "blue": 4,
     "magenta": 5,
-    "cyan": 6
+    "cyan": 6,
+    "white": 7,
 }
 
 _no_color = os.environ.get("NO_COLOR")
 
-_ANSI_RESET = "\x1b[0m"
+_ANSI_ESC = "\x1b["
+
+_ANSI_RESET = _ANSI_ESC + "0m"
+
+def _ANSI_BKG(n):
+    return _ANSI_ESC + ("4%u" % n) + "m"
+
 
 # Turn an integer into a printable character
 _alphameric = " 123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -94,7 +101,7 @@ def _key_ansi(c):
             a.append("4" + str(code))    # background color
     else:
         a.append("3" + str(code))
-    return "\x1b[" + ";".join(a) + "m"
+    return _ANSI_ESC + ";".join(a) + "m"
 
 
 g_in_eclipse = None
@@ -181,7 +188,7 @@ class TextDiagram():
         Return a string that, after printing the diagram, repositions the cursor to
         redraw it.
         """
-        return "\x1b[%uA" % self.max_Y()
+        return _ANSI_ESC + ("%uA" % self.max_Y())
 
     def str_mono(self):
         """
@@ -253,13 +260,13 @@ class TextDiagram():
 def show_cursor(file=None):
     if file is None:
         file = sys.stdout
-    print("\x1b[?25h", end="", file=file)
+    print(_ANSI_ESC + "?25h", end="", file=file)
 
 
 def hide_cursor(file=None):
     if file is None:
         file = sys.stdout
-    print("\x1b[?25l", end="", file=file)
+    print(_ANSI_ESC + "?25l", end="", file=file)
     atexit.register(show_cursor, file)
 
 

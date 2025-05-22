@@ -28,6 +28,18 @@ o_time = 0.1
 o_perf_bin = "perf"
 
 
+class PerfNotAvailable(OSError):
+    def __init__(self, event_name=None):
+        self.event_name = event_name
+
+    def __str__(self):
+        s = "Perf events not available"
+        if self.event_name is not None:
+            s += " (event='%s')" % self.event_name
+        s += " - run cmn_perfcheck.py"
+        return s
+
+
 class Reading:
     """
     A performance event reading from the Linux perf subsystem.
@@ -95,10 +107,12 @@ def perf_raw(events, time=None, command=None, system_wide=True):
     # Block, waiting for the subcommand to finish
     (out, err) = p.communicate()
     rc = p.returncode
-    if rc != 0 or o_verbose:
+    if rc != 0 or o_verbose >= 2:
         if out:
             print("== out: %s" % out)
         print("== err:\n%s" % err.decode())
+    if rc != 0:
+        raise PerfNotAvailable
     counts = []
     n_invalid = 0
     n_uncounted = 0
@@ -110,6 +124,9 @@ def perf_raw(events, time=None, command=None, system_wide=True):
         if toks[0] == "<not supported>":
             # Invalid specifier, or privilege issue (we can't distinguish)
             n_invalid += 1
+            if o_verbose:
+                print("not supported: %s" % toks[2])
+            raise PerfNotAvailable(toks[2])
             counts.append(None)
         elif toks[0] == "<not counted>":
             # Valid specifier, but we were (presumably) not able to schedule it

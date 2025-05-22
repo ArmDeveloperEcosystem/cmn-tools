@@ -25,7 +25,7 @@ def system_is_remote(S):
     return S.CMNs and not S.CMNs[0].is_local
 
 
-def system_description():
+def system_description(verbose=1):
     """
     Generate a complete system description, currently consisting only of the CMNs.
 
@@ -33,7 +33,7 @@ def system_description():
     scanned from the DMI table.
     """
     S = cmn_base.System()
-    S.CMNs = [cmn_devmem.CMN(loc) for loc in cmn_devmem_find.cmn_locators()]
+    S.CMNs = [cmn_devmem.CMN(loc, verbose=verbose) for loc in cmn_devmem_find.cmn_locators()]
     S.timestamp = time.time()
     if system_is_remote(S):
         # If accessing remotely, don't try to add local information
@@ -41,6 +41,8 @@ def system_description():
               file=sys.stderr)
         return S
     # Try to discover the CMN clock frequency
+    if verbose:
+        print("CMN: measuring CMN clock frequency...")
     for c in S.CMNs:
         c.frequency = c.estimate_frequency()
     try:
@@ -64,10 +66,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="generate system description JSON")
     parser.add_argument("-o", "--output", type=str, default=cmn_json.cmn_config_filename(), help="output JSON file")
     parser.add_argument("--overwrite", action="store_true", help="overwrite output file")
-    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
+    parser.add_argument("-v", "--verbose", action="count", default=1, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
-    S = system_description()
+    S = system_description(verbose=opts.verbose)
     if not S.CMNs:
         # This toolkit is currently specific to CMN, and it's not useful to save
         # a system descriptor if the system doesn't have CMN.

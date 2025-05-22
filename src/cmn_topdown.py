@@ -21,6 +21,7 @@ import cmnwatch
 from cmn_enum import *
 import cmn_perfcheck
 from cmn_summary import memsize_str
+import cmn_events
 
 
 o_verbose = 0
@@ -136,17 +137,6 @@ def port_watchpoint_event(port, wp):
     return wp_event
 
 
-_hns_events = {
-    "hnf_slc_sf_cache_access": "hns_slc_sf_cache_access_all",
-    "hnf_cache_miss": "hns_cache_miss_all",
-    "hnf_sf_hit": "hns_sf_hit_all",
-    "hnf_mc_reqs": "hns_mc_reqs_local_all",
-    "hnf_mc_retries": "hns_mc_retries_local",
-    "hnf_pocq_reqs_recvd": "hns_pocq_reqs_recvd_all",
-    "hnf_pocq_retry": "hns_pocq_retry_all",
-}
-
-
 class TopdownPerf(Topdown):
     """
     Topdown analysis from PMU events
@@ -167,7 +157,7 @@ class TopdownPerf(Topdown):
 
     def add_cmn_event(self, cat, e):
         if self.has_HNS:
-            e = _hns_events.get(e, e)
+            e = cmn_events.hns_events.get(e, e)
         e = "arm_cmn/%s/" % e
         self.add(cat, e)
 
@@ -189,6 +179,8 @@ class TopdownPerf(Topdown):
         """
         rates = cmn_perfstat.perf_rate(self.events)
         for (cats, rate) in zip(self.catlist, rates):
+            if o_verbose >= 2:
+                print("  %14.2f  %s" % (rate, cats))
             for cat in self.get_categories(cats):
                 if cat is not None and cat.startswith("-"):
                     self.accumulate(cat[1:], -rate)

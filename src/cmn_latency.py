@@ -15,12 +15,12 @@ import time
 
 import cmn_devmem as cmn
 import cmn_devmem_find
+import cmn_base
 import cmn_json
 from cmn_enum import *
 import cmnwatch
 from cmn_flits import CMNTraceConfig, CMNFlitGroup
-
-import argparse
+import cmn_dtstat
 
 
 o_verbose = 0
@@ -34,7 +34,11 @@ def lookup_cpu(cpu_num):
     global g_system
     if g_system is None:
         g_system = cmn_json.system_from_json_file()
-    cpu = g_system.cpu(cpu_num)
+    try:
+        cpu = g_system.cpu(cpu_num)
+    except cmn_base.CMNNoCPUMappings as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
     if o_verbose:
         print("CPU#%u is %s" % (cpu_num, cpu))
     return cpu
@@ -142,8 +146,12 @@ class Watchpoint:
         """
         x = self.get_data_cc()
         if x is not None:
+            if o_verbose:
+                assert x == self.get_data_cc(), "%s: watchpoint FIFO contents are unstable" % self
             (data, cc) = x
             fg = CMNFlitGroup(self.trace_config, cmn_seq=self.dtm.xp.C.seq, nodeid=self.dtm.xp.node_id(), WP=self.wp, DEV=self.dev, VC=self.vc, format=self.ty, cc=cc, payload=data)
+            if o_verbose:
+                print("%s: captured %s" % (self, fg))
             return fg
         else:
             return None
@@ -333,6 +341,7 @@ class LatencyMonitor:
         Set the (single) tag-setting watchpoint.
         """
         assert self.pending_req is None, "only one tag-setting watchpoint allowed, %s and %s" % (self.pending_req, pc)
+        assert wps.up, "tag-setting watchpoint must be upload: %s" % (wps)
         self.pending_req = (pc, wps, format)
 
     def _set_req(self, pc, wps, format=4):
@@ -616,6 +625,7 @@ def port_channels(Cs, spec, default_pc):
         elif comp == "DOWN":
             up = False
         elif comp.startswith("CMN") and len(comp) == 4:
+            # Specify the CMN instance, for dual-socket etc.
             try:
                 cmn_instance = int(comp[3:])
                 assert cmn_instance < len(Cs)
@@ -628,15 +638,17 @@ def port_channels(Cs, spec, default_pc):
             xp = None
             dev = None
         elif comp.startswith("P") and len(comp) == 2 and comp[1] in "0123":
+            # Specify the port on the XP
             dev = int(comp[1])
         elif comp.startswith("0X"):
-            # A srcid/tgtid - can specify both the XP and port.
+            # A srcid/tgtid - can imply both the XP and port.
             if C is None:
                 print("%s: multiple CMN instances in system, must specify instance" % (spec), file=sys.stderr)
                 sys.exit(1)
             devid = int(comp, 16)
             (xp, dev, _) = C.XP_port_device(devid)
         elif comp.startswith("CPU#"):
+            # Specify a CPU (RN-F). CPU mapping must have been done.
             try:
                 cpu_num = int(comp[4:])
                 cpu = lookup_cpu(cpu_num)
@@ -651,7 +663,19 @@ def port_channels(Cs, spec, default_pc):
             dev = cpu.port.port
             if cpu.lpid is not None:
                 lpid = cpu.lpid
+        elif comp.startswith("XP#"):
+            # Specify an XP by logical id
+            if C is None:
+                print("%s: multiple CMN instances in system, must specify instance" % (spec), file=sys.stderr)
+                sys.exit(1)
+            try:
+                xpn = int(comp[3:])
+            except ValueError:
+                print("%s: invalid logical number '%s'" % (spec, comp), file=sys.stderr)
+                sys.exit(1)
+            xp = C.node_by_type_and_logical_id(CMN_NODE_XP, xpn)
         elif comp in _port_class:
+            # Specify a port class, like HN-F etc.
             wilds.append(comp)
         else:
             print("%s: unrecognized component '%s'" % (spec, comp), file=sys.stderr)
@@ -705,6 +729,9 @@ if __name__ == "__main__":
             print("  %s" % req, file=sys.stderr)
         sys.exit(1)
     pc_req = reqs[0]
+    if pc_req is not None and not pc_req.up:
+        print("CMN requires tag-setting watchpoint to be upload: %s" % (opts.req), file=sys.stderr)
+        sys.exit(1)
     if pc_req is not None and pc_req.lpid is not None:
         opts.lpid = pc_req.lpid
     # Now parse the tag-matching watchpoints - default channel is RSP
