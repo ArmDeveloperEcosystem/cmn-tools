@@ -18,7 +18,8 @@ E.g. with Linux perf, CMN node type numbers can be used in the
 #
 # These provide a more systematic view of node (or port) types,
 # than the raw "node type" or "connected device type" enumerators
-# used by CMN itself.
+# used by CMN itself. They are specific to this toolkit, and
+# not defined by CMN architecture.
 #
 
 CMN_PROP_none  = 0
@@ -29,11 +30,12 @@ CMN_PROP_SN    = 0x0004     # Memory controller
 CMN_PROP_I     = 0x0020     # I/O coherent but not fully coherent
 CMN_PROP_F     = 0x0040     # Fully coherent
 CMN_PROP_CCG   = 0x0100     # Chip-to-chip gateway
-CMN_PROP_MPAM  = 0x0200     # MPAM configuration node
+CMN_PROP_MPAM  = 0x0200     # MPAM configuration/status node
 CMN_PROP_T     = 0x0400     # Debug/trace features
 CMN_PROP_SBSX  = 0x0800     # AXI/ACE-Lite bridge
 CMN_PROP_DN    = 0x1000     # DVM node
 
+# Combination properties
 CMN_PROP_RNF   = (CMN_PROP_RN | CMN_PROP_F)   # Fully coherent requester
 CMN_PROP_RNI   = (CMN_PROP_RN | CMN_PROP_I)   # I/O coherent requester
 CMN_PROP_RND   = (CMN_PROP_RN | CMN_PROP_I)   # I/O coherent requester that accepts DVM
@@ -44,7 +46,8 @@ CMN_PROP_HND   = (CMN_PROP_HN | CMN_PROP_I | CMN_PROP_T | CMN_PROP_DN)
 CMN_PROP_SNF   = (CMN_PROP_SN | CMN_PROP_F)
 
 
-# Node types. These are sub-objects within the CMN configuration space,
+# CMN Node types. This enumerator is defined by the CMN product specification.
+# These are sub-objects within the CMN configuration space,
 # either CFG, XP, or devices attached to XP ports.
 # Note that RN-F and SN-F do not appear. They are discovered as
 # a connected device type (see port_device_type) but have no nodes.
@@ -123,6 +126,9 @@ def cmn_node_type_str(n):
 
 
 def cmn_node_type_properties(n):
+    """
+    Generic properties for a node type, e.g. CMN_NODE_RNF -> CMN_PROP_RNF
+    """
     return cmn_node_properties.get(n, CMN_PROP_none)
 
 
@@ -130,9 +136,10 @@ def cmn_node_type_has_properties(n, p):
     return (cmn_node_type_properties(n) & p) == p
 
 
+# CMN connected device type. Defined by the CMN product specification.
 # Descriptions for the "connected device type" codes in the XP port.
 # These are not the same enumeration as the device type codes in the
-# device itself, for which see CMN_NODE_xxx enumerators.
+# device itself, for which see CMN_NODE_xxx enumerators above.
 # Note that RN-F and SN-F are included here, even though as nodes they
 # are external to CMN and have no node type number.
 # TBD: HCAL allows two different device types to be connected.
@@ -246,6 +253,32 @@ def cmn_port_device_type_str(dev):
         return cmn_port_device_type_strings[dev]
     else:
         return "dev?%u" % dev
+
+
+_prop_strs = {
+    "RN": CMN_PROP_RN,
+    "RN-F": CMN_PROP_RNF,
+    "RN-I": CMN_PROP_RNI,
+    "RN-D": CMN_PROP_RND,
+    "HN": CMN_PROP_HN,
+    "HN-F": CMN_PROP_HNF,
+    "HN-S": CMN_PROP_HNF,
+    "SLC": CMN_PROP_HNF,
+    "HN-I": CMN_PROP_HNI,
+    "HN-D": CMN_PROP_HND,
+    "SN-F": CMN_PROP_SNF,
+    "CCG": CMN_PROP_CCG,
+    "SBSX": CMN_PROP_SBSX,
+    "ALL": CMN_PROP_none,   # i.e. match everything
+}
+
+def cmn_properties(s):
+    """
+    Convert a string into a property value, e.g. "RN-F" -> CMN_PROP_RNF.
+    This is not canonically defined by the CMN product specification,
+    but is useful across multiple tools.
+    """
+    return _prop_strs.get(s.upper(), None)
 
 
 def print_all_enums():

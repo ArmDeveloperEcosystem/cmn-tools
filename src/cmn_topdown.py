@@ -12,6 +12,7 @@ from __future__ import print_function
 
 import sys
 import subprocess
+import json
 import atexit
 
 
@@ -148,7 +149,7 @@ class TopdownPerf(Topdown):
         self.events = []     # these two lists are in 1:1 correspondence
         self.catlist = []
 
-    def add(self, cat, event):
+    def add_event(self, cat, event):
         if o_verbose:
             print("%s: add \"%s\" = %s" % (self, cat, event))
         self.add_categories(cat)
@@ -159,7 +160,7 @@ class TopdownPerf(Topdown):
         if self.has_HNS:
             e = cmn_events.hns_events.get(e, e)
         e = "arm_cmn/%s/" % e
-        self.add(cat, e)
+        self.add_event(cat, e)
 
     def add_port_watchpoint(self, cat, port, **kw):
         try:
@@ -171,7 +172,7 @@ class TopdownPerf(Topdown):
             print("%s: unexpected bad watchpoint: %s" % (self, e), file=sys.stderr)
             sys.exit(1)
         event = port_watchpoint_event(port, wp)
-        self.add(cat, event)
+        self.add_event(cat, event)
 
     def measure(self):
         """
@@ -190,20 +191,37 @@ class TopdownPerf(Topdown):
         return self
 
 
+def decode_properties(x):
+    """
+    Properties can be supplied either as a string ("RN-F"), or a mask (CMN_PROP_RNF).
+    """
+    if isinstance(x, str):
+        x = cmn_properties(x)
+        if x is None:
+            print("invalid port specifier \"%s\", expect e.g. \"RN-F\"" % x, file=sys.stderr)
+            sys.exit(1)
+    return x
+
+
 def gen_Topdown(d):
     td = TopdownPerf(S, d["categories"], name=d["name"])
     for m in d["measure"]:
         cat = m["measure"]
         if "event" in m:
+            # CMN event
             td.add_cmn_event(cat, m["event"])
         elif "ports" in m:
-            for port in S.ports(properties=m["ports"]):
+            # CMN watchpoint, on a given class of crosspoint ports
+            props = decode_properties(m["ports"])
+            for port in S.ports(properties=props):
                 if "watchpoint_up" in m:
                     td.add_port_watchpoint(cat, port, up=True, **m["watchpoint_up"])
                 elif "watchpoint_down" in m:
                     td.add_port_watchpoint(cat, port, up=False, **m["watchpoint_down"])
                 else:
                     td.add_port_watchpoint(cat, port, **m["watchpoint"])
+        elif "cpu-event" in m:
+            td.add_event(cat, m["cpu-event"])
         else:
             assert False, "invalid analysis recipe: %s" % m
     td.measure()
@@ -217,7 +235,8 @@ def print_topdown_measurement(recipe):
     td = gen_Topdown(recipe)
     if not td.is_measured:
         td.measure()
-    print_rate_bandwidth = recipe.get("print_rate_bandwidth", o_print_rate_bandwidth)
+    rate_bandwidth = recipe.get("rate_bandwidth", None)
+    print_rate_bandwidth = (rate_bandwidth is not None) or o_print_rate_bandwidth
     if o_verbose:
         print("%s: completing top-down analysis" % td)
     if not o_no_adjust:
@@ -238,7 +257,7 @@ def print_topdown_measurement(recipe):
         # It might be better to print the rates per microsecond,
         # or use scientific notation.
         if print_rate_bandwidth:
-            print(" %12s/s" % memsize_str(64*td.rate[c]), end="")
+            print(" %12s/s" % memsize_str(rate_bandwidth*td.rate[c]), end="")
         else:
             print(" %14.2f" % (td.rate[c]), end="")
         if o_print_percent:
@@ -339,15 +358,46 @@ recipe_prefetch = {
 }
 
 
-recipe_bandwidth = {
+recipe_bandwidth_cpu = {
+    "name": "CPU bandwidth",
+    "categories": ["read", "write"],
+    "rate_bandwidth": 32,
+    "measure": [
+        { "measure": "read", "cpu-event": "bus_access_rd" },
+        { "measure": "write", "cpu-event": "bus_access_wr" },
+    ]
+}
+
+
+recipe_bandwidth_rnf = {
+    "name": "CPU/SLC bandwidth",
+    "categories": ["read", "write clean", "write dirty"],
+    "rate_bandwidth": 64,
+    "measure": [
+        { "measure": "read", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "ReadNotSharedDirty" } },
+        { "measure": "read", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "ReadUnique" } },
+        { "measure": "write clean", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteEvictFull" } },
+        { "measure": "write dirty", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteBackFull" } },
+        { "measure": "write dirty", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteCleanFull" } },
+    ]
+}
+
+
+recipe_bandwidth_dram = {
     "name": "DRAM bandwidth",
     "categories": ["read", "write"],
-    "print_rate_bandwidth": True,
+    "rate_bandwidth": 64,
     "measure": [
         { "measure": "read", "ports": CMN_PROP_SNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnp" } },
         { "measure": "read", "ports": CMN_PROP_SNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnpSep" } },
         { "measure": "write", "ports": CMN_PROP_SNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "WriteNoSnpFull" } },
     ],
+}
+
+
+recipe_bandwidth = {
+    "name": "Bandwidth",
+    "subrecipes": [recipe_bandwidth_cpu, recipe_bandwidth_rnf, recipe_bandwidth_dram],
 }
 
 
@@ -387,6 +437,7 @@ if __name__ == "__main__":
     parser.add_argument("--dominance-level", type=float, default=0.95, help="threshold for traffic to be considered dominant")
     parser.add_argument("--percentage", action="store_true", help="print as percentages")
     parser.add_argument("--bandwidth", action="store_true", help="print request counts as bandwidth")
+    parser.add_argument("--recipe", type=str, help="use JSON top-down recipe")
     parser.add_argument("--no-adjust", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--perf-bin", type=str, default="perf", help="perf command")
     parser.add_argument("--cmd", type=str, help="microbenchmark to run (will be killed on exit)")
@@ -403,7 +454,7 @@ if __name__ == "__main__":
     cmn_perfstat.o_time = opts.time
     cmn_perfstat.o_perf_bin = opts.perf_bin
     if not opts.level:
-        opts.level = ["1"]
+        opts.level = ["1"] if (not opts.recipe) else []
     if opts.all or opts.level == ["all"]:
         opts.level = ["1", "2", "3", "bandwidth", "retries"]
     if not cmn_perfcheck.check_cmn_pmu_events(check_rsp_dat=False):
@@ -439,3 +490,7 @@ if __name__ == "__main__":
         else:
             print("bad topdown level %s" % level, file=sys.stderr)
             sys.exit(1)
+    if opts.recipe:
+        with open(opts.recipe) as f:
+            recipe = json.load(f)
+        print_topdown(recipe)

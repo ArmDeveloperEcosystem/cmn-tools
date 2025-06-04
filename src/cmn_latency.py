@@ -328,12 +328,13 @@ class LatencyMonitor:
             self.dtms[dtm] = 0x0        # bitmask: no watchpoints in use in this DTM yet
         wpnum = 0 if wps.up else 2
         if self.is_using_wp(dtm, wpnum):
-            wpnum += 1
-            if self.is_using_wp(dtm, wpnum):
+            if wps.is_multigrp() or self.is_using_wp(dtm, wpnum+1):
                 raise NotEnoughWatchpoints(dtm, wps.up)
-        self.dtms[dtm] |= (1 << wpnum)
-        M = wps.match_mask()
-        dtm.dtm_set_watchpoint(wpnum, chn=wps.chn, format=format, cc=True, dev=dev, val=M.val, mask=M.mask, group=M.grp)
+            wpnum += 1
+        for (i, grp) in enumerate(wps.grps()):
+            self.dtms[dtm] |= (1 << (wpnum+i))
+            M = wps.wps[grp]
+            dtm.dtm_set_watchpoint(wpnum+i, chn=wps.chn, format=format, cc=True, dev=dev, val=M.val, mask=M.mask, group=M.grp, combine=wps.is_multigrp())
         return Watchpoint(dtm, wpnum)
 
     def set_req(self, pc, wps, format=4):
@@ -564,27 +565,11 @@ def genlist(ls, x):
             yield x
 
 
-_port_class = {
-    "RN": CMN_PROP_RN,
-    "RN-F": CMN_PROP_RNF,
-    "RN-I": CMN_PROP_RNI,
-    "HN": CMN_PROP_HN,
-    "HN-F": CMN_PROP_HNF,
-    "HN-S": CMN_PROP_HNF,
-    "HN-I": CMN_PROP_HNI,
-    "HN-D": CMN_PROP_HND,
-    "SLC": CMN_PROP_HNF,
-    "SN-F": CMN_PROP_SNF,
-    "CCG": CMN_PROP_CCG,
-    "SBSX": CMN_PROP_SBSX,
-    "ALL": CMN_PROP_none,
-}
-
 def port_class(Cs, spec):
     """
     Yield all ports of a given class
     """
-    props = _port_class[spec]
+    props = cmn_properties(spec)
     for C in Cs:
         for xp in C.XPs():
             for p in xp.ports(props):
@@ -614,6 +599,7 @@ def port_channels(Cs, spec, default_pc):
         C = None    # instance not specified yet
     lpid = None     # only relevant to the request watchpoint (upload)
     wilds = []
+    xp_explicit = False
     if spec.upper() == "NONE":
         yield None   # only used on request, if we want an "open" scenario with no tag-setting
         return
@@ -647,6 +633,7 @@ def port_channels(Cs, spec, default_pc):
                 sys.exit(1)
             devid = int(comp, 16)
             (xp, dev, _) = C.XP_port_device(devid)
+            xp_explicit = True
         elif comp.startswith("CPU#"):
             # Specify a CPU (RN-F). CPU mapping must have been done.
             try:
@@ -663,8 +650,9 @@ def port_channels(Cs, spec, default_pc):
             dev = cpu.port.port
             if cpu.lpid is not None:
                 lpid = cpu.lpid
+            xp_explicit = True
         elif comp.startswith("XP#"):
-            # Specify an XP by logical id
+            # Specify an XP by logical id. Does not specify the port.
             if C is None:
                 print("%s: multiple CMN instances in system, must specify instance" % (spec), file=sys.stderr)
                 sys.exit(1)
@@ -674,9 +662,13 @@ def port_channels(Cs, spec, default_pc):
                 print("%s: invalid logical number '%s'" % (spec, comp), file=sys.stderr)
                 sys.exit(1)
             xp = C.node_by_type_and_logical_id(CMN_NODE_XP, xpn)
-        elif comp in _port_class:
+            xp_explicit = True
+        elif cmn_properties(comp) is not None:
             # Specify a port class, like HN-F etc.
             wilds.append(comp)
+            if not xp_explicit:
+                xp = None
+                dev = None
         else:
             print("%s: unrecognized component '%s'" % (spec, comp), file=sys.stderr)
             sys.exit(1)
@@ -689,10 +681,20 @@ def port_channels(Cs, spec, default_pc):
             print("%s -> %s" % (spec, pc))
         yield pc
     else:
+        # User has specified a class of nodes e.g. "RN-F"
+        # They might also have specified XP and/or port number
+        n_found = 0
         Cs = genlist(Cs, C)
         for w in wilds:
-            for (xp, dev) in port_class(Cs, w):
-                yield PortChannel(xp=xp, dev=dev, chn=chn, up=up, lpid=lpid)
+            for (wxp, wdev) in port_class(Cs, w):
+                if xp is not None and wxp != xp:
+                    continue
+                if dev is not None and wdev != dev:
+                    continue
+                yield PortChannel(xp=wxp, dev=wdev, chn=chn, up=up, lpid=lpid)
+                n_found += 1
+        if n_found == 0:
+            print("No ports matching '%s'" % str(wilds), file=sys.stderr)
 
 
 def list_port_channels(Cs, specs, default_pc):
