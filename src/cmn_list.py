@@ -29,6 +29,10 @@ def BIT(x,p):
     return (x >> p) & 1
 
 
+def lookup(m, k, name):
+    return m[k] if k in m else ("?%s=%s" % (name, k))
+
+
 def show_cmn(cmn, verbose=0):
     """
     Iterate through the crosspoints, ports and nodes of the CMN,
@@ -47,7 +51,28 @@ def show_cmn(cmn, verbose=0):
     if cmn.isolation_enabled:
         print(", device-isolation", end="")
     print()
+    if cmn.part_ge_700():
+        info1 = cmn.rootnode.read64(0x908)
+        print("    info1: 0x%x" % info1, end="")
+        print(", REQ=%u" % BITS(info1, 0, 2), end="")
+        print(", SNP=%u" % BITS(info1, 2, 2), end="")
+        if BIT(info1, 19):
+            print(", MTE", end="")
+        if BIT(info1, 23):
+            print(", compact-HN-tables", end="")
+        print()
     print("  %s" % cmn.rootnode)
+    # Print read-only configuration registers - mostly opaque
+    print("    periph_id:", end="")
+    for r in range(0x8, 0x28, 8):
+        pid = cmn.rootnode.read64(r)
+        print(" 0x%x 0x%x" % (BITS(pid, 0, 32), BITS(pid, 32, 32)), end="")
+    print()
+    print("    component_id:", end="")
+    for r in range(0x28, 0x38, 8):
+        cid = cmn.rootnode.read64(r)
+        print(" 0x%x 0x%x" % (BITS(cid, 0, 32), BITS(cid, 32, 32)), end="")
+    print()
     for xp in cmn.XPs():
         sec = xp.read64(CMN_any_SECURE_ACCESS)
         n_ports = xp.n_device_ports()
@@ -57,6 +82,7 @@ def show_cmn(cmn, verbose=0):
             print(", dtc_domain=%d" % xp.dtc_domain(), end="")
         if sec != 0:
             print(", security=0x%x" % sec, end="")
+        # print(", child_info=0x%x" % xp.child_info, end="")
         print()
         # Show XP information
         xp.show()
@@ -64,6 +90,12 @@ def show_cmn(cmn, verbose=0):
             # Show XP DTM information
             for dtm in xp.DTMs():
                 cmn_dtstat.print_dtm(dtm, pfx="      ")
+        # Show info about the east and north mesh links.
+        pbase = 6 if cmn.part_ge_700() else 2
+        for (i, dir) in enumerate(["east", "north"]):
+            link = xp.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(pbase+i))
+            if link:
+                print("      Mesh link (%s): %u mesh slices" % (dir, BITS(link, 0, 4)))
         # Show the XP's child devices. Although these are discovered directly from the XP,
         # we group them by their device port.
         for p in range(0, n_ports):
@@ -91,6 +123,13 @@ def show_cmn(cmn, verbose=0):
                 if port_info_1 is not None:
                     print(" [port_info_1=0x%x]" % (port_info_1), end="")
             print()
+            if cmn.part_ge_700():
+                port_ldid_info = xp.read64(CMN_XP_DEVICE_PORT_CONNECT_LDID_INFO_P(p))
+                if port_ldid_info != 0:
+                    print("        LDIDs:", end="")
+                    for dev in range(0, num_dev):
+                        print(" D%u:0x%x" % (dev, BITS(port_ldid_info, dev*16, 12)), end="")
+                    print()
             # On a port, there may be multiple nodes, which are
             # enumerated as child nodes of the XP.
             # This multiplicity arises for two reasons:
@@ -101,8 +140,19 @@ def show_cmn(cmn, verbose=0):
             #    e.g. two HN-Fs. Their coordinates will differ in the 'device' number.
             for n in xp.port_nodes(p):
                 info = n.read64(CMN_any_UNIT_INFO)
+                info1 = None
+                info2 = None
+                if cmn.part_ge_700():
+                    info1 = n.read64(CMN_any_UNIT_INFO1)
+                    if n.type() in [CMN_NODE_CCLA, CMN_NODE_CCG_HA]:
+                        info2 = n.read64(0x910)
                 sec = n.read64(CMN_any_SECURE_ACCESS)
-                print("        %s (node info: 0x%x, unit info: 0x%x)" % (n, n.node_info, info), end="")
+                print("        %s (node info: 0x%x, unit info: 0x%x" % (n, n.node_info, info), end="")
+                if info1 is not None:
+                    print(",info1=0x%x" % info1, end="")
+                if info2 is not None:
+                    print(",info2=0x%x" % info2, end="")
+                print(")", end="")
                 if sec:
                     print(", security=0x%x" % sec, end="")
                 print()
@@ -120,6 +170,17 @@ def show_cmn(cmn, verbose=0):
                         print("          SLC: %s tag:%u data:%u" % (cg.cache_str(), BITS(info,16,3), BITS(info,20,3)))
                     print("          SF: %s" % cg.sf_str())
                     print("          POCQ entries: %u" % (num_poc_entries))
+                    pwbase = 0x1C00 if cmn.part_ge_650() else 0x1000
+                    pwsr = n.read64(pwbase + 0x08)
+                    if pwsr != 0x138:
+                        # We expect power to be ON FAM, with dynamic transitions enabled
+                        print("          Power: ", end="")
+                        print(lookup({8: "ON", 7: "FUNC_RET", 2: "MEM_RET", 0: "OFF"}, BITS(pwsr, 0, 4), "status"), end="")
+                        print(" " + lookup({3: "FAM", 2: "HAM", 1: "SFONLY", 0: "NOSFSLC"}, BITS(pwsr, 4, 4), "mode"), end="")
+                        if BIT(pwsr, 8):
+                            print(" dynamic", end="")
+                        print()
+                    print("          Power arch=0x%x id=0x%x" % (n.read64(pwbase + 0xfc8), n.read64(pwbase + 0xfb0)))
                     if cmn.product_config.mpam_enabled:
                         mpam_ns_pmg = BITS(info, 43, 1) + 1
                         mpam_ns_partid = 1 << BITS(info, 39, 4)
@@ -142,16 +203,27 @@ def show_cmn(cmn, verbose=0):
                     a4s_num = BITS(info,25,2)
                     print("          AXI: %u-bit, %u AXI4 requests, %u write buffers, %u stream" % (width, num_ax_reqs, num_wr_data_buf, a4s_num))
                     print("          Exclusive monitors: %u" % (num_excl))
+                    if cmn.secure_accessible:
+                        cfg = n.read64(0xA00)
+                        aux = n.read64(0xA08)
+                        print("          cfg: 0x%016x" % cfg)
+                        print("          aux: 0x%016x" % aux)
                 elif n.type() == CMN_NODE_RND:
                     num_rd_bufs = BITS(info,20,10)
                     width = 128 << BIT(info,30)
                     a4s_num = BITS(info,33,2)
                     print("          AXI: %u-bit, %u read buffers, %u stream" % (width, num_rd_bufs, a4s_num))
+                    if cmn.secure_accessible:
+                        cfg = n.read64(0xA00)
+                        aux = n.read64(0xA08)
+                        print("          cfg: 0x%016x" % cfg)
+                        print("          aux: 0x%016x" % aux)
                 elif n.type() == CMN_NODE_SBSX:
                     width = 128 << BIT(info,0)
                     num_wr_data_buf = BITS(info,16,5)
                     print("          AXI: %u-bit, %u write buffers" % (width, num_wr_data_buf))
                 elif n.type() == CMN_NODE_RNSAM:
+                    # Only summary here. Detailed configuration is printed later.
                     num_nhm = BITS(info,32,6)
                     num_sys_cache_group = BITS(info,16,4)
                     num_hnf = BITS(info,0,8)
@@ -197,18 +269,58 @@ def show_cmn(cmn, verbose=0):
                     events = n.read64(CMN_any_PMU_EVENT_SEL)
                     if events != 0:
                         print("          events: 0x%016x" % events)
+                if n.is_home_node():
                     if cmn.secure_accessible:
                         hn_qos_band = n.read64(0xA80)
                         hn_qos_resv = n.read64(0xA88)
+                        hn_starv = n.read64(0xA90)
+                        hn_sam_ctl = n.read64(0xD00)
                         print("          QoS bands:")
                         for (i, qc) in enumerate(["L", "M", "H", "HH"]):
                             (lo, hi) = (BITS(hn_qos_band, i*8, 4), BITS(hn_qos_band, i*8+4, 4))
                             pocq = BITS(hn_qos_resv, i*8, 8)
                             print("            %3s  %2u..%2u  POCQ=%3u" % (qc, lo, hi, pocq))
+                        print("          QoS max wins:", end="")
+                        for (i, qs) in enumerate(["M/L", "H/L", "HH/L", "H/M", "HH/M", "HH/H"]):
+                            print(" %s:%u" % (qs, BITS(hn_starv, i*8, 7)), end="")
+                        print()
                         print("          POCQ reserved for SF evictions: %3u" % (BITS(hn_qos_resv, 32, 8)))
+                        slc_lock = n.read64(0xC00)
+                        print("          HN-Fs: %u, locked ways: %u" % (BITS(slc_lock, 8, 7), BITS(slc_lock, 0, 4)))
+                        print("          SAM control: 0x%x" % hn_sam_ctl, end="")
+                        print(" SN0:0x%x" % BITS(hn_sam_ctl, 0, 11), end="")
+                        print(" SN1:0x%x" % BITS(hn_sam_ctl, 12, 11), end="")
+                        print(" SN2:0x%x" % BITS(hn_sam_ctl, 24, 11), end="")
+                        if BIT(hn_sam_ctl, 36):
+                            print(" 3-SN", end="")
+                        if BIT(hn_sam_ctl, 37):
+                            print(" 6-SN", end="")
+                        print()
+                        for (i, r) in enumerate(range(0xD08, 0xD18, 8)):
+                            v = n.read64(r)
+                            if v:
+                                print("          Region %u: 0x%x" % (i, v), end="")
+                                print(" node:0x%x" % BITS(v, 0, 11), end="")
+                                print(" base:0x%x" % BITS(v, 26, 22), end="")
+                                print(" size:0x%x" % BITS(v, 12, 5), end="")
+                                print()
+                        def hn_rn_phys_id(C):
+                            for r in range(0xD28, 0xF00, 8):
+                                yield r
+                            for r in range(0xF70, 0xF98, 8):
+                                yield r
+                        for (i, r) in enumerate(hn_rn_phys_id(cmn)):
+                            pi = n.read64(r)
+                            if pi != 0:
+                                print("          hnf_rn_phys_id%u: 0x%x" % (i, pi))
                 elif n.type() == CMN_NODE_RNSAM:
                     if cmn.secure_accessible:
                         print("          RNSAM details:")
+                        status = n.read64(0xC00)
+                        if not BIT(status, 1):
+                            print("            STALL requests - not ready")
+                        if BIT(status, 0):
+                            print("            use default target id")
                         def nonhash(r):
                             nhm = [0xC08, 0xC10, 0xC18, 0xC20, 0xC28, 0xCA0, 0xCA8, 0xCB0, 0xCB8, 0xCC0]
                             nhn = [0xC30, 0xC38, 0xC40, 0xCE0, 0xCE8]
@@ -219,16 +331,34 @@ def show_cmn(cmn, verbose=0):
                             return (info, nodeid)
                         for r in range(0, 20):
                             (info, nodeid) = nonhash(r)
-                            if True or (info & 1):
+                            if (info & 1):
                                 ty = BITS(info, 2, 2)
                                 base = BITS(info, 9, 22) << 26
                                 size = BITS(info, 4, 5)
                                 print("            NHMR %3u: type=%u base=0x%016x size=%u node=0x%x" % (r, ty, base, size, nodeid))
-                        if False:
-                            for r in range(0xC58, 0xC98, 8):
-                                print("    0x%x = 0x%x" % (r, n.read64(r)))
-                            for r in range(0xD08, 0xD48, 8):
-                                print("    0x%x = 0x%x" % (r, n.read64(r)))
+                        print("          Non-hash node id: 0x%x" % n.read64(0xC98))
+                        print("          HN count: 0x%x" % n.read64(0xD00))
+                        if True:
+                            for (i, r) in enumerate(range(0xC48, 0xC58, 4)):
+                                odd = (i & 1)
+                                v = BITS(n.read64(r & ~7), odd*32, 32)
+                                print("          region%u: 0x%x" % (i, v), end="")
+                                print(" base:0x%x" % (BITS(v, 9, 22) << 26), end="")
+                                print(" size:0x%x" % (BITS(v, 4, 5)), end="")
+                                print()
+                            for (i, r) in enumerate(range(0xC58, 0xC98, 8)):
+                                v = n.read64(r)
+                                if v != 0:
+                                    print("          hn_nodeid_reg%u: 0x%x" % (i, v), end="")
+                                    for j in range(0, 4):
+                                        print(", node%u: 0x%x" % (i*4+j, BITS(v, j*12, 11)), end="")
+                                    print()
+                            for (i, r) in enumerate(range(0xD08, 0xD48, 8)):
+                                v = n.read64(r)
+                                if v != 0:
+                                    print("          sn_nodeid_reg%u: 0x%x" % (i, v))
+                            for (i, r) in enumerate(range(0xE08, 0xE18, 8)):
+                                print("          cml_port_agg%u: 0x%x" % (i, n.read64(r)))
         if cmn.secure_accessible:
             print("      Port QoS:")
             for p in range(0, n_ports):

@@ -215,7 +215,7 @@ class CMNHist(CMNVis):
 
     def key_str(self, key):
         (op, stype, ttype) = key
-        s = "%-5s %-5s  %-20s" % (stype, ttype, op)
+        s = "%-5s %-5s  %-22s" % (stype, ttype, op)
         return s
 
     def print_histogram(self):

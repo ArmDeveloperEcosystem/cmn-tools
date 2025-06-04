@@ -54,14 +54,18 @@ def print_dtc(dtc, pfx="", detail=0):
         print(" %s#%u: %08x" % (" *"[c != ecs[i]], i, c), end="")
     print()
     if detail:
+        pcoff = 0 if dtc.C.part_ge_650() else 0x1E00
         ssr = dtc.read64(CMN_DTC_PMSSR)
         scc = dtc.read64(CMN_DTC_PMCCNTRSR)
+        ovf = dtc.read64(CMN_DTC_PMOVSR)
         print("%s                     snapshot 0x%08x:" % (pfx, ssr), end="")
         print(" %10x" % scc, end="")
         for i in range(0, 8):
             c = dtc.pmu_counter(i, snapshot=True)
             print(" %s#%u: %08x" % (" *"[c != ecs[i]], i, c), end="")
         print()
+        if ovf:
+            print("%s      overflow: 0x%x" % (pfx, ovf))
         print("%s      control: 0x%x" % (pfx, ctl), end="")
         if ctl & CMN_DTC_CTL_DBGTRIGGER_EN:
             print(" (dbgtrigger)", end="")
@@ -78,12 +82,19 @@ def print_dtc(dtc, pfx="", detail=0):
             print(" (cc_enable)", end="")
         print(" (ATID: 0x%02x)" % dtc.atb_traceid(), end="")
         print()
+        claim = dtc.read64(pcoff + CMN_DTC_PC_CLAIM)
+        # we expect 0xffffffff indicating all bits can be set but none are set
+        if claim != 0xffffffff:
+            print("%s      claim:   0x%x" % (pfx, claim))
         print()     # a blank line after the multiple lines in detail mode
+        # Run through the PrimeCell id registers, to keep register coverage happy
+        for r in range(pcoff+0xFB8, pcoff+0x1000, 8):
+             dtc.read64(r)
 
 
 def print_dtm(dtm, pfx="", detail=0, show_pmu=True):
     """
-    Print summary information about a DTM.
+    Print summary information about a DTM, and also PMU config, FIFO contents etc.
     """
     dctl = dtm.dtm_read64(CMN_DTM_CONTROL_off)
     fifo = dtm.dtm_fifo_ready()
@@ -104,8 +115,8 @@ def print_dtm(dtm, pfx="", detail=0, show_pmu=True):
     if show_pmu:
         print_dtm_pmu(dtm, pfx=(pfx+"    "))
     print_dtm_watchpoints(dtm, pfx=(pfx+"    "))
-    if fifo:
-        print_dtm_fifo(dtm, fifo=fifo, pfx=(pfx+"    "))
+    if fifo or detail:
+        print_dtm_fifo(dtm, fifo=fifo, pfx=(pfx+"    "), print_all=detail)
 
 
 def print_dtm_list(x, pfx="", detail=0):
@@ -138,12 +149,12 @@ def print_dtm_watchpoints(dtm, pfx="    "):
             print()
 
 
-def print_dtm_fifo(dtm, pfx="", fifo=None):
+def print_dtm_fifo(dtm, pfx="", fifo=None, print_all=False):
     if fifo is None:
         fifo = dtm.dtm_fifo_ready()
-    if fifo != 0:
+    if fifo != 0 or print_all:
         for e in range(0, 4):
-            if fifo & (1 << e):
+            if (fifo & (1 << e)) or print_all:
                 (data, cc) = dtm.dtm_fifo_entry(e)
                 print("%s    FIFO #%u: %s cc=0x%04x" % (pfx, e, hexstr(data), cc))
 

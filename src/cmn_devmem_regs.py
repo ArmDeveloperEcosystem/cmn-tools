@@ -19,7 +19,12 @@ from __future__ import print_function
 # or any node type except XP.
 CMN_any_NODE_INFO       = 0x0000
 CMN_any_CHILD_INFO      = 0x0080
-CMN_any_UNIT_INFO       = 0x0900
+
+# As of CMN-700, node info regisers are at some or all of 0x900, 0x908 and 0x910
+# under various names, not consistent. The fields are node-specific anyway.
+CMN_any_UNIT_INFO       = 0x0900     # For most nodes. CMN-700 CCLA it's at 0x910.
+CMN_any_UNIT_INFO1      = 0x0908     # CMN-700 on. Some nodes call it unit_info2
+
 CMN_any_AUX_CTL         = 0x0A08
 
 # PMU event selector (por_xx_pmu_event_sel). In S3, this changes to 0xD900
@@ -33,12 +38,15 @@ CMN_any_SECURE_ACCESS   = 0x0980
 
 # Port connectivity information.
 # For CMN-600/650 this is max 2 ports with east/north immediately following.
-# For CMN-700 it is up to 6 ports, with east/north following those.
+# For CMN-700 it is up to 6 ports, with east/north following those (at offset 6).
 CMN_XP_DEVICE_PORT_CONNECT_INFO_P0  = 0x08
 CMN_XP_DEVICE_PORT_CONNECT_INFO_P1  = 0x10
 def CMN_XP_DEVICE_PORT_CONNECT_INFO_P(p):
     return 0x08 + 8*p
 CMN_XP_DEVICE_PORT_CAL_CONNECTED_BIT = 7
+
+def CMN_XP_DEVICE_PORT_CONNECT_LDID_INFO_P(p):
+    return 0x48 + 8*p
 
 
 CMN650_DTM_UNIT_INFO           =  0x910    # CMN-650
@@ -100,8 +108,10 @@ CMN_DTC_PMSSR_SS_CFG_ACTIVE =  0x8000   # PMU snapshot activated from configurat
 CMN_DTC_PMSSR_SS_PIN_ACTIVE = 0x10000   # PMU snapshot activated from PMUSNAPSHOTREQ
 CMN_DTC_PMSRR      = 0x2130    # PMU snapshot request (write-only)
 CMN_DTC_PMSRR_SS_REQ          = 0x01    # Write-only - request a snapshot
-CMN_DTC_CLAIM      = 0x2DA0    # set (lower 32 bits) or clear (upper 32 bits) claim tags
-CMN_DTC_AUTHSTATUS_DEVARCH = 0x2DB8
+
+# PrimeCell regs are offset 0x1E00 on CMN-600
+CMN_DTC_PC_CLAIM      = 0xFA0    # set (lower 32 bits) or clear (upper 32 bits) claim tags
+CMN_DTC_PC_AUTHSTATUS_DEVARCH = 0xFB8
 
 
 if __name__ == "__main__":

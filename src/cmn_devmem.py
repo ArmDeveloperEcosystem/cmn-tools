@@ -13,11 +13,14 @@ into conflict with the Linux driver (drivers/perf/arm-cmn.c).
 
 from __future__ import print_function
 
+
 import os
 import sys
 import struct
 import time
 import traceback
+import atexit
+
 
 import devmem
 import cmn_devmem_find
@@ -27,6 +30,12 @@ from cmn_enum import *
 import cmn_events
 
 from cmn_diagram import CMNDiagram
+
+
+#
+# In response to an environment variable (CMN_DEVMEM_DIAG) we can log register accesses to a file.
+#
+g_trace_fd = None
 
 
 def BITS(x,p,n):
@@ -130,7 +139,9 @@ class CMNNode:
                 self.C.log("Parent XP %s child %s has odd coordinates" % (parent, self), level=1)
         self.child_info = self.read64(CMN_any_CHILD_INFO)
         self.n_children = BITS(self.child_info, 0, 16)
-        assert self.n_children < 200, "CMN discovery found too many node children: %s" % self
+        # For top-level configuration, max children at least 144 for 12x12. For an XP it's 32.
+        if self.n_children > (32 if self.is_XP() else 256):
+            self.C.log("CMN discovery found too many (%u) node children: %s" % (self.n_children, self), level=1)
         # We haven't yet discovered this node's children.
         # For an XP in S3, with node isolation, we might never do so.
         self.children = []
@@ -157,6 +168,8 @@ class CMNNode:
         data = self.m.read64(off)
         if self.do_trace_reads():
             self.C.log(" => 0x%x" % data, prefix=None)
+        if g_trace_fd is not None:
+            print("R 0x%x 0x%x" % (self.node_base_addr+off, data), file=g_trace_fd)
         return data
 
     def read64_secure(self, off):
@@ -238,8 +251,15 @@ class CMNNode:
          - skip if external and XP has any RN-F ports and any CPUs are offline
          - skip if external and XP has any RN-F ports
          - skip if external
+
+        por_xx_child_info has the register offset to the child pointer array (typically 0x100),
+        and the number of entries in the array. We expect the registers following the array
+        are zero, but we have seen cases where they are non-zero - possibly as a way to
+        hide inactive devices by changing only the n_children field.
         """
         child_off = BITS(self.child_info, 16, 16)
+        if child_off != 0x100:
+            self.C.log("%s has child offset 0x%x" % (self, child_off), level=1)
         cobits = 30 if self.C.part_ge_650() else 28
         if self.is_XP() and self.C.isolation_enabled:
             # In S3, scanning isolated child HNs will fault and lock up the system.
@@ -275,6 +295,10 @@ class CMNNode:
                 # Probably a child of a RN-F port
                 continue
             self.children.append(child_node)
+        for i in range(self.n_children, 32):
+            child = self.read64(child_off + (i*8))
+            if child != 0x0:
+                self.C.log("%s: %u children but child pointer #%u is 0x%x" % (self, self.n_children, i, child), level=1)
 
     def type(self):
         """
@@ -613,7 +637,7 @@ class DTMWatchpoint:
         self.chn = BITS(self.cfg, 1, 2)
         self.dev = BIT(self.cfg, 0)
         if self.dtm.xp.n_device_ports() > 2:
-            dev |= (BIT(self.cfg, 17) << 1)
+            self.dev |= (BIT(self.cfg, 17) << 1)
         self.grp = BITS(self.cfg, 4, (1 if self.C.product_config.product_id == cmn_base.PART_CMN600 else 2))
         self.type = BITS(self.cfg, self.C.DTM_WP_PKT_TYPE_SHIFT, 3)
         self.cc = BIT(self.cfg, self.C.DTM_WP_PKT_TYPE_SHIFT+3)
@@ -1051,6 +1075,12 @@ class CMN:
             diag_trace = DIAG_WRITES if (verbose >= 3) else DIAG_DEFAULT
         self.diag_trace = diag_trace
         self._restore_dtc_status = restore_dtc_status
+        xdiag = os.environ.get("CMN_DEVMEM_DIAG", None)
+        if xdiag is not None:
+            global g_trace_fd
+            if g_trace_fd is None:
+                g_trace_fd = open(xdiag, "a")
+                atexit.register(lambda: g_trace_fd.close())
         self.secure_accessible = secure_accessible    # if None, will be found from CFG
         self.seq = cmn_loc.seq             # instance number within the system (semi-arbitrary numbering)
         self.periphbase = cmn_loc.periphbase
@@ -1630,11 +1660,22 @@ if __name__ == "__main__":
     parser.add_argument("--pmu-sample", action="store_true", help="show PMU counts")
     parser.add_argument("--pmu-snapshot", action="store_true", help="initiate a PMU snapshot")
     parser.add_argument("--dtc", type=int, default=0, help="select DTC node/domain, default DTC#0")
+    parser.add_argument("--dump", action="store_true", help="dump CMN registers")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     if opts.watch and not (opts.diagram or opts.sketch):
         opts.diagram = True
     CS = cmn_from_opts(opts)
+
+    if opts.dump:
+        for C in CS:
+            print("# %s" % C)
+            for node in C.nodes():
+                print("NODE 0x%x %s" % (node.node_base_addr, node))
+                for i in range(0, C.node_size(), 8):
+                    v = node.read64(i)
+                    if v != 0:
+                        print("R 0x%x 0x%016x" % ((node.node_base_addr + i), v))
 
     #
     # Above was getting a list of CMNs to operate on.
