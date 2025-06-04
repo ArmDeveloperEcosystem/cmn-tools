@@ -102,6 +102,7 @@ CHI_RSP_opcodes = {
     0x0c: "Pers",   # Persist
     0x0d: "CoPe",   # CompPersist
     0x0e: "DBRO",   # DBIDRespOrd
+    0x10: "StDo",   # StashDone
     0x11: "CStD",   # CompStashDone
     0x14: "CCMO",   # CompCMO
 }
@@ -162,23 +163,50 @@ def CHI_op_str(vc, n, short=False):
             return "*%02x" % n
 
 
-# CHI-F Table 13-35.
+# CHI-E Table 13-37, CHI-F Table 13-35.
 # The Resp value is context-sensitive - we really need to know
 # whether it's a Snoop response, a Comp response etc.
+# This table also works for FwdState (CHI-E Table 13-39) in both RSP and DAT.
 def CHI_DAT_resp_str_nonsnoop(n):
     return ["I", "SC", "UC", "?3", "?4", "?5", "UD_PD", "SD_PD"][n]
 
 
+# See above: Resp in snoop responses is slightly different.
 def CHI_DAT_resp_str_snoop(n):
     return ["I", "SC", "UC/UD", "SD", "I_PD", "SC_PD", "UC_PD", "?7"][n]
 
 
-def CHI_DAT_resp_str(opcode, resp):
-    if opcode in [1, 5, 6]:
+def CHI_DAT_resp_str(dat_opcode, resp):
+    if dat_opcode in [1, 5, 6]:
         rs = CHI_DAT_resp_str_snoop(resp)
     else:
         rs = CHI_DAT_resp_str_nonsnoop(resp)
     return rs
+
+
+# See e.g. CHI-E Table 11-1. Values 6 and 7 are architected, others are recommended.
+_CMN_datasource_str = [
+    "default",
+    "peer-CPU",
+    "local-cluster",
+    "SLC",
+    "peer-cluster",
+    "remote-chip",
+    "RAM(PfTU)",
+    "RAM(PfTnU)",
+    "?8",
+    "?9",
+    "local-cluster(upf)",
+    "SLC(upf)",
+    "?12",
+    "?13",
+    "?14",
+    "?15",
+]
+
+
+def CMN_DAT_datasource_str(ds):
+    return _CMN_datasource_str[ds]
 
 
 def CHI_memattr_str(ma, order, snpattr):
@@ -273,8 +301,10 @@ class CMNFlit:
         if self.is_DVM():
             if self.group.VC == REQ:
                 return BITS(self.addr, 11, 3)
-            elif self.group.VC == SNP and BIT(self.addr, 0) == 0:
-                return BITS(self.addr, 8, 3)
+            elif self.group.VC == SNP:
+                addr = (self.addr >> 3)
+                if BIT(addr, 0) == 0:
+                    return BITS(addr, 8, 3)
         return None
 
     def DVM_opcode_str(self):
@@ -383,6 +413,9 @@ class CMNFlit:
                 s += " resp=%u/%u dbid=0x%02x" % (self.resp, self.resperr, self.dbid)
                 if self.opcode in [3, 7]:
                     s += " pcrdtype=%u" % (self.pcrdtype)
+                if self.fwdstate is not None:
+                    # SnpRespFwded: fwdstate tells the HN what the state was in CompData sent from snoopee to requester
+                    s += " fwdstate=%s" % CHI_DAT_resp_str_nonsnoop(self.fwdstate)
                 if self.cbusy:
                     s += " cbusy=0x%x" % (self.cbusy)
                 if self.devevent != 0:
@@ -430,6 +463,10 @@ class CMNFlit:
                 if self.homenid != 0:
                     # only valid for some opcodes
                     s += " homenid=0x%02x" % (self.homenid)
+                if self.fwdstate is not None:
+                    s += " fwdstate=%s" % CHI_DAT_resp_str_nonsnoop(self.fwdstate)
+                if self.datasource is not None:
+                    s += " datasource=%s" % CMN_DAT_datasource_str(self.datasource)
                 if self.cbusy:
                     s += " cbusy=0x%x" % (self.cbusy)
                 if self.devevent != 0:
@@ -752,7 +789,7 @@ class CMNFlitGroup:
                 # REQ
                 if self.cfg.cmn_product_id == PART_CMN600:
                     f.returnnid = BITS(x,34,11)    # or StashNID
-                    f.returntxnid = BITS(x,46,8)
+                    f.returntxnid = BITS(x,46,8)   # or StashLPIDvalid, StashLPID
                     f.size = BITS(x,60,3)
                     f.NS = BIT(x,63)
                     f.likelyshared = BIT(x,64)
@@ -844,11 +881,13 @@ class CMNFlitGroup:
                 if self.cfg.cmn_product_id == PART_CMN600:
                     f.resperr = BITS(x,38,2)
                     f.resp = BITS(x,40,3)
+                    fws_ds = BITS(x,43,3)
                     f.cbusy = None
                     f.dbid = BITS(x,46,8)
                     f.pcrdtype = BITS(x,54,4)
                     f.devevent = BITS(x,59,2)
                 elif self.cfg.cmn_product_id == PART_CMN650:
+                    fws_ds = BITS(x,40,3)
                     f.resperr = BITS(x,43,2)
                     f.resp = BITS(x,45,3)
                     f.cbusy = BITS(x,48,3)
@@ -856,12 +895,18 @@ class CMNFlitGroup:
                     f.pcrdtype = BITS(x,61,4)
                     f.devevent = BITS(x,66,2)
                 else:
+                    fws_ds = BITS(x,43,3)
                     f.resperr = BITS(x,46,2)
                     f.resp = BITS(x,48,3)
                     f.cbusy = BITS(x,51,3)
                     f.dbid = BITS(x,54,12)
                     f.pcrdtype = BITS(x,66,4)
                     f.devevent = BITS(x,71,2)
+                if f.opcode == 9:
+                    # SnpRespFwded
+                    f.fwdstate = fws_ds
+                else:
+                    f.fwdstate = None
             elif self.VC == 2:
                 # SNP
                 if self.cfg.cmn_product_id == PART_CMN600:
@@ -905,7 +950,7 @@ class CMNFlitGroup:
                     f.homenid = BITS(x,34,11)
                     f.resperr = BITS(x,48,2)
                     f.resp = BITS(x,50,3)
-                    f.fwdstate = BITS(x,53,3)
+                    fws_ds = BITS(x,53,3)
                     f.cbusy = None
                     f.dbid = BITS(x,56,8)
                     f.ccid = BITS(x,64,2)
@@ -918,7 +963,7 @@ class CMNFlitGroup:
                     f.homenid = BITS(x,36,11)
                     f.resperr = BITS(x,51,2)
                     f.resp = BITS(x,53,3)
-                    f.fwdstate = BITS(x,56,4)
+                    fws_ds = BITS(x,56,4)
                     f.cbusy = BITS(x,60,3)
                     f.dbid = BITS(x,63,10)
                     f.ccid = BITS(x,73,2)
@@ -931,7 +976,7 @@ class CMNFlitGroup:
                     f.homenid = BITS(x,38,11)
                     f.resperr = BITS(x,53,2)
                     f.resp = BITS(x,55,3)
-                    f.fwdstate = BITS(x,58,4)
+                    fws_ds = BITS(x,58,4)
                     f.cbusy = BITS(x,62,3)
                     f.dbid = BITS(x,65,12)
                     f.ccid = BITS(x,77,2)
@@ -940,8 +985,19 @@ class CMNFlitGroup:
                     f.poison = BITS(x,104,4)
                     f.chunkv = BITS(x,108,2)
                     f.devevent = BITS(x,110,2)
+                if f.opcode == 6:
+                    # SnpRespDataFwded
+                    f.fwdstate = fws_ds
+                    f.datasource = None
+                else:
+                    f.fwdstate = None
+                    # DataSource is valid for CompData, DataSepResp, SnpRespData, SnpRespDataPtl
+                    if f.opcode in [4, 11, 1, 5] or fws_ds != 0:
+                        f.datasource = fws_ds
+                    else:
+                        f.datasource = None
             else:
-                assert False
+                assert False, "unreachable (bad channel %s)" % self.VC
 
 
 if __name__ == "__main__":

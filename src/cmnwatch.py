@@ -476,7 +476,7 @@ _rsp_fields = {
     "opcode":     (chi_spec.opcodes_RSP,   [(0, 15, 4)],  [(0, 15, 5)]),
     "resperr":    (_resperr,   [(0, 19, 2)], [(0, 20, 2)]),
     "resp":       (None,   [(0, 21, 3)],  [(0, 22, 3)]),
-    "fwdstate":   (None,   [(0, 24, 3)],  [(0, 25, 3)]),
+    "fwdstate":   (None,   [(0, 24, 3)],  [(0, 25, 3)]),    # SnpRespFwded
     "cbusy":      (None,   None,          [(0, 28, 3)]),
     "dbid":       (None,   [(0, 27, 8)],  [(0, 31, 12)]),
     "pcrdtype":   (None,   [(0, 35, 4)],  [(0, 43, 4)]),
@@ -526,7 +526,7 @@ _dat_fields = {
     "resperr":    (_resperr,    [(0, 29, 2)],  [(0, 30, 2), (1, 15, 2)]),
     "resp":       (_resp_DAT,   [(0, 31, 3)],  [(0, 32, 3), (1, 17, 2)]),
     "fwdstate":   (None,   [(0, 34, 3)],  [(0, 35, 4)]),     # SnpRespDataFwded
-    "datasrc":    (None,   None,          [(0, 35, 4)]),     # CompData, DataSepResp, SnpRespData, SnpRespDataPtl
+    "datasrc":    (None,   [(0, 34, 3)],  [(0, 35, 4)]),     # CompData, DataSepResp, SnpRespData, SnpRespDataPtl
     "cbusy":      (None,   None,          [(0, 39, 3)],                [(0, 40, 3)]),
     "dbid":       (None,   [(0, 37, 8)],  [(0, 42, 12), (1, 32, 12)],  [(0, 43, 12), (1, 32, 12)]),
     "ccid":       (None,   [(0, 45, 2)],  [(0, 54, 2)]),
