@@ -15,13 +15,16 @@ from __future__ import print_function
 import os
 import sys
 
+
 import cmn_json
 import cmn_perfstat
 from cmn_enum import *
 from dmi import DMI
+from memsize_str import memsize_str
+
 
 if sys.version_info[0] == 2:
-    PermissionError = OSError
+    PermissionError = IOError
     FileNotFoundError = IOError
 
 
@@ -30,16 +33,6 @@ o_verbose = 0
 
 S = cmn_json.system_from_json_file()
 C = S.CMNs[0] if S.CMNs else None
-
-
-def memsize_str(n):
-    for u in range(4, 0, -1):
-        if n >= (1 << (u*10)):
-            return "%.3g%sB" % ((float(n) / (1 << (u*10))), "BKMGT"[u])
-    return str(n)
-
-
-assert memsize_str(1024*1024) == "1MB"
 
 
 def cpu_prop(s, cpu=0):
@@ -97,6 +90,10 @@ def n_sockets():
 
 
 def cpu_frequency():
+    """
+    Return estimated current CPU frequency (for some typical CPU) in Hz.
+    This assumes a homogeneous system.
+    """
     return cmn_perfstat.cpu_frequency()
 
 
@@ -204,13 +201,13 @@ group_Memory = [
     ("Memory channels",       lambda: mem_channels()),
     ("DDR width",             lambda: ("%s bits" % (mem_width()))),
     ("DDR speed",             lambda: ("%s MT/s" % (mem_speed()))),
-    ("Total bandwidth",       lambda: ("%s / s" % memsize_str(mem_bandwidth()))),
+    ("Total DDR bandwidth",   lambda: ("%s / s" % memsize_str(mem_bandwidth()))),
 ]
 
 
 group_CPU = [
     ("CPU core version",      lambda: ("0x%08x" % cpu_identification())),
-    ("CPU frequency",         lambda: cpu_frequency()),
+    ("CPU frequency",         lambda: ("%.2f GHz" % (cpu_frequency() / 1e9))),
     ("CPU sockets in system", lambda: n_sockets()),
     ("CPU cores in system",   lambda: n_cpus()),
 ]

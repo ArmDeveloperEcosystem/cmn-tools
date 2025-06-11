@@ -21,7 +21,7 @@ import cmn_perfstat
 import cmnwatch
 from cmn_enum import *
 import cmn_perfcheck
-from cmn_summary import memsize_str
+from memsize_str import memsize_str
 import cmn_events
 
 
@@ -31,6 +31,7 @@ o_no_adjust = False
 o_dominance_level = 0.95
 o_print_rate_bandwidth = False
 o_print_percent = True
+o_print_decimal = False
 
 
 S = cmn_json.system_from_json_file()
@@ -257,7 +258,7 @@ def print_topdown_measurement(recipe):
         # It might be better to print the rates per microsecond,
         # or use scientific notation.
         if print_rate_bandwidth:
-            print(" %12s/s" % memsize_str(rate_bandwidth*td.rate[c]), end="")
+            print(" %12s/s" % memsize_str(rate_bandwidth*td.rate[c], decimal=o_print_decimal), end="")
         else:
             print(" %14.2f" % (td.rate[c]), end="")
         if o_print_percent:
@@ -270,7 +271,8 @@ def print_topdown_measurement(recipe):
     if dom is not None:
         print("Dominant category: %s" % dom)
     else:
-        print("No dominant category at %.0f%% level" % (td.dominance_level*100.0))
+        if o_verbose:
+            print("No dominant category at %.0f%% level" % (td.dominance_level*100.0))
     if o_verbose:
         print()
 
@@ -437,6 +439,7 @@ if __name__ == "__main__":
     parser.add_argument("--dominance-level", type=float, default=0.95, help="threshold for traffic to be considered dominant")
     parser.add_argument("--percentage", action="store_true", help="print as percentages")
     parser.add_argument("--bandwidth", action="store_true", help="print request counts as bandwidth")
+    parser.add_argument("--decimal", action="store_true", help="print bandwidth as decimal (MB not MiB)")
     parser.add_argument("--recipe", type=str, help="use JSON top-down recipe")
     parser.add_argument("--no-adjust", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--perf-bin", type=str, default="perf", help="perf command")
@@ -450,6 +453,8 @@ if __name__ == "__main__":
         o_print_percent = True
     if opts.bandwidth:
         o_print_rate_bandwidth = True
+    if opts.decimal:
+        o_print_decimal = True
     cmn_perfstat.o_verbose = max(0, opts.verbose-1)
     cmn_perfstat.o_time = opts.time
     cmn_perfstat.o_perf_bin = opts.perf_bin

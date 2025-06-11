@@ -21,6 +21,8 @@ CMN itself has no knowledge of which CPUs are connected where.
 from __future__ import print_function
 
 from cmn_enum import *
+from memsize_str import memsize_str
+
 
 SYSTEM_DESC_VERSION = 1
 
@@ -779,19 +781,6 @@ class CMNXP(CMNNodeBase):
 
     def port_base_id(self, p):
         return self.port[p].base_id()
-
-
-def memsize_str(n):
-    """
-    Given a memory size in bytes, return a descriptive string.
-    """
-    for u in range(4, 0, -1):
-        if n >= (1 << (u*10)):
-            return "%.3g%sB" % ((float(n) / (1 << (u*10))), "BKMGT"[u])
-    return str(n)
-
-
-assert memsize_str(1024*1024) == "1MB"
 
 
 class CacheGeometry:
