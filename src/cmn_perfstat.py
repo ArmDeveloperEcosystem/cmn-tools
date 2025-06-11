@@ -15,7 +15,7 @@ from __future__ import print_function
 
 import sys
 import subprocess
-import time
+import time as modtime
 
 import cmn_perfcheck
 
@@ -88,7 +88,7 @@ def perf_raw(events, time=None, command=None, system_wide=True):
 
     By default we count system-wide counts. This is correct for CMN.
     """
-    if time is None:
+    if time is None and command is None:
         time = o_time
     sep = '|'
     cmd = [o_perf_bin, "stat", "-x"+sep]
@@ -100,12 +100,19 @@ def perf_raw(events, time=None, command=None, system_wide=True):
     if command is None:
         cmd += ["sleep", str(time)]
     else:
+        # This will block and 'time' should be ignored, or calculated
+        # from the actual run time.
         cmd += command.split()
     if o_verbose:
         print(">> %s" % (' '.join(cmd)))
+    t0 = modtime.time()
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # Block, waiting for the subcommand to finish
+    # Block, waiting for the subcommand (perhaps "sleep") to finish
     (out, err) = p.communicate()
+    if command is not None:
+        time = modtime.time() - t0
+        if o_verbose:
+            print("measured time %.2f" % time)
     rc = p.returncode
     if rc != 0 or o_verbose >= 2:
         if out:
@@ -219,7 +226,7 @@ def cmn_frequency(instance=0, time=None):
     return _perf_rate1("arm_cmn_%u/dtc_cycles/" % instance, time=time)
 
 
-def cpu_frequency(time=None):
+def cpu_frequency(time=0.1):
     """
     Get the CPU frequency of a random CPU, by counting cpu-cycles for a
     fixed duration. We can't just count cpu_cycles while waiting, because
@@ -229,6 +236,8 @@ def cpu_frequency(time=None):
     should map to the "cpu_cycles" named hardware event.
     """
     cmd = "%s %s --xx-spin" % (sys.executable, __file__)
+    if time is not None:
+        cmd += " --time=%f" % time
     return _perf_rate1("cpu-cycles", time=time, system_wide=False, command=cmd)
 
 
@@ -245,8 +254,8 @@ if __name__ == "__main__":
     o_verbose = opts.verbose
     if opts.xx_spin:
         # only used when we invoke ourselves recursively
-        t_end = time.time() + opts.time
-        while time.time() < t_end:
+        t_end = modtime.time() + opts.time
+        while modtime.time() < t_end:
             pass
         sys.exit()
     if opts.frequency:
