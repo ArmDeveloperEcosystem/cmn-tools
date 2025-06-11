@@ -173,7 +173,7 @@ def print_dtm_pmu_config(dtm, pfx="    "):
             paired = [0, (BIT(pcfg, 1) | BIT(pcfg, 3)), BIT(pcfg, 3), (BIT(pcfg, 2) | BIT(pcfg, 3))][i]
             print("%s    %s%u:" % (pfx, " *"[paired], i), end="")
             if BIT(pcfg, 4+i):
-                print(" [DTC%u global %u]" % (dtm.dtc_domain(), egc), end="")
+                print(" [DTC%s global %u]" % ((str(dtm.dtc_domain()) if dtm.dtc_domain() is not None else "?"), egc), end="")
             print(" event 0x%02x: %s" % (eis, dtm.pmu_event_input_selector_str(eis)))
     return pcfg
 
