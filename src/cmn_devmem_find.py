@@ -28,6 +28,8 @@ from __future__ import print_function
 import os
 import sys
 import json
+import struct
+
 
 import cmn_base
 import cmn_json
@@ -35,6 +37,9 @@ import app_data
 
 
 o_verbose = 0
+
+
+DT_BASE_DEFAULT = "/sys/firmware/devicetree/base"
 
 
 def _cmn_location_cache():
@@ -160,7 +165,94 @@ def cmn_locators_from_iomem(iomem=None):
             # subordinate node - ignore
             pass
     assert not loc
-    if not locs:
+
+
+_dt_compats = {
+    b"arm,cmn-600": cmn_base.PART_CMN600,
+    b"arm,cmn-650": cmn_base.PART_CMN650,
+    b"arm,cmn-700": cmn_base.PART_CMN700,
+    b"arm,ci-700":  cmn_base.PART_CI700,
+    b"arm,cmn-s3":  cmn_base.PART_CMN_S3,
+}
+
+
+def cmn_locators_from_dt(dt_base=None):
+    if dt_base is None:
+        dt_base = DT_BASE_DEFAULT
+    if o_verbose:
+        print("scanning devicetree: %s" % dt_base)
+    if not os.path.isdir(dt_base):
+        print("%s: missing devicetree directory" % dt_base, file=sys.stderr)
+        sys.exit(1)
+    n_found = 0
+    for qdn in os.listdir(dt_base):
+        # The devicetree node name won't tell us much, it might be something like "pmu@50000000"
+        dn = os.path.join(dt_base, qdn)
+        if not os.path.isdir(dn):
+            continue
+        compat = os.path.join(dn, "compatible")
+        if os.path.isfile(compat):
+            if o_verbose >= 2:
+                print("checking DT node: %s" % dn)
+            with open(compat, "rb") as f:
+                # expect nul-terminated string e.g. b"arm,cmn-600",
+                # possibly padded to 4-byte granularity
+                s = f.read().rstrip(b'\0')
+                if s in _dt_compats:
+                    with open(os.path.join(dn, "reg"), "rb") as r:
+                        (addr, size) = struct.unpack(">QQ", r.read())
+                    try:
+                        with open(os.path.join(dn, "arm,root-node"), "rb") as r:
+                            rootnode_offset = struct.unpack(">I", r.read())[0]
+                    except Exception:
+                        rootnode_offset = 0
+                    loc = CMNLocator(periphbase=addr, rootnode_offset=rootnode_offset, product_id=_dt_compats[s], seq=n_found)
+                    n_found += 1
+                    yield loc
+        else:
+            if o_verbose >= 2:
+                print("skipping DT node with no compatible: %s" % dn)
+
+
+
+def cmn_locators_from_iomem_and_dt(opts=None):
+    found = False
+    if not (opts is not None and opts.cmn_iomem == "none"):
+        for loc in cmn_locators_from_iomem(iomem=opts.cmn_iomem if opts is not None else None):
+            found = True
+            yield loc
+    if not found:
+        dt_base = opts.cmn_dt_base if opts is not None else None
+        if (dt_base is not None and dt_base != "none") or os.path.isdir(DT_BASE_DEFAULT):
+            for loc in cmn_locators_from_dt(dt_base=dt_base):
+                yield loc
+
+
+def cmn_locators(opts=None, single_instance=False):
+    """
+    Process command-line options to locate CMN instances.
+    Options can override the location completely, or provide alternate (mock)
+    locations for /proc/iomem and /sys/firmware/devicetree.
+    """
+    if o_verbose:
+        print("CMN: locating with %s, single=%s" % (opts, single_instance))
+    if opts is not None and opts.cmn_base is not None:
+        loc = CMNLocator(opts.cmn_base, opts.cmn_root_offset)
+        yield loc
+        n_inst = 1
+    else:
+        n_inst = 0
+        for loc in cmn_locators_from_iomem_and_dt(opts):
+            if o_verbose:
+                print("#%u: %s" % (n_inst, loc))
+            if single_instance and (opts is None):
+                # No user options overriding: return the first instance discovered
+                yield loc
+                return
+            if opts is None or opts.cmn_instance is None or n_inst == opts.cmn_instance:
+                yield loc
+            n_inst += 1
+    if n_inst == 0:
         cpath = _cmn_location_cache()
         if os.path.exists(cpath):
             print("reading CMN locations from %s" % (cpath))
@@ -175,27 +267,12 @@ def cmn_locators_from_iomem(iomem=None):
             pass
 
 
-def cmn_locators(opts=None, single_instance=False):
-    if o_verbose:
-        print("CMN: locating with %s, single=%s" % (opts, single_instance))
-    if opts is not None and opts.cmn_base is not None:
-        loc = CMNLocator(opts.cmn_base, opts.cmn_root_offset)
-        yield loc
-    else:
-        n_inst = 0
-        for loc in cmn_locators_from_iomem(iomem=opts.cmn_iomem if opts is not None else None):
-            if o_verbose:
-                print("#%u: %s" % (n_inst, loc))
-            if single_instance and (opts is None):
-                # No user options overriding: return the first instance discovered
-                yield loc
-                return
-            if opts is None or opts.cmn_instance is None or n_inst == opts.cmn_instance:
-                yield loc
-            n_inst += 1
-
-
 def cmn_single_locator(opts=None):
+    """
+    In the case that we locate a single CMN instance (either because
+    the SoC only has one, or because the user overrode on the command line)
+    return just that one instance. Otherwise return None.
+    """
     locs = list(cmn_locators(opts, single_instance=True))
     if locs:
         return locs[0]
@@ -234,6 +311,7 @@ def add_cmnloc_arguments(parser):
     ag.add_argument("--cmn-instance", type=int, help="CMN instance e.g. 0, 1, ...")
     ag.add_argument("--cmn-version", type=int, help="CMN product number")
     ag.add_argument("--cmn-iomem", type=str, default="/proc/iomem", help="/proc/iomem file (for testing)")
+    ag.add_argument("--cmn-dt-base", type=str, default=None, help="DT path (for testing)")
     ag.add_argument("--secure-access", action="store_true", default=None, help="assume Secure registers are accessible")
     ag.add_argument("--list-cmn", action="store_true", help="list all CMN devices in system")
     ag.add_argument("--cmn-diag", action="store_true")    # CMN driver internal diagnostics
