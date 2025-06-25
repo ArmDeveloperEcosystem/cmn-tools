@@ -34,24 +34,32 @@ o_print_percent = True
 o_print_decimal = False
 
 
+# CMN topology discovery needs to have already been done. This is needed so
+# we can create watchpoint counters bound to specify port/node types.
 S = cmn_json.system_from_json_file()
 
+
+TOP_CAT = "*all"
 
 class Topdown:
     """
     Collect statistics for a level of top-down analysis.
     This is basically a set of categories with event rates per category.
-    Categories are normally mutually exclusive.
+    Categories are normally mutually exclusive, but an "*all" category
+    can be defined that represents total events.
     """
     def __init__(self, cats, name=None, dominance_level=None):
         self.name = name
         self.categories = cats
+        self.dominance_level = dominance_level if dominance_level is not None else o_dominance_level
+        self.init_measurements()
+
+    def init_measurements(self):
         self.rate = {}
-        for c in cats:
+        for c in self.categories:
             self.rate[c] = 0.0
         self.rate[None] = 0.0
         self.total_rate = None
-        self.dominance_level = dominance_level if dominance_level is not None else o_dominance_level
         self.is_measured = False
 
     def __str__(self):
@@ -61,6 +69,12 @@ class Topdown:
             s = "\"%s\"" % self.name
         s = "Topdown(%s)" % s
         return s
+
+    def has_baseline(self):
+        return TOP_CAT in self.categories
+
+    def is_internal(self, cat):
+        return cat.startswith("*")
 
     def measure(self):
         pass
@@ -80,7 +94,7 @@ class Topdown:
 
     def add_categories(self, cats):
         for cat in self.get_categories(cats):
-            if cat.startswith("-"):
+            if cat.startswith("-"):     # some measurements subtract rather than adding
                 cat = cat[1:]
             self.add_category(cat)
 
@@ -108,17 +122,18 @@ class Topdown:
         We justify this by the need to present results in a way that does not cause confusion.
         Hopefully we are only removing sampling artefacts.
         """
-        self.total_rate = 0.0
+        self.total_rate = self.rate[TOP_CAT] if self.has_baseline() else 0.0
         for cat in self.categories:
             if self.rate[cat] < 0.0:
                 self.rate[cat] = 0.0
-            if not cat.startswith("*"):
+            if not self.has_baseline() and not self.is_internal(cat):
                 self.total_rate += self.rate[cat]
+        assert self.total_rate > 0.0, "unexpected zero total after adjustment"
 
     def dominator(self):
         assert self.dominance_level > 0.5     # if it's less, we might have >1 matching category
         for c in self.categories:
-            if c is not None and c.startswith("*"):
+            if c is not None and self.is_internal(c):
                 continue
             if self.proportion(c) >= self.dominance_level:
                 return c
@@ -196,7 +211,7 @@ def decode_properties(x):
     """
     Properties can be supplied either as a string ("RN-F"), or a mask (CMN_PROP_RNF).
     """
-    if isinstance(x, str):
+    if not isinstance(x, int):
         x = cmn_properties(x)
         if x is None:
             print("invalid port specifier \"%s\", expect e.g. \"RN-F\"" % x, file=sys.stderr)
@@ -204,7 +219,10 @@ def decode_properties(x):
     return x
 
 
-def gen_Topdown(d):
+def create_Topdown(d, measure=True):
+    """
+    Given a topdown recipe, create a Topdown object, and optionally take a measurement.
+    """
     td = TopdownPerf(S, d["categories"], name=d["name"])
     for m in d["measure"]:
         cat = m["measure"]
@@ -225,15 +243,16 @@ def gen_Topdown(d):
             td.add_event(cat, m["cpu-event"])
         else:
             assert False, "invalid analysis recipe: %s" % m
-    td.measure()
+    if measure:
+        td.measure()
     return td
 
 
-def print_topdown_measurement(recipe):
+def measure_and_print_topdown(recipe):
     """
     Complete a top-down analysis and print the results.
     """
-    td = gen_Topdown(recipe)
+    td = create_Topdown(recipe)
     if not td.is_measured:
         td.measure()
     rate_bandwidth = recipe.get("rate_bandwidth", None)
@@ -245,11 +264,15 @@ def print_topdown_measurement(recipe):
     if td.name is not None:
         print("%s:" % td.name)
     dom = td.dominator()
+    catlist = td.categories + [None]
+    if TOP_CAT in catlist:
+        catlist.remove(TOP_CAT)
+        catlist += [TOP_CAT]
     for c in td.categories + [None]:
-        cname = c if c is not None else "uncategorized"
+        cname = "(total)" if c == TOP_CAT else c if c is not None else "uncategorized"
         if c is None and not td.rate[c]:
             continue
-        if c is not None and c.startswith("*"):
+        if c is not None and c != TOP_CAT and td.is_internal(c):
             # internal category - don't print
             continue
         print("  %-13s" % (cname), end="")
@@ -261,6 +284,7 @@ def print_topdown_measurement(recipe):
             print(" %12s/s" % memsize_str(rate_bandwidth*td.rate[c], decimal=o_print_decimal), end="")
         else:
             print(" %14.2f" % (td.rate[c]), end="")
+        # For TOP_CAT this will always be 100%
         if o_print_percent:
             print(" %6.1f%%" % (td.proportion(c) * 100.0), end="")
         else:
@@ -278,8 +302,9 @@ def print_topdown_measurement(recipe):
 
 
 def print_topdown(recipe):
+    assert "measure" in recipe or "subrecipes" in recipe
     if "measure" in recipe:
-        print_topdown_measurement(recipe)
+        measure_and_print_topdown(recipe)
     if "subrecipes" in recipe:
         for r in recipe["subrecipes"]:
             print_topdown(r)
@@ -440,7 +465,7 @@ if __name__ == "__main__":
     parser.add_argument("--percentage", action="store_true", help="print as percentages")
     parser.add_argument("--bandwidth", action="store_true", help="print request counts as bandwidth")
     parser.add_argument("--decimal", action="store_true", help="print bandwidth as decimal (MB not MiB)")
-    parser.add_argument("--recipe", type=str, help="use JSON top-down recipe")
+    parser.add_argument("--recipe", type=str, action="append", help="use JSON top-down recipe")
     parser.add_argument("--no-adjust", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--perf-bin", type=str, default="perf", help="perf command")
     parser.add_argument("--cmd", type=str, help="microbenchmark to run (will be killed on exit)")
@@ -496,6 +521,11 @@ if __name__ == "__main__":
             print("bad topdown level %s" % level, file=sys.stderr)
             sys.exit(1)
     if opts.recipe:
-        with open(opts.recipe) as f:
-            recipe = json.load(f)
-        print_topdown(recipe)
+        for recipe_fn in opts.recipe:
+            try:
+                with open(recipe_fn) as f:
+                    recipe = json.load(f)
+                print_topdown(recipe)
+            except IOError as e:
+                print("%s" % e, file=sys.stderr)
+                sys.exit(1)

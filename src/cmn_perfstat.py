@@ -246,7 +246,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="get PMU events")
     parser.add_argument("--time", type=float, default=1.0, help="time to wait")
     parser.add_argument("--frequency", action="store_true", help="show CMN frequency")
-    parser.add_argument("--instance", type=int, default=0)
+    parser.add_argument("--cmn-instance", type=int, default=0, help="CMN instance for frequency")
     parser.add_argument("-e", "--event", type=str, action="append", default=[], help="events to count")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("--xx-spin", action="store_true", help=argparse.SUPPRESS)
@@ -258,7 +258,13 @@ if __name__ == "__main__":
         while modtime.time() < t_end:
             pass
         sys.exit()
+    done = False
     if opts.frequency:
         print("CPU frequency: %s" % cpu_frequency(time=opts.time))
-        print("CMN frequency: %s" % cmn_frequency(time=opts.time, instance=opts.instance))
-    print(perf_stat(opts.event, time=opts.time))
+        print("CMN frequency: %s" % cmn_frequency(time=opts.time, instance=opts.cmn_instance))
+        done = True
+    if opts.event:
+        print(perf_stat(opts.event, time=opts.time))
+        done = True
+    if not done:
+        print("Use --event or --frequency")

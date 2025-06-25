@@ -200,6 +200,8 @@ class CMNHist(CMNVis):
             except KeyError:
                 # Unexpected: a target-id that we didn't know about
                 ttype = "?"
+        elif flit.group.VC == 2:
+            ttype = "-"       # SNP expected to have no tgtid
         else:
             ttype = "?"
         op = flit.opcode_str()

@@ -92,7 +92,7 @@ def _check_perf_timed(e, t):
         print("err: %s" % err.decode(), file=sys.stderr)
         return None
     try:
-        (n, _) = err.decode().split(',', maxsplit=1)
+        (n, _) = err.decode().split(',', 1)
         if o_verbose:
             print("%s => %s" % (e, n), file=sys.stderr)
         n = int(n)
@@ -122,10 +122,14 @@ def check_perf():
     try:
         _check_perf("dummy")
         return True
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         # "perf" command not installed
+        if o_verbose:
+            print(e, file=sys.stderr)
         return False
-    except Exception:
+    except Exception as e:
+        if o_verbose:
+            print("error when running 'perf': %s" % e, file=sys.stderr)
         return False
 
 
@@ -213,7 +217,7 @@ def check_cmn_pmu_events(file=None, check_rsp_dat=True):
               file=file)
     else:
          if o_verbose:
-             print("    CMN watchpoints can monitor all channels.", file=file)
+             print("    CMN watchpoints can monitor all channels (REQ, RSP, SNP, DAT).", file=file)
     return True
 
 
