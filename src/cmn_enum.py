@@ -77,6 +77,8 @@ CMN_NODE_HNS_MPAM_S  = 0x201
 CMN_NODE_HNS_MPAM_NS = 0x202
 CMN_NODE_APB     = 0x1000 # APB interface
 
+
+# TBD: this doesn't match CMN_PROP_HN, but probably should. Should CXHA be here?
 CMN_NODE_all_HN = [CMN_NODE_HNI, CMN_NODE_HNF, CMN_NODE_HNP, CMN_NODE_HNS]
 
 
@@ -173,7 +175,12 @@ cmn_port_device_type_strings = {
     0x1b: "LCN",
     0x1c: "MTSX",
     0x1d: "HN-V",
-    0x1e: "CCG"
+    0x1e: "CCG",
+    0x20: "RN-F_F",
+    0x21: "RN-F_F_E",
+    0x22: "SN-F_F",
+    0x24: "RN-F_G_E",
+    0x25: "SN-F_G",
 }
 
 
@@ -206,6 +213,11 @@ CMN_PORT_DEVTYPE_LCN            = 0x1b
 CMN_PORT_DEVTYPE_MTSX           = 0x1c
 CMN_PORT_DEVTYPE_HNV            = 0x1d
 CMN_PORT_DEVTYPE_CCG            = 0x1e
+CMN_PORT_DEVTYPE_RNF_CHIF       = 0x20
+CMN_PORT_DEVTYPE_RNF_CHIF_ESAM  = 0x21
+CMN_PORT_DEVTYPE_SNF_CHIF       = 0x22
+CMN_PORT_DEVTYPE_RNF_CHIG_ESAM  = 0x24
+CMN_PORT_DEVTYPE_SNF_CHIG       = 0x25
 
 
 cmn_port_properties = {
@@ -238,9 +250,15 @@ cmn_port_properties = {
     CMN_PORT_DEVTYPE_MTSX             : CMN_PROP_none,
     CMN_PORT_DEVTYPE_HNV              : CMN_PROP_HNI,
     CMN_PORT_DEVTYPE_CCG              : CMN_PROP_CCG,
+    CMN_PORT_DEVTYPE_RNF_CHIF         : CMN_PROP_RNF,
+    CMN_PORT_DEVTYPE_RNF_CHIF_ESAM    : CMN_PROP_RNF,
+    CMN_PORT_DEVTYPE_SNF_CHIF         : CMN_PROP_SNF,
+    CMN_PORT_DEVTYPE_RNF_CHIG_ESAM    : CMN_PROP_RNF,
+    CMN_PORT_DEVTYPE_SNF_CHIG         : CMN_PROP_SNF,
 }
 
 
+# See comment about CXHA in CMN_NODE_all_HN above
 CMN_PORT_DEVTYPE_all_HN = [
     CMN_PORT_DEVTYPE_HNT, CMN_PORT_DEVTYPE_HNI, CMN_PORT_DEVTYPE_HND,
     CMN_PORT_DEVTYPE_HNP, CMN_PORT_DEVTYPE_HNF, CMN_PORT_DEVTYPE_HNS,
@@ -253,6 +271,14 @@ def cmn_port_device_type_str(dev):
         return cmn_port_device_type_strings[dev]
     else:
         return "dev?%u" % dev
+
+
+def cmn_port_device_type_properties(dev):
+    return cmn_port_properties.get(dev, CMN_PROP_none)
+
+
+def cmn_port_device_type_has_properties(dev, p):
+    return (cmn_port_device_type_properties(dev) & p) == p
 
 
 _prop_strs = {
@@ -281,18 +307,25 @@ def cmn_properties(s):
     return _prop_strs.get(s.upper(), None)
 
 
-def print_all_enums():
+def cmn_properties_str(pv):
+    return ", ".join([name for (name, pr) in _prop_strs.items() if (pv & pr) == pr])
+
+
+def _print_all_enums():
     print("Node types:")
     for (k, v) in globals().items():
         if k.startswith("CMN_NODE_") and not k.startswith("CMN_NODE_all_"):
-            props = cmn_node_properties.get(v, CMN_PROP_none)
-            print("  %-30s %04x  %04x  %s" % (k, v, props, cmn_node_type_str(v)))
+            props = cmn_node_properties[v]
+            print("  %-31s %04x  %-12s %04x  %s" % (k, v, cmn_node_type_str(v), props, cmn_properties_str(props)))
+            #assert (v in CMN_NODE_all_HN) == cmn_node_type_has_properties(v, CMN_PROP_HN)
+    print()
     print("Connected device types:")
     for (k, v) in globals().items():
         if k.startswith("CMN_PORT_DEVTYPE_") and not k.startswith("CMN_PORT_DEVTYPE_all_"):
             props = cmn_port_properties[v]
-            print("  %-30s %04x  %04x  %s" % (k, v, props, cmn_port_device_type_str(v)))
+            print("  %-31s %04x  %-12s %04x  %s" % (k, v, cmn_port_device_type_str(v), props, cmn_properties_str(props)))
+            #assert (v in CMN_PORT_DEVTYPE_all_HN) == cmn_port_device_type_has_properties(v, CMN_PROP_HN)
 
 
 if __name__ == "__main__":
-    print_all_enums()
+    _print_all_enums()

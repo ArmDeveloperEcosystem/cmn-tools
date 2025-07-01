@@ -1292,8 +1292,10 @@ class CMN:
         if not self.part_ge_650():
             # In CMN-600 there's a single CHI-C flag
             return 2 + BIT(self.unit_info, 49)
-        else:
+        elif not self.part_ge_S3():
             return BITS(self.unit_info, 60, 3)
+        else:
+            return BITS(self.unit_info, 56, 3)
 
     def chi_version_str(self):
         return "CHI-%s" % "?ABCDEFGH"[self.chi_version()]

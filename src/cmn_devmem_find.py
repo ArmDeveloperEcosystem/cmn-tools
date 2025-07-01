@@ -102,6 +102,7 @@ cmn_acpi_names = {
     "ARMHC600": cmn_base.PART_CMN600,
     "ARMHC650": cmn_base.PART_CMN650,
     "ARMHC700": cmn_base.PART_CMN700,
+    "ARMHC003": cmn_base.PART_CMN_S3,
 }
 
 
