@@ -239,7 +239,7 @@ def json_from_cmn(C):
     }
     if C.periphbase is not None:
         j["config"]["base"] = "0x%x" % C.periphbase
-    if C.frequency is not None:
+    if hasattr(C, "frequency") and C.frequency is not None:
         j["frequency"] = C.frequency
     return j
 
