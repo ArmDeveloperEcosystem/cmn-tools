@@ -14,10 +14,16 @@ from __future__ import print_function
 
 
 import os
+import sys
 
 
 from arm_ds.debugger_v1 import Debugger
 from devmem_base import DevMapFactory, DevMap
+
+# In the DS environment, output to stderr is highlighted and reformatted.
+# This is undesirable for minor warnings and information messages.
+# See discussion in README-arm-ds.md.
+sys.stderr = sys.stdout
 
 
 def default_address_space():
