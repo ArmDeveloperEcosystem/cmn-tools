@@ -66,6 +66,8 @@ def cmn_from_json(j, S):
     C.frequency = j.get("frequency", None)
     if "base" in jc:
         C.periphbase = int(jc["base"], 16)
+        if "rootnode_offset" in jc:
+            C.rootnode_offset = int(jc["rootnode_offset"], 16)
     for jxp in jc["xps"]:
         np = jxp["n_ports"]
         xp = C.create_xp(jxp["X"], jxp["Y"], n_ports=np, id=jxp["id"], logical_id=jxp.get("logical_id", None))
@@ -239,6 +241,7 @@ def json_from_cmn(C):
     }
     if C.periphbase is not None:
         j["config"]["base"] = "0x%x" % C.periphbase
+        j["config"]["rootnode_offset"] = "0x%x" % C.rootnode_offset
     if hasattr(C, "frequency") and C.frequency is not None:
         j["frequency"] = C.frequency
     return j

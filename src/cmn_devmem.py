@@ -284,12 +284,12 @@ class CMNNode:
         skip_external = self.is_XP() and self.has_any_ports(CMN_PROP_RNF) and self.C.skip_external_if_RNF
         for i in range(0, self.n_children):
             child = self.read64(child_off + (i*8))
+            child_offset = BITS(child, 0, cobits)
             is_external = BIT(child, 31)
             if is_external and skip_external:
                 self.C.log("%s: skipping external device at 0x%x" % (self, child_offset), level=1)
                 continue
             # TBD for S3 r2p0 on, test for isolated child
-            child_offset = BITS(child, 0, cobits)
             child_node = self.C.create_node(child_offset, parent=self, is_external=is_external)
             if child_node is None:
                 # Probably a child of a RN-F port
@@ -1085,6 +1085,7 @@ class CMN:
         self.seq = cmn_loc.seq             # instance number within the system (semi-arbitrary numbering)
         self.periphbase = cmn_loc.periphbase
         rootnode_offset = cmn_loc.rootnode_offset
+        self.rootnode_offset = rootnode_offset
         assert rootnode_offset >= 0 and rootnode_offset < 0x4000000
         self.himem = self.periphbase       # will be updated as we discover nodes
         if verbose >= 1:

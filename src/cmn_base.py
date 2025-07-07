@@ -324,6 +324,7 @@ class CMN(NodeGroup):
         self.product_config = config
         self.seq = seq         # sequence number within the system
         self.periphbase = None
+        self.rootnode_offset = None     # For early CMNs: None means not known
         self.dimX = dimX
         self.dimY = dimY
         self.id_coord_bits = id_coord_bits(self.dimX, self.dimY)

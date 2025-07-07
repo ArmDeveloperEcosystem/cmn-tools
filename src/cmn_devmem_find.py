@@ -121,17 +121,20 @@ class CMNLocator:
     root node address, and CMN product number (e.g. cmn_base.PART_CMN700).
     We get it from /proc/iomem, ACPI tables, user override etc.
     """
-    def __init__(self, periphbase=None, rootnode_offset=None, product_id=None, seq=None):
+    def __init__(self, periphbase=None, rootnode_offset=None, product_id=None, seq=None, where_found=None):
         self.seq = seq
         self.periphbase = periphbase
         self.rootnode_offset = rootnode_offset
         self.product_id = cmn_base.canon_product_id(product_id)
+        self.where_found = where_found
 
     def __str__(self):
         s = cmn_base.product_id_str(self.product_id)
         s += " at 0x%x" % self.periphbase
         if self.rootnode_offset:
             s += " (root +0x%x)" % self.rootnode_offset
+        if self.where_found is not None:
+            s += " - found in %s" % self.where_found
         return s
 
 
@@ -145,7 +148,7 @@ def cmn_locators_from_iomem(iomem=None):
         if ad.level == 0:
             assert loc is None
             product_id = cmn_acpi_names[ad.name]
-            loc = CMNLocator(periphbase=ad.addr, product_id=product_id, seq=len(locs))
+            loc = CMNLocator(periphbase=ad.addr, product_id=product_id, seq=len(locs), where_found="/proc/iomem")
             if loc.product_id != cmn_base.PART_CMN600:
                 loc.rootnode_offset = 0
                 yield loc
@@ -207,7 +210,7 @@ def cmn_locators_from_dt(dt_base=None):
                             rootnode_offset = struct.unpack(">I", r.read())[0]
                     except Exception:
                         rootnode_offset = 0
-                    loc = CMNLocator(periphbase=addr, rootnode_offset=rootnode_offset, product_id=_dt_compats[s], seq=n_found)
+                    loc = CMNLocator(periphbase=addr, rootnode_offset=rootnode_offset, product_id=_dt_compats[s], seq=n_found, where_found="device-tree")
                     n_found += 1
                     yield loc
         else:
@@ -238,7 +241,7 @@ def cmn_locators(opts=None, single_instance=False):
     if o_verbose:
         print("CMN: locating with %s, single=%s" % (opts, single_instance))
     if opts is not None and opts.cmn_base is not None:
-        loc = CMNLocator(opts.cmn_base, opts.cmn_root_offset)
+        loc = CMNLocator(opts.cmn_base, opts.cmn_root_offset, where_found="command line options")
         yield loc
         n_inst = 1
     else:
@@ -327,5 +330,9 @@ if __name__ == "__main__":
     opts = parser.parse_args()
     o_verbose = opts.verbose
     o_use_cache = not opts.no_cache
+    n_printed = 0
     for c in cmn_locators(opts=opts):
+        n_printed += 1
         print(c)
+    if not n_printed:
+        print("No CMN interconnects found", file=sys.stderr)
