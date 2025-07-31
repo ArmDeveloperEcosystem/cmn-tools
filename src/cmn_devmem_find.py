@@ -240,12 +240,13 @@ def cmn_locators(opts=None, single_instance=False):
     """
     if o_verbose:
         print("CMN: locating with %s, single=%s" % (opts, single_instance))
+    n_inst = 0
     if opts is not None and opts.cmn_base is not None:
-        loc = CMNLocator(opts.cmn_base, opts.cmn_root_offset, where_found="command line options")
-        yield loc
-        n_inst = 1
+        for base in opts.cmn_base:
+            loc = CMNLocator(base, opts.cmn_root_offset, where_found="command line options")
+            yield loc
+            n_inst += 1
     else:
-        n_inst = 0
         for loc in cmn_locators_from_iomem_and_dt(opts):
             if o_verbose:
                 print("#%u: %s" % (n_inst, loc))
@@ -310,7 +311,7 @@ def add_cmnloc_arguments(parser):
     def inthex(s):
         return int(s, 16)
     ag = parser.add_argument_group("CMN location arguments")
-    ag.add_argument("--cmn-base", type=inthex, help="CMN base address")
+    ag.add_argument("--cmn-base", type=inthex, action="append", help="CMN base address(es)")
     ag.add_argument("--cmn-root-offset", type=inthex, default=0, help="CMN root node offset")
     ag.add_argument("--cmn-instance", type=int, help="CMN instance e.g. 0, 1, ...")
     ag.add_argument("--cmn-version", type=int, help="CMN product number")

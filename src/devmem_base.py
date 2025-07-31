@@ -11,6 +11,10 @@ SPDX-License-Identifier: Apache 2.0
 from __future__ import print_function
 
 
+import sys
+# import traceback
+
+
 # Security states for memory access. Rather than inventing an enum,
 # we use strings.
 security_levels = ["NS", "S", "ROOT", "REALM"]
@@ -51,7 +55,11 @@ class DevMemWriteProtected(DevMemException):
 
 
 class DevMemNoSecure(DevMemException):
+    """
+    Exception to indicate that the memory retargeting layer can't do the requested security level.
+    """
     def __init__(self, dev, secure="S"):
+        assert secure in security_levels   # only use this exception for valid (but unsupported) levels
         DevMemException.__init__(self, dev)
         self.requested_secure = secure
 
@@ -74,15 +82,24 @@ class DevMapFactory:
         self.checking = check
         if is_local is not None:
             self.is_local = is_local
+        self.n_read = 0
+        self.n_write = 0
 
     def __str__(self):
+        """
+        Name of the target - subclass can override
+        """
         return "device"
+
+    def __del__(self):
+        # print("%s: %u reads, %u writes" % (self, self.n_read, self.n_write))
+        pass
 
     def map(self, pa, size, name=None, write=False):
         """
         Implementation should return an instance of a subclass of DevMap.
         """
-        return Unimplemented()
+        raise NotImplementedError
 
 
 class DevMap:
@@ -101,6 +118,7 @@ class DevMap:
         self.checking = check
         self.secure = None
         self.set_secure_access(secure)
+        # self.already_read = {}
 
     def __str__(self):
         return self.name
@@ -123,8 +141,9 @@ class DevMap:
 
     def set_secure_access(self, secure):
         """
-        Update the Secure/Non-Secure security setting.
-        Subclass should override and raise DevMemNoSecure if it can't do this.
+        Update the security setting and return the previous setting.
+        Subclass should override _set_secure_access and raise DevMemNoSecure if
+        it can't handle the requested level.
         """
         assert secure in security_levels, "Bad security %s: expected in %s" % (secure, str(security_levels))
         self._set_secure_access(secure)
@@ -139,8 +158,13 @@ class DevMap:
         pass
 
     def read64(self, off):
+        self.owner.n_read += 1
         if off >= self.size:
             raise DevMemOutOfBounds(self, off)
+        # if off in self.already_read:
+        #     print("%s: already read 0x%x" % (self, off), file=sys.stderr)
+        #     print(traceback.extract_stack(limit=5), file=sys.stderr)
+        # self.already_read[off] = True
         return self._read64(off)
 
     def write64(self, off, val, check=None):
@@ -149,6 +173,7 @@ class DevMap:
 
         If the memory is currently not mapped writeable, we raise an exception.
         """
+        self.owner.n_write += 1
         if not self.writing:
             raise DevMemWriteProtected(self, off, val)
         if check is None:
@@ -160,10 +185,10 @@ class DevMap:
                 raise DevMemWriteFailed(self, off, val, rv)
 
     def _read64(self, off):
-        return Unimplemented()
+        raise NotImplementedError
 
     def _write64(self, off, val):
-        return Unimplemented()
+        raise NotImplementedError
 
     def set32(self, off, val, check=None):
         old = self.read32(off)

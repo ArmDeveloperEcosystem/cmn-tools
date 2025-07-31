@@ -663,7 +663,7 @@ def port_channels(Cs, spec, default_pc):
                 sys.exit(1)
             xp = C.node_by_type_and_logical_id(CMN_NODE_XP, xpn)
             xp_explicit = True
-        elif cmn_properties(comp) is not None:
+        elif cmn_properties(comp, check=False) is not None:
             # Specify a port class, like HN-F etc.
             wilds.append(comp)
             if not xp_explicit:

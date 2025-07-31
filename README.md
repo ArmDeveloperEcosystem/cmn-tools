@@ -93,8 +93,8 @@ appear on the console.
 If problems occur see the "troubleshooting" section.
 
 
-Top-down analysis
------------------
+Top-down performance analysis
+-----------------------------
 
 Top-down performance analysis aims at finding the significant
 contributors to system bandwidth.  It analyzes system usage, rather
@@ -162,6 +162,23 @@ details see README-capture.md .
 To capture multiple CHI packets involved in a single transaction,
 showing latency (in cycles) between different packets, use
 the ``cmn_latency.py`` tool. For more details see README-latency.md .
+
+
+Offline inspection using a dump file
+------------------------------------
+
+When inspecting CMN configuration in detail, it may be more convenient
+to capture the CMN state from the target and then run scripts on a
+different machine. The CMN tools support this:
+
+    ./cmn_devmem.py --dump
+
+will create a register dump file on standard output. Other CMN inspection
+tools can then use this by specifying the dump file in the environment:
+
+    CMN_DUMP=<dumpfile> ./cmn_list.py --cmn-base=<addr>
+
+Note that in general it will be necessary to specify the CMN base address.
 
 
 Troubleshooting

@@ -195,7 +195,7 @@ def print_dtm_pmu(dtm, pfx="    "):
                     if esel != 0:
                         print("%s          E%u: 0x%x" % (pfx, e, esel), end="")
                         if dtm.C.pmu_events is not None:
-                            pix = (soff - CMN_any_PMU_EVENT_SEL) >> 3
+                            pix = (soff - n.PMU_EVENT_SEL_BASE) >> 3
                             ev = dtm.C.pmu_events.get_event(n.type(), esel, pmu_index=pix, filter=pmu_filter)
                             if ev is not None:
                                 print(" - %s" % ev.name(), end="")

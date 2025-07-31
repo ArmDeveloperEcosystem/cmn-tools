@@ -14,6 +14,7 @@ from __future__ import print_function
 
 import os
 import sys
+import json
 
 
 import cmn_json
@@ -21,6 +22,7 @@ import cmn_perfstat
 from cmn_enum import *
 from dmi import DMI
 from memsize_str import memsize_str
+import app_data
 
 
 if sys.version_info[0] == 2:
@@ -61,6 +63,12 @@ def slc_size():
     Get the system cache size by looking at a CPU's last-level cache
     as described in the topology description - generally from ACPI PPTT.
     We ignore L1 and L2.
+
+    TBD: this is not a reliable way of establishing CMN SLC size either
+    overall or per node. CMN SLC might or might not be declared to the
+    system as a LLC. A relatively small CMN SLC might be seen as essentially
+    a victim cache for CPU L2 or cluster L3, rather than a true next level
+    in the cache hierarchy.
     """
     max_level = 0
     max_index = None
@@ -94,7 +102,7 @@ def cpu_frequency():
     Return estimated current CPU frequency (for some typical CPU) in Hz.
     This assumes a homogeneous system.
     """
-    return cmn_perfstat.cpu_frequency()
+    return (cmn_perfstat.cpu_frequency(), "measured")
 
 
 def cmn_frequency():
@@ -184,32 +192,40 @@ def mem_bandwidth():
     return m.total_bandwidth() if m is not None else None
 
 
+def freq_str(fp):
+    (n, how) = fp
+    s = "%.2f GHz" % (n / 1e9)
+    if how is not None:
+        s += " (%s)" % how
+    return s
+
+
 group_CMN = [
-    ("CMN version",           lambda: S.cmn_version().product_name(revision=True)),
-    ("CHI",                   lambda: S.cmn_version().chi_version_str()),
-    ("CMN frequency",         lambda: ("%.0f (%s)" % cmn_frequency())),
-    ("Mesh X/Y config",       lambda: ("%u x %u" % (C.dimX, C.dimY))),
-    ("HN-F/S count",          lambda: len(list(C.home_nodes()))),
-    ("SN count",              lambda: len(list(C.sn_ids()))),
-    ("SLC capacity per HN",   lambda: memsize_str((slc_size() // len(list(C.home_nodes()))))),
-    ("CCG count",             lambda: len(list(C.nodes(CMN_PROP_CCG)))),
+    ("CMN version",           None,         lambda: S.cmn_version().product_name(revision=True)),
+    ("CHI",                   None,         lambda: S.cmn_version().chi_version_str()),
+    ("CMN frequency",         freq_str,     cmn_frequency),
+    ("Mesh X/Y config",       None,         lambda: ("%u x %u" % (C.dimX, C.dimY))),
+    ("HN-F/S count",          None,         lambda: len(list(C.home_nodes()))),
+    ("SN count",              None,         lambda: len(list(C.sn_ids()))),
+    ("SLC capacity per HN",   memsize_str,  lambda: ((slc_size() // len(list(C.home_nodes()))))),
+    ("CCG count",             None,         lambda: len(list(C.nodes(CMN_PROP_CCG)))),
 ]
 
 
 group_Memory = [
-    ("Size",                  lambda: memsize_str(mem_size())),
-    ("Memory channels",       lambda: mem_channels()),
-    ("DDR width",             lambda: ("%s bits" % (mem_width()))),
-    ("DDR speed",             lambda: ("%s MT/s" % (mem_speed()))),
-    ("Total DDR bandwidth",   lambda: ("%s / s" % memsize_str(mem_bandwidth()))),
+    ("Size",                  memsize_str,  mem_size),
+    ("Memory channels",       None,         mem_channels),
+    ("DDR width",             "bits",       mem_width),
+    ("DDR speed",             "MT/s",       mem_speed),
+    ("Total DDR bandwidth",   None,         lambda: ("%s / s" % memsize_str(mem_bandwidth()))),
 ]
 
 
 group_CPU = [
-    ("CPU core version",      lambda: ("0x%08x" % cpu_identification())),
-    ("CPU frequency",         lambda: ("%.2f GHz" % (cpu_frequency() / 1e9))),
-    ("CPU sockets in system", lambda: n_sockets()),
-    ("CPU cores in system",   lambda: n_cpus()),
+    ("CPU core version",      None,         lambda: ("0x%08x" % cpu_identification())),
+    ("CPU frequency",         freq_str,     cpu_frequency),
+    ("CPU sockets in system", None,         n_sockets),
+    ("CPU cores in system",   None,         n_cpus),
 ]
 
 
@@ -225,18 +241,38 @@ groups = [
 ]
 
 
+def json_chr(c):
+    return c.lower() if c.lower() in "abcdefghijklmnopqrstuvwxyz0123456789" else "_"
+
+
+def json_str(s):
+    return ''.join([json_chr(c) for c in s])
+
+
+assert json_str("Mesh X/Y config") == "mesh_x_y_config"
+
+
+def apply_render(s, render):
+    return s if render is None else render(s) if callable(render) else str(s) + " " + render
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Show major system parameters")
+    parser.add_argument("-o", "--output", type=str, help="JSON output")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
+    j = {}
     for (gname, group) in groups:
+        gj = {}
+        j[json_str(gname)] = gj
         gname_printed = False
-        for (pname, par) in group:
-            if not gname_printed:
+        for (pname, render, par) in group:
+            if not gname_printed and not opts.output:
                 print("%s:" % gname)
                 gname_printed = True
+            par_err = None
             if callable(par):
                 try:
                     par = par()
@@ -246,9 +282,29 @@ if __name__ == "__main__":
                     par = None
                     if o_verbose:
                         if o_verbose >= 2:
-                            par = "<exception (%s): %s>" % (type(e).__name__, str(e))
+                            par_err = "<exception (%s): %s>" % (type(e).__name__, str(e))
                         else:
-                            par = "<exception in script: %s>" % (type(e).__name__)
-            if par is None:
-                par = "<not available>"
-            print("  %30s: %s" % (pname, par))
+                            par_err = "<exception in script: %s>" % (type(e).__name__)
+            if par is None and par_err is None:
+                par_err = "<not available>"
+            if not opts.output:
+                if par is not None:
+                    par = apply_render(par, render)
+                else:
+                    par = par_err
+                print("  %30s: %s" % (pname, par))
+            else:
+                if par is not None:
+                    gj[json_str(pname)] = par
+                    if render is not None:
+                        gj[json_str(pname) + "_str"] = apply_render(par, render)
+                else:
+                    print("%s not available: %s" % (pname, par_err), file=sys.stderr)
+    if opts.output:
+        if opts.output == "-":
+            json.dump(j, sys.stdout, indent=4)
+            print()
+        else:
+            with open(opts.output, "w") as f:
+                json.dump(j, f, indent=4)
+            app_data.change_to_real_user_if_sudo(opts.output)

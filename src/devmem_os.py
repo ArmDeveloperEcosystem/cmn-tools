@@ -32,9 +32,13 @@ class DevMemFactory(DevMapFactory):
             print("cannot open /dev/mem: try running as sudo", file=sys.stderr)
             sys.exit(1)
 
+    def __str__(self):
+        return "native"
+
     def __del__(self):
         if self.fd is not None:
             self.fd.close()
+        DevMapFactory.__del__(self)
 
     def mmap(self, pa, size, write=False):
         assert (size % self.page_size) == 0

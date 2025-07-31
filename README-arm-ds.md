@@ -2,10 +2,26 @@ Using CMN scripts with the Arm DS debugger
 ==========================================
 
 Some of the tools will run in the Arm DS debugger as an alternative
-to running on the command line of the target.
+to running on the command line of the target. There are several
+reasons to do this:
 
-Generally, tools that access CMN directly will run under DS,
-while tools that use Linux PMU (perf) drivers will not.
+ - the system might not yet have booted to a state where it
+   can run self-hosted scripts
+
+ - the user might want to combine CMN access with other low-level
+   techniques like halting and single-stepping CPUs
+
+ - some CMN configuration information is normally only accessible
+   to debug-level access
+
+On the other hand, running scripts from DS has less visibility into
+the software environment. It is also typically less performant to
+access CMN via JTAG than self-hosted, especially when retrieving
+large amounts of information.
+
+Generally, tools that access CMN directly will run under DS
+(as well as self-hosted), while tools that use Linux PMU (perf)
+drivers will only run self-hosted.
 
 The location of CMN interconnect(s) in memory must already
 be known. This can be determined by running the tools self-hosted,
@@ -39,6 +55,8 @@ cmn_capture.py        - capture and decode CHI flits
 
 cmn_latency.py        - use trace tagging to capture related flits
 
+cmn_unlock.py         - set/unset security override bit(s)
+
 
 Scripts that will not work with DS
 ----------------------------------
@@ -52,6 +70,25 @@ cmn_topdown.py        - simple top-down perf analysis:
 cmn_summary.py        - system summary: uses BIOS information
 
 
+Combining DS and self-hosted scripting
+--------------------------------------
+
+As mentioned above, one reason to run under DS is to access
+additional configuration information. override flags in CMN that
+allow more CMN can in some cases permit self-hosted scripts to access these
+registers.
+
+The "cmn_unlock.py" script is provided to set these flags from DS.
+Once this is done, self-hosted scripts can access more details
+of CMN configuration. So a typical use case might be:
+
+From DS:
+  ./cmn_unlock.py --unlock <CMN location>
+
+Self-hosted:
+  ./cmn_list.py --node-type=rn
+
+
 Using CMN scripts with Arm development boards
 ---------------------------------------------
 
@@ -62,8 +99,8 @@ Morello:
   ./cmn_discover.py --cmn-base=0x50000000 --cmn-root-offset=0x804000
 
 
-The DS sripting environment
----------------------------
+The DS scripting environment
+----------------------------
 
 ArmDS implements Jython, the Java implementation of Python. This currently
 implements Python 2.7. Many Python modules are available, but some are not.

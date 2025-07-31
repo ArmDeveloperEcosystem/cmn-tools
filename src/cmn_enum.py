@@ -23,17 +23,22 @@ E.g. with Linux perf, CMN node type numbers can be used in the
 #
 
 CMN_PROP_none  = 0
-CMN_PROP_RN    = 0x0001     # Requester e.g. RN-F, RN-I. Does not include HN-F.
-CMN_PROP_HN    = 0x0002     # Home node e.g. HN-F, HN-I
-CMN_PROP_SN    = 0x0004     # Memory controller
+
+CMN_PROP_CFG   = 0x1000000   # Configuration node
+CMN_PROP_XP    = 0x2000000   # Crosspoint
+CMN_PROP_DEV   = 0x4000000   # Device node
+
+CMN_PROP_RN    = (CMN_PROP_DEV | 0x0001)     # Requester e.g. RN-F, RN-I. Does not include HN-F.
+CMN_PROP_HN    = (CMN_PROP_DEV | 0x0002)     # Home node e.g. HN-F, HN-I
+CMN_PROP_SN    = (CMN_PROP_DEV | 0x0004)     # Memory controller
 #CMN_PROP_D     = 0x0010     # non-coherent
-CMN_PROP_I     = 0x0020     # I/O coherent but not fully coherent
-CMN_PROP_F     = 0x0040     # Fully coherent
-CMN_PROP_CCG   = 0x0100     # Chip-to-chip gateway
-CMN_PROP_MPAM  = 0x0200     # MPAM configuration/status node
-CMN_PROP_T     = 0x0400     # Debug/trace features
-CMN_PROP_SBSX  = 0x0800     # AXI/ACE-Lite bridge
-CMN_PROP_DN    = 0x1000     # DVM node
+CMN_PROP_I     = (CMN_PROP_DEV | 0x0020)     # I/O coherent but not fully coherent
+CMN_PROP_F     = (CMN_PROP_DEV | 0x0040)     # Fully coherent
+CMN_PROP_CCG   = (CMN_PROP_DEV | 0x0100)     # Chip-to-chip gateway
+CMN_PROP_MPAM  = (CMN_PROP_DEV | 0x0200)     # MPAM configuration/status node
+CMN_PROP_T     = (CMN_PROP_DEV | 0x0400)     # Debug/trace features
+CMN_PROP_SBSX  = (CMN_PROP_DEV | 0x0800)     # AXI/ACE-Lite bridge
+CMN_PROP_DN    = (CMN_PROP_DEV | 0x1000)     # DVM node
 
 # Combination properties
 CMN_PROP_RNF   = (CMN_PROP_RN | CMN_PROP_F)   # Fully coherent requester
@@ -83,31 +88,31 @@ CMN_NODE_all_HN = [CMN_NODE_HNI, CMN_NODE_HNF, CMN_NODE_HNP, CMN_NODE_HNS]
 
 
 cmn_node_properties = {
-    CMN_NODE_DN          : CMN_PROP_none,
-    CMN_NODE_CFG         : CMN_PROP_none,
-    CMN_NODE_DT          : CMN_PROP_none,
+    CMN_NODE_DN          : CMN_PROP_DEV,    # TBD
+    CMN_NODE_CFG         : CMN_PROP_CFG,
+    CMN_NODE_DT          : CMN_PROP_DEV,    # TBD
     CMN_NODE_HNI         : CMN_PROP_HNI,
     CMN_NODE_HNF         : CMN_PROP_HNF,
-    CMN_NODE_XP          : CMN_PROP_none,
+    CMN_NODE_XP          : CMN_PROP_XP,
     CMN_NODE_SBSX        : CMN_PROP_SBSX,
     CMN_NODE_MPAM_S      : CMN_PROP_MPAM,
     CMN_NODE_MPAM_NS     : CMN_PROP_MPAM,
     CMN_NODE_RNI         : CMN_PROP_RNI,
-    CMN_NODE_RND         : CMN_PROP_RN,
-    CMN_NODE_RNSAM       : CMN_PROP_none,
-    CMN_NODE_MTSX        : CMN_PROP_none,
+    CMN_NODE_RND         : CMN_PROP_RND,
+    CMN_NODE_RNSAM       : CMN_PROP_DEV,    # TBD
+    CMN_NODE_MTSX        : CMN_PROP_DEV,    # TBD
     CMN_NODE_HNP         : CMN_PROP_HNI,
     CMN_NODE_CXRA        : (CMN_PROP_RN | CMN_PROP_CCG),
     CMN_NODE_CXHA        : (CMN_PROP_HN | CMN_PROP_CCG),
-    CMN_NODE_CXLA        : CMN_PROP_none,
+    CMN_NODE_CXLA        : CMN_PROP_DEV,    # TBD
     CMN_NODE_CCG_RA      : (CMN_PROP_RN | CMN_PROP_CCG),
     CMN_NODE_CCG_HA      : (CMN_PROP_HN | CMN_PROP_CCG),
-    CMN_NODE_CCLA        : CMN_PROP_none,
-    CMN_NODE_CCLA_RNI    : CMN_PROP_none,
+    CMN_NODE_CCLA        : CMN_PROP_DEV,    # TBD
+    CMN_NODE_CCLA_RNI    : CMN_PROP_DEV,    # TBD
     CMN_NODE_HNS         : CMN_PROP_HNF,
     CMN_NODE_HNS_MPAM_S  : CMN_PROP_MPAM,
     CMN_NODE_HNS_MPAM_NS : CMN_PROP_MPAM,
-    CMN_NODE_APB         : CMN_PROP_none,
+    CMN_NODE_APB         : CMN_PROP_DEV,    # TBD
 }
 
 
@@ -132,6 +137,15 @@ def cmn_node_type_properties(n):
     Generic properties for a node type, e.g. CMN_NODE_RNF -> CMN_PROP_RNF
     """
     return cmn_node_properties.get(n, CMN_PROP_none)
+
+
+def cmn_has_property(px, py):
+    return (px & py) == py
+
+
+assert cmn_has_property(CMN_PROP_HNF, CMN_PROP_HN)
+assert cmn_has_property(CMN_PROP_HN, CMN_PROP_DEV)
+assert not cmn_has_property(CMN_PROP_XP, CMN_PROP_DEV)
 
 
 def cmn_node_type_has_properties(n, p):
@@ -176,9 +190,11 @@ cmn_port_device_type_strings = {
     0x1c: "MTSX",
     0x1d: "HN-V",
     0x1e: "CCG",
+    0x1f: "CCGSMP",          # TBC
     0x20: "RN-F_F",
     0x21: "RN-F_F_E",
     0x22: "SN-F_F",
+    0x23: "RN-F_G",          # TBC
     0x24: "RN-F_G_E",
     0x25: "SN-F_G",
 }
@@ -213,9 +229,11 @@ CMN_PORT_DEVTYPE_LCN            = 0x1b
 CMN_PORT_DEVTYPE_MTSX           = 0x1c
 CMN_PORT_DEVTYPE_HNV            = 0x1d
 CMN_PORT_DEVTYPE_CCG            = 0x1e
+CMN_PORT_DEVTYPE_CCGSMP         = 0x1f
 CMN_PORT_DEVTYPE_RNF_CHIF       = 0x20
 CMN_PORT_DEVTYPE_RNF_CHIF_ESAM  = 0x21
 CMN_PORT_DEVTYPE_SNF_CHIF       = 0x22
+CMN_PORT_DEVTYPE_RNF_CHIG       = 0x23
 CMN_PORT_DEVTYPE_RNF_CHIG_ESAM  = 0x24
 CMN_PORT_DEVTYPE_SNF_CHIG       = 0x25
 
@@ -250,9 +268,11 @@ cmn_port_properties = {
     CMN_PORT_DEVTYPE_MTSX             : CMN_PROP_none,
     CMN_PORT_DEVTYPE_HNV              : CMN_PROP_HNI,
     CMN_PORT_DEVTYPE_CCG              : CMN_PROP_CCG,
+    CMN_PORT_DEVTYPE_CCGSMP           : CMN_PROP_CCG,
     CMN_PORT_DEVTYPE_RNF_CHIF         : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_RNF_CHIF_ESAM    : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_SNF_CHIF         : CMN_PROP_SNF,
+    CMN_PORT_DEVTYPE_RNF_CHIG         : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_RNF_CHIG_ESAM    : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_SNF_CHIG         : CMN_PROP_SNF,
 }
@@ -295,20 +315,26 @@ _prop_strs = {
     "SN-F": CMN_PROP_SNF,
     "CCG": CMN_PROP_CCG,
     "SBSX": CMN_PROP_SBSX,
+    "CFG": CMN_PROP_CFG,
+    "XP": CMN_PROP_XP,
+    "DEV": CMN_PROP_DEV,
     "ALL": CMN_PROP_none,   # i.e. match everything
 }
 
-def cmn_properties(s):
+def cmn_properties(s, check=True):
     """
     Convert a string into a property value, e.g. "RN-F" -> CMN_PROP_RNF.
     This is not canonically defined by the CMN product specification,
     but is useful across multiple tools.
     """
-    return _prop_strs.get(s.upper(), None)
+    if check:
+        return _prop_strs[s.upper()]
+    else:
+        return _prop_strs.get(s.upper(), None)
 
 
-def cmn_properties_str(pv):
-    return ", ".join([name for (name, pr) in _prop_strs.items() if (pv & pr) == pr])
+def cmn_properties_str(pv, join=", "):
+    return join.join([name for (name, pr) in _prop_strs.items() if (pv & pr) == pr])
 
 
 def _print_all_enums():

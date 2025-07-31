@@ -230,13 +230,14 @@ cmn_products_by_name = {
 # map the periph_id_2 codes on to releases.
 # Not systematic - CMN-600 r2p1 has a higher code than r3p0
 # TBD: the CMN-600 r2p1 and r3p2 TRMs disagree on the numbering.
+# TBD: CMN S3 r2p1, r2p2 and r2p3 are tentative awaiting documentation.
 
 cmn_revisions = {
     0x434: ["r1p0", "r1p1", "r1p2", "r1p3", "r2p0", "r3p0", "r2p1"],
     0x436: ["r0p0", "r1p0", "r1p1", "r2p0", "r1p2"],
     0x43c: ["r0p0", "r1p0", "r2p0", "r3p0"],
     0x43a: ["r0p0", "r1p0", "r2p0"],
-    0x43e: ["r0p0", "r1p0", "r2p0", "r3p0"],
+    0x43e: ["r0p0", "r0p1", "r1p0", "r2p0", "r2p1", "r2p2", "r2p3"],
 }
 
 
@@ -248,6 +249,10 @@ class CMNConfig:
       - revision number
     Instance-specific configuration e.g. X and Y dimensions,
     is not modelled here.
+
+    It is tempting to assign a linear correspondence between product versions/releases,
+    and features, but we don't know if that's a valid assumption. E.g. maybe some feature
+    is added in product N+1 but also in release R+1 of a previous product.
     """
     def __init__(self, product_id=None, product_name=None, revision=None, chi_version=None, mpam_enabled=None):
         self.product_id = product_id
@@ -260,12 +265,19 @@ class CMNConfig:
         self.revision = revision
 
     def product_name(self, revision=False):
-        s = _cmn_product_names_by_id[self.product_id]
+        """
+        Look up the product id and revision to get a product name,
+        e.g. "CMN 700 r1p0"
+        """
+        try:
+            s = _cmn_product_names_by_id[self.product_id]
+        except LookupError:
+            s = "unknown product (%s)" % str(self.product_id)
         if revision:
             if self.revision is not None:
                 try:
                     s += " " + cmn_revisions[self.product_id][self.revision]
-                except KeyError:
+                except LookupError:
                     s += " rev=%u?" % self.revision
             else:
                 s += " rev?"
@@ -275,10 +287,13 @@ class CMNConfig:
         if self.chi_version is None:
             return None
         else:
-            return "CHI-" + ("?ABCDEFGHI"[self.chi_version])
+            try:
+                return "CHI-" + ("?ABCDEFGHI"[self.chi_version])
+            except LookupError:
+                return "CHI-?(%s)" % self.chi_version
 
     def __eq__(self, b):
-        return self.product_id == b.product_id and self.mpam_enabled == b.mpam_enabled
+        return isinstance(b, CMNConfig) and self.product_id == b.product_id and self.mpam_enabled == b.mpam_enabled
 
     def __ne__(self, b):
         return not self == b
@@ -470,6 +485,7 @@ class CMN(NodeGroup):
 
     def create_node(self, type, type_s=None, port=None, xp=None, id=None, logical_id=None):
         assert type != CMN_NODE_XP        # use create_xp to create XP node
+        assert type != CMN_NODE_CFG       # config node not explicit in data structure
         pd = xp.port[port]
         n = CMNNode(type=type, type_s=type_s, owner=pd, id=id, logical_id=logical_id)
         pd.devices.append(n)
@@ -477,6 +493,12 @@ class CMN(NodeGroup):
         if n.id not in self.id_nodes:
             self.id_nodes[n.id] = {}
         self.id_nodes[n.id][type] = n
+        if type == CMN_NODE_DT:
+            # add to the CMN's debug_nodes array
+            assert logical_id is not None
+            while len(self.debug_nodes) < logical_id:
+                self.debug_nodes.append(None)
+            self.debug_nodes = self.debug_nodes[:logical_id] + [n] + self.debug_nodes[logical_id+1:]
         return n
 
     def __str__(self):

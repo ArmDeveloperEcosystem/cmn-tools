@@ -20,11 +20,14 @@ import cmn_devmem as cmn
 import cmn_devmem_find
 import cmn_json
 import cmnwatch
+import cmn_flits
 from cmn_flits import CMNTraceConfig, CMNFlitGroup
 import cmn_dtstat
 
 
 o_verbose = 0
+
+o_include_polling = False
 
 
 def bits(x, p, n):
@@ -165,6 +168,15 @@ class CMNVis:
         self.handle_flitgroup(xp, wp, fg)
 
 
+def is_cmn_polling_req(cmn, flit):
+    """
+    Detect ReadNoSnp reqs poll the XP FIFO registers
+    """
+    if flit.group.VC == cmn_flits.REQ and flit.opcode == 0x04 and flit.group.format == 4 and cmn.contains_addr(flit.addr):
+        return True
+    return False
+
+
 class CMNHist(CMNVis):
     """
     Histogram to accmulate packet stats
@@ -177,6 +189,8 @@ class CMNHist(CMNVis):
     def handle_flitgroup(self, xp, wp, fg):
         # Override, to accumulate histogram
         for flit in fg:
+            if (not o_include_polling) and is_cmn_polling_req(self.cmn, flit):
+                continue
             key = self.flit_key(flit)
             if key not in self.hist:
                 self.hist[key] = 0
@@ -438,13 +452,13 @@ class TraceSession:
             # We've programmed the local PMUs in the DTMs, and even though we aren't
             # forwarding local counts to the DTC, the DTMs won't count until we set
             # the global PMU enable.
-            for dtc in self.C.debug_nodes:
+            for dtc in self.C.DTCs():
                 dtc.pmu_clear()
                 dtc.set64(cmn.CMN_DTC_PMCR, cmn.CMN_DTC_PMCR_PMU_EN)
 
         # Start CMN generating ATB trace
         if self.opts.cg_disable:
-            for dtc in self.C.debug_nodes:
+            for dtc in self.C.DTCs():
                 dtc.set64(cmn.CMN_DTC_CTL, cmn.CMN_DTC_CTL_CG_DISABLE)    # experimental
         self.C.dtc_enable()
         if False:
@@ -549,9 +563,11 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="CMN flit capture tool")
     add_trace_arguments(parser)
+    parser.add_argument("--include-polling", action="store_true", help="include CMN polling reqs from script")
     parser.add_argument("--histogram", action="store_true", help="print histogram of packet types")
     opts = parser.parse_args()
     o_verbose = opts.verbose
+    o_include_polling = opts.include_polling
     if opts.histogram:
         vis = CMNHist()
     else:
@@ -562,3 +578,5 @@ if __name__ == "__main__":
         ts.show_captured_trace(cap)
     if opts.histogram:
         vis.print_histogram()
+    del ts
+    del vis

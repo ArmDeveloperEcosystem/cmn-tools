@@ -27,9 +27,6 @@ CMN_any_UNIT_INFO1      = 0x0908     # CMN-700 on. Some nodes call it unit_info2
 
 CMN_any_AUX_CTL         = 0x0A08
 
-# PMU event selector (por_xx_pmu_event_sel). In S3, this changes to 0xD900
-CMN_any_PMU_EVENT_SEL   = 0x2000     # for some nodes it's 0x2008
-
 CMN_CFG_PERIPH_01       = 0x0008
 CMN_CFG_PERIPH_23       = 0x0010
 
@@ -53,9 +50,9 @@ CMN650_DTM_UNIT_INFO           =  0x910    # CMN-650
 CMN700_DTM_UNIT_INFO           =  0x960    # CMN-700
 
 # Debug/Trace Monitor registers in XP.
-# DTM base is at 0x2000 before S3, then at 0xD900.
+# DTM base is at 0x2000 before S3, then at 0xA000.
 CMN_DTM_BASE_OLD   = 0x2000
-CMN_DTM_BASE_S3    = 0xD900
+CMN_DTM_BASE_S3    = 0xA000
 
 CMN_DTM_CONTROL_off         = 0x100
 CMN_DTM_CONTROL_DTM_ENABLE             = 0x01

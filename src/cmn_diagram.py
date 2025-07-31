@@ -12,6 +12,9 @@ from __future__ import print_function
 import textdiagram
 
 
+from cmn_enum import *
+
+
 class CMNDiagram(textdiagram.TextDiagram):
     """
     ASCII art for a topological CMN mesh layout.
@@ -144,9 +147,12 @@ class CMNDiagram(textdiagram.TextDiagram):
                     if xp.port_device_type_str(p) == "HN-D":
                         # Does this have a DTC node, and if so, is it enabled?
                         for nd in xp.port_nodes(p):
-                            if nd in self.C.debug_nodes:
-                                if nd.dtc_is_enabled():
-                                    dev_color += "!"
+                            if nd.type() == CMN_NODE_DT:
+                                try:
+                                    if nd.dtc_is_enabled():
+                                        dev_color += "!"
+                                except AttributeError:
+                                    pass
                 #(dx, dy) = self.port_dir(p)
                 #pchar = "\\/"[dx == dy]
                 if p == 0:

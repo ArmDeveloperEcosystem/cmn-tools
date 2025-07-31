@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache 2.0
 from __future__ import print_function
 
 
+import os
 import sys
 import subprocess
 import json
@@ -32,6 +33,12 @@ o_dominance_level = 0.95
 o_print_rate_bandwidth = False
 o_print_percent = True
 o_print_decimal = False
+o_print_recipe = False
+o_split = False
+
+o_recipe_path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipes")]
+
+g_checked_cmn = False
 
 
 # CMN topology discovery needs to have already been done. This is needed so
@@ -39,18 +46,19 @@ o_print_decimal = False
 S = cmn_json.system_from_json_file()
 
 
-TOP_CAT = "*all"
+TOP_CAT = "#all"
 
 class Topdown:
     """
     Collect statistics for a level of top-down analysis.
     This is basically a set of categories with event rates per category.
-    Categories are normally mutually exclusive, but an "*all" category
+    Categories are normally mutually exclusive, but an "#all" category
     can be defined that represents total events.
     """
-    def __init__(self, cats, name=None, dominance_level=None):
+    def __init__(self, cats, name=None, desc=None, dominance_level=None):
         self.name = name
-        self.categories = cats
+        self.desc = desc or name
+        self.categories = cats      # e.g. "read", "write"
         self.dominance_level = dominance_level if dominance_level is not None else o_dominance_level
         self.init_measurements()
 
@@ -73,38 +81,50 @@ class Topdown:
     def has_baseline(self):
         return TOP_CAT in self.categories
 
-    def is_internal(self, cat):
-        return cat.startswith("*")
+    @staticmethod
+    def is_internal_category(cat):
+        return cat.startswith("#")
 
     def measure(self):
         pass
 
     @staticmethod
-    def get_categories(cats):
+    def get_actions(actions):
+        """
+        Given a list of actions (e.g. category updates) to be done in response to some metric,
+        return the list of individual actions.
+        Actions can be:
+          <category>      - add measured value to category
+          -<category>     - subtract measured value from category
+          *<multiplier>   - multiply subsequent values (currently float literal)
+        """
+        return [action.strip() for action in actions.split(',')]
+
+    def get_action_categories(self, actions):
         """
         Given a list of categories to be adjusted by some metric,
-        return the individual category names, possibly prefixed with '-' indicating subtraction.
+        return the individual category names.
         """
-        return [cat.strip() for cat in cats.split(',')]
+        for action in self.get_actions(actions):
+            if action.startswith("*"):
+                pass    # multiplier
+            elif action.startswith("-"):
+                yield action[1:]
+            else:
+                yield action
 
     def add_category(self, cat):
         if cat not in self.rate:
             self.categories.append(cat)
             self.rate[cat] = 0.0
 
-    def add_categories(self, cats):
-        for cat in self.get_categories(cats):
-            if cat.startswith("-"):     # some measurements subtract rather than adding
-                cat = cat[1:]
-            self.add_category(cat)
-
     def accumulate(self, cat, rate):
         """
-        Accumulate a metric measure,ment into the ongoing topdown analysis.
+        Accumulate a metric measurement into the ongoing topdown analysis.
         Metrics can be negative, if they are intended to subtract from some other metric
         to give an overall category metric.
         """
-        if cat.startswith("-"):
+        if cat is not None and cat.startswith("-"):
             cat = cat[1:]
             self.rate[cat] -= rate
         else:
@@ -126,14 +146,14 @@ class Topdown:
         for cat in self.categories:
             if self.rate[cat] < 0.0:
                 self.rate[cat] = 0.0
-            if not self.has_baseline() and not self.is_internal(cat):
+            if not self.has_baseline() and not self.is_internal_category(cat):
                 self.total_rate += self.rate[cat]
         assert self.total_rate > 0.0, "unexpected zero total after adjustment"
 
     def dominator(self):
         assert self.dominance_level > 0.5     # if it's less, we might have >1 matching category
         for c in self.categories:
-            if c is not None and self.is_internal(c):
+            if c is not None and self.is_internal_category(c):
                 continue
             if self.proportion(c) >= self.dominance_level:
                 return c
@@ -141,11 +161,19 @@ class Topdown:
 
 
 def port_watchpoint_events(port, wp):
+    """
+    Given a cmnwatch.Watchpoint, return a list of perf event strings.
+    There will be more than one string if the watchpoint requires multiple matching groups in CMN.
+    """
     wp_events = wp.perf_events(cmn_instance=port.CMN().seq, nodeid=port.XP().node_id(), dev=port.port)
     return wp_events
 
 
 def port_watchpoint_event(port, wp):
+    """
+    Currently, we only handle single-group watchpoints. Catch any watchpoints that
+    require multiple groups, and crash out.
+    """
     wp_events = port_watchpoint_events(port, wp)
     assert len(wp_events) == 1, "bad events: %s" % wp_events
     wp_event = wp_events[0]
@@ -163,24 +191,31 @@ class TopdownPerf(Topdown):
         self.S = S
         self.has_HNS = self.S.has_HNS()
         self.events = []     # these two lists are in 1:1 correspondence
-        self.catlist = []
+        self.actlist = []
 
-    def add_event(self, cat, event):
+    def add_event(self, actions, event):
         if o_verbose:
-            print("%s: add \"%s\" = %s" % (self, cat, event))
-        self.add_categories(cat)
-        self.catlist.append(cat)
+            print("%s: add \"%s\" = %s" % (self, actions, event))
+        for cat in self.get_action_categories(actions):
+            self.add_category(cat)
+        self.actlist.append(actions)
         self.events.append(event)
 
-    def add_cmn_event(self, cat, e):
+    def add_cmn_event(self, actions, e):
         if self.has_HNS:
             e = cmn_events.hns_events.get(e, e)
         e = "arm_cmn/%s/" % e
-        self.add_event(cat, e)
+        self.add_event(actions, e)
 
-    def add_port_watchpoint(self, cat, port, **kw):
+    def add_port_watchpoint(self, actions, port, **kw):
         try:
             wp = cmnwatch.Watchpoint(cmn_version=self.S.cmn_version(), **kw)
+        except cmnwatch.WatchpointValueOutOfRange as e:
+            # Most likely due to a range of CHI opcodes, of which some are
+            # not valid for this older CHI.
+            if o_verbose >= 2:
+                print("%s: ignoring unavailable watchpoint: %s" % (self, e), file=sys.stderr)
+            return
         except cmnwatch.WatchpointError as e:
             # This shouldn't occur, but given that the recipes are data-driven,
             # and may be user-modified or user-written, we should avoid crashing
@@ -188,21 +223,24 @@ class TopdownPerf(Topdown):
             print("%s: unexpected bad watchpoint: %s" % (self, e), file=sys.stderr)
             sys.exit(1)
         event = port_watchpoint_event(port, wp)
-        self.add_event(cat, event)
+        self.add_event(actions, event)
 
     def measure(self):
         """
         Set up some perf measurements on CMN, and then process the resulting data.
         """
         rates = cmn_perfstat.perf_rate(self.events)
-        for (cats, rate) in zip(self.catlist, rates):
+        mult = 1.0
+        for (actions, rate) in zip(self.actlist, rates):
             if o_verbose >= 2:
-                print("  %14.2f  %s" % (rate, cats))
-            for cat in self.get_categories(cats):
-                if cat is not None and cat.startswith("-"):
-                    self.accumulate(cat[1:], -rate)
+                print("  %14.2f  %s" % (rate, actions))
+            for act in self.get_actions(actions):
+                if act is not None and act.startswith("-"):
+                    self.accumulate(act[1:], -rate*mult)
+                elif act is not None and act.startswith("*"):
+                    mult = float(act[1:])
                 else:
-                    self.accumulate(cat, rate)
+                    self.accumulate(act, rate*mult)
         self.is_measured = True
         return self
 
@@ -212,7 +250,7 @@ def decode_properties(x):
     Properties can be supplied either as a string ("RN-F"), or a mask (CMN_PROP_RNF).
     """
     if not isinstance(x, int):
-        x = cmn_properties(x)
+        x = cmn_properties(x, check=False)
         if x is None:
             print("invalid port specifier \"%s\", expect e.g. \"RN-F\"" % x, file=sys.stderr)
             sys.exit(1)
@@ -223,24 +261,39 @@ def create_Topdown(d, measure=True):
     """
     Given a topdown recipe, create a Topdown object, and optionally take a measurement.
     """
-    td = TopdownPerf(S, d["categories"], name=d["name"])
+    td = TopdownPerf(S, d.get("categories", []), name=d["name"], desc=d.get("description", None))
     for m in d["measure"]:
         cat = m["measure"]
         if "event" in m:
-            # CMN event
+            # CMN named event
+            global g_checked_cmn
+            if not g_checked_cmn:
+                if not cmn_perfcheck.check_cmn_pmu_events(check_rsp_dat=False):
+                    print("CMN perf events not available - can't do top-down analysis",
+                          file=sys.stderr)
+                    sys.exit(1)
+                g_checked_cmn = True
             td.add_cmn_event(cat, m["event"])
         elif "ports" in m:
             # CMN watchpoint, on a given class of crosspoint ports
             props = decode_properties(m["ports"])
             for port in S.ports(properties=props):
-                if "watchpoint_up" in m:
-                    td.add_port_watchpoint(cat, port, up=True, **m["watchpoint_up"])
-                elif "watchpoint_down" in m:
-                    td.add_port_watchpoint(cat, port, up=False, **m["watchpoint_down"])
+                if o_split or m.get("split", False):
+                    ecat = cat + ":0x%x" % port.base_id()
                 else:
-                    td.add_port_watchpoint(cat, port, **m["watchpoint"])
+                    ecat = cat
+                if "watchpoint_up" in m:
+                    td.add_port_watchpoint(ecat, port, up=True, **m["watchpoint_up"])
+                elif "watchpoint_down" in m:
+                    td.add_port_watchpoint(ecat, port, up=False, **m["watchpoint_down"])
+                else:
+                    td.add_port_watchpoint(ecat, port, **m["watchpoint"])
         elif "cpu-event" in m:
+            # CPU hardware events can be added as their bare event name
             td.add_event(cat, m["cpu-event"])
+        elif "sys-event" in m:
+            # Other uncore event - perhaps a DDR controller
+            td.add_event(cat, m["sys-event"])
         else:
             assert False, "invalid analysis recipe: %s" % m
     if measure:
@@ -252,6 +305,9 @@ def measure_and_print_topdown(recipe):
     """
     Complete a top-down analysis and print the results.
     """
+    if o_print_recipe:
+        print(json.dumps(recipe, indent=4))
+        return
     td = create_Topdown(recipe)
     if not td.is_measured:
         td.measure()
@@ -261,8 +317,8 @@ def measure_and_print_topdown(recipe):
         print("%s: completing top-down analysis" % td)
     if not o_no_adjust:
         td.adjust()
-    if td.name is not None:
-        print("%s:" % td.name)
+    if td.desc is not None:
+        print("%s:" % td.desc)
     dom = td.dominator()
     catlist = td.categories + [None]
     if TOP_CAT in catlist:
@@ -272,7 +328,7 @@ def measure_and_print_topdown(recipe):
         cname = "(total)" if c == TOP_CAT else c if c is not None else "uncategorized"
         if c is None and not td.rate[c]:
             continue
-        if c is not None and c != TOP_CAT and td.is_internal(c):
+        if c is not None and c != TOP_CAT and td.is_internal_category(c):
             # internal category - don't print
             continue
         print("  %-13s" % (cname), end="")
@@ -308,6 +364,21 @@ def print_topdown(recipe):
     if "subrecipes" in recipe:
         for r in recipe["subrecipes"]:
             print_topdown(r)
+
+
+def recipe_load(name):
+    """
+    Load a recipe, either from an explicitly specified JSON file,
+    or from the recipe path.
+    """
+    if name.endswith(".json"):
+        with open(name) as f:
+            return json.load(f)
+    for p in o_recipe_path:
+        fn = os.path.join(p, name + ".json")
+        if os.path.isfile(fn):
+            return recipe_load(fn)
+    raise IOError
 
 
 #
@@ -365,8 +436,8 @@ recipe_level3_rnf = {
     "name": "Level 3 request analysis",
     "categories": ["HN-F hit", "HN-F snoop", "HN-F DRAM", "HN-I", "HN-D"],
     "measure": [
-        { "measure": "*all,HN-F hit",    "event": "hnf_slc_sf_cache_access" },
-        { "measure": "*miss,HN-F snoop,-HN-F hit",  "event": "hnf_cache_miss" },
+        { "measure": "#all,HN-F hit",    "event": "hnf_slc_sf_cache_access" },
+        { "measure": "#miss,HN-F snoop,-HN-F hit",  "event": "hnf_cache_miss" },
         { "measure": "HN-F DRAM,-HN-F snoop", "ports": CMN_PROP_SNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnp" } },
         { "measure": "HN-F DRAM,-HN-F snoop", "ports": CMN_PROP_SNF, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnpSep" } },
         { "measure": "HN-I",      "ports": CMN_PROP_HNI, "watchpoint_down": { "chn": cmnwatch.REQ, "opcode": "ReadNoSnp" } },
@@ -388,7 +459,7 @@ recipe_prefetch = {
 recipe_bandwidth_cpu = {
     "name": "CPU bandwidth",
     "categories": ["read", "write"],
-    "rate_bandwidth": 32,
+    "rate_bandwidth": 32,      # TBD: will need updating for 512-bit CHI interface
     "measure": [
         { "measure": "read", "cpu-event": "bus_access_rd" },
         { "measure": "write", "cpu-event": "bus_access_wr" },
@@ -404,6 +475,7 @@ recipe_bandwidth_rnf = {
         { "measure": "read", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "ReadNotSharedDirty" } },
         { "measure": "read", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "ReadUnique" } },
         { "measure": "write clean", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteEvictFull" } },
+        { "measure": "write clean", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteEvictOrEvict" } },  # later CHI only
         { "measure": "write dirty", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteBackFull" } },
         { "measure": "write dirty", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteCleanFull" } },
     ]
@@ -466,7 +538,10 @@ if __name__ == "__main__":
     parser.add_argument("--bandwidth", action="store_true", help="print request counts as bandwidth")
     parser.add_argument("--decimal", action="store_true", help="print bandwidth as decimal (MB not MiB)")
     parser.add_argument("--recipe", type=str, action="append", help="use JSON top-down recipe")
+    parser.add_argument("--recipe-path", type=str, action="append", help="additional recipe paths")
+    parser.add_argument("--print-recipe", action="store_true", help="print recipe as JSON")
     parser.add_argument("--no-adjust", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--split", action="store_true", help="split measurements by port")
     parser.add_argument("--perf-bin", type=str, default="perf", help="perf command")
     parser.add_argument("--cmd", type=str, help="microbenchmark to run (will be killed on exit)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
@@ -480,6 +555,10 @@ if __name__ == "__main__":
         o_print_rate_bandwidth = True
     if opts.decimal:
         o_print_decimal = True
+    if opts.recipe_path:
+        o_recipe_path = opts.recipe_path + o_recipe_path
+    o_print_recipe = opts.print_recipe
+    o_split = opts.split
     cmn_perfstat.o_verbose = max(0, opts.verbose-1)
     cmn_perfstat.o_time = opts.time
     cmn_perfstat.o_perf_bin = opts.perf_bin
@@ -487,10 +566,6 @@ if __name__ == "__main__":
         opts.level = ["1"] if (not opts.recipe) else []
     if opts.all or opts.level == ["all"]:
         opts.level = ["1", "2", "3", "bandwidth", "retries"]
-    if not cmn_perfcheck.check_cmn_pmu_events(check_rsp_dat=False):
-        print("CMN perf events not available - can't do top-down analysis",
-              file=sys.stderr)
-        sys.exit(1)
     if opts.cmd:
         # Run a subprocess while doing top-down. Unlike "perf stat" etc. we don't
         # time the top-down analysis to the subprocess - we simply start it, hope it
@@ -523,8 +598,7 @@ if __name__ == "__main__":
     if opts.recipe:
         for recipe_fn in opts.recipe:
             try:
-                with open(recipe_fn) as f:
-                    recipe = json.load(f)
+                recipe = recipe_load(recipe_fn)
                 print_topdown(recipe)
             except IOError as e:
                 print("%s" % e, file=sys.stderr)

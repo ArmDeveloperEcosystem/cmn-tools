@@ -79,6 +79,11 @@ class WatchpointBadValue(WatchpointError):
         return "%s: %s=%s (%s)" % (self.reason, self.field, self.value, chn_name)
 
 
+class WatchpointValueOutOfRange(WatchpointBadValue):
+    def __init__(self, val, reason, field=None, chn=None):
+        WatchpointBadValue.__init__(self, val, reason, field=field, chn=chn)
+
+
 class WatchpointBadShort(WatchpointError):
     """
     Bad short-form watchpoint specifier
@@ -182,7 +187,7 @@ class MatchMask:
                 print("    setting [%u:%u] to %s" % (pos+bits-1, pos, val), file=sys.stderr)
             (val, dontcare) = convert_value(val)
             if val >= (1 << bits):
-                raise WatchpointBadValue(val, ("value out of range for %u-bit field" % bits))
+                raise WatchpointValueOutOfRange(val, ("value out of range for %u-bit field" % bits))
             dontcare &= ((1 << bits) - 1)
             mask = ((1 << bits) - 1) << pos
             # Remove any previous specification for this field
@@ -727,7 +732,7 @@ def apply_matches_obj_to_watchpoint(wp, o):
                             (grp, pos, width) = poses[0]
                             wp.set(grp, val, pos, width, exclusive=exclusive, field=k)
                 except WatchpointBadValue as e:
-                    raise WatchpointBadValue(val, e.reason, k, wp.chn)
+                    raise type(e)(val, e.reason, k, wp.chn)
     """
     Check whether the user specified any CHI fields inappropriate for the channel.
     The user might have passed in an argparse.Namespace object so there may be

@@ -174,14 +174,14 @@ def check_cmn_pmu_events(file=None, check_rsp_dat=True):
               file=file)
         mods = linux_lib_modules()
         if not os.path.isdir(mods):
-            print("** %s not found - install linux-modules-extra-%s" % (mods, _uname_r()),
-                  file=file)
-        fn = mods + "/drivers/perf/arm-cmn.ko"
+            print("** %s not found:" % mods, file=file)
+            print("** install linux-modules-extra-%s" % _uname_r(), file=file)
+        fn = mods + "/kernel/drivers/perf/arm-cmn.ko"
         if not os.path.isfile(fn) and not os.path.isfile(fn + ".zst"):
-            print("** %s not found - reconfigure kernel or install linux-modules-extra-%s" % (fn, _uname_r()),
-                  file=file)
+            print("** %s not found:" % fn, file=file)
+            print("** reconfigure kernel or install linux-modules-extra-%s" % _uname_r(), file=file)
         else:
-            print("** Try 'modprobe arm_cmn'", file=file)
+            print("** Try 'sudo modprobe arm_cmn'", file=file)
         return False
     else:
         if o_verbose:
