@@ -70,7 +70,8 @@ class DMIStructure:
     """
     A single entry in a DMI file, with a unique handle.
     'type' indicates the type of entry e.g. DMI_SYSTEM.
-    Any entry may have an array of strings, indexed from 1.
+    Any entry may have an array of strings, of which #0 is None,
+    and the actual strings start from 1.
     """
 
     def __init__(self, dmi, raw, strs):
@@ -87,11 +88,11 @@ class DMIStructure:
         Return the number of strings, i.e. if we have strings #1 and #2, return 2.
         A suitable range to iterate over the strings is range(1, n_strings+1).
         """
-        return len(self.strings)
+        return len(self.strings)-1
 
     def string(self, n):
         """
-        Return the n'th string (indexed from 1) pertaining to this entry.
+        Return the n'th string (indexed from 1) pertaining to this entry, as a Python string.
         "If a string field references no string, a null (0) is placed in that string field."
         """
         if n == 0:
@@ -497,29 +498,38 @@ def print_DMI_summary(D, type=None):
         print()
 
 
-def print_DMI_detail(D, type=None, include_std=True):
+def print_DMI_detail(D, type=None, include_std=True, dump=False):
     """
-    Dump out the DMI table as a hex dump
+    Dump out all structures of the DMI table, in detail, as a hex dump
     """
+    tab = "\t"
+    def print_hex(x):
+        for i in range(len(x)):
+            if i % 16 == 0:
+                if i > 0:
+                    print()
+                print(tab + tab, end="")
+            print("%02X" % struct.unpack("B", x[i:i+1])[0], end="")
+            if i % 16 < 15:
+                 print(" ", end="")
+        print()
     for d in D.structures(type=type):
         print()
-        print("Handle 0x%04x, DMI type %u, %u bytes" % (d.handle, d.type, len(d.raw)))
-        print("%s" % DMI_type_str(d.type))
+        print("Handle 0x%04X, DMI type %u, %u bytes" % (d.handle, d.type, len(d.raw)))
+        if not dump:
+            print("%s" % DMI_type_str(d.type))
         if d.type >= 128 or include_std:
-            print("        Header and Data:")
-            for i in range(len(d.raw)):
-                if i % 16 == 0:
-                    if i > 0:
-                        print()
-                    print("                ", end="")
-                print("%02X" % struct.unpack("B", d.raw[i:i+1])[0], end="")
-                if i % 16 < 15:
-                    print(" ", end="")
-            print()
+            print(tab + "Header and Data:")
+            print_hex(d.raw)
             if d.n_strings > 0:
-                print("        Strings:")
+                print(tab + "Strings:")
                 for i in range(1, d.n_strings+1):
-                    print("                \"%s\"" % d.string(i))
+                    if dump:
+                        print_hex(d.strings[i] + b"\0")    # raw ASCII, with nul included
+                    s = d.string(i)                        # decoded
+                    if False:
+                        s = '"' + s + '"'
+                    print(tab + tab + s)
 
 
 def print_DMI_memory(D):
@@ -628,6 +638,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="read SMBIOS DMI file")
     parser.add_argument("-i", "--input", type=str, default=DEFAULT_DMI, help="input DMI file")
     parser.add_argument("--decode", action="store_true", help="print in detail (like dmidecode)")
+    parser.add_argument("--dump", action="store_true", help="print contents without decoding")
     parser.add_argument("--summary", action="store_true", help="print one line per structure")
     parser.add_argument("--system", action="store_true", help="print system information")
     parser.add_argument("--uuid", action="store_true", help="print system UUID")
@@ -636,11 +647,17 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
-    D = DMI(opts.input)
+    try:
+        D = DMI(opts.input)
+    except IOError as e:
+        print("%s: cannot read DMI file (%s)" % (opts.input, e), file=sys.stderr)
+        sys.exit(1)
+    if opts.verbose:
+        print("%s: opened DMI file" % opts.input, file=sys.stderr)
     if not (opts.decode or opts.summary or opts.memory or opts.uuid):
         opts.system = True
-    if opts.decode:
-        print_DMI_detail(D, type=opts.type)
+    if opts.decode or opts.dump:
+        print_DMI_detail(D, type=opts.type, dump=opts.dump)
     if opts.summary:
         print_DMI_summary(D, type=opts.type)
     if opts.memory:
