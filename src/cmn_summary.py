@@ -277,7 +277,8 @@ if __name__ == "__main__":
                 try:
                     par = par()
                 except PermissionError:
-                    par = "<no permission - rerun as sudo>"
+                    par = None
+                    par_err = "<no permission - rerun as sudo>"
                 except Exception as e:
                     par = None
                     if o_verbose:
