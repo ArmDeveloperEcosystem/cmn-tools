@@ -184,6 +184,7 @@ class CPU:
 
 PART_CMN600 = 0x434
 PART_CMN650 = 0x436
+PART_CMN600AE = 0x438
 PART_CMN700 = 0x43c
 PART_CI700  = 0x43a
 PART_CMN_S3 = 0x43e
@@ -192,6 +193,7 @@ PART_CMN_S3 = 0x43e
 _cmn_product_names_by_id = {
     0x434: "CMN-600",
     0x436: "CMN-650",
+    0x438: "CMN-600AE",
     0x43c: "CMN-700",
     0x43a: "CI-700",
     0x43e: "CMN S3",

@@ -76,8 +76,9 @@ def node_has_logical_id(nt):
     Check if this node type has a "logical id" field.
     Logical ids are numbered sequentially from 0 for a given node type.
     For DTCs, the logical id is the DTC domain number.
+    CFG (root) node can have a logical id.
     """
-    return nt != CMN_NODE_RNSAM
+    return nt not in [CMN_NODE_RNSAM]
 
 
 class NotTestable:
@@ -1226,6 +1227,9 @@ class CMN:
         product_id = (BITS(id01, 32, 4) << 8) | BITS(id01, 0, 8)
         if cmn_loc.product_id is not None:
             assert cmn_loc.product_id == product_id, "expecting %s, found %s" % (cmn_base.product_id_str(cmn_loc.product_id), cmn_base.product_id_str(product_id))
+        # For now, if we see CMN-600AE, pretend it's CMN-600, to not break tests in code.
+        if product_id == cmn_base.PART_CMN600AE:
+            product_id = cmn_base.PART_CMN600
         # We can't get chi_version() until we've read unit_info (por_info_global)
         self.product_config = cmn_base.CMNConfig(product_id=product_id)
         del temp_m
