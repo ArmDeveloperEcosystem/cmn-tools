@@ -106,9 +106,9 @@ def cpu_frequency():
 
 
 def cmn_frequency():
-    try:
+    if hasattr(C, "frequency") and C.frequency is not None:
         return (C.frequency, "cached")
-    except AttributeError:
+    else:
         return (cmn_perfstat.cmn_frequency(), "measured")
 
 
