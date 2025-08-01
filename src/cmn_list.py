@@ -265,7 +265,7 @@ class CMNLister:
                 if BIT(pwpr, 8):
                     print(" dynamic", end="")
                 print()
-        elif n.type() == CMN_NODE_HNI:
+        elif n.type() in [CMN_NODE_HNI, CMN_NODE_HNP]:
             num_excl = BITS(info,0,8)
             num_ax_reqs = BITS(info,8,8)
             num_wr_data_buf = BITS(info,16,5)

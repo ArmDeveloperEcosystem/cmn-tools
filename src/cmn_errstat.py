@@ -26,7 +26,7 @@ def BITS(x, p, n=1):
 
 
 def node_has_errstatus(n):
-    return n.is_home_node() or n.type() in [CMN_NODE_SBSX, CMN_NODE_HNI, CMN_NODE_CCLA]
+    return n.is_home_node() or n.type() in [CMN_NODE_SBSX, CMN_NODE_HNI, CMN_NODE_HNP, CMN_NODE_CCLA]
 
 
 def nodes_with_errstatus(C):
