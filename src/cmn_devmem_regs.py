@@ -50,9 +50,10 @@ CMN650_DTM_UNIT_INFO           =  0x910    # CMN-650
 CMN700_DTM_UNIT_INFO           =  0x960    # CMN-700
 
 # Debug/Trace Monitor registers in XP.
-# DTM base is at 0x2000 before S3, then at 0xA000.
+# DTM base is at 0x2000 before S3, then at 0xD900 in S3 r0, then 0xA000.
 CMN_DTM_BASE_OLD   = 0x2000
-CMN_DTM_BASE_S3    = 0xA000
+CMN_DTM_BASE_S3r0  = 0xD900
+CMN_DTM_BASE_S3r1  = 0xA000
 
 CMN_DTM_CONTROL_off         = 0x100
 CMN_DTM_CONTROL_DTM_ENABLE             = 0x01

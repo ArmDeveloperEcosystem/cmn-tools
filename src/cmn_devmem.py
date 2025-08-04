@@ -1270,8 +1270,10 @@ class CMN:
         assert self.product_config.chi_version >= 2, "failed to detect CHI version: info=0x%x" % self.unit_info
         if not self.part_ge_S3():
             self.DTM_BASE = CMN_DTM_BASE_OLD   # 0x2000
+        elif self.product_config.product_id == cmn_base.PART_CMNS3 and self.product_config.revision < 2:
+            self.DTM_BASE = CMN_DTM_BASE_S3r0  # 0xD900
         else:
-            self.DTM_BASE = CMN_DTM_BASE_S3    # 0xA000
+            self.DTM_BASE = CMN_DTM_BASE_S3r1  # 0xA000
         if verbose:
             self.log("CMN configuration: %s" % self.product_config, level=1)
         #
