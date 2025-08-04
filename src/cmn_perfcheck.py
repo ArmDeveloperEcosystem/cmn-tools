@@ -156,6 +156,19 @@ def check_rsp_dat_dvm_watchpoints():
     return check_watchpoints(chn=1)
 
 
+def linux_kernel_version(s):
+    try:
+        (kmaj, kmin, _) = s.split('.', 2)
+        kmaj = int(kmaj)
+        kmin = int(kmin)
+        return (kmaj, kmin)
+    except Exception:
+        return (None, None)
+
+
+assert linux_kernel_version("5.11.0-46") == (5, 11)
+
+
 def check_cmn_pmu_events(file=None, check_rsp_dat=True):
     """
     Check that CMN PMU events are available, and report any problems.
@@ -170,12 +183,19 @@ def check_cmn_pmu_events(file=None, check_rsp_dat=True):
     if o_verbose:
         print("CMN perf check:", file=file)
     if not is_cmn_pmu_installed():
+        # Check for very old kernels (e.g. Ubuntu 20.04 with 5.8)
+        kname = _uname_r()
+        (kmaj, kmin) = linux_kernel_version(kname)
+        if kmaj is not None and (kmaj < 5 or (kmaj == 5 and kmin < 10)):
+            print("** CMN PMU driver is not installed - this kernel (%s) is too old" % kname,
+                  file=file)
+            return False
         print("** CMN PMU driver is not installed - load driver or reconfigure kernel",
               file=file)
         mods = linux_lib_modules()
         if not os.path.isdir(mods):
             print("** %s not found:" % mods, file=file)
-            print("** install linux-modules-extra-%s" % _uname_r(), file=file)
+            print("** install linux-modules-extra-%s" % kname, file=file)
         fn = mods + "/kernel/drivers/perf/arm-cmn.ko"
         if not os.path.isfile(fn) and not os.path.isfile(fn + ".zst"):
             print("** %s not found:" % fn, file=file)

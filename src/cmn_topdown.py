@@ -229,6 +229,8 @@ class TopdownPerf(Topdown):
         """
         Set up some perf measurements on CMN, and then process the resulting data.
         """
+        # If this throws cmn_perfstat.PerfNotAvailable, there may be a permissions issue.
+        # But that should have been guarded by a call to cmn_perfcheck earlier.
         rates = cmn_perfstat.perf_rate(self.events)
         mult = 1.0
         for (actions, rate) in zip(self.actlist, rates):
@@ -264,7 +266,7 @@ def create_Topdown(d, measure=True):
     td = TopdownPerf(S, d.get("categories", []), name=d["name"], desc=d.get("description", None))
     for m in d["measure"]:
         cat = m["measure"]
-        if "event" in m:
+        if "event" in m or "ports" in m:
             # CMN named event
             global g_checked_cmn
             if not g_checked_cmn:
@@ -273,6 +275,7 @@ def create_Topdown(d, measure=True):
                           file=sys.stderr)
                     sys.exit(1)
                 g_checked_cmn = True
+        if "event" in m:
             td.add_cmn_event(cat, m["event"])
         elif "ports" in m:
             # CMN watchpoint, on a given class of crosspoint ports
