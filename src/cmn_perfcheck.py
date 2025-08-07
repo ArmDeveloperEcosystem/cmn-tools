@@ -169,6 +169,32 @@ def linux_kernel_version(s):
 assert linux_kernel_version("5.11.0-46") == (5, 11)
 
 
+def check_hw_pmu_events(file=None):
+    """
+    Check permissions for hardware events generally.
+    """
+    if file is None:
+        file = sys.stderr
+    p = perf_event_paranoid()
+    if p > 0:
+        # Driver is there but we don't have permissions? Check perf_event_paranoid
+        # on the assumption we're an unprivileged user. If we're sudo then this
+        # should have worked regardless.
+        print("** You might not have permission to read hardware events",
+              file=file)
+        print("**   kernel.perf_event_paranoid=%d - use sysctl to set it lower" % p,
+              file=file)
+        return False
+    else:
+        if o_verbose:
+            print("  kernel.perf_event_paranoid=%d - hardware PMU events can be accessed non-root." % p,
+                file=file)
+    if not check_perf():
+        print("** perf command is not installed", file=file)
+        return False
+    return True
+
+
 def check_cmn_pmu_events(file=None, check_rsp_dat=True):
     """
     Check that CMN PMU events are available, and report any problems.
@@ -206,22 +232,7 @@ def check_cmn_pmu_events(file=None, check_rsp_dat=True):
     else:
         if o_verbose:
             print("  CMN PMU driver is installed.", file=file)
-    p = perf_event_paranoid()
-    if p > 0:
-        # Driver is there but we don't have permissions? Check perf_event_paranoid
-        # on the assumption we're an unprivileged user. If we're sudo then this
-        # should have worked regardless.
-        print("** CMN PMU driver is installed, but you might not have permission to read hardware events",
-              file=file)
-        print("**   kernel.perf_event_paranoid=%d - use sysctl to set it lower" % p,
-              file=file)
-        return False
-    else:
-        if o_verbose:
-            print("  kernel.perf_event_paranoid=%d - CMN PMU events can be accessed non-root." % p,
-                file=file)
-    if not check_perf():
-        print("** perf command is not installed", file=file)
+    if not check_hw_pmu_events(file=file):
         return False
     if not check_cmn_perf():
         print("**  perf cannot access CMN events", file=file)
@@ -241,6 +252,10 @@ def check_cmn_pmu_events(file=None, check_rsp_dat=True):
     return True
 
 
+def check_cpu_pmu_events(file=None):
+    return check_hw_pmu_events(file=file)
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="check if CMN PMU driver is installed")
@@ -253,4 +268,7 @@ if __name__ == "__main__":
     print("CMN PMU driver is installed: %s" % is_installed)
     pep = perf_event_paranoid()
     print("perf_event_paranoid: %u" % pep)
+    print("Checking for CMN PMU events:")
     check_cmn_pmu_events()
+    print("Checking for CPU hardware PMU events:")
+    check_cpu_pmu_events()

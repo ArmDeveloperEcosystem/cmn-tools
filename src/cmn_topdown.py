@@ -38,7 +38,9 @@ o_split = False
 
 o_recipe_path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipes")]
 
+
 g_checked_cmn = False
+g_checked_cpu = False
 
 
 # CMN topology discovery needs to have already been done. This is needed so
@@ -235,7 +237,13 @@ class TopdownPerf(Topdown):
         mult = 1.0
         for (actions, rate) in zip(self.actlist, rates):
             if o_verbose >= 2:
-                print("  %14.2f  %s" % (rate, actions))
+                if rate is not None:
+                    print("  %14.2f  %s" % (rate, actions))
+                else:
+                    print("  <rate not available>")
+            if rate is None:
+                print("Hardware event count not collected: try running with a longer --time", file=sys.stderr)
+                sys.exit(1)
             for act in self.get_actions(actions):
                 if act is not None and act.startswith("-"):
                     self.accumulate(act[1:], -rate*mult)
@@ -275,6 +283,8 @@ def create_Topdown(d, measure=True):
                           file=sys.stderr)
                     sys.exit(1)
                 g_checked_cmn = True
+                if o_verbose:
+                    print("CMN PMU events are available", file=sys.stderr)
         if "event" in m:
             td.add_cmn_event(cat, m["event"])
         elif "ports" in m:
@@ -293,6 +303,15 @@ def create_Topdown(d, measure=True):
                     td.add_port_watchpoint(ecat, port, **m["watchpoint"])
         elif "cpu-event" in m:
             # CPU hardware events can be added as their bare event name
+            global g_checked_cpu
+            if not g_checked_cpu:
+                if not cmn_perfcheck.check_cpu_pmu_events():
+                    print("CPU perf events not available - can't do top-down analysis",
+                          file=sys.stderr)
+                    sys.exit(1)
+                g_checked_cpu = True
+                if o_verbose:
+                    print("CPU PMU events are available", file=sys.stderr)
             td.add_event(cat, m["cpu-event"])
         elif "sys-event" in m:
             # Other uncore event - perhaps a DDR controller
@@ -535,7 +554,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Top-down performance analysis for CMN interconnect")
     parser.add_argument("--level", type=str, action="append", default=[], help="run specified top-down level")
     parser.add_argument("--all", action="store_true", help="run all top-down levels")
-    parser.add_argument("--time", type=float, default=0.5, help="measurement time for top-down")
+    parser.add_argument("--time", type=float, default=None, help="measurement time for top-down")
     parser.add_argument("--dominance-level", type=float, default=0.95, help="threshold for traffic to be considered dominant")
     parser.add_argument("--percentage", action="store_true", help="print as percentages")
     parser.add_argument("--bandwidth", action="store_true", help="print request counts as bandwidth")
@@ -563,6 +582,13 @@ if __name__ == "__main__":
     o_print_recipe = opts.print_recipe
     o_split = opts.split
     cmn_perfstat.o_verbose = max(0, opts.verbose-1)
+    if opts.time is None and S.CMNs:
+        # Default measurement time should be longer for larger mesh
+        cmn0 = S.CMNs[0]
+        mesh_size = cmn0.dimX * cmn0.dimY
+        opts.time = 0.01 * mesh_size
+        if o_verbose:
+            print("Mesh size %ux%u: measurement time set to %.2fs" % (cmn0.dimX, cmn0.dimY, opts.time))
     cmn_perfstat.o_time = opts.time
     cmn_perfstat.o_perf_bin = opts.perf_bin
     if not opts.level:
