@@ -138,6 +138,11 @@ class System(NodeGroup):
             for port in c.ports(properties=properties):
                 yield port
 
+    def XPs(self):
+        for c in self.CMNs:
+            for xp in c.XPs():
+                yield xp
+
     def nodes(self, properties=0):
         for c in self.CMNs:
             for node in c.nodes(properties=properties):
@@ -545,6 +550,10 @@ class CMNPort:
         yield self.base_id()
         if self.cal:
             yield self.base_id() + 1
+            if self.cal == 3 or self.cal == 4:
+                yield self.base_id() + 2
+                if self.cal == 4:
+                    yield self.base_id() + 3
 
     def is_valid_id(self, id):
         """
@@ -740,6 +749,16 @@ class CMNXP(CMNNodeBase):
 
     def n_links(self):
         return _pos_n_links[self.position()]
+
+    def links(self):
+        if self.y < self.owner.dimX-1:
+            yield "n"
+        if self.x < self.owner.dimX-1:
+            yield "e"
+        if self.x > 0:
+            yield "w"
+        if self.y > 0:
+            yield "s"
 
     def create_port(self, port, type=None, type_s=None, cal=None):
         p = CMNPort(self, port, type=type, type_s=type_s, cal=cal)

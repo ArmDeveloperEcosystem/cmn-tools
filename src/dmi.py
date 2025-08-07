@@ -27,6 +27,8 @@ import struct
 import uuid
 
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from memsize_str import memsize_str
 
 

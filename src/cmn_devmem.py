@@ -512,6 +512,9 @@ class CMNPort:
         dt = BITS(self.connect_info, 0, dtbits)
         return dt if dt else None        # None indicates no device(s)
 
+    def has_properties(self, props):
+        return cmn_port_device_type_has_properties(self.device_type(), props)
+
     def port_info(self, n=0):
         if n not in self._port_info:
             if not self.xp.C.part_ge_700():
@@ -526,6 +529,14 @@ class CMNPort:
     def has_cal(self):
         has_cal = BIT(self.connect_info, CMN_XP_DEVICE_PORT_CAL_CONNECTED_BIT)
         return BITS(self.port_info(), 0, 3) if has_cal else 0
+
+    def nodes(self):
+        # Yield nodes in device order
+        for n in self.xp.port_nodes(self.rP):
+            yield n
+
+    def base_id(self):
+        return self.xp.port_base_id(self.rP)
 
     def __str__(self):
         return "%s P%u" % (self.xp, self.rP)
@@ -595,7 +606,7 @@ class CMNNodeXP(CMNNode):
 
     def n_device_ports(self):
         """
-        The number of device ports on this XP. In general it is not guaranteed that
+        The number of (device) ports on this XP. In general it is not guaranteed that
         devices exist on every port. For CMN-6xx, each XP is assumed to have 2 ports.
         For CMN-700, the number of device ports is discoverable from the XP's info register
         (some XPs might have 3 or 4), but even so, some might be unused.
