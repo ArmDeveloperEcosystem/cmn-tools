@@ -249,11 +249,11 @@ def _decode_array_mapped_address(d):
     """
     DMI_ARRAY_MAPPED_ADDRESS decode
     """
-    (_, start_k, end_k, d.h_array, d.width) = struct.unpack("<IIIHB", d.raw[:0x0f])
+    (_, start_k, end_k, d.h_array, d.partition_width) = struct.unpack("<IIIHB", d.raw[:0x0f])
     if start_k == 0xffffffff:
         (d.start, d.end) = struct.unpack("<QQ", d.raw[0x0f:0x1f])
     else:
-        (d.start, d.end) = (start_k << 10, (end_k << 10) + 0xfff)
+        (d.start, d.end) = (start_k << 10, (end_k << 10) + 0x3ff)
     d.p_device_address_maps = []
 
 
@@ -262,10 +262,16 @@ def _decode_device_mapped_address(d):
     DMI_DEVICE_MAPPED_ADDRESS decode
     """
     (_, start_k, end_k, d.h_device, d.h_array_map, d.row, d.interleave, d.depth) = struct.unpack("<IIIHHBBB", d.raw[:0x13])
+    if d.row == 0xFF:
+        d.row = None
+    if d.interleave == 0xFF:
+        d.interleave = None
+    if d.depth == 0xFF:
+        d.depth = None
     if start_k == 0xffffffff:
         (d.start, d.end) = struct.unpack("<QQ", d.raw[0x13:0x23])
     else:
-        (d.start, d.end) = (start_k << 10, (end_k << 10) + 0xfff)
+        (d.start, d.end) = (start_k << 10, (end_k << 10) + 0x3ff)
 
 
 class DMI:
@@ -550,7 +556,12 @@ def print_DMI_memory(D):
         dm = d.p_address_map
         if dm is not None:
             print("  0x%012x - 0x%012x  %6s" % (dm.start, dm.end, memsize_str(dm.end - dm.start)), end="")
-            print("  row %u  i/l %u  depth %u" % (dm.row, dm.interleave, dm.depth), end="")
+            if dm.row is not None:
+                print("  row %u" % dm.row, end="")
+            if dm.interleave is not None:
+                print("  i/l %u" % dm.interleave, end="")
+            if dm.depth is not None:
+                print("  depth %u" % dm.depth, end="")
         print()
         bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
         print("      speed=%u/%u MT/s" % (d.p_speed_mts, d.c_speed_mts), end="")
@@ -560,8 +571,10 @@ def print_DMI_memory(D):
     print("Memory:")
     for da in D.structures(type=DMI_MEMORY_ARRAY):
         print("  Memory array:   %6s  %-6s" % (memsize_str(da.capacity), DMI_memory_array_ecc.get(da.ecc, "?")), end="")
+        print("  %u devices" % (da.n_devices), end="")
         dam = da.p_address_map
         print("  0x%012x - 0x%012x  %6s" % (dam.start, dam.end, memsize_str(dam.end - dam.start)), end="")
+        print("  partition-width=%u" % (dam.partition_width), end="")
         print()
         # Show devices in this array
         for d in da.p_devices:
