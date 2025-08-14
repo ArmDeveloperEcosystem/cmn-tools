@@ -20,6 +20,7 @@ import struct
 import time
 import traceback
 import atexit
+import datetime
 
 
 import devmem
@@ -175,11 +176,6 @@ class CMNNode:
         if self.is_child():
             if (self.node_id() >> 3) != (parent.node_id() >> 3):
                 self.C.log("Parent XP %s child %s has odd coordinates" % (parent, self), level=1)
-        self.child_info = self.read64(CMN_any_CHILD_INFO)
-        self.n_children = BITS(self.child_info, 0, 16)
-        # For top-level configuration, max children at least 144 for 12x12. For an XP it's 32.
-        if self.n_children > (32 if self.is_XP() else 256):
-            self.C.log("CMN discovery found too many (%u) node children: %s" % (self.n_children, self), level=1)
         # We haven't yet discovered this node's children.
         # For an XP in S3, with node isolation, we might never do so.
         self.discovered_children = False
@@ -210,11 +206,11 @@ class CMNNode:
     def read64(self, off):
         if self.do_trace_reads():
             print()
-            print("at %s" % self.C.source_line())
-            self.C.log("%s: read 0x%x (0x%x)" % (str(self), off, self.node_base_addr+off), end="")
+            print("at %s:" % self.C.source_line())
+            self.C.log("%s: read 0x%x (0x%x)" % (str(self), off, self.node_base_addr+off), end="", level=0)
         data = self.m.read64(off)
         if self.do_trace_reads():
-            self.C.log(" => 0x%x" % data, prefix=None)
+            self.C.log(" => 0x%x" % data, prefix=None, level=0)
         if g_trace_fd is not None:
             print("R 0x%x 0x%x" % (self.node_base_addr+off, data), file=g_trace_fd)
         return data
@@ -253,8 +249,9 @@ class CMNNode:
         self.ensure_writeable()
         self.check_reg_is_writeable(off)
         if self.do_trace_writes():
-            print("at %s" % self.C.source_line())
-            self.C.log("%s: write 0x%x := 0x%x" % (str(self), off, data))
+            print()
+            print("at %s:" % self.C.source_line())
+            self.C.log("%s: write 0x%x := 0x%x" % (str(self), off, data), level=0)
         self.m.write64(off, data, check=check)
 
     def set64(self, off, mask, check=None):
@@ -311,6 +308,11 @@ class CMNNode:
         if self.discovered_children:
             return
         self.C.log("%s: discover children" % self, level=2)
+        self.child_info = self.read64(CMN_any_CHILD_INFO)
+        self.n_children = BITS(self.child_info, 0, 16)
+        # For top-level configuration, max children at least 144 for 12x12. For an XP it's 32.
+        if self.n_children > (32 if self.is_XP() else 256):
+            self.C.log("CMN discovery found too many (%u) node children: %s" % (self.n_children, self), level=1)
         self.children = []
         # Only do the discovery once, even if we terminate because of node isolation
         self.discovered_children = True
@@ -359,7 +361,7 @@ class CMNNode:
             self.children.append(child_node)
         # Check that the other child pointers are zero.
         # TBD: this shouldn't really be controlled by 'verbose'.
-        if self.C.verbose >= 3:
+        if self.C.verbose >= 4:
             for i in range(self.n_children, 32):
                 child = self.read64(child_off + (i*8))
                 if child != 0x0:
@@ -786,10 +788,9 @@ class CMNDTM:
         self.index = index
         self.base = xp.C.DTM_BASE + (index * 0x200)
         self.C = xp.C
-        # We maintain a cached copy of the DTM enable bit so we can fault writes
+        # We maintain a cached copy of the original DTM enable bit so we can fault writes
         # to DTM configuration registers when enabled.
         self._dtm_is_enabled = None
-        self._dtm_is_enabled = self.dtm_is_enabled()
 
     def __str__(self):
         s = "%s DTM" % (self.xp)
@@ -837,6 +838,8 @@ class CMNDTM:
         e = self.dtm_test64(CMN_DTM_CONTROL_off, CMN_DTM_CONTROL_DTM_ENABLE)
         if self._dtm_is_enabled is not None:
             assert e == self._dtm_is_enabled, "%s: cached DTM emable state out of sync" % self
+        else:
+            self._dtm_is_enabled = e
         return e
 
     def dtm_clear_fifo(self):
@@ -1185,14 +1188,14 @@ class CMN:
     #DTM_WP_PKT_GEN            = 0x0100   # capture a packet (TBD: 0x400 on CMN-700)
     #DTM_WP_CC_EN              = 0x1000   # enable cycle count (TBD: 0x4000 on CMN-700)
 
-    def __init__(self, cmn_loc, check_writes=False, verbose=0, restore_dtc_status=False, secure_accessible=None, diag_trace=None):
+    def __init__(self, cmn_loc, check_writes=False, verbose=0, restore_dtc_status=False, secure_accessible=None, diag_trace=None, defer_discovery=False):
+        self._restore_dtc_status = restore_dtc_status     # tested in destructor, so set now
         self.verbose = verbose
         if verbose:
             self.log("CMN discovery (verbose=%d)" % verbose, level=1)
         if diag_trace is None:
             diag_trace = DIAG_WRITES if (verbose >= 3) else DIAG_DEFAULT
         self.diag_trace = diag_trace
-        self._restore_dtc_status = restore_dtc_status
         xdiag = os.environ.get("CMN_DEVMEM_DIAG", None)
         if xdiag is not None:
             global g_trace_fd
@@ -1288,9 +1291,10 @@ class CMN:
         if verbose:
             self.log("CMN configuration: %s" % self.product_config, level=1)
         #
-        # Now traverse the CMN space to discover all the nodes.
+        # Now traverse the CMN space to discover all the nodes. We can optionally
+        # defer device discovery.
         #
-        self.defer_device_discovery = int(os.environ.get("CMN_DEFER", 0))
+        self.defer_device_discovery = defer_discovery or int(os.environ.get("CMN_DEFER", 0))
         if verbose:
             self.log("device discovery is %s" % ("lazy" if self.defer_device_discovery else "eager"), level=1)
         self.n_XPs_discovered_devices = 0
@@ -1374,7 +1378,12 @@ class CMN:
         return self.part_ge_S3()
 
     def __str__(self):
+        """
+        Return a descriptive string for the CMN mesh as a whole
+        """
         s = "%s at 0x%x" % (self.product_str(), self.periphbase)
+        if self.rootnode_offset != 0:
+            s += ":0x%x" % self.rootnode_offset
         if self.dimX is not None:
             s += " (%ux%u)" % (self.dimX, self.dimY)
         return s
@@ -1401,7 +1410,7 @@ class CMN:
             fr = (fr.filename, fr.lineno, None, fr.line)
         return "%s.%u: %s" % (os.path.basename(fr[0]), fr[1], fr[3])
 
-    def log(self, msg, prefix="CMN: ", end=None, level=2):
+    def log(self, msg, prefix="CMN <TIME>: ", end=None, level=2):
         """
         Print a logging message. We do a level check here, but it might also be a
         good idea to check at the call site to avoid constructing the message.
@@ -1415,6 +1424,8 @@ class CMN:
         if self.verbose >= level:
             if prefix is None:
                 prefix = ""
+            if "<TIME>" in prefix:
+                prefix = prefix.replace("<TIME>", str(datetime.datetime.now()))
             print("%s%s" % (prefix, msg), end=end)
 
     def product_str(self):
@@ -1819,7 +1830,7 @@ def cmn_from_opts(opts):
             print("  %s" % (c))
         sys.exit()
     diag_trace = (DIAG_READS | DIAG_WRITES) if opts.cmn_diag else 0
-    CS = [CMN(cl, verbose=opts.verbose, diag_trace=diag_trace, secure_accessible=opts.secure_access) for cl in clocs]
+    CS = [CMN(cl, verbose=opts.verbose, diag_trace=diag_trace, secure_accessible=opts.secure_access, defer_discovery=opts.cmn_defer) for cl in clocs]
     return CS
 
 

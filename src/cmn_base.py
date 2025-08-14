@@ -751,7 +751,7 @@ class CMNXP(CMNNodeBase):
         return _pos_n_links[self.position()]
 
     def links(self):
-        if self.y < self.owner.dimX-1:
+        if self.y < self.owner.dimY-1:
             yield "n"
         if self.x < self.owner.dimX-1:
             yield "e"

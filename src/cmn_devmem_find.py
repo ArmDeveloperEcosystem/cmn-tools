@@ -320,6 +320,8 @@ def add_cmnloc_arguments(parser):
     ag.add_argument("--secure-access", action="store_true", default=None, help="assume Secure registers are accessible")
     ag.add_argument("--list-cmn", action="store_true", help="list all CMN devices in system")
     ag.add_argument("--cmn-diag", action="store_true")    # CMN driver internal diagnostics
+    ag.add_argument("--cmn-defer", action="store_true", default=True)   # defer device discovery
+    ag.add_argument("--cmn-no-defer", dest="cmn_defer", action="store_false")   # don't defer device discovery
 
 
 if __name__ == "__main__":
