@@ -168,12 +168,18 @@ def CHI_op_str(vc, n, short=False):
 # whether it's a Snoop response, a Comp response etc.
 # This table also works for FwdState (CHI-E Table 13-39) in both RSP and DAT.
 def CHI_DAT_resp_str_nonsnoop(n):
-    return ["I", "SC", "UC", "?3", "?4", "?5", "UD_PD", "SD_PD"][n]
+    if n <= 7:
+        return ["I", "SC", "UC", "?3", "?4", "?5", "UD_PD", "SD_PD"][n]
+    else:
+        return "?%u" % n
 
 
 # See above: Resp in snoop responses is slightly different.
 def CHI_DAT_resp_str_snoop(n):
-    return ["I", "SC", "UC/UD", "SD", "I_PD", "SC_PD", "UC_PD", "?7"][n]
+    if n <= 7:
+        return ["I", "SC", "UC/UD", "SD", "I_PD", "SC_PD", "UC_PD", "?7"][n]
+    else:
+        return "?%u" % n
 
 
 def CHI_DAT_resp_str(dat_opcode, resp):
@@ -554,16 +560,19 @@ class CMNTraceConfig:
     but we keep this one separate so we can use the flit decoder
     independently as part of a CoreSight trace decoder.
     """
-    def __init__(self, cmn_product_id, has_MPAM):
+    def __init__(self, cmn_product_id, has_MPAM, cmn_product_revision=0):
         if cmn_product_id in [600, 650, 700]:
             # legacy compatibility
             cmn_product_id = {600: PART_CMN600, 650: PART_CMN650, 700: PART_CMN700}[cmn_product_id]
         assert cmn_product_id in _cmn_product_names, "unexpected CMN product id: %s" % cmn_product_id
         self.cmn_product_id = cmn_product_id
+        self.cmn_product_revision = cmn_product_revision
         self.has_MPAM = has_MPAM
-        # Mostly we can treat CMN S3 like CMN-700
+        # CMN S3 r0 is like CMN-700 (12-bit MPAM id)
         self._cmn_base_type = {PART_CMN600: 0, PART_CMN650: 1, PART_CMN700: 2, PART_CI700: 2, PART_CMN_S3: 3}[self.cmn_product_id]
-        # Assume CMN S3 MPAM is 15-bit not 12-bit
+        if self.cmn_product_id == PART_CMN_S3 and self.cmn_product_revision < 2:
+            self._cmn_base_type = 2
+        # Assume CMN S3 r1 MPAM is 15-bit not 12-bit
         self._MPAM_bits = 0 if not self.has_MPAM else [0, 11, 11, 15][self._cmn_base_type]
 
     def __str__(self):
@@ -574,7 +583,7 @@ class CMNTraceConfig:
 
 
 def trace_size_bits(cfg):
-    return [144, 160, 176, 176][cfg._cmn_base_type]
+    return [144, 160, 176, 196][cfg._cmn_base_type]
 
 
 class CMNFlitGroup:
@@ -704,7 +713,8 @@ class CMNFlitGroup:
             # decode according to "Trace data formats" table:
             #   CMN-600 Table 5-8 etc.
             #   CMN-700 Table 6-9 etc.
-            #   CMN S3 is identical to CMN-700
+            #   CMN S3 r0 is identical to CMN-700
+            #   CMN S3 r1 is different
             x = bytes_as_int(payload)
             f = CMNFlit()
             f.qos = BITS(x,0,4)
@@ -721,7 +731,7 @@ class CMNFlitGroup:
                     f.txnid = BITS(x,26,10)
                     f.opcode = BITS(x,58,6)
                     f.tracetag = BIT(x,88)
-                elif self.cfg.cmn_product_id != PART_CMN_S3:
+                elif self.cfg._cmn_base_type == 2:
                     f.txnid = BITS(x,26,12)
                     f.opcode = BITS(x,62,7)
                     f.tracetag = BIT(x,98)
@@ -828,8 +838,8 @@ class CMNFlitGroup:
                         f.mpam = BITS(x,89,11)
                         f.addr = BITS(x,100,52)
                         f.rsvdc = BITS(x,152,8)
-                elif self.cfg.cmn_product_id != PART_CMN_S3:
-                    # CMN-700
+                elif self.cfg._cmn_base_type == 2:
+                    # CMN-700 or CMN S3 r0
                     f.returnnid = BITS(x,38,11)
                     f.returntxnid = BITS(x,50,12)
                     f.size = BITS(x,69,3)
@@ -853,7 +863,7 @@ class CMNFlitGroup:
                         f.addr = BITS(x,110,52)
                         f.rsvdc = BITS(x,162,8)
                 else:
-                    # CMN S3
+                    # CMN S3 r1
                     f.returnnid = BITS(x,38,11)
                     f.returntxnid = BITS(x,50,12)
                     f.size = BITS(x,69,3)
@@ -987,7 +997,7 @@ class CMNFlitGroup:
                     f.devevent = BITS(x,110,2)
                 if f.opcode == 6:
                     # SnpRespDataFwded
-                    f.fwdstate = fws_ds
+                    f.fwdstate = fws_ds    # note: 4 bits
                     f.datasource = None
                 else:
                     f.fwdstate = None
@@ -1004,14 +1014,15 @@ if __name__ == "__main__":
     import argparse
     import random
     parser = argparse.ArgumentParser(description="CMN CHI flit decoder (self-tests)")
-    parser.add_argument("--cmn-version", type=(lambda x:int(x,16)), help="set CMN version", required=True)
+    parser.add_argument("--cmn-version", type=(lambda x:int(x,0)), help="set CMN version", required=True)
+    parser.add_argument("--cmn-revision", type=int, default=0, help="set CMN revision")
     parser.add_argument("--no-mpam", action="store_true", help="indicate MPAM not present")
     parser.add_argument("--format", type=int)
     parser.add_argument("--vc", type=int, help="CHI channel (REQ/RSP/SNP/DAT)")
     parser.add_argument("--tests", type=int, default=1000, help="number of tests to run")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
-    cfg = CMNTraceConfig(opts.cmn_version, not opts.no_mpam)
+    cfg = CMNTraceConfig(opts.cmn_version, has_MPAM=(not opts.no_mpam), cmn_product_revision=opts.cmn_revision)
     for i in range(opts.tests):
         g = CMNFlitGroup(cfg)
         g.VC = opts.vc if opts.vc is not None else random.randrange(4)
