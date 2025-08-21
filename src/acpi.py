@@ -291,8 +291,8 @@ class SLIT(ACPITable):
 
     This is a matrix representing latency between localities
     """
-    def __init__(self, fn=None, handle=None, sig=b"SLIT"):
-        ACPITable.__init__(self, fn, handle=handle, sig=sig)
+    def __init__(self, fn=None, handle=None, sig=b"SLIT", system=None):
+        ACPITable.__init__(self, fn, handle=handle, sig=sig, system=system)
         self.n_localities = struct.unpack("<Q", self.f.read(8))[0]
         self.entry = []
         for i in range(self.n_localities):
