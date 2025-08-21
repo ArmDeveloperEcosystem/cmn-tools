@@ -120,7 +120,7 @@ class CMNVis:
     def set_cmn(self, cmn):
         self.cmn = cmn
         config = cmn.product_config
-        self.cfg = CMNTraceConfig(config.product_id, config.mpam_enabled)
+        self.cfg = CMNTraceConfig(config.product_id, has_MPAM=config.mpam_enabled, cmn_product_revision=config.revision)
         self.last_xp = None
         self.build_id_map()
 
@@ -185,6 +185,7 @@ class CMNHist(CMNVis):
         CMNVis.__init__(self)
         self.hist = {}
         self.witness = {}     # a witness flit for each key
+        self.n_total = 0
 
     def handle_flitgroup(self, xp, wp, fg):
         # Override, to accumulate histogram
@@ -196,6 +197,7 @@ class CMNHist(CMNVis):
                 self.hist[key] = 0
                 self.witness[key] = flit
             self.hist[key] += 1
+            self.n_total += 1
 
     def flit_key(self, flit):
         # Construct a key to classify the flit into a sensible group.
@@ -238,7 +240,8 @@ class CMNHist(CMNVis):
         # Sort by descending order of counts
         h = sorted(self.hist.items(), key=lambda x: -x[1])
         for (key, n) in h:
-            print("%8u  %20s  %s" % (n, self.key_str(key), self.witness[key].long_str()))
+            pc = (n * 100.0) / self.n_total
+            print("%8u %3.0f%%  %20s  %s" % (n, pc, self.key_str(key), self.witness[key].long_str()))
 
 
 # The DTM behavior doesn't seem to correspond to the spec.
