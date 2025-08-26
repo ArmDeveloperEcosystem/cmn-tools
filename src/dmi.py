@@ -68,6 +68,18 @@ def BIT(x, p):
     return (x >> p) & 1
 
 
+class DMIException(Exception):
+    pass
+
+
+class DMITruncated(DMIException):
+    def __init__(self, msg="file is truncated"):
+        self.msg = msg
+
+    def __str__(self):
+        return self.msg
+
+
 class DMIStructure:
     """
     A single entry in a DMI file, with a unique handle.
@@ -80,7 +92,7 @@ class DMIStructure:
         assert strs[0] is None, "must have None for string[0]"
         self.dmi = dmi      # DMI table in which handles etc. are looked up
         self.raw = raw
-        (self.type, _, self.handle) = struct.unpack("BBH", raw[:4])
+        (self.type, _, self.handle) = struct.unpack("<BBH", raw[:4])
         self.strings = strs
         self._decoded = False
 
@@ -182,7 +194,23 @@ def _decode_processor(d):
         d.n_threads = struct.unpack("<H", d.raw[0x2e:0x30])[0]
 
 
-DMI_CACHE_assoc = [None, None, None, 1, 2, 4, -1, 8, 16, 12, 24, 32, 48, 64, 20]
+DMI_CACHE_assoc = [
+    None,
+    None, # other
+    None, # unknown
+    1,    # i.e. direct mapped
+    2, 4,
+    -1,   # fully associative
+    8, 16, 12, 24, 32, 48, 64, 20
+]
+
+
+def DMI_CACHE_assoc_type_str(assoc_type):
+    if assoc_type > 0 and assoc_type < len(DMI_CACHE_assoc):
+        s = {1:"other", 2:"unknown", 3:"direct-mapped", 6:"fully-associative"}.get(assoc_type, None)
+        return s if s is not None else ("%u-way" % DMI_CACHE_assoc[assoc_type])
+    else:
+        return "assoc=%d?" % assoc_type
 
 
 def _decode_cache(d):
@@ -191,7 +219,8 @@ def _decode_cache(d):
     """
     (_, s_socket, d.config, max_size, inst_size, _, _, d.speed, d.ecc, d.cache_type, assoc) = struct.unpack("<IBHHHHHBBBB", d.raw[:0x13])
     d.socket = d.string(s_socket)
-    d.level = d.config & 7
+    d.level = (d.config & 7) + 1
+    d.assoc_type = assoc
     d.assoc = DMI_CACHE_assoc[assoc] if assoc < len(DMI_CACHE_assoc) else None
     if max_size == 0xffff:
         (max_size, inst_size) = struct.unpack("<II", d.raw[0x13:0x1b])
@@ -345,30 +374,52 @@ class DMI:
                     break    # end of file
                 (ty, ln) = struct.unpack("BB", hdr)
                 if o_verbose >= 2:
-                    print("DMI: read type 0x%02x length 0x%02x" % (ty, ln), file=sys.stderr)
+                    print(file=sys.stderr)
+                    print("DMI: read type 0x%02x length 0x%02x: %s" % (ty, ln, DMI_type_str(ty)), file=sys.stderr)
                 raw = f.read(ln-2)
-                assert len(raw) == (ln-2), "file is truncated: not a DMI binary file?"
+                if len(raw) < (ln-2):
+                    raise DMITruncated("file is truncated (expected %u bytes, read %u): not a DMI binary file?" % (ln-2, len(raw)))
                 strs = [None]     # index 0 refers to no string
                 # read strings - we need to do this byte by byte,
                 # as the overall entry length is not indicated
+                # The string list always ends with a double nul,
+                # and a double nul always ends the string list.
                 while True:
                     s = f.read(1)
-                    assert len(s) == 1, "file is truncated"
+                    if len(s) != 1:
+                        raise DMITruncated()
                     if s == b'\0':
-                        break    # nul byte to terminate list
+                        break    # nul byte (second of two) to terminate list
                     while True:
                         b = f.read(1)
-                        assert len(b) == 1, "file is truncated"
+                        if len(b) != 1:
+                            raise DMITruncated()
                         if b == b'\0':   # nul byte to terminate string
                             break
                         s += b
                     strs.append(s)
                 if len(strs) == 1:
-                    # no strings, but the record ends with a double-nul
-                    f.read(1)
+                    # no strings, we just saw a nul. We expect another nul here
+                    # (perhaps the structure has no string fields) but if we see
+                    # a non-nul, we must scan forwards for a double-nul.
+                    b = f.read(1)
+                    if b != b'\0':
+                        # anomalous
+                        last_nul = False
+                        while True:
+                            b = f.read(1)
+                            if len(b) != 1:
+                                raise DMITruncated()
+                            if b == b'\0':
+                                if last_nul:
+                                    break
+                                last_nul = True
+                            else:
+                                last_nul = False
                 s = DMIStructure(self, hdr+raw, strs)
                 if o_verbose >= 2:
                     print("DMI: %s" % s, file=sys.stderr)
+                    print_DMI_structure_raw(s, file=sys.stderr)
                 yield s
                 if ty == DMI_END_OF_TABLE:
                     break
@@ -506,38 +557,44 @@ def print_DMI_summary(D, type=None):
         print()
 
 
+def print_hex(x, tab="\t", file=None):
+    for i in range(len(x)):
+        if i % 16 == 0:
+            if i > 0:
+                print(file=file)
+            print(tab + tab, end="", file=file)
+        print("%02X" % struct.unpack("B", x[i:i+1])[0], end="", file=file)
+        if i % 16 < 15:
+            print(" ", end="", file=file)
+    print(file=file)
+
+
+def print_DMI_structure_raw(d, tab="\t", dump=False, file=None):
+    print(tab + "Header and Data:", file=file)
+    print_hex(d.raw, tab=tab, file=file)
+    if d.n_strings > 0:
+        print(tab + "Strings:", file=file)
+        for i in range(1, d.n_strings+1):
+            if dump:
+                print_hex(d.strings[i] + b"\0", tab=tab, file=file)    # raw ASCII, with nul included
+            s = d.string(i)                        # decoded
+            if False:
+                s = '"' + s + '"'
+            print(tab + tab + s, file=file)
+
+
 def print_DMI_detail(D, type=None, include_std=True, dump=False):
     """
     Dump out all structures of the DMI table, in detail, as a hex dump
     """
     tab = "\t"
-    def print_hex(x):
-        for i in range(len(x)):
-            if i % 16 == 0:
-                if i > 0:
-                    print()
-                print(tab + tab, end="")
-            print("%02X" % struct.unpack("B", x[i:i+1])[0], end="")
-            if i % 16 < 15:
-                 print(" ", end="")
-        print()
     for d in D.structures(type=type):
         print()
         print("Handle 0x%04X, DMI type %u, %u bytes" % (d.handle, d.type, len(d.raw)))
         if not dump:
             print("%s" % DMI_type_str(d.type))
         if d.type >= 128 or include_std:
-            print(tab + "Header and Data:")
-            print_hex(d.raw)
-            if d.n_strings > 0:
-                print(tab + "Strings:")
-                for i in range(1, d.n_strings+1):
-                    if dump:
-                        print_hex(d.strings[i] + b"\0")    # raw ASCII, with nul included
-                    s = d.string(i)                        # decoded
-                    if False:
-                        s = '"' + s + '"'
-                    print(tab + tab + s)
+            print_DMI_structure_raw(d, tab=tab, dump=dump)
 
 
 def print_DMI_memory(D):
@@ -599,16 +656,25 @@ def print_DMI_memory(D):
         bwps_Mb = total_bw_Mb // n_sockets
         print("    per socket: %u Mbits/s = %s/s" % (bwps_Mb, memsize_str(bwps//8)))
     print("Processor caches:")
+    def print_cache(c):
+        #print("    0x%04x" % c.handle, end="")
+        print("    L%u" % (c.level), end="")
+        print("  %10s " % memsize_str(c.inst_size), end="")
+        if c.cache_type == 3:
+            print(" instruction", end="")
+        elif c.cache_type == 4:
+            print(" data", end="")
+        print(" %s" % DMI_CACHE_assoc_type_str(c.assoc_type))
     for dp in D.processors():
         print("  %s:" % dp.socket)
         for level in [1, 2, 3]:
             if dp.h_cache[level] is not None:
                 dc = D.index[dp.h_cache[level]]
-                print("    L%u %3u-way  %s" % (dc.level, dc.assoc, memsize_str(dc.inst_size)))
+                print_cache(dc)
     for d in D.structures(type=DMI_CACHE):
         if d.p_processor is None:
             print("  System cache:")
-            print("    L%u %3u-way  %s" % (d.level, d.assoc, memsize_str(d.inst_size)))
+            print_cache(d)
 
 
 def print_DMI_system(D, file_is_local=True):
@@ -658,18 +724,44 @@ if __name__ == "__main__":
     parser.add_argument("--system", action="store_true", help="print system information")
     parser.add_argument("--uuid", action="store_true", help="print system UUID")
     parser.add_argument("--memory", action="store_true", help="print memory records")
+    parser.add_argument("--dump-bin", type=str, help="dump contents to a file")
     parser.add_argument("-t", "--type", type=int, help="DMI record type")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
+    if opts.dump_bin:
+        # Given a binary file, add the 24-byte "smbios_entry_point" to allow dmidecode to read it
+        with open(opts.input, "rb") as fi:
+            st = fi.read()
+        def bytesum(s):
+            n = 0
+            for c in s:
+                if not isinstance(c, int):
+                    c = ord(c)
+                n += c
+            return n & 0xff
+        if opts.input == DEFAULT_DMI:
+            with open("/sys/firmware/dmi/tables/smbios_entry_point", "rb") as fi:
+                eps = fi.read()
+        else:
+            # Construct an Entry Point Structure
+            eps = b"_SM3_\0\x18\x03" + struct.pack("<BBBBIQ", 4, 0, 1, 0, len(st), 0x18)
+            chk = (256 - bytesum(eps)) & 0xff
+            eps = eps[:5] + struct.pack("B", chk) + eps[6:]
+        assert len(eps) == 24
+        assert bytesum(eps) == 0
+        with open(opts.dump_bin, "wb") as fo:
+            fo.write(eps)
+            fo.write(st)
+        sys.exit(0)
     try:
         D = DMI(opts.input)
     except IOError as e:
         print("%s: cannot read DMI file (%s)" % (opts.input, e), file=sys.stderr)
         sys.exit(1)
     if opts.verbose:
-        print("%s: opened DMI file" % opts.input, file=sys.stderr)
-    if not (opts.decode or opts.summary or opts.memory or opts.uuid):
+        print("%s: opening DMI file" % opts.input, file=sys.stderr)
+    if not (opts.decode or opts.dump or opts.summary or opts.memory or opts.uuid or opts.dump_bin):
         opts.system = True
     if opts.decode or opts.dump:
         print_DMI_detail(D, type=opts.type, dump=opts.dump)
