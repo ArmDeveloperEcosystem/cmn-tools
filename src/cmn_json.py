@@ -68,11 +68,19 @@ def cmn_from_json(j, S):
         C.periphbase = int(jc["base"], 16)
         if "rootnode_offset" in jc:
             C.rootnode_offset = int(jc["rootnode_offset"], 16)
+    if "skiplist" in j:
+        C.node_skiplist = [int(se, 16) for se in j["skiplist"]]
     for jxp in jc["xps"]:
         np = jxp["n_ports"]
         xp = C.create_xp(jxp["X"], jxp["Y"], n_ports=np, id=jxp["id"], logical_id=jxp.get("logical_id", None))
         if "dtc" in jxp:
             xp.dtc = jxp["dtc"]
+        if "skipped" in jxp:
+            xp.skipped_nodes = jxp["skipped"]
+        if "mcs_east" in jxp:
+            xp.mcs_east = jxp["mcs_east"]
+        if "mcs_north" in jxp:
+            xp.mcs_north = jxp["mcs_north"]
         for jp in jxp["ports"]:
             p = jp["port"]
             p_type = jp["type"]
@@ -190,6 +198,14 @@ def json_from_xp(xp):
         del j["logical_id"]
     if xp.dtc_domain() is not None:
         j["dtc"] = xp.dtc_domain()
+    if xp.skipped_nodes is not None:
+        j["skipped"] = xp.skipped_nodes
+    emcs = xp.mesh_credited_slices(0)
+    if emcs:
+        j["mcs_east"] = emcs
+    nmcs = xp.mesh_credited_slices(1)
+    if nmcs:
+        j["mcs_north"] = nmcs
     for i in range(xp.n_device_ports()):
         #p = xp.port[i]
         dt = xp.port_device_type(i)
@@ -242,6 +258,8 @@ def json_from_cmn(C):
     if C.periphbase is not None:
         j["config"]["base"] = "0x%x" % C.periphbase
         j["config"]["rootnode_offset"] = "0x%x" % C.rootnode_offset
+    if C.node_skiplist is not None:
+        j["skiplist"] = [("0x%x" % se) for se in C.node_skiplist]
     if hasattr(C, "frequency") and C.frequency is not None:
         j["frequency"] = C.frequency
     return j
@@ -309,6 +327,7 @@ if __name__ == "__main__":
     if opts.verbose:
         print("System type: %s" % S.system_type)
         print("CMN version: %s" % S.cmn_version())
+        print("System has HN-S: %s" % S.has_HNS())
     if S.cmn_version() is None:
         print("%s: CMN interconnect not found" % (S.filename), file=sys.stderr)
         sys.exit(1)

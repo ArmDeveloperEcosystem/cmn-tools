@@ -297,7 +297,7 @@ if __name__ == "__main__":
     parser.add_argument("--add-sysfs", action="store_true", help="add events from sysfs")
     parser.add_argument("--list", action="store_true", help="list all events")
     parser.add_argument("-o", "--output", type=str, help="output CSV file")
-    parser.add_argument("-v", "--verbose", action="count", default=0)
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
     E = Events()

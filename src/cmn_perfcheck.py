@@ -78,7 +78,8 @@ def _check_perf_timed(e, t):
     Several possible outcomes:
       perf command not found
       perf command gives unexpected output
-      perf reports event "unsupported" etc.
+      perf reports event not found (not published in sysfs or built-in)
+      perf reports event "unsupported" (built-in to perf but driver won't open)
       perf counts 0
       perf counts non-zero
     """
@@ -89,11 +90,13 @@ def _check_perf_timed(e, t):
     (out, err) = p.communicate()
     rc = p.returncode
     if rc != 0:
-        print("err: %s" % err.decode(), file=sys.stderr)
+        # perf command not installed, PMU driver not installed, PMU driver didn't publish event
+        if o_verbose >= 2:
+            print("err: %s" % err.decode(), file=sys.stderr)
         return None
     try:
         (n, _) = err.decode().split(',', 1)
-        if o_verbose:
+        if o_verbose >= 2:
             print("%s => %s" % (e, n), file=sys.stderr)
         n = int(n)
     except ValueError:
@@ -135,7 +138,12 @@ def check_perf():
 
 def check_cmn_perf():
     """
-    Check that perf can access CMN PMU events.
+    Check that perf can access CMN PMU events and get non-zero counts.
+    We try the HN POCQ reqs event as that's sure to be counting.
+    On systems with HN-S, perf tools may still accept "hnf_" events
+    (configured from JSON) which will then not be supported by the kernel.
+    Or they may support only the kernel published events. Error-handling
+    in _check_perf() should handle both cases.
     """
     return _check_perf("arm_cmn/hnf_pocq_reqs_recvd/") or _check_perf("arm_cmn/hns_pocq_reqs_recvd_all/")
 
@@ -260,7 +268,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="check if CMN PMU driver is installed")
     parser.add_argument("--perf-bin", type=str, default="perf", help="path to perf binary")
-    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
+    parser.add_argument("-v", "--verbose", action="count", default=1, help="increase verbosity")
     opts = parser.parse_args()
     o_perf_bin = opts.perf_bin
     o_verbose = opts.verbose

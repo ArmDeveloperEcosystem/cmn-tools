@@ -156,6 +156,8 @@ class System(NodeGroup):
         if self._has_HNS is None:
             for p in self.ports(properties=CMN_PROP_HNF):
                 self._has_HNS = (p.connected_type == CMN_PORT_DEVTYPE_HNS)
+                break
+            assert self._has_HNS is not None, "no HN-F/HN-S nodes detected!"
         return self._has_HNS
 
     def __str__(self):
@@ -306,7 +308,7 @@ class CMNConfig:
         return not self == b
 
     def __str__(self):
-        s = self.product_name()
+        s = self.product_name(revision=True)
         if self.mpam_enabled:
             s += " (MPAM)"
         return s
@@ -347,6 +349,7 @@ class CMN(NodeGroup):
         self.seq = seq         # sequence number within the system
         self.periphbase = None
         self.rootnode_offset = None     # For early CMNs: None means not known
+        self.node_skiplist = None
         self.dimX = dimX
         self.dimY = dimY
         self.id_coord_bits = id_coord_bits(self.dimX, self.dimY)
@@ -731,6 +734,9 @@ class CMNXP(CMNNodeBase):
         max_ports = _links_max_ports[self.n_links()]
         assert n_ports <= max_ports, "%s: XP with %u links cannot have %u ports" % (self, self.n_links(), n_ports)
         self.n_ports = n_ports
+        self.skipped_nodes = None
+        self.mcs_east = None
+        self.mcs_north = None
 
     def XP(self):
         return self
@@ -759,6 +765,9 @@ class CMNXP(CMNNodeBase):
             yield "w"
         if self.y > 0:
             yield "s"
+
+    def mesh_credited_slices(self, i):
+        return [self.mcs_east, self.mcs_north][i]
 
     def create_port(self, port, type=None, type_s=None, cal=None):
         p = CMNPort(self, port, type=type, type_s=type_s, cal=cal)

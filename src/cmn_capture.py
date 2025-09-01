@@ -19,6 +19,7 @@ import time
 import cmn_devmem as cmn
 import cmn_devmem_find
 import cmn_json
+from cmn_enum import *
 import cmnwatch
 import cmn_flits
 from cmn_flits import CMNTraceConfig, CMNFlitGroup
@@ -110,6 +111,52 @@ class CMNFlitGroupX(CMNFlitGroup):
         return CMNFlitGroup.addr_str(self, addr, NS)
 
 
+def xp_node_ids(xp):
+    """
+    Yield tuples (node_id, desc) for an XP, where all possible CHI ids are yielded,
+    together with a suitable descriptive string.
+
+    We have to deal with several cases:
+     - CALs which have no device nodes (e.g. CAL for RN-F)
+     - HCALs, e.g. HCAL3 is always [RN-F, RN-F, HN-I]
+     - CAL-less multiple-device nodes, e.g. CCG where device 1 is an RN-I
+     - devices with multiple nodes with the same device id
+    """
+    n_ports = xp.n_device_ports()
+    for port_num in range(n_ports):
+        port = xp.port_object(port_num)
+        if port.device_type() is None:
+            continue
+        base_id = port.base_id()
+        devices = {}
+        port_desc = cmn_port_device_type_str(port.device_type())
+        # Look at actual device nodes and have them take priority -
+        # this copes with HCALs and with multiple devices where there isn't a CAL
+        for n in port.nodes():
+            if not cmn_node_type_has_properties(n.type(), CMN_PROP_CHI):
+                continue
+            id = n.node_id()
+            if id not in devices:
+                devices[id] = cmn_node_type_str(n.type())
+        # By default use CAL multiplicity to populate the device ids with
+        # the "port connected device" descriptor string
+        cal = port.has_cal()
+        for device_id in range(cal or 1):
+            id = base_id + device_id
+            if id not in devices:
+                devices[id] = port_desc
+        # Finally return the device ids and their descriptions
+        for id in sorted(devices.keys()):
+            yield (id, devices[id])
+
+
+def cmn_node_ids(cmn):
+    cmn.discover_all_devices()
+    for xp in cmn.XPs():
+        for (id, desc) in xp_node_ids(xp):
+            yield (id, desc)
+
+
 class CMNVis:
     """
     Print CMN trace in a human-readable form, one packet per line, minimizing clutter.
@@ -126,17 +173,8 @@ class CMNVis:
 
     def build_id_map(self):
         self.id_map = {}     # (id, lpid) -> label
-        for xp in self.cmn.XPs():
-            n_ports = xp.n_device_ports()
-            poff = 4 if n_ports <= 2 else 2
-            for port in range(n_ports):
-                base_id = xp.node_id() + (port * poff)
-                desc = xp.port_device_type_str(port)[:4]
-                cal = xp.port_has_cal(port)
-                device_ids = cal if cal else 1
-                for device_id in range(device_ids):
-                    id = base_id + device_id
-                    self.id_map[(id, 0)] = desc
+        for (id, desc) in cmn_node_ids(self.cmn):
+            self.id_map[(id, 0)] = desc[:4]
         self.cmn_desc = cmn_desc(self.cmn)
         if self.cmn_desc is not None and self.cmn_desc.has_cpu_mappings():
             for cpu in self.cmn_desc.cpus():
@@ -291,6 +329,9 @@ class TraceSession:
         if self.opts.verbose:
             print("cmn_capture: initializing CMN %s" % self.C)
         # Enable all DTCs in the CMN
+        if self.C.DTC0() is None:
+            print("%s: could not discover DTC" % self.C, file=sys.stderr)
+            sys.exit(1)
         self.C.dtc_enable(cc=self.opts.cc)   # need to enable CC in DTCs if we want timestamp in DTMs
         self.C.restore_dtc_status_on_deletion()
         # First disable all the non-involved XPs

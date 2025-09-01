@@ -23,6 +23,7 @@ from cmn_enum import *
 import cmn_select
 import cmn_dtstat
 from cmn_sam import *
+import cmn_routing
 
 
 o_register_slices = False
@@ -55,7 +56,7 @@ class CMNLister:
         """
         if cmn is not None:
             self.cmn = cmn
-        print("%s:" % self.cmn.product_str())
+        print("%s:" % self.cmn)
         print("  %s" % cmn.rootnode)
         if not (self.node_match is not None and not self.node_match.match_node(self.cmn.rootnode)):
             self.show_cmn_itself()
@@ -122,10 +123,8 @@ class CMNLister:
         # print(", child_info=0x%x" % xp.child_info, end="")
         if o_register_slices:
             # Show info about the east and north mesh links.
-            pbase = 6 if cmn.part_ge_700() else 2
             for (i, dir) in enumerate(["east", "north"]):
-                link = xp.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(pbase+i))
-                mcs = BITS(link, 0, 4)
+                mcs = xp.mesh_credited_slices(i)
                 if mcs > 0:
                     print(", %s-mcs=%u" % (dir, mcs), end="")
         print()
@@ -535,15 +534,84 @@ def list_logical(c, verbose=0):
     List nodes grouped by logical id
     """
     nodes = {}
+    c.discover_all_devices()
+    print("%s devices by logical id:" % c)
     for (t, lid) in c.logical_id.keys():
         if t not in nodes:
             nodes[t] = {}
         assert lid not in nodes[t]     # not expected: logical id clash would have been detected already
         nodes[t][lid] = c.logical_id[(t, lid)]
-    for t in sorted(nodes):
-        print("  Node type: %s" % cmn_node_type_str(t))
+    for t in sorted(nodes.keys(), key=cmn_node_type_str):
+        print("  Node type: %s (%u nodes)" % (cmn_node_type_str(t), len(nodes[t])))
         for lid in sorted(nodes[t]):
             print("   %3u: %s" % (lid, nodes[t][lid]))
+
+
+class Statistics:
+    def __init__(self):
+        self.n = 0
+        self.total = 0
+        self.v_min = None
+        self.v_max = None
+
+    def mean(self):
+        return float(self.total) / self.n
+
+    def add(self, v):
+        self.n += 1
+        self.total += v
+        if self.v_min is None or v < self.v_min:
+            self.v_min = v
+        if self.v_max is None or v > self.v_max:
+            self.v_max = v
+
+    def __str__(self):
+        s = "mean %.2f min %.2f max %.2f" % (self.mean(), self.v_min, self.v_max)
+        return s
+
+
+def print_routing(CS, verbose=0):
+    """
+    Print a summary of routing-related latencies
+    """
+    for C in CS:
+        print("Routing information for %s:" % C)
+        rnf_mean_home = {}
+        rnf_mean_rnf = {}
+        s_all_rnf_to_home = Statistics()
+        s_all_rnf_via_home = Statistics()
+        for node_from in C.nodes(CMN_PROP_XP):
+            if not node_from.has_any_ports(CMN_PROP_RNF):
+                continue
+            if verbose >= 2:
+                print("  %s:" % node_from)
+            s_rnf_to_home = Statistics()
+            for node_to in C.nodes(CMN_PROP_HNF):
+                r = cmn_routing.Route(node_from, node_to)
+                s_rnf_to_home.add(r.cost())
+                if verbose >= 2:
+                    print("    %s" % r)
+            rnf_mean_home[node_from] = s_rnf_to_home.mean()
+            s_all_rnf_to_home.add(s_rnf_to_home.mean())
+        for node_from in C.nodes(CMN_PROP_XP):
+            if not node_from.has_any_ports(CMN_PROP_RNF):
+                continue
+            s_rnf_to_rnf = Statistics()
+            s_rnf_via_home = Statistics()
+            for node_to in C.nodes(CMN_PROP_XP):
+                if not node_to.has_any_ports(CMN_PROP_RNF):
+                    continue
+                s_rnf_via_home.add(rnf_mean_home[node_from] + rnf_mean_home[node_to])
+                r = cmn_routing.Route(node_from, node_to)
+                s_rnf_to_rnf.add(r.cost())
+            m_rnf = s_rnf_to_rnf.mean()
+            m_rnf_via_home = s_rnf_via_home.mean()
+            s_all_rnf_via_home.add(m_rnf_via_home)
+            rnf_mean_rnf[node_from] = m_rnf
+            if verbose:
+                print("  %6.2f %6.2f %6.2f  %s" % (rnf_mean_home[node_from], m_rnf, m_rnf_via_home, node_from))
+        print("  RN-F to home node:     %s" % s_all_rnf_to_home)
+        print("  RN-F to RN-F via home: %s" % s_all_rnf_via_home)
 
 
 if __name__ == "__main__":
@@ -552,21 +620,23 @@ if __name__ == "__main__":
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("--list-logical", action="store_true", help="list nodes by logical id")
     parser.add_argument("--list", action="store_true", help="list CMN nodes")
+    parser.add_argument("--routing", action="store_true", help="show hop counts and routing information")
     parser.add_argument("--node-type", type=cmn_properties, default=CMN_PROP_none, help="node properties")
     parser.add_argument("--port-type", type=cmn_properties, default=CMN_PROP_none, help="port properties")
     parser.add_argument("--node-match", type=cmn_select.CMNSelect, action="append", help="node selection")
     parser.add_argument("--register-slices", action="store_true", help="show device/mesh credited slices")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
-    if not (opts.list or opts.list_logical):
+    if not (opts.list or opts.list_logical or opts.routing):
         opts.list = True
     o_register_slices = opts.register_slices
     match = cmn_select.cmn_select_merge(opts.node_match)
     L = CMNLister(None, verbose=opts.verbose, port_props=opts.port_type, node_props=opts.node_type, node_match=match)
     CS = cmn_from_opts(opts)
     for C in CS:
-        print(C)
         if opts.list:
             L.show_cmn(C)
         if opts.list_logical:
             list_logical(C, verbose=opts.verbose)
+    if opts.routing:
+        print_routing(CS, verbose=opts.verbose)

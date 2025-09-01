@@ -219,6 +219,8 @@ if __name__ == "__main__":
     opts = parser.parse_args()
     Cs = cmn_devmem.cmn_from_opts(opts)
     for C in Cs:
+        if C.DTC0() is None:
+            print("** %s: has no DTC - node was isolated?" % C, file=sys.stderr)
         for dtc in C.DTCs():
             if opts.dtc is None or opts.dtc == dtc.dtc_domain():
                 if opts.dtc_disable:

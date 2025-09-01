@@ -102,7 +102,8 @@ cmn_acpi_names = {
     "ARMHC600": cmn_base.PART_CMN600,
     "ARMHC650": cmn_base.PART_CMN650,
     "ARMHC700": cmn_base.PART_CMN700,
-    "ARMHC003": cmn_base.PART_CMN_S3,
+    "ARMHC800": cmn_base.PART_CMN_S3,   # pp https://neoverse-reference-design.docs.arm.com/en/latest/features/ras/ras.html
+    "ARMHC003": cmn_base.PART_CMN_S3,   # pp DEN0093 v1.2
 }
 
 
@@ -125,6 +126,7 @@ class CMNLocator:
         self.seq = seq
         self.periphbase = periphbase
         self.rootnode_offset = rootnode_offset
+        self.node_skiplist = None
         self.product_id = cmn_base.canon_product_id(product_id)
         self.where_found = where_found
 
@@ -218,7 +220,6 @@ def cmn_locators_from_dt(dt_base=None):
                 print("skipping DT node with no compatible: %s" % dn)
 
 
-
 def cmn_locators_from_iomem_and_dt(opts=None):
     found = False
     if not (opts is not None and opts.cmn_iomem == "none"):
@@ -232,44 +233,103 @@ def cmn_locators_from_iomem_and_dt(opts=None):
                 yield loc
 
 
+def cmn_locators_from_json(fn):
+    """
+    CMN locator JSON is a simple format containing CMN physical address(es)
+    and possibly a node skiplist. It does not contain the full discovered mesh.
+    """
+    if o_verbose:
+        print("Reading CMN locations from %s" % (fn), file=sys.stderr)
+    try:
+        with open(fn) as f:
+            j = json.load(f)
+    except Exception as e:
+        print("%s: could not read JSON locations file (%s)" % (fn, e), file=sys.stderr)
+        sys.exit(1)
+    for e in j["elements"]:
+        if e["product"] == "CMN":
+            if "base" not in e and "config" in e and "base" in e["config"]:
+                e = e["config"]
+            base = int(e["base"], 16)
+            root_offset = int(e.get("rootnode_offset", "0"), 16)
+            loc = CMNLocator(base, root_offset, where_found=fn)
+            if "skiplist" in e:
+                sl = [int(s, 16) for s in e["skiplist"]]
+                loc.node_skiplist = sl
+            yield loc
+
+
+def json_from_cmn_locators(locs):
+    jl = []
+    for loc in locs:
+        je = {
+            "product": "CMN",
+            "base": ("0x%x" % loc.periphbase)
+        }
+        if loc.rootnode_offset != 0:
+            je["rootnode_offset"] = ("0x%x" % loc.rootnode_offset)
+        if loc.node_skiplist is not None:
+            je["skiplist"] = [("0x%x" % se) for se in loc.node_skiplist]
+        jl.append(je)
+    j = {"elements": jl}
+    return j
+
+
 def cmn_locators(opts=None, single_instance=False):
     """
     Process command-line options to locate CMN instances.
     Options can override the location completely, or provide alternate (mock)
     locations for /proc/iomem and /sys/firmware/devicetree.
+    Always give priority to explicit command-line options.
     """
     if o_verbose:
         print("CMN: locating with %s, single=%s" % (opts, single_instance))
-    n_inst = 0
+    if "CMN_DUMP" in os.environ:
+        opts.cmn_locs_no_cache = True
+    locs = []
+    # Check if CMN(s) were specified explicitly on the command line
     if opts is not None and opts.cmn_base is not None:
         for base in opts.cmn_base:
             loc = CMNLocator(base, opts.cmn_root_offset, where_found="command line options")
-            yield loc
-            n_inst += 1
-    else:
+            locs.append(loc)
+    # Check if a CMN locator JSON file is explicitly provided
+    if not locs and opts is not None and opts.cmn_locations is not None:
+        for loc in cmn_locators_from_json(opts.cmn_locations):
+            locs.append(loc)
+    # Check for a previously cached CMN locator file
+    if not locs and not opts.cmn_locs_no_cache:
+        cpath = _cmn_location_cache()
+        if os.path.exists(cpath):
+            opts.cmn_locs_no_cache = True   # don't write back
+            for loc in cmn_locators_from_json(cpath):
+                locs.append(loc)
+        else:
+            #print("%s: no CMNs found, cache does not exist" % cpath, file=sys.stderr)
+            pass
+    if not locs:
         for loc in cmn_locators_from_iomem_and_dt(opts):
             if o_verbose:
                 print("#%u: %s" % (n_inst, loc))
             if single_instance and (opts is None):
                 # No user options overriding: return the first instance discovered
-                yield loc
-                return
+                locs.append(loc)
+                break
             if opts is None or opts.cmn_instance is None or n_inst == opts.cmn_instance:
-                yield loc
-            n_inst += 1
-    if n_inst == 0:
+                locs.append(loc)
+    if not locs:
+        print("No CMN locations found", file=sys.stderr)
+        sys.exit(1)
+    if not opts.cmn_locs_no_cache:
+        # Save these locations for next time
         cpath = _cmn_location_cache()
-        if os.path.exists(cpath):
-            print("reading CMN locations from %s" % (cpath))
-            with open(cpath) as f:
-                jcmn = json.load(f)
-            base = int(jcmn["base"], 16)
-            offset = int(jcmn.get("root-offset", "0"), 16)
-            product_id = jcmn.get("version", 600)
-            yield CMNLocator(base, offset, product_id)
-        else:
-            #print("%s: no CMNs found, cache does not exist" % cpath, file=sys.stderr)
-            pass
+        j = json_from_cmn_locators(locs)
+        with open(cpath, "w") as f:
+            json.dump(j, f, indent=4)
+        app_data.change_to_real_user_if_sudo(cpath)
+        # Could guard this with o_verbose, but as it's generally a one-time thing,
+        # we might as well remark when it happens.
+        print("CMN locations saved in %s" % cpath, file=sys.stderr)
+    return locs
 
 
 def cmn_single_locator(opts=None):
@@ -313,15 +373,18 @@ def add_cmnloc_arguments(parser):
     ag = parser.add_argument_group("CMN location arguments")
     ag.add_argument("--cmn-base", type=inthex, action="append", help="CMN base address(es)")
     ag.add_argument("--cmn-root-offset", type=inthex, default=0, help="CMN root node offset")
+    ag.add_argument("--cmn-locations", type=str, help="JSON file with CMN locations")
+    ag.add_argument("--cmn-locs-no-cache", action="store_true", help="don't use cached locations")
     ag.add_argument("--cmn-instance", type=int, help="CMN instance e.g. 0, 1, ...")
     ag.add_argument("--cmn-version", type=int, help="CMN product number")
     ag.add_argument("--cmn-iomem", type=str, default="/proc/iomem", help="/proc/iomem file (for testing)")
     ag.add_argument("--cmn-dt-base", type=str, default=None, help="DT path (for testing)")
     ag.add_argument("--secure-access", action="store_true", default=None, help="assume Secure registers are accessible")
     ag.add_argument("--list-cmn", action="store_true", help="list all CMN devices in system")
-    ag.add_argument("--cmn-diag", action="store_true")    # CMN driver internal diagnostics
-    ag.add_argument("--cmn-defer", action="store_true", default=True)   # defer device discovery
-    ag.add_argument("--cmn-no-defer", dest="cmn_defer", action="store_false")   # don't defer device discovery
+    ag.add_argument("--cmn-diag", action="store_true", help="CMN driver internal diagnostics (experts only)")
+    ag.add_argument("--cmn-defer", action="store_true", default=True, help="defer device discovery (experts only)")
+    ag.add_argument("--cmn-no-defer", dest="cmn_defer", action="store_false", help="don't defer device discovery (experts only)")
+    ag.add_argument("--version", action="version", version="%(prog)s 1.0")
 
 
 if __name__ == "__main__":

@@ -300,6 +300,10 @@ class CMNNode:
          - skip if external and XP has any RN-F ports
          - skip if external
 
+        We also honor node_skiplist if present. Note that there is a distinction:
+         - node_skiplist None: nothing is known about isolated nodes
+         - node_skiplist empty: there are no isolated nodes
+
         por_xx_child_info has the register offset to the child pointer array (typically 0x100),
         and the number of entries in the array. We expect the registers following the array
         are zero, but we have seen cases where they are non-zero - possibly as a way to
@@ -308,21 +312,13 @@ class CMNNode:
         if self.discovered_children:
             return
         self.C.log("%s: discover children" % self, level=2)
-        self.child_info = self.read64(CMN_any_CHILD_INFO)
-        self.n_children = BITS(self.child_info, 0, 16)
-        # For top-level configuration, max children at least 144 for 12x12. For an XP it's 32.
-        if self.n_children > (32 if self.is_XP() else 256):
-            self.C.log("CMN discovery found too many (%u) node children: %s" % (self.n_children, self), level=1)
         self.children = []
         # Only do the discovery once, even if we terminate because of node isolation
         self.discovered_children = True
         if self.is_XP():
             self.C.n_XPs_discovered_devices += 1
-        child_off = BITS(self.child_info, 16, 16)
-        if child_off != 0x100:
-            self.C.log("%s has child offset 0x%x" % (self, child_off), level=1)
         cobits = 30 if self.C.part_ge_650() else 28
-        if self.is_XP() and self.C.isolation_enabled:
+        if self.is_XP() and self.C.isolation_enabled and self.C.node_skiplist is None:
             # In S3, scanning isolated child HNs will fault and lock up the system.
             # From S3 r2p0 on, child isolation status is flagged in the child offsets.
             # Before then, we could check if there are any HN connected ports,
@@ -332,28 +328,50 @@ class CMNNode:
             # just disabled ports (from por_mxp_device_port_disable) or all HN ports.
             # Otherwise, all we can do is abandon the scan and miss not just all
             # home nodes (whether isolated or not) but any nodes on the same XP.
-            if self.C.product_config.revision < 2 and self.has_any_ports(CMN_PROP_HN):
+            # If a skiplist was provided (including an empty skiplist), we assume
+            # that the user has full knowledge of isolated devices and we don't need
+            # to be conservative.
+            if (not self.C.part_ge_S3r2()) and self.has_any_ports(CMN_PROP_HNF):
                 pd = self.read64_secure(0x0A70)
                 if pd is None:
+                    # Couldn't do Secure read - have to bail out
                     if self.C.verbose >= 1:
-                        self.C.log("%s has HNs and couldn't determine node isolation status - skip" % self, level=1)
-                    return
-                if pd != 0:
+                        self.C.log("%s has HN-F/HN-S ports and couldn't determine node isolation status - skip" % self, level=1)
+                    if not self.C.isolation_warned:
+                        print("%s: node isolation is enabled, but no skiplist was provided - node discovery will be incomplete" % self.C, file=sys.stderr)
+                        self.C.isolation_warned = True
+                    self.skipped_nodes = SKIP_ALL
+                elif pd != 0:
                     if self.C.verbose >= 1:
-                        self.C.log("%s has HNs and node isolation map is 0x%x - skip" % (self, pd), level=1)
-                    return
+                        self.C.log("%s has HN-F/HN-S ports and node isolation map is 0x%x - skip" % (self, pd), level=1)
+                    self.skipped_nodes = SKIP_ALL
+        # Skip external devices (e.g. RN-Fs) if they might be powered off
         skip_external = self.is_XP() and self.has_any_ports(CMN_PROP_RNF) and self.C.skip_external_if_RNF
-        for i in range(0, self.n_children):
-            child = self.read64(child_off + (i*8))
+        # Even if we're skipping all devices, it's safe to read and display the child pointers
+        for child in self.child_pointers():
             child_offset = BITS(child, 0, cobits)
+            if self.is_XP() and self.skipped_nodes == SKIP_ALL:
+                self.C.log("%s: skipping device at 0x%x because cannot determine isolation status" % (self, child_offset), level=1)
+                continue
             is_external = BIT(child, 31)
             if is_external and skip_external:
                 self.C.log("%s: skipping external device at 0x%x" % (self, child_offset), level=1)
                 continue
             is_isolated = BIT(child, 30) and self.C.part_ge_S3r2()
             if is_isolated:
-                self.C.log("%s: skipping isolated device at 0x%x" % (self, child_offset), level=1)
+                self.C.log("%s: skipping isolated device at 0x%x (bit 30 set)" % (self, child_offset), level=1)
+                self.skipped_nodes = SKIP_SPECIFIC
                 continue
+            if self.C.node_skiplist is not None:
+                is_skipped = (child_offset in self.C.node_skiplist or (self.C.periphbase+child_offset) in self.C.node_skiplist)
+                if is_skipped:
+                    self.C.log("%s: skipping skiplist marked node at 0x%x" % (self, child_offset), level=0)
+                    # we only expect a skiplist match when discovering an XP's devices
+                    # In fact, skiplist validation will check all skiplist entries are under XPs
+                    if not self.is_XP():
+                        self.C.log("Unexpected skiplist match when discovering XPs!", level=0)
+                    self.skipped_nodes = SKIP_SPECIFIC
+                    continue
             child_node = self.C.create_node(child_offset, parent=self, is_external=is_external)
             if child_node is None:
                 # Probably a child of a RN-F port
@@ -366,6 +384,19 @@ class CMNNode:
                 child = self.read64(child_off + (i*8))
                 if child != 0x0:
                     self.C.log("%s: %u children but child pointer #%u is 0x%x" % (self, self.n_children, i, child), level=1)
+
+    def child_pointers(self):
+        self.child_info = self.read64(CMN_any_CHILD_INFO)
+        self.n_children = BITS(self.child_info, 0, 16)
+        # For top-level configuration, max children at least 144 for 12x12. For an XP it's 32.
+        if self.n_children > (32 if self.is_XP() else 256):
+            self.C.log("CMN discovery found too many (%u) node children: %s" % (self.n_children, self), level=1)
+        child_off = BITS(self.child_info, 16, 16)
+        if child_off != 0x100:
+            self.C.log("%s has child offset 0x%x" % (self, child_off), level=1)
+        for i in range(0, self.n_children):
+            child = self.read64(child_off + (i*8))
+            yield child
 
     def type(self):
         """
@@ -432,6 +463,14 @@ class CMNNode:
         Y = BITS(id, 3, cb)
         X = BITS(id, 3+cb, cb)
         return (X, Y)
+
+    @property
+    def x(self):
+        return self.XY()[0]
+
+    @property
+    def y(self):
+        return self.XY()[1]
 
     def coords(self):
         """
@@ -544,6 +583,16 @@ class CMNPort:
         return "%s P%u" % (self.xp, self.rP)
 
 
+# Remember if we skipped some device nodes
+SKIP_NONE     = 0     # nothing skipped - all children found
+SKIP_SPECIFIC = 1     # specific nodes were skipped because flagged as isolated
+SKIP_ALL      = 2     # all devices skipped because of insufficient information
+
+# Indexes for mesh_credited_slices()
+MCS_EAST   = 0
+MCS_NORTH  = 1
+
+
 class CMNNodeXP(CMNNode):
     """
     Crosspoint node. This has special behavior as follows:
@@ -559,12 +608,20 @@ class CMNNodeXP(CMNNode):
         if self.C.multiple_dtms and self.n_device_ports() > 2:
             self.dtms.append(CMNDTM(self, index=1))
         self.port_objects = {}
+        self.skipped_nodes = None
         # At this point, child nodes are not yet discovered.
         # In CMN S3, discovery may be hindered by node isolation.
 
     def DTMs(self):
         for dtm in self.dtms:
             yield dtm
+
+    def mesh_credited_slices(self, i):
+        assert i in [MCS_EAST, MCS_NORTH]
+        pbase = 6 if self.C.part_ge_700() else 2
+        link = self.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(pbase+i))
+        mcs = BITS(link, 0, 4)
+        return mcs
 
     def port_object(self, rP):
         """
@@ -775,8 +832,8 @@ class DTMWatchpoint:
 # DT-specific
 #
 
-N_WATCHPOINTS = 4
-N_FIFO_ENTRIES = 4
+DTM_N_WATCHPOINTS = 4
+DTM_N_FIFO_ENTRIES = 4
 
 class CMNDTM:
     """
@@ -785,9 +842,10 @@ class CMNDTM:
     """
     def __init__(self, xp, index=0):
         self.xp = xp
+        self.C = xp.C
         self.index = index
         self.base = xp.C.DTM_BASE + (index * 0x200)
-        self.C = xp.C
+        self.N_FIFO_WORDS = 4 if self.C.part_ge_S3r1() else 3
         # We maintain a cached copy of the original DTM enable bit so we can fault writes
         # to DTM configuration registers when enabled.
         self._dtm_is_enabled = None
@@ -866,22 +924,29 @@ class CMNDTM:
         """
         Get a FIFO entry, returning it as (byte string, cycle count)
         """
-        assert 0 <= e and e <= N_FIFO_ENTRIES
-        ws = []
-        for w in range(0, 3):
-            ws.append(self.dtm_read64(CMN_DTM_FIFO_ENTRY_off(e, w)))
+        assert 0 <= e and e <= DTM_N_FIFO_ENTRIES
         #print("FIFO: 0x%016x 0x%016x 0x%016x" % (ws[0], ws[1], ws[2]))
         # The cycle count is at a fixed bit offset in register #2, but the
         # offset varies by part number, reflecting the FIFO data size
+        cc_off = 48
         if self.C.product_config.product_id == cmn_base.PART_CMN600:
             dwidth = 144
+            cc_off = 16       # 31:16 in word 2
         elif self.C.product_config.product_id == cmn_base.PART_CMN650:
             dwidth = 160
-        else:
+        elif ((self.C.product_config.product_id != cmn_base.PART_CMN_S3) or
+             self.C.product_config.revision < 2):
             dwidth = 176
-        doff = dwidth - 128
-        cc = BITS(ws[2], doff, 16)
-        b = struct.pack("<QQQ", ws[0], ws[1], ws[2])[:(dwidth//8)]
+        else:
+            dwidth = 196
+        ws = []
+        for w in range(0, self.N_FIFO_WORDS):
+            ws.append(self.dtm_read64(CMN_DTM_FIFO_ENTRY_off(e, w)))
+        cc = BITS(ws[-1], cc_off, 16)
+        if self.N_FIFO_WORDS == 3:
+            b = struct.pack("<QQQ", ws[0], ws[1], ws[2])[:(dwidth//8)]
+        elif self.N_FIFO_WORDS == 4:
+            b = struct.pack("<QQQQ", ws[0], ws[1], ws[2], ws[3])[:(dwidth//8)]
         return (b, cc)
 
     def dtm_wp_details(self, wp):
@@ -892,7 +957,7 @@ class CMNDTM:
         Counterpart of dtm_set_watchpoint()
         Deprecated: prefer dtm_wp_config instead.
         """
-        assert 0 <= wp and wp <= N_WATCHPOINTS
+        assert 0 <= wp and wp <= DTM_N_WATCHPOINTS
         cfg = self.dtm_read64(CMN_DTM_WP0_CONFIG_off+(wp*24))
         VC = BITS(cfg, 1, 2)
         dev = BIT(cfg, 0)
@@ -1206,12 +1271,15 @@ class CMN:
         self.seq = cmn_loc.seq             # instance number within the system (semi-arbitrary numbering)
         self.periphbase = cmn_loc.periphbase
         rootnode_offset = cmn_loc.rootnode_offset
+        self.node_skiplist = cmn_loc.node_skiplist
         self.rootnode_offset = rootnode_offset
         # For CMN-600, root node offset must be within max size of a CMN-600. For later versions it must be 0.
         assert rootnode_offset >= 0 and rootnode_offset < 0x4000000
         self.himem = self.periphbase       # will be updated as we discover nodes
         if verbose >= 1:
             self.log("PERIPHBASE=0x%x, CONFIG=0x%x" % (self.periphbase, self.periphbase+rootnode_offset), level=1)
+        if self.node_skiplist is not None:
+            self.log("Node skiplist provided (%u entries)" % len(self.node_skiplist), level=1)
         # CMNProductConfig object will be created when we read CMN_CFG_PERIPH_01
         # from the root node
         self.product_config = None
@@ -1247,6 +1315,7 @@ class CMN:
         # We can't get chi_version() until we've read unit_info (por_info_global)
         self.product_config = cmn_base.CMNConfig(product_id=product_id)
         del temp_m
+
         # Load the PMU event database, if available
         pmu_event_fn = cmn_events.event_file_name(product_id)
         if os.path.isfile(pmu_event_fn):
@@ -1257,6 +1326,7 @@ class CMN:
                 self.log("loaded %s" % self.pmu_events)
         else:
             self.pmu_events = None
+
         self.rootnode = self.create_node(rootnode_offset)
         self.unit_info = self.rootnode.read64(CMN_any_UNIT_INFO)   # por_info_global
         self.multiple_dtms = BIT(self.unit_info, 63)
@@ -1269,8 +1339,10 @@ class CMN:
         # For S3, we need to check if this CMN has enabled device isolation,
         # which may cause problems when discovering child nodes.
         self.isolation_enabled = BIT(self.unit_info, 44)    # S3 onwards
+        self.isolation_warned = False
         if verbose and self.isolation_enabled:
             self.log("node isolation is enabled - discovery might be affected")
+
 
         # Some registers are only accessible at a higher privilege level.
         # Pre CCA this was Secure. With CCA it's Root, unless LEGACY_TZ_EN.
@@ -1295,6 +1367,9 @@ class CMN:
         # defer device discovery.
         #
         self.defer_device_discovery = defer_discovery or int(os.environ.get("CMN_DEFER", 0))
+        if self.node_skiplist and not self.defer_device_discovery:
+            self.log("Forcing lazy device discovery, to allow skiplist validation", level=0)
+            self.defer_device_discovery = True
         if verbose:
             self.log("device discovery is %s" % ("lazy" if self.defer_device_discovery else "eager"), level=1)
         self.n_XPs_discovered_devices = 0
@@ -1355,6 +1430,47 @@ class CMN:
             sa = self.rootnode.read64(CMN_any_SECURE_ACCESS)
             self.log("Access to Secure registers: 0x%x (%s) (at 0x%x)" % (sa, self.secure_accessible, self.rootnode.node_base_addr+CMN_any_SECURE_ACCESS))
 
+        if self.node_skiplist is not None:
+            self.validate_skiplist()
+
+    def validate_skiplist(self):
+        """
+        If a device node skiplist has been provided, check now that each skiplist entry
+        occurs under some XP. This should be done before device discovery.
+        """
+        self.log("validating skiplist...")
+        skiplist_to_find = {x: None for x in self.node_skiplist}
+        for xp in self.XPs():
+            for child in xp.child_pointers():
+                offs = BITS(child, 0, 30)
+                addr = self.periphbase + offs
+                if addr in skiplist_to_find:
+                    key = addr
+                elif offs in skiplist_to_find:
+                    key = offs
+                else:
+                    continue
+                assert skiplist_to_find[key] is None, "Skip node 0x%x found at %s and %s" % (key, skiplist_to_find[key], xp)
+                skiplist_to_find[key] = xp
+        if self.verbose >= 1:
+            print("Skiplist nodes found:")
+        skiplist_entries_not_found = []
+        for se in self.node_skiplist:
+            xp = skiplist_to_find[se]
+            if xp is None:
+                skiplist_entries_not_found.append(se)
+            elif self.verbose >= 1:
+                print("  0x%09x  %s" % (se, xp))
+        if skiplist_entries_not_found:
+            print("", file=sys.stderr)
+            print("%s: some skiplist entries were not found:" % self, file=sys.stderr)
+            for se in self.node_skiplist:
+                if skiplist_to_find[se] is None:
+                    print("  0x%x" % (se), file=sys.stderr)
+            print("Correct skiplist and re-run discovery.", file=sys.stderr)
+            sys.exit(1)
+        self.log("skiplist validated", level=1)
+
     def contains_addr(self, addr):
         assert not self.creating
         return self.periphbase <= addr and addr < self.himem
@@ -1370,6 +1486,11 @@ class CMN:
     def part_ge_S3(self):
         # everything from S3 onwards
         return self.product_config.product_id == cmn_base.PART_CMN_S3
+
+    def part_ge_S3r1(self):
+        if self.product_config.product_id == cmn_base.PART_CMN_S3:
+            return self.product_config.revision >= 2
+        return self.part_ge_S3()
 
     def part_ge_S3r2(self):
         # everything from S3 R2 onwards
@@ -1466,6 +1587,10 @@ class CMN:
         """
         assert self.creating or self.defer_device_discovery
         node_base_addr = self.periphbase + node_offset
+        if self.node_skiplist is not None:
+            # Previous checks in discover_children should ensure we never reach here,
+            # but double-check, as accessing a skipped node will likely crash the system.
+            assert node_base_addr not in self.node_skiplist and node_offset not in self.node_skiplist, "%s: trying to map skipped node 0x%x" % (self, node_base_addr)
         m = self.D.map(node_base_addr, self.node_size())
         node_info = m.read64(CMN_any_NODE_INFO)
         node_type = BITS(node_info, 0, 16)
@@ -1558,10 +1683,12 @@ class CMN:
         (port, dev) = xp.id_port_device(id)
         return (xp, port, dev)
 
-    def nodes(self):
+    def nodes(self, props=None):
         # DEPRECATED - not deferred-discovery friendly
         self.discover_all_devices()
-        return sorted(self.offset_node.values())
+        for node in sorted(self.offset_node.values()):
+            if props is None or node.has_properties(props):
+                yield node
 
     def nodes_of_type(self, type):
         # DEPRECATED
@@ -1605,8 +1732,12 @@ class CMN:
             yield d
 
     def DTC0(self):
+        """
+        Return the "main" DTC, the one that enables debug/trace across the whole mesh.
+        Every mesh has one. The only way this will return None is if the device node was isolated.
+        """
         self.discover_all_devices(CMN_PROP_HND)
-        return self.debug_nodes[0]
+        return self.debug_nodes[0] if self.debug_nodes else None
 
     def dtc_enable(self, cc=None, pmu=None, clock_disable_gating=None):
         for d in self.DTCs():

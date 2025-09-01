@@ -123,7 +123,7 @@ class Watchpoint:
     """
     def __init__(self, dtm, wp_num):
         self.dtm = dtm
-        self.trace_config = CMNTraceConfig(dtm.C.product_config.product_id, dtm.C.product_config.mpam_enabled)
+        self.trace_config = CMNTraceConfig(dtm.C.product_config.product_id, has_MPAM=dtm.C.product_config.mpam_enabled, cmn_product_revision=dtm.C.product_config.revision)
         self.wp = wp_num
         det = dtm.dtm_wp_details(wp_num)
         (self.dev, self.vc, self.ty, self.cce) = (det[1], det[3], det[4], det[5])

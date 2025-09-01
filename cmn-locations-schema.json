@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "title": "CMN locations",
+    "type": "object",
+    "required": ["elements"],
+    "additionalProperties": false,
+    "properties": {
+        "elements": {
+            "description": "CMN instances",
+            "type": "array",
+            "items": {
+                "title": "CMN",
+                "type": "object",
+                "required": ["base"],
+                "additionalProperties": false,
+                "properties": {
+                    "product": {
+                        "description": "Product name e.g. CMN",
+                        "type": "string"
+                    },
+                    "base": {
+                        "description": "CMN base address as hex string",
+                        "type": "string"
+                    },
+                    "rootnode_offset": {
+                        "description": "CMN root node offset as hex string",
+                        "type": "string"
+                    },
+                    "skiplist": {
+                        "description": "Node skip list",
+                        "type": "array"
+                    }
+                }
+            }
+        }
+    }
+}

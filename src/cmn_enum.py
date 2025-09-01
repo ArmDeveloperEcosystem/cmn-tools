@@ -27,18 +27,20 @@ CMN_PROP_none  = 0
 CMN_PROP_CFG   = 0x1000000   # Configuration node
 CMN_PROP_XP    = 0x2000000   # Crosspoint
 CMN_PROP_DEV   = 0x4000000   # Device node
+CMN_PROP_CHI   = (0x8000000 | CMN_PROP_DEV)   # CHI device node
 
-CMN_PROP_RN    = (CMN_PROP_DEV | 0x0001)     # Requester e.g. RN-F, RN-I. Does not include HN-F.
-CMN_PROP_HN    = (CMN_PROP_DEV | 0x0002)     # Home node e.g. HN-F, HN-I
-CMN_PROP_SN    = (CMN_PROP_DEV | 0x0004)     # Memory controller
+CMN_PROP_RN    = (CMN_PROP_CHI | 0x0001)     # Requester e.g. RN-F, RN-I. Does not include HN-F.
+CMN_PROP_HN    = (CMN_PROP_CHI | 0x0002)     # Home node e.g. HN-F, HN-I
+CMN_PROP_SN    = (CMN_PROP_CHI | 0x0004)     # Memory controller
 #CMN_PROP_D     = 0x0010     # non-coherent
-CMN_PROP_I     = (CMN_PROP_DEV | 0x0020)     # I/O coherent but not fully coherent
-CMN_PROP_F     = (CMN_PROP_DEV | 0x0040)     # Fully coherent
-CMN_PROP_CCG   = (CMN_PROP_DEV | 0x0100)     # Chip-to-chip gateway
+CMN_PROP_I     = (CMN_PROP_CHI | 0x0020)     # I/O coherent but not fully coherent
+CMN_PROP_F     = (CMN_PROP_CHI | 0x0040)     # Fully coherent
+CMN_PROP_CCG   = (CMN_PROP_CHI | 0x0100)     # Chip-to-chip gateway
 CMN_PROP_MPAM  = (CMN_PROP_DEV | 0x0200)     # MPAM configuration/status node
-CMN_PROP_T     = (CMN_PROP_DEV | 0x0400)     # Debug/trace features
-CMN_PROP_SBSX  = (CMN_PROP_DEV | 0x0800)     # AXI/ACE-Lite bridge
-CMN_PROP_DN    = (CMN_PROP_DEV | 0x1000)     # DVM node
+CMN_PROP_T     = (CMN_PROP_CHI | 0x0400)     # Debug/trace features
+CMN_PROP_SBSX  = (CMN_PROP_CHI | 0x0800)     # AXI/ACE-Lite bridge
+CMN_PROP_DN    = (CMN_PROP_CHI | 0x1000)     # DVM node
+CMN_PROP_SAM   = (CMN_PROP_DEV | 0x2000)     # System Address Map
 
 # Combination properties
 CMN_PROP_RNF   = (CMN_PROP_RN | CMN_PROP_F)   # Fully coherent requester
@@ -88,7 +90,7 @@ CMN_NODE_all_HN = [CMN_NODE_HNI, CMN_NODE_HNF, CMN_NODE_HNP, CMN_NODE_HNS]
 
 
 cmn_node_properties = {
-    CMN_NODE_DN          : CMN_PROP_DEV,    # TBD
+    CMN_NODE_DN          : CMN_PROP_CHI,    # TBD
     CMN_NODE_CFG         : CMN_PROP_CFG,
     CMN_NODE_DT          : CMN_PROP_DEV,    # TBD
     CMN_NODE_HNI         : CMN_PROP_HNI,
@@ -99,16 +101,16 @@ cmn_node_properties = {
     CMN_NODE_MPAM_NS     : CMN_PROP_MPAM,
     CMN_NODE_RNI         : CMN_PROP_RNI,
     CMN_NODE_RND         : CMN_PROP_RND,
-    CMN_NODE_RNSAM       : CMN_PROP_DEV,    # TBD
+    CMN_NODE_RNSAM       : CMN_PROP_SAM,
     CMN_NODE_MTSX        : CMN_PROP_DEV,    # TBD
     CMN_NODE_HNP         : CMN_PROP_HNI,
     CMN_NODE_CXRA        : (CMN_PROP_RN | CMN_PROP_CCG),
     CMN_NODE_CXHA        : (CMN_PROP_HN | CMN_PROP_CCG),
-    CMN_NODE_CXLA        : CMN_PROP_DEV,    # TBD
+    CMN_NODE_CXLA        : CMN_PROP_DEV,    # CHI access via RA/HA
     CMN_NODE_CCG_RA      : (CMN_PROP_RN | CMN_PROP_CCG),
     CMN_NODE_CCG_HA      : (CMN_PROP_HN | CMN_PROP_CCG),
-    CMN_NODE_CCLA        : CMN_PROP_DEV,    # TBD
-    CMN_NODE_CCLA_RNI    : CMN_PROP_DEV,    # TBD
+    CMN_NODE_CCLA        : CMN_PROP_DEV,    # CHI access via RA/HA
+    CMN_NODE_CCLA_RNI    : CMN_PROP_CHI,
     CMN_NODE_HNS         : CMN_PROP_HNF,
     CMN_NODE_HNS_MPAM_S  : CMN_PROP_MPAM,
     CMN_NODE_HNS_MPAM_NS : CMN_PROP_MPAM,

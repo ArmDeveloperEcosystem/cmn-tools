@@ -33,8 +33,11 @@ def system_description(verbose=1, opts=None, frequency=True):
     scanned from the DMI table.
     """
     S = cmn_base.System()
-    S.CMNs = [cmn_devmem.CMN(loc, verbose=verbose) for loc in cmn_devmem_find.cmn_locators(opts=opts)]
+    S.CMNs = [cmn_devmem.CMN(loc, verbose=verbose, defer_discovery=opts.cmn_defer) for loc in cmn_devmem_find.cmn_locators(opts=opts)]
     S.timestamp = time.time()
+    # ensure all devices are discovered before we create the JSON
+    for C in S.CMNs:
+        C.discover_all_devices()
     if system_is_remote(S):
         # If accessing remotely, don't try to add local information
         print("Target is being accessed remotely, some information not discoverable",
@@ -50,7 +53,7 @@ def system_description(verbose=1, opts=None, frequency=True):
     try:
         D = dmi.DMI()
         dsys = D.system()
-        # System identification strngs aren't used consistently
+        # System identification strings aren't used consistently
         # (e.g. product name vs. product version), so concatenate various fields
         # or: sys_vendor + product_name + product_version
         S.system_type = "%s %s %s" % (dsys.mfr, dsys.product, dsys.version)

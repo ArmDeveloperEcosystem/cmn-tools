@@ -59,6 +59,10 @@
                         "description": "Current measured CMN frequency",
                         "type": "number"
                     },
+                    "skiplist": {
+                        "description": "Node skip list",
+                        "type": "array"
+                    },
                     "config": {
                         "description": "Product-specific configuration",
                         "type": "object",
@@ -67,6 +71,10 @@
                         "properties": {
                             "base": {
                                 "description": "CMN base address as hex string",
+                                "type": "string"
+                            },
+                            "rootnode_offset": {
+                                "description": "CMN root node offset as hex string",
                                 "type": "string"
                             },
                             "chi_version": {
@@ -119,6 +127,18 @@
                                         },
                                         "dtc": {
                                             "description": "DTC domain",
+                                            "type": "integer"
+                                        },
+                                        "skipped": {
+                                            "description": "Node skip indicator",
+                                            "type": "integer"
+                                        },
+                                        "mcs_east": {
+                                            "description": "Mesh credited slices (east)",
+                                            "type": "integer"
+                                        },
+                                        "mcs_north": {
+                                            "description": "Mesh credited slices (north)",
                                             "type": "integer"
                                         },
                                         "ports": {

@@ -19,12 +19,14 @@ from cmn_enum import *
 o_verbose = 0
 
 
-class CMNSelectBad(Exception):
-    def __init__(self, reason):
+# Make this a ValueError so argument parsing handles it nicely
+class CMNSelectBad(ValueError):
+    def __init__(self, expr, reason):
+        self.expr = expr
         self.reason = reason
 
     def __str__(self):
-        return self.reason
+        return "%s: %s" % (self.expr, self.reason)
 
 
 class CMNSelectSingle:
@@ -36,6 +38,8 @@ class CMNSelectSingle:
         self.node_type = None
         self.node_x = None
         self.node_y = None
+        self.node_port = None
+        self.node_device = None
         self.logical_id = None
         self.match_str = s
         if s:
@@ -51,10 +55,16 @@ class CMNSelectSingle:
             self.update_node_type(s[:hix])
         elif '(' in s and s.endswith(")") and ',' in s:
             # mesh coordinates
+            def coord(s):
+                return int(s) if s not in ["", "_"] else None
             bix = s.index('(')
-            (x, y) = s[bix+1:-1].split(',')
-            self.node_x = int(x) if x != "" else None
-            self.node_y = int(y) if y != "" else None
+            cos = s[bix+1:-1].split(',')
+            if len(cos) not in [2, 3, 4]:
+                raise CMNSelectBad(s, "expected coordinates (x, y, [port], [device])")
+            self.node_x = coord(cos[0])
+            self.node_y = coord(cos[1])
+            self.node_port = coord(cos[2]) if len(cos) >= 3 else None
+            self.node_device = coord(cos[3]) if len(cos) >= 4 else None
             if bix > 0:
                 self.update_node_type(s[:bix])
         else:
@@ -72,7 +82,7 @@ class CMNSelectSingle:
                     self.node_type = nv
                     break
         if self.node_props is None and self.node_type is None:
-            raise CMNSelectBad("bad node selector: %s" % nts)
+            raise CMNSelectBad(nts, "bad node selector")
 
     def __str__(self):
         s = self.match_str if self.match_str else ""
@@ -87,6 +97,10 @@ class CMNSelectSingle:
             ms.append("x=%u" % self.node_x)
         if self.node_y is not None:
             ms.append("y=%u" % self.node_y)
+        if self.node_port is not None:
+            ms.append("port=%u" % self.node_port)
+        if self.node_device is not None:
+            ms.append("device=%u" % self.node_device)
         s += "{%s}" % ','.join(ms)
         return s
 
@@ -94,6 +108,10 @@ class CMNSelectSingle:
         if self.node_x is not None and (node.is_rootnode() or self.node_x != node.XY()[0]):
             return False
         if self.node_y is not None and (node.is_rootnode() or self.node_y != node.XY()[1]):
+            return False
+        if self.node_port is not None and (node.is_rootnode() or node.is_XP() or self.node_port != node.coords()[2]):
+            return False
+        if self.node_device is not None and (node.is_rootnode() or node.is_XP() or self.node_device != node.coords()[3]):
             return False
         if self.node_type is not None and self.node_type != node.type():
             return False
@@ -177,7 +195,7 @@ class CMNSelect:
         return any([m.can_match_devices_at_xp(node) for m in self.matchers])
 
     def __str__(self):
-        return ", ".join([str(m) for m in self.matchers])
+        return ", ".join([str(m) for m in self.matchers]) if self.matchers else "{}"
 
 
 def cmn_select_merge(mlist):
@@ -196,11 +214,12 @@ def cmn_select_merge(mlist):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="CMN node match test")
-    parser.add_argument("--select", type=CMNSelect, action="append")
-    parser.add_argument("exprs", type=str, nargs="*")
+    parser.add_argument("--select", type=CMNSelect, action="append", help="selection expressions")
+    parser.add_argument("exprs", type=str, nargs="*", help="selection expressions")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
     ms = [CMNSelect(s) for s in opts.exprs]
-    print(cmn_select_merge(ms))
-    print(cmn_select_merge(opts.select))
+    print("Selection: %s" % (cmn_select_merge(ms)))
+    if opts.select:
+        print(cmn_select_merge(opts.select))

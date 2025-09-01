@@ -65,9 +65,11 @@ class CMNDiagram(textdiagram.TextDiagram):
         return (cx, cy)
 
     def X(self, ox):
+        assert ox >= 0 and ox < self.C.dimX, "bad X %u outside 0..%u" % (ox, self.C.dimX-1)
         return ox * self.xw + 6
 
     def Y(self, oy):
+        assert oy >= 0 and oy < self.C.dimY, "bad Y %u outside 0..%u" % (oy, self.C.dimY-1)
         return oy * self.yw + 4
 
     def xp_label_color(self, xp):
@@ -80,7 +82,7 @@ class CMNDiagram(textdiagram.TextDiagram):
             (X, Y, P, D) = xp.coords()
             assert P == 0 and D == 0
             xp_label += "(%u,%u)" % (X,Y)
-        if len(xp.children) < xp.n_children:
+        if len(xp.children) < xp.n_children or xp.skipped_nodes:
             # We didn't discover all children
             xp_label += "?"
             xp_color = "red"
@@ -127,14 +129,24 @@ class CMNDiagram(textdiagram.TextDiagram):
         return subnames
 
     def update(self):
-        # draw vertical lines
-        for x in range(0,self.C.dimX):
+        # draw vertical lines northwards
+        for x in range(0, self.C.dimX):
             for y in range(self.Y(0), self.Y(self.C.dimY-1)):
                 self.at(self.X(x), y, '|')
-        # draw horizontal lines
-        for y in range(0,self.C.dimY):
+        # draw horizontal lines eastwards
+        for y in range(0, self.C.dimY):
             for x in range(self.X(0), self.X(self.C.dimX-1)):
                 self.at(x, self.Y(y), '-')
+        # insert mesh credited slices
+        for xp in self.C.XPs():
+            if xp.x < self.C.dimX - 1:
+                mcs = xp.mesh_credited_slices(0)
+                if mcs:
+                    self.at((self.X(xp.x) + self.X(xp.x+1)) // 2, self.Y(xp.y), str(mcs))
+            if xp.y < self.C.dimY - 1:
+                mcs = xp.mesh_credited_slices(1)
+                if mcs:
+                    self.at(self.X(xp.x), (self.Y(xp.y) + self.Y(xp.y+1)) // 2, str(mcs))
         for xp in self.C.XPs():
             (cx, cy) = self.XP_xy(xp)
             (xp_label, xp_color) = self.xp_label_color(xp)
