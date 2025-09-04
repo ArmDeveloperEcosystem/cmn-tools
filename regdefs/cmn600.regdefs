@@ -1,0 +1,5207 @@
+GROUP por_sbsx_registers
+R 0x0 64 RO - por_sbsx_node_info
+RESET 0x7 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x80 64 RO - por_sbsx_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x900 64 RO - por_sbsx_unit_info
+RESET 0x84011 0x1fff11
+F 0 1 axdata_width
+PAR SBSX_AXDATA256_EN_PARAM
+F 4 1 axdata_poison_en
+PAR SBSX_AXDATAPOISON_EN_PARAM
+F 8 8 num_outstanding_reads
+PAR SBSX_NUM_DART_PARAM
+F 16 5 num_wr_data_buf
+PAR SBSX_NUM_WR_BUF_PARAM
+R 0xa08 64 - S por_sbsx_aux_ctl
+RESET 0x0 0x1
+F 0 1 clkgate_disable
+R 0x2000 64 - - por_sbsx_pmu_event_sel
+RESET 0x0 0x3f3f3f3f
+F 0 6 pmu_event0_id
+F 8 6 pmu_event1_id
+F 16 6 pmu_event2_id
+F 24 6 pmu_event3_id
+R 0x3000 64 RO S por_sbsx_errfr
+RESET 0xa1 0x7cff
+F 0 2 ED
+F 2 2 DE
+F 4 2 UI
+F 6 2 FI
+F 10 2 CFI
+F 12 3 CEC
+R 0x3008 64 - S por_sbsx_errctlr
+RESET 0x0 0x10f
+F 0 1 ED
+F 1 1 DE
+F 2 1 UI
+F 3 1 FI
+F 8 1 CFI
+R 0x3010 64 - S por_sbsx_errstatus
+RESET 0x0 0xed800000
+F 31 1 AV
+F 30 1 V
+F 29 1 UE
+F 27 1 OF
+F 26 1 MV
+F 24 1 CE
+F 23 1 DE
+R 0x3018 64 - S por_sbsx_erraddr
+RESET 0x0 0x8000ffffffffffff
+F 0 48 ADDR
+F 63 1 NS
+R 0x3020 64 - S por_sbsx_errmisc
+RESET 0x0 0x7f017ff0
+F 4 11 SRCID
+F 16 1 OPTYPE
+F 24 4 MEMATTR
+F 28 3 SIZE
+R 0x3100 64 RO - por_sbsx_errfr_NS
+RESET 0xa1 0x7cff
+F 0 2 ED
+F 2 2 DE
+F 4 2 UI
+F 6 2 FI
+F 10 2 CFI
+F 12 3 CEC
+R 0x3108 64 - - por_sbsx_errctlr_NS
+RESET 0x0 0x10f
+F 0 1 ED
+F 1 1 DE
+F 2 1 UI
+F 3 1 FI
+F 8 1 CFI
+R 0x3110 64 - - por_sbsx_errstatus_NS
+RESET 0x0 0xed800000
+F 31 1 AV
+F 30 1 V
+F 29 1 UE
+F 27 1 OF
+F 26 1 MV
+F 24 1 CE
+F 23 1 DE
+R 0x3118 64 - - por_sbsx_erraddr_NS
+RESET 0x0 0x8000ffffffffffff
+F 0 48 ADDR
+F 63 1 NS
+R 0x3120 64 - - por_sbsx_errmisc_NS
+RESET 0x0 0x7f017ff0
+F 4 11 SRCID
+F 16 1 OPTYPE
+F 24 4 MEMATTR
+F 28 3 SIZE
+ENDGROUP
+GROUP por_dt_registers
+R 0x0 64 RO - por_dt_node_info
+RESET 0x3 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x80 64 RO - por_dt_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x980 64 - S por_dt_secure_access
+RESET 0x0 0x7
+F 0 1 secure_debug_disable
+F 1 1 dt_disable
+F 2 1 pm_disable
+R 0xa00 64 - - por_dt_dtc_ctl
+RESET 0x0 0x7ff
+F 0 1 dt_en
+F 1 1 dbgtrigger_en
+F 2 1 atbtrigger_en
+F 3 1 dt_wait_for_trigger
+F 4 6 cross_trigger_count
+F 10 1 cg_disable
+R 0xa10 64 RO - por_dt_trigger_status
+RESET 0x0 0xf7ff01
+F 0 1 trigger_status
+F 8 11 trigger_nodeid
+F 20 4 trigger_wp
+R 0xa20 64 WO - por_dt_trigger_status_clr
+RESET 0x0 0x1
+F 0 1 trigger_status_clr
+R 0xa30 64 - - por_dt_trace_control
+RESET 0x0 0x1ff
+F 0 5 async_period
+F 5 3 timestamp_period
+F 8 1 cc_enable
+R 0xa48 64 - - por_dt_traceid
+RESET 0x0 0x7f
+F 0 7 traceid
+R 0x2000 64 - - por_dt_pmevcntAB
+RESET 0x0 0xffffffffffffffff
+F 0 32 pmevcntA
+F 32 32 pmevcntB
+R 0x2010 64 - - por_dt_pmevcntCD
+RESET 0x0 0xffffffffffffffff
+F 0 32 pmevcntC
+F 32 32 pmevcntD
+R 0x2020 64 - - por_dt_pmevcntEF
+RESET 0x0 0xffffffffffffffff
+F 0 32 pmevcntE
+F 32 32 pmevcntF
+R 0x2030 64 - - por_dt_pmevcntGH
+RESET 0x0 0xffffffffffffffff
+F 0 32 pmevcntG
+F 32 32 pmevcntH
+R 0x2040 64 - - por_dt_pmccntr
+RESET 0x0 0xffffffffff
+F 0 40 pmccntr
+R 0x2050 64 - - por_dt_pmevcntsrAB
+RESET 0x0 0xffffffffffffffff
+F 0 32 pmevcntsrA
+F 32 32 pmevcntsrB
+R 0x2060 64 - - por_dt_pmevcntsrCD
+RESET 0x0 0xffffffffffffffff
+F 0 32 pmevcntsrC
+F 32 32 pmevcntsrD
+R 0x2070 64 - - por_dt_pmevcntsrEF
+RESET 0x0 0xffffffffffffffff
+F 0 32 pmevcntsrE
+F 32 32 pmevcntsrF
+R 0x2080 64 - - por_dt_pmevcntsrGH
+RESET 0x0 0xffffffffffffffff
+F 0 32 pmevcntsrG
+F 32 32 pmevcntsrH
+R 0x2090 64 - - por_dt_pmccntrsr
+RESET 0x0 0xffffffffff
+F 0 40 pmccntrsr
+R 0x2100 64 - - por_dt_pmcr
+RESET 0x0 0x7f
+F 0 1 pmu_en
+F 1 4 cntcfg
+F 5 1 cntr_rst
+F 6 1 ovfl_intr_en
+R 0x2118 64 RO - por_dt_pmovsr
+RESET 0x0 0x1ff
+F 0 9 pmovsr
+R 0x2120 64 WO - por_dt_pmovsr_clr
+RESET 0x0 0x1ff
+F 0 9 pmovsr_clr
+R 0x2128 64 RO - por_dt_pmssr
+RESET 0x0 0x181ff
+F 0 9 ss_status
+F 15 1 ss_cfg_active
+F 16 1 ss_pin_active
+R 0x2130 64 WO - por_dt_pmsrr
+RESET 0x0 0x1
+F 0 1 ss_req
+R 0x2da0 64 - - por_dt_claim
+RESET 0xffffffff 0xffffffffffffffff
+F 0 32 set
+F 32 32 clr
+R 0x2da8 64 RO - por_dt_devaff
+RESET 0x0 0xffffffffffffffff
+F 0 64 devaff
+R 0x2db0 64 RO - por_dt_lsr
+RESET 0x0 0x700000000
+F 32 3 lsrvalue
+R 0x2db8 64 RO - por_dt_authstatus_devarch
+RESET 0x10000000000088 0xffffffff000000cc
+F 2 2 nsnid
+F 6 2 snid
+F 32 15 archid
+F 47 5 revision
+F 52 1 present
+F 53 11 architect
+R 0x2dc0 64 RO - por_dt_devid
+RESET 0x0 0xffffffffffffffff
+F 0 64 dt_devid
+R 0x2dc8 64 RO - por_dt_devtype
+RESET 0x4300000000 0xff00000000
+F 32 4 major
+F 36 4 sub
+R 0x2dd0 64 RO - por_dt_pidr45
+RESET 0x4 0xff000000ff
+F 0 8 pidr4
+F 32 8 pidr5
+R 0x2dd8 64 RO - por_dt_pidr67
+RESET 0x0 0xff000000ff
+F 0 8 pidr6
+F 32 8 pidr7
+R 0x2de0 64 RO - por_dt_pidr01
+RESET 0xb400000034 0xff000000ff
+F 0 8 pidr0
+F 32 8 pidr1
+R 0x2de8 64 RO - por_dt_pidr23
+RESET 0x7 0xff000000ff
+F 0 8 pidr2
+F 32 8 pidr3
+R 0x2df0 64 RO - por_dt_cidr01
+RESET 0x9f0000000d 0xff000000ff
+F 0 8 cidr0
+F 32 8 cidr1
+R 0x2df8 64 RO - por_dt_cidr23
+RESET 0xb100000005 0xff000000ff
+F 0 8 cidr2
+F 32 8 cidr3
+ENDGROUP
+GROUP por_cxla_registers
+R 0x0 64 RO - por_cxla_node_info
+RESET 0x102 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x80 64 RO - por_cxla_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x900 64 RO - por_cxla_unit_info
+RESET 0x82209 0x3f771f
+F 0 1 db_present
+PAR CXLA_DB_PRESENT_PARAM
+F 1 4 db_lcrd_count
+PAR CXLA_CXDB_LCRD_MAX_COUNT_PARAM
+F 8 3 tlp_count_tx
+PAR CXLA_TLP_COUNT_TX_PARAM
+F 12 3 tlp_count_rx
+PAR CXLA_TLP_COUNT_RX_PARAM
+F 16 6 db_fifo_depth
+PAR CXLA_DB_FIFO_DEPTH_PARAM
+R 0x980 64 - S por_cxla_secure_register_groups_override
+RESET 0x0 0x5
+F 0 1 cfg_ctl
+F 2 1 linkid_ctl
+R 0xa08 64 - S por_cxla_aux_ctl
+RESET 0xa20000000180 0xf77777777781
+F 0 1 cg_disable
+F 7 1 tlp_timeout_en
+F 8 3 idle_timeout_th
+F 12 3 rspdat_timeout_th
+F 16 3 reqrsp_timeout_th
+F 20 3 snpdat_timeout_th
+F 24 3 snprsp_timeout_th
+F 28 3 reqdat_timeout_th
+F 32 3 snp_timeout_th
+F 36 3 misc_timeout_th
+F 40 3 crdgnt_crd_count_th
+F 44 3 crdgnt_cycle_count_th
+F 47 1 smp_mode_en
+PAR CXG_SMP_MODE_EN_PARAM
+R 0xc00 64 RO S por_cxla_ccix_prop_capabilities
+RESET 0x100 0x7ff
+F 0 1 nocompack
+PAR CXLA_CCIX_NOCOMPACK_PARAM
+F 1 1 partialcachestates
+PAR CXLA_CCIX_PTLCACHEST_PARAM
+F 2 1 cachelinesize
+PAR CXLA_CCIX_CACHELINESIZE_PARAM
+F 3 3 addrwidth
+PAR CXLA_CCIX_ADDRWIDTH_PARAM
+F 6 1 pktheader
+PAR CXLA_CCIX_PKTHDR_PARAM
+F 7 3 maxpacketsize
+PAR CXLA_CCIX_MAXPKTSIZE_PARAM
+F 10 1 nomessagepack
+PAR CXLA_CCIX_NOMSGPACK_PARAM
+R 0xc08 64 - S por_cxla_ccix_prop_configured
+RESET 0x400 0x7ff
+F 0 1 nocompack
+F 1 1 partialcachestates
+F 2 1 cachelinesize
+F 3 3 addrwidth
+F 6 1 pktheader
+F 7 3 maxpacketsize
+F 10 1 nomessagepack
+R 0xc10 64 RO S por_cxla_tx_cxs_attr_capabilities
+RESET 0x30 0x3ff
+F 0 2 txcxsdataflitwidth
+PAR CXLA_CXS_DATA_WIDTH_TX_PARAM
+F 2 2 txcxsmaxpktperflit
+PAR CXLA_CXS_MAX_PKT_PER_FLIT_TX_PARAM
+F 4 1 txcxscontinuousdata
+PAR CXLA_CXS_CONTINUOUS_DATA_TX_PARAM
+F 5 1 txcxserrorfullpkt
+PAR CXLA_CXS_ERROR_FULL_PKT_TX_PARAM
+F 6 2 txcxsdatacheck
+PAR CXLA_CXS_DATACHECK_TX_PARAM
+F 8 2 txcxscontrolreplication
+PAR CXLA_CXS_REPLICATION_TX_PARAM
+R 0xc18 64 RO S por_cxla_rx_cxs_attr_capabilities
+RESET 0x20 0x3ff
+F 0 2 rxcxsdataflitwidth
+PAR CXLA_CXS_DATA_WIDTH_RX_PARAM
+F 2 2 rxcxsmaxpktperflit
+PAR CXLA_CXS_MAX_PKT_PER_FLIT_RX_PARAM
+F 4 1 rxcxscontinuousdata
+PAR CXLA_CXS_CONTINUOUS_DATA_RX_PARAM
+F 5 1 rxcxserrorfullpkt
+PAR CXLA_CXS_ERROR_FULL_PKT_RX_PARAM
+F 6 2 rxcxsdatacheck
+PAR CXLA_CXS_DATACHECK_RX_PARAM
+F 8 2 rxcxscontrolreplication
+PAR CXLA_CXS_REPLICATION_RX_PARAM
+R 0xc30 64 - S por_cxla_agentid_to_linkid_reg0
+RESET 0x0 0x303030303030303
+F 0 2 agent0_linkid
+F 8 2 agent1_linkid
+F 16 2 agent2_linkid
+F 24 2 agent3_linkid
+F 32 2 agent4_linkid
+F 40 2 agent5_linkid
+F 48 2 agent6_linkid
+F 56 2 agent7_linkid
+R 0xc38 64 - S por_cxla_agentid_to_linkid_reg1
+RESET 0x0 0x303030303030303
+F 0 2 agent8_linkid
+F 8 2 agent9_linkid
+F 16 2 agent10_linkid
+F 24 2 agent11_linkid
+F 32 2 agent12_linkid
+F 40 2 agent13_linkid
+F 48 2 agent14_linkid
+F 56 2 agent15_linkid
+R 0xc40 64 - S por_cxla_agentid_to_linkid_reg2
+RESET 0x0 0x303030303030303
+F 0 2 agent16_linkid
+F 8 2 agent17_linkid
+F 16 2 agent18_linkid
+F 24 2 agent19_linkid
+F 32 2 agent20_linkid
+F 40 2 agent21_linkid
+F 48 2 agent22_linkid
+F 56 2 agent23_linkid
+R 0xc48 64 - S por_cxla_agentid_to_linkid_reg3
+RESET 0x0 0x303030303030303
+F 0 2 agent24_linkid
+F 8 2 agent25_linkid
+F 16 2 agent26_linkid
+F 24 2 agent27_linkid
+F 32 2 agent28_linkid
+F 40 2 agent29_linkid
+F 48 2 agent30_linkid
+F 56 2 agent31_linkid
+R 0xc50 64 - S por_cxla_agentid_to_linkid_reg4
+RESET 0x0 0x303030303030303
+F 0 2 agent32_linkid
+F 8 2 agent33_linkid
+F 16 2 agent34_linkid
+F 24 2 agent35_linkid
+F 32 2 agent36_linkid
+F 40 2 agent37_linkid
+F 48 2 agent38_linkid
+F 56 2 agent39_linkid
+R 0xc58 64 - S por_cxla_agentid_to_linkid_reg5
+RESET 0x0 0x303030303030303
+F 0 2 agent40_linkid
+F 8 2 agent41_linkid
+F 16 2 agent42_linkid
+F 24 2 agent43_linkid
+F 32 2 agent44_linkid
+F 40 2 agent45_linkid
+F 48 2 agent46_linkid
+F 56 2 agent47_linkid
+R 0xc60 64 - S por_cxla_agentid_to_linkid_reg6
+RESET 0x0 0x303030303030303
+F 0 2 agent48_linkid
+F 8 2 agent49_linkid
+F 16 2 agent50_linkid
+F 24 2 agent51_linkid
+F 32 2 agent52_linkid
+F 40 2 agent53_linkid
+F 48 2 agent54_linkid
+F 56 2 agent55_linkid
+R 0xc68 64 - S por_cxla_agentid_to_linkid_reg7
+RESET 0x0 0x303030303030303
+F 0 2 agent56_linkid
+F 8 2 agent57_linkid
+F 16 2 agent58_linkid
+F 24 2 agent59_linkid
+F 32 2 agent60_linkid
+F 40 2 agent61_linkid
+F 48 2 agent62_linkid
+F 56 2 agent63_linkid
+R 0xc70 64 - S por_cxla_agentid_to_linkid_val
+RESET 0x0 0xffffffffffffffff
+F 0 64 valid
+R 0xc78 64 - S por_cxla_linkid_to_pcie_bus_num
+RESET 0x0 0xffffffffffff
+F 0 8 link0_pcie_bus_num
+F 8 3 link0_pcie_func_num
+F 11 5 link0_pcie_dev_num
+F 16 8 link1_pcie_bus_num
+F 24 3 link1_pcie_func_num
+F 27 5 link1_pcie_dev_num
+F 32 8 link2_pcie_bus_num
+F 40 3 link2_pcie_func_num
+F 43 5 link2_pcie_dev_num
+R 0xc80 64 - S por_cxla_tlp_hdr_fields
+RESET 0x7f000072 0xffffff07ffff
+F 0 5 pkt_type
+F 5 3 fmt
+F 8 4 attr
+F 12 3 tc
+F 15 2 at
+F 17 1 ep
+F 18 1 td
+F 24 8 messagecode
+F 32 16 vendorid
+R 0xd00 64 - - por_cxla_permsg_pyld_0_63
+RESET 0x0 0xffffffffffffffff
+F 0 64 per_msg_pyld_0_63
+R 0xd08 64 - - por_cxla_permsg_pyld_64_127
+RESET 0x0 0xffffffffffffffff
+F 0 64 per_msg_pyld_64_127
+R 0xd10 64 - - por_cxla_permsg_pyld_128_191
+RESET 0x0 0xffffffffffffffff
+F 0 64 per_msg_pyld_128_191
+R 0xd18 64 - - por_cxla_permsg_pyld_192_255
+RESET 0x0 0xffffffffffffffff
+F 0 64 per_msg_pyld_192_255
+R 0xd20 64 - - por_cxla_permsg_ctl
+RESET 0x0 0x3f03
+F 0 1 per_msg_vld_set
+F 1 1 per_msg_srcid_ovrd
+F 8 6 per_msg_srcid
+R 0xd28 64 - - por_cxla_err_agent_id
+RESET 0x0 0x3f
+F 0 6 ccix_err_agent_id
+R 0x2000 64 - - por_cxla_pmu_event_sel
+RESET 0x0 0x1f1f1f1f
+F 0 5 pmu_event0_id
+F 8 5 pmu_event1_id
+F 16 5 pmu_event2_id
+F 24 5 pmu_event3_id
+R 0x2210 64 - - por_cxla_pmu_config
+RESET 0x0 0x777701ff
+F 0 1 pmu_en
+F 1 1 pmevcnt01_combined
+F 2 1 pmevcnt23_combined
+F 3 1 pmevcntall_combined
+F 4 4 pmevcnt_paired
+F 8 1 cntr_rst
+F 16 3 pmevcnt0_global_num
+F 20 3 pmevcnt1_global_num
+F 24 3 pmevcnt2_global_num
+F 28 3 pmevcnt3_global_num
+R 0x2220 64 - - por_cxla_pmevcnt
+RESET 0x0 0xffffffffffffffff
+F 0 16 pmevcnt0
+F 16 16 pmevcnt1
+F 32 16 pmevcnt2
+F 48 16 pmevcnt3
+R 0x2240 64 - - por_cxla_pmevcntsr
+RESET 0x0 0xffffffffffffffff
+F 0 16 pmevcntsr0
+F 16 16 pmevcntsr1
+F 32 16 pmevcntsr2
+F 48 16 pmevcntsr3
+ENDGROUP
+GROUP por_rnd_registers
+R 0x0 64 RO - por_rnd_node_info
+RESET 0xd 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x80 64 RO - por_rnd_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x900 64 RO - por_rnd_unit_info
+RESET 0x81808020 0xff7ffffffff
+F 0 10 num_wr_reqs
+PAR RNID_NUM_WR_REQ_PARAM
+F 10 10 num_rd_reqs
+PAR RNID_NUM_RD_REQ_PARAM
+F 20 10 num_rd_bufs
+PAR RNID_NUM_RD_BUF_PARAM
+F 30 1 ax_data_256bit
+PAR RNID_AXDATA256_EN_PARAM
+F 31 1 ax_datapoison_en
+PAR RNID_AXDATAPOISON_EN_PARAM
+F 32 1 force_rdb_prealloc
+PAR RNID_FORCE_RDB_PREALLOC_PARAM
+F 33 2 a4s_num
+PAR RNI_A4S_NUM_PARAM
+F 36 8 a4s_logicalid_base
+PAR RNI_A4S_LOGICALID_BASE_PARAM
+R 0x980 64 - S por_rnd_secure_register_groups_override
+RESET 0x0 0x7
+F 0 1 cfg_ctl
+F 1 1 port_ctrl
+F 2 1 qos_ctrl
+R 0xa00 64 - S por_rnd_cfg_ctl
+RESET 0x200201401 0x3ff3ff777f
+F 0 1 qpc_en
+F 1 1 wfc
+F 2 1 dis_wr_stream
+F 3 1 force_prealloc_rdb
+PAR RNID_FORCE_RDB_PREALLOC_PARAM
+F 4 1 qpc15_entry_rsv_en
+F 5 1 pcie_mstr_present
+F 6 1 dis_ncwr_stream
+F 8 3 rrt_crdgnt_weight
+F 12 3 wrt_crdgnt_weight
+F 16 10 max_rrt_outstd_chitxn_cnt
+PAR RNID_NUM_RD_REQ_PARAM
+F 28 10 max_wrt_outstd_chitxn_cnt
+PAR RNID_NUM_WR_REQ_PARAM
+R 0xa08 64 - S por_rnd_aux_ctl
+RESET 0x12 0x3f
+F 0 1 cg_disable
+F 1 1 ar_byp_en
+F 2 1 park_port_arb_ptr
+F 3 1 dis_norm_rdstream
+F 4 1 upstrm_datcheck_en
+PAR POR_DATACHECK_EN_PARAM
+F 5 1 sameid_wrstash_stream_en
+PAR POR_R2_ENABLE_PARAM
+R 0xa10 64 - S por_rnd_s0_port_control
+RESET 0x0 0x7ff
+F 0 11 s0_lpid_mask
+R 0xa18 64 - S por_rnd_s1_port_control
+RESET 0x0 0x7ff
+F 0 11 s1_lpid_mask
+R 0xa20 64 - S por_rnd_s2_port_control
+RESET 0x0 0x7ff
+F 0 11 s2_lpid_mask
+R 0xa80 64 - S por_rnd_s0_qos_control
+RESET 0x0 0xff00ff
+F 0 1 s0_aw_lat_en
+F 1 1 s0_ar_lat_en
+F 2 1 s0_aw_qos_override_en
+F 3 1 s0_ar_qos_override_en
+F 4 1 s0_aw_reg_mode
+F 5 1 s0_ar_reg_mode
+F 6 1 s0_aw_pqv_mode
+F 7 1 s0_ar_pqv_mode
+F 16 4 s0_aw_qos_override
+F 20 4 s0_ar_qos_override
+R 0xa88 64 - S por_rnd_s0_qos_lat_tgt
+RESET 0x0 0xfff0fff
+F 0 12 s0_aw_lat_tgt
+F 16 12 s0_ar_lat_tgt
+R 0xa90 64 - S por_rnd_s0_qos_lat_scale
+RESET 0x0 0x707
+F 0 3 s0_aw_lat_scale
+F 8 3 s0_ar_lat_scale
+R 0xa98 64 - S por_rnd_s0_qos_lat_range
+RESET 0x0 0xf0f0f0f
+F 0 4 s0_aw_lat_min_qos
+F 8 4 s0_aw_lat_max_qos
+F 16 4 s0_ar_lat_min_qos
+F 24 4 s0_ar_lat_max_qos
+R 0xaa0 64 - S por_rnd_s1_qos_control
+RESET 0x0 0xff00ff
+F 0 1 s1_aw_lat_en
+F 1 1 s1_ar_lat_en
+F 2 1 s1_aw_qos_override_en
+F 3 1 s1_ar_qos_override_en
+F 4 1 s1_aw_reg_mode
+F 5 1 s1_ar_reg_mode
+F 6 1 s1_aw_pqv_mode
+F 7 1 s1_ar_pqv_mode
+F 16 4 s1_aw_qos_override
+F 20 4 s1_ar_qos_override
+R 0xaa8 64 - S por_rnd_s1_qos_lat_tgt
+RESET 0x0 0xfff0fff
+F 0 12 s1_aw_lat_tgt
+F 16 12 s1_ar_lat_tgt
+R 0xab0 64 - S por_rnd_s1_qos_lat_scale
+RESET 0x0 0x707
+F 0 3 s1_aw_lat_scale
+F 8 3 s1_ar_lat_scale
+R 0xab8 64 - S por_rnd_s1_qos_lat_range
+RESET 0x0 0xf0f0f0f
+F 0 4 s1_aw_lat_min_qos
+F 8 4 s1_aw_lat_max_qos
+F 16 4 s1_ar_lat_min_qos
+F 24 4 s1_ar_lat_max_qos
+R 0xac0 64 - S por_rnd_s2_qos_control
+RESET 0x0 0xff00ff
+F 0 1 s2_aw_lat_en
+F 1 1 s2_ar_lat_en
+F 2 1 s2_aw_qos_override_en
+F 3 1 s2_ar_qos_override_en
+F 4 1 s2_aw_reg_mode
+F 5 1 s2_ar_reg_mode
+F 6 1 s2_aw_pqv_mode
+F 7 1 s2_ar_pqv_mode
+F 16 4 s2_aw_qos_override
+F 20 4 s2_ar_qos_override
+R 0xac8 64 - S por_rnd_s2_qos_lat_tgt
+RESET 0x0 0xfff0fff
+F 0 12 s2_aw_lat_tgt
+F 16 12 s2_ar_lat_tgt
+R 0xad0 64 - S por_rnd_s2_qos_lat_scale
+RESET 0x0 0x707
+F 0 3 s2_aw_lat_scale
+F 8 3 s2_ar_lat_scale
+R 0xad8 64 - S por_rnd_s2_qos_lat_range
+RESET 0x0 0xf0f0f0f
+F 0 4 s2_aw_lat_min_qos
+F 8 4 s2_aw_lat_max_qos
+F 16 4 s2_ar_lat_min_qos
+F 24 4 s2_ar_lat_max_qos
+R 0x1000 64 V S por_rnd_syscoreq_ctl
+RESET 0x0 0x7
+F 0 1 s0_dvmdomain_req
+F 1 1 s1_dvmdomain_req
+F 2 1 s2_dvmdomain_req
+R 0x1008 64 ROV S por_rnd_syscoack_status
+RESET 0x0 0x7
+F 0 1 s0_dvmdomain_ack
+F 1 1 s1_dvmdomain_ack
+F 2 1 s2_dvmdomain_ack
+R 0x2000 64 - - por_rnd_pmu_event_sel
+RESET 0x0 0x1f1f1f1f
+F 0 5 pmu_event0_id
+F 8 5 pmu_event1_id
+F 16 5 pmu_event2_id
+F 24 5 pmu_event3_id
+ENDGROUP
+GROUP por_hnf_registers
+R 0x0 64 RO - por_hnf_node_info
+RESET 0x5 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x80 64 RO - por_hnf_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x900 64 RO - por_hnf_unit_info
+RESET 0x0 0x7f00000000
+F 0 3 slc_size
+F 4 3 sf_size
+F 8 5 num_ways
+F 16 3 tag_ram_lat
+F 20 3 data_ram_latency
+F 24 8 num_excl
+F 32 7 num_poc_entries
+PAR HNF_NUM_ENTRIES_POCQ_PARAM
+R 0x980 64 - S por_hnf_secure_register_groups_override
+RESET 0x0 0x3f
+F 0 1 qos
+F 1 1 cfg_ctl
+F 2 1 ppu
+F 3 1 slc_lock_ways
+F 4 1 sam_control
+F 5 1 slcsf_dbgrd
+R 0xa00 64 - S por_hnf_cfg_ctl
+RESET 0x0 0xf55
+F 0 1 ecc_disable
+F 2 1 pois_dis
+F 4 1 slc_tag_ecc_scrub_disable
+F 6 1 sf_ecc_scrub_disable
+F 8 1 ncdevcmo_mc_comp
+F 9 1 hnf_ocm_en
+F 10 1 hnf_ocm_allways_en
+F 11 1 hnf_dmt_disable
+R 0xa08 64 - S por_hnf_aux_ctl
+RESET 0x1c4c0000000002 0x19fff930001ffff
+F 0 1 hnf_only_mode
+F 1 1 hnf_honor_ewa
+F 2 1 no_wu_alloc
+F 3 1 rev_qos_pool_alloc
+F 4 1 io_read_no_alloc
+F 5 1 non_sh_no_alloc
+F 6 1 dis_snp_once
+PAR HNF_DIS_SNP_ONCE_PARAM
+F 7 1 hnf_stash_disable
+PAR POR_CHIA_RNF_MODE_EN_PARAM
+F 8 1 dis_likelysh
+F 9 1 dis_seqreq_coll
+F 10 1 frz_mon_on_ovfl
+F 11 1 slc_por_init_disable
+F 12 1 cg_disable
+F 13 1 sf_disable
+F 14 1 wlu_alloc_on_hit
+F 15 1 hnf_dct_disable
+PAR POR_CHIA_RNF_MODE_EN_PARAM
+F 16 1 hnf_poison_intr_en
+PAR POR_CHIA_RNF_MODE_EN_PARAM
+F 32 1 hnf_rd_excl_opt_en
+F 33 1 hnf_excl_snp_fwd_en
+F 36 1 hnf_cu_excl_opt_en
+PAR POR_R2_ENABLE_PARAM
+F 39 1 hnf_stash_datapull_disable
+F 40 1 hnf_sf_snp_vec_disable
+F 41 1 hnf_slc_victim_qos_high
+F 42 1 hnf_slc_lru_victim_disable
+F 43 2 hnf_slc_lru_set_groups
+F 45 2 hnf_slc_lru_sel_cnt_value
+F 47 2 hnf_slc_lru_slcsrc_insert_value
+F 49 2 hnf_slc_lru_staticmode_insert_value
+F 51 2 hnf_slc_lru_dualmode_insert_value
+F 55 1 hnf_shared_intv_disable
+PAR POR_CHIA_RNF_MODE_EN_PARAM
+F 56 1 hnf_ord_stash_datapull_en
+PAR POR_R2_ENABLE_PARAM
+R 0xa10 64 - S por_hnf_r2_aux_ctl
+RESET 0x0 0x7
+F 0 1 hnf_chic_rdnosnpsep_dis
+F 1 1 hnf_pcmo_terminate_en
+F 2 1 hnf_force_flush_ewa0_en
+R 0xa80 64 RO S por_hnf_qos_band
+RESET 0xffecb870 0xffffffff
+F 0 4 low_min_qos_val
+F 4 4 low_max_qos_val
+F 8 4 med_min_qos_val
+F 12 4 med_max_qos_val
+F 16 4 high_min_qos_val
+F 20 4 high_max_qos_val
+F 24 4 highhigh_min_qos_val
+F 28 4 highhigh_max_qos_val
+R 0xa88 64 - S por_hnf_qos_reservation
+RESET 0x11f1e0f05 0x3f3f3f3f3f
+F 0 6 low_qos_max_cnt
+PAR LOW_QOS_MAX_CNT_PARAM
+F 8 6 med_qos_max_cnt
+PAR MED_QOS_MAX_CNT_PARAM
+F 16 6 high_qos_max_cnt
+PAR HIGH_QOS_MAX_CNT_PARAM
+F 24 6 highhigh_qos_max_cnt
+PAR HHIGH_QOS_MAX_CNT_PARAM
+F 32 6 seq_qos_max_cnt
+R 0xa90 64 - S por_hnf_rn_starvation
+RESET 0x1f3f1f3f3f1f 0x1f3f1f7f3f1f
+F 0 5 rn_low_over_med_max_cnt
+F 8 6 rn_low_over_high_max_cnt
+F 16 7 rn_low_over_highhigh_max_cnt
+F 24 5 rn_med_over_high_max_cnt
+F 32 6 rn_med_over_highhigh_max_cnt
+F 40 5 rn_high_over_high_high_max_cnt
+R 0xb80 64 WO S por_hnf_cfg_slcsf_dbgrd
+RESET 0x0 0x37f1fff
+F 0 13 slc_access_set
+F 16 4 slc_access_way
+F 20 3 slc_access_dw
+F 24 2 slc_access_component
+R 0xb88 64 RO S por_hnf_slc_cache_access_slc_tag
+RESET 0x0 0xffffffffffff
+F 0 48 slc_cache_access_slc_tag
+R 0xb90 64 RO S por_hnf_slc_cache_access_slc_data
+RESET 0x0 0xffffffffffffffff
+F 0 64 slc_cache_access_slc_data
+R 0xb98 64 RO S por_hnf_slc_cache_access_sf_tag
+RESET 0x0 0xffffffffffffffff
+F 0 64 slc_cache_access_sf_tag
+R 0xba0 64 RO S por_hnf_slc_cache_access_sf_tag1
+RESET 0x0 0xffffffffffffffff
+F 0 64 slc_cache_access_sf_tag1
+R 0xba8 64 RO S por_hnf_slc_cache_access_sf_tag2
+RESET 0x0 0xffffffffffffffff
+F 0 64 slc_cache_access_sf_tag2
+R 0xc00 64 - S por_hnf_slc_lock_ways
+RESET 0x800 0x7f0f
+F 0 4 ways
+F 8 7 num_hnf
+PAR POR_NUM_HNF_PARAM
+R 0xc08 64 - S por_hnf_slc_lock_base0
+RESET 0x0 0x8000ffffffffffff
+F 0 48 base0
+F 63 1 base0_vld
+R 0xc10 64 - S por_hnf_slc_lock_base1
+RESET 0x0 0x8000ffffffffffff
+F 0 48 base1
+F 63 1 base1_vld
+R 0xc18 64 - S por_hnf_slc_lock_base2
+RESET 0x0 0x8000ffffffffffff
+F 0 48 base2
+F 63 1 base2_vld
+R 0xc20 64 - S por_hnf_slc_lock_base3
+RESET 0x0 0x8000ffffffffffff
+F 0 48 base3
+F 63 1 base3_vld
+R 0xc28 64 - S por_hnf_rnf_region_vec1
+RESET 0x0 0xffffffffffffffff
+F 0 64 rnf_region_vec1
+R 0xc30 64 - S por_hnf_rni_region_vec
+RESET 0x0 0xffffffff
+F 0 32 rni_region_vec
+R 0xc38 64 - S por_hnf_rnf_region_vec
+RESET 0x0 0xffffffffffffffff
+F 0 64 rnf_region_vec
+R 0xc40 64 - S por_hnf_rnd_region_vec
+RESET 0x0 0xffffffff
+F 0 32 rnd_region_vec
+R 0xc48 64 - S por_hnf_slcway_partition0_rnf_vec
+RESET 0xffffffffffffffff 0xffffffffffffffff
+F 0 64 rnf_vec0
+R 0xc50 64 - S por_hnf_slcway_partition1_rnf_vec
+RESET 0xffffffffffffffff 0xffffffffffffffff
+F 0 64 rnf_vec1
+R 0xc58 64 - S por_hnf_slcway_partition2_rnf_vec
+RESET 0xffffffffffffffff 0xffffffffffffffff
+F 0 64 rnf_vec2
+R 0xc60 64 - S por_hnf_slcway_partition3_rnf_vec
+RESET 0xffffffffffffffff 0xffffffffffffffff
+F 0 64 rnf_vec3
+R 0xc68 64 - S por_hnf_slcway_partition0_rni_vec
+RESET 0xffffffff 0xffffffff
+F 0 32 rni_vec0
+R 0xc70 64 - S por_hnf_slcway_partition1_rni_vec
+RESET 0xffffffff 0xffffffff
+F 0 32 rni_vec1
+R 0xc78 64 - S por_hnf_slcway_partition2_rni_vec
+RESET 0xffffffff 0xffffffff
+F 0 32 rni_vec2
+R 0xc80 64 - S por_hnf_slcway_partition3_rni_vec
+RESET 0xffffffff 0xffffffff
+F 0 32 rni_vec3
+R 0xc88 64 - S por_hnf_slcway_partition0_rnd_vec
+RESET 0xffffffff 0xffffffff
+F 0 32 rnd_vec0
+R 0xc90 64 - S por_hnf_slcway_partition1_rnd_vec
+RESET 0xffffffff 0xffffffff
+F 0 32 rnd_vec1
+R 0xc98 64 - S por_hnf_slcway_partition2_rnd_vec
+RESET 0xffffffff 0xffffffff
+F 0 32 rnd_vec2
+R 0xca0 64 - S por_hnf_slcway_partition3_rnd_vec
+RESET 0xffffffff 0xffffffff
+F 0 32 rnd_vec3
+R 0xca8 64 - S por_hnf_rn_region_lock
+RESET 0x0 0x3
+F 0 1 rn_region_lock_en
+F 1 1 rn_pick_locked_ways_only
+R 0xcb0 64 - S por_hnf_slcway_partition0_rnf_vec1
+RESET 0xffffffffffffffff 0xffffffffffffffff
+F 0 64 rnf_vec4
+R 0xcb8 64 - S por_hnf_slcway_partition1_rnf_vec1
+RESET 0xffffffffffffffff 0xffffffffffffffff
+F 0 64 rnf_vec5
+R 0xcc0 64 - S por_hnf_slcway_partition2_rnf_vec1
+RESET 0xffffffffffffffff 0xffffffffffffffff
+F 0 64 rnf_vec6
+R 0xcc8 64 - S por_hnf_slcway_partition3_rnf_vec1
+RESET 0xffffffffffffffff 0xffffffffffffffff
+F 0 64 rnf_vec7
+R 0xd00 64 - S por_hnf_sam_control
+RESET 0x0 0xbf3f3f37ff7ff7ff
+F 0 11 hn_cfg_sn0_nodeid
+F 12 11 hn_cfg_sn1_nodeid
+F 24 11 hn_cfg_sn2_nodeid
+F 36 1 hn_cfg_three_sn_en
+F 37 1 hn_cfg_six_sn_en
+F 40 6 hn_cfg_sam_top_address_bit0
+F 48 6 hn_cfg_sam_top_address_bit1
+F 56 6 hn_cfg_sam_top_address_bit2
+F 63 1 hn_cfg_sam_inv_top_address_bit
+R 0xd08 64 - S por_hnf_sam_memregion0
+RESET 0x0 0x8000fffffc01f7ff
+F 63 1 valid
+F 26 22 base_addr
+F 12 5 size
+F 0 11 range0_nodeid
+R 0xd10 64 - S por_hnf_sam_memregion1
+RESET 0x0 0x8000fffffc01f7ff
+F 63 1 valid
+F 26 22 base_addr
+F 12 5 size
+F 0 11 range1_nodeid
+R 0xd18 64 - S por_hnf_sam_sn_properties
+RESET 0x0 0x1c71c71c71c7
+F 44 1 range1_sn_pcmo_prop_dis
+F 43 1 range1_sn_cmo_prop_en
+F 42 1 range1_sn_128b
+F 38 1 range0_sn_pcmo_prop_dis
+F 37 1 range0_sn_cmo_prop_en
+F 36 1 range0_sn_128b
+F 32 1 sn5_pcmo_prop_dis
+F 31 1 sn5_cmo_prop_en
+F 30 1 sn5_128b
+F 26 1 sn4_pcmo_prop_dis
+F 25 1 sn4_cmo_prop_en
+F 24 1 sn4_128b
+F 20 1 sn3_pcmo_prop_dis
+F 19 1 sn3_cmo_prop_en
+F 18 1 sn3_128b
+F 14 1 sn2_pcmo_prop_dis
+F 13 1 sn2_cmo_prop_en
+F 12 1 sn2_128b
+F 8 1 sn1_pcmo_prop_dis
+F 7 1 sn1_cmo_prop_en
+F 6 1 sn1_128b
+F 2 1 sn0_pcmo_prop_dis
+F 1 1 sn0_cmo_prop_en
+F 0 1 sn0_128b
+R 0xd20 64 - S por_hnf_sam_6sn_nodeid
+RESET 0x0 0x7ff7ff7ff
+F 0 11 hn_cfg_sn3_nodeid
+F 12 11 hn_cfg_sn4_nodeid
+F 24 11 hn_cfg_sn5_nodeid
+R 0xd28 64 - S por_hnf_rn_phys_id0
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra0
+F 16 1 remote_ra0
+F 17 2 cpa_grp_ra0
+F 30 1 cpa_en_ra0
+F 31 1 valid_ra0
+F 32 11 nodeid_ra1
+F 48 1 remote_ra1
+F 49 2 cpa_grp_ra1
+F 62 1 cpa_en_ra1
+F 63 1 valid_ra1
+R 0xd30 64 - S por_hnf_rn_phys_id1
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra2
+F 16 1 remote_ra2
+F 17 2 cpa_grp_ra2
+F 30 1 cpa_en_ra2
+F 31 1 valid_ra2
+F 32 11 nodeid_ra3
+F 48 1 remote_ra3
+F 49 2 cpa_grp_ra3
+F 62 1 cpa_en_ra3
+F 63 1 valid_ra3
+R 0xd38 64 - S por_hnf_rn_phys_id2
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra4
+F 16 1 remote_ra4
+F 17 2 cpa_grp_ra4
+F 30 1 cpa_en_ra4
+F 31 1 valid_ra4
+F 32 11 nodeid_ra5
+F 48 1 remote_ra5
+F 49 2 cpa_grp_ra5
+F 62 1 cpa_en_ra5
+F 63 1 valid_ra5
+R 0xd40 64 - S por_hnf_rn_phys_id3
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra6
+F 16 1 remote_ra6
+F 17 2 cpa_grp_ra6
+F 30 1 cpa_en_ra6
+F 31 1 valid_ra6
+F 32 11 nodeid_ra7
+F 48 1 remote_ra7
+F 49 2 cpa_grp_ra7
+F 62 1 cpa_en_ra7
+F 63 1 valid_ra7
+R 0xd48 64 - S por_hnf_rn_phys_id4
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra8
+F 16 1 remote_ra8
+F 17 2 cpa_grp_ra8
+F 30 1 cpa_en_ra8
+F 31 1 valid_ra8
+F 32 11 nodeid_ra9
+F 48 1 remote_ra9
+F 49 2 cpa_grp_ra9
+F 62 1 cpa_en_ra9
+F 63 1 valid_ra9
+R 0xd50 64 - S por_hnf_rn_phys_id5
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra10
+F 16 1 remote_ra10
+F 17 2 cpa_grp_ra10
+F 30 1 cpa_en_ra10
+F 31 1 valid_ra10
+F 32 11 nodeid_ra11
+F 48 1 remote_ra11
+F 49 2 cpa_grp_ra11
+F 62 1 cpa_en_ra11
+F 63 1 valid_ra11
+R 0xd58 64 - S por_hnf_rn_phys_id6
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra12
+F 16 1 remote_ra12
+F 17 2 cpa_grp_ra12
+F 30 1 cpa_en_ra12
+F 31 1 valid_ra12
+F 32 11 nodeid_ra13
+F 48 1 remote_ra13
+F 49 2 cpa_grp_ra13
+F 62 1 cpa_en_ra13
+F 63 1 valid_ra13
+R 0xd60 64 - S por_hnf_rn_phys_id7
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra14
+F 16 1 remote_ra14
+F 17 2 cpa_grp_ra14
+F 30 1 cpa_en_ra14
+F 31 1 valid_ra14
+F 32 11 nodeid_ra15
+F 48 1 remote_ra15
+F 49 2 cpa_grp_ra15
+F 62 1 cpa_en_ra15
+F 63 1 valid_ra15
+R 0xd68 64 - S por_hnf_rn_phys_id8
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra16
+F 16 1 remote_ra16
+F 17 2 cpa_grp_ra16
+F 30 1 cpa_en_ra16
+F 31 1 valid_ra16
+F 32 11 nodeid_ra17
+F 48 1 remote_ra17
+F 49 2 cpa_grp_ra17
+F 62 1 cpa_en_ra17
+F 63 1 valid_ra17
+R 0xd70 64 - S por_hnf_rn_phys_id9
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra18
+F 16 1 remote_ra18
+F 17 2 cpa_grp_ra18
+F 30 1 cpa_en_ra18
+F 31 1 valid_ra18
+F 32 11 nodeid_ra19
+F 48 1 remote_ra19
+F 49 2 cpa_grp_ra19
+F 62 1 cpa_en_ra19
+F 63 1 valid_ra19
+R 0xd78 64 - S por_hnf_rn_phys_id10
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra20
+F 16 1 remote_ra20
+F 17 2 cpa_grp_ra20
+F 30 1 cpa_en_ra20
+F 31 1 valid_ra20
+F 32 11 nodeid_ra21
+F 48 1 remote_ra21
+F 49 2 cpa_grp_ra21
+F 62 1 cpa_en_ra21
+F 63 1 valid_ra21
+R 0xd80 64 - S por_hnf_rn_phys_id11
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra22
+F 16 1 remote_ra22
+F 17 2 cpa_grp_ra22
+F 30 1 cpa_en_ra22
+F 31 1 valid_ra22
+F 32 11 nodeid_ra23
+F 48 1 remote_ra23
+F 49 2 cpa_grp_ra23
+F 62 1 cpa_en_ra23
+F 63 1 valid_ra23
+R 0xd88 64 - S por_hnf_rn_phys_id12
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra24
+F 16 1 remote_ra24
+F 17 2 cpa_grp_ra24
+F 30 1 cpa_en_ra24
+F 31 1 valid_ra24
+F 32 11 nodeid_ra25
+F 48 1 remote_ra25
+F 49 2 cpa_grp_ra25
+F 62 1 cpa_en_ra25
+F 63 1 valid_ra25
+R 0xd90 64 - S por_hnf_rn_phys_id13
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra26
+F 16 1 remote_ra26
+F 17 2 cpa_grp_ra26
+F 30 1 cpa_en_ra26
+F 31 1 valid_ra26
+F 32 11 nodeid_ra27
+F 48 1 remote_ra27
+F 49 2 cpa_grp_ra27
+F 62 1 cpa_en_ra27
+F 63 1 valid_ra27
+R 0xd98 64 - S por_hnf_rn_phys_id14
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra28
+F 16 1 remote_ra28
+F 17 2 cpa_grp_ra28
+F 30 1 cpa_en_ra28
+F 31 1 valid_ra28
+F 32 11 nodeid_ra29
+F 48 1 remote_ra29
+F 49 2 cpa_grp_ra29
+F 62 1 cpa_en_ra29
+F 63 1 valid_ra29
+R 0xda0 64 - S por_hnf_rn_phys_id15
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra30
+F 16 1 remote_ra30
+F 17 2 cpa_grp_ra30
+F 30 1 cpa_en_ra30
+F 31 1 valid_ra30
+F 32 11 nodeid_ra31
+F 48 1 remote_ra31
+F 49 2 cpa_grp_ra31
+F 62 1 cpa_en_ra31
+F 63 1 valid_ra31
+R 0xda8 64 - S por_hnf_rn_phys_id16
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra32
+F 16 1 remote_ra32
+F 17 2 cpa_grp_ra32
+F 30 1 cpa_en_ra32
+F 31 1 valid_ra32
+F 32 11 nodeid_ra33
+F 48 1 remote_ra33
+F 49 2 cpa_grp_ra33
+F 62 1 cpa_en_ra33
+F 63 1 valid_ra33
+R 0xdb0 64 - S por_hnf_rn_phys_id17
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra34
+F 16 1 remote_ra34
+F 17 2 cpa_grp_ra34
+F 30 1 cpa_en_ra34
+F 31 1 valid_ra34
+F 32 11 nodeid_ra35
+F 48 1 remote_ra35
+F 49 2 cpa_grp_ra35
+F 62 1 cpa_en_ra35
+F 63 1 valid_ra35
+R 0xdb8 64 - S por_hnf_rn_phys_id18
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra36
+F 16 1 remote_ra36
+F 17 2 cpa_grp_ra36
+F 30 1 cpa_en_ra36
+F 31 1 valid_ra36
+F 32 11 nodeid_ra37
+F 48 1 remote_ra37
+F 49 2 cpa_grp_ra37
+F 62 1 cpa_en_ra37
+F 63 1 valid_ra37
+R 0xdc0 64 - S por_hnf_rn_phys_id19
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra38
+F 16 1 remote_ra38
+F 17 2 cpa_grp_ra38
+F 30 1 cpa_en_ra38
+F 31 1 valid_ra38
+F 32 11 nodeid_ra39
+F 48 1 remote_ra39
+F 49 2 cpa_grp_ra39
+F 62 1 cpa_en_ra39
+F 63 1 valid_ra39
+R 0xdc8 64 - S por_hnf_rn_phys_id20
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra40
+F 16 1 remote_ra40
+F 17 2 cpa_grp_ra40
+F 30 1 cpa_en_ra40
+F 31 1 valid_ra40
+F 32 11 nodeid_ra41
+F 48 1 remote_ra41
+F 49 2 cpa_grp_ra41
+F 62 1 cpa_en_ra41
+F 63 1 valid_ra41
+R 0xdd0 64 - S por_hnf_rn_phys_id21
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra42
+F 16 1 remote_ra42
+F 17 2 cpa_grp_ra42
+F 30 1 cpa_en_ra42
+F 31 1 valid_ra42
+F 32 11 nodeid_ra43
+F 48 1 remote_ra43
+F 49 2 cpa_grp_ra43
+F 62 1 cpa_en_ra43
+F 63 1 valid_ra43
+R 0xdd8 64 - S por_hnf_rn_phys_id22
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra44
+F 16 1 remote_ra44
+F 17 2 cpa_grp_ra44
+F 30 1 cpa_en_ra44
+F 31 1 valid_ra44
+F 32 11 nodeid_ra45
+F 48 1 remote_ra45
+F 49 2 cpa_grp_ra45
+F 62 1 cpa_en_ra45
+F 63 1 valid_ra45
+R 0xde0 64 - S por_hnf_rn_phys_id23
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra46
+F 16 1 remote_ra46
+F 17 2 cpa_grp_ra46
+F 30 1 cpa_en_ra46
+F 31 1 valid_ra46
+F 32 11 nodeid_ra47
+F 48 1 remote_ra47
+F 49 2 cpa_grp_ra47
+F 62 1 cpa_en_ra47
+F 63 1 valid_ra47
+R 0xde8 64 - S por_hnf_rn_phys_id24
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra48
+F 16 1 remote_ra48
+F 17 2 cpa_grp_ra48
+F 30 1 cpa_en_ra48
+F 31 1 valid_ra48
+F 32 11 nodeid_ra49
+F 48 1 remote_ra49
+F 49 2 cpa_grp_ra49
+F 62 1 cpa_en_ra49
+F 63 1 valid_ra49
+R 0xdf0 64 - S por_hnf_rn_phys_id25
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra50
+F 16 1 remote_ra50
+F 17 2 cpa_grp_ra50
+F 30 1 cpa_en_ra50
+F 31 1 valid_ra50
+F 32 11 nodeid_ra51
+F 48 1 remote_ra51
+F 49 2 cpa_grp_ra51
+F 62 1 cpa_en_ra51
+F 63 1 valid_ra51
+R 0xdf8 64 - S por_hnf_rn_phys_id26
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra52
+F 16 1 remote_ra52
+F 17 2 cpa_grp_ra52
+F 30 1 cpa_en_ra52
+F 31 1 valid_ra52
+F 32 11 nodeid_ra53
+F 48 1 remote_ra53
+F 49 2 cpa_grp_ra53
+F 62 1 cpa_en_ra53
+F 63 1 valid_ra53
+R 0xe00 64 - S por_hnf_rn_phys_id27
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra54
+F 16 1 remote_ra54
+F 17 2 cpa_grp_ra54
+F 30 1 cpa_en_ra54
+F 31 1 valid_ra54
+F 32 11 nodeid_ra55
+F 48 1 remote_ra55
+F 49 2 cpa_grp_ra55
+F 62 1 cpa_en_ra55
+F 63 1 valid_ra55
+R 0xe08 64 - S por_hnf_rn_phys_id28
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra56
+F 16 1 remote_ra56
+F 17 2 cpa_grp_ra56
+F 30 1 cpa_en_ra56
+F 31 1 valid_ra56
+F 32 11 nodeid_ra57
+F 48 1 remote_ra57
+F 49 2 cpa_grp_ra57
+F 62 1 cpa_en_ra57
+F 63 1 valid_ra57
+R 0xe10 64 - S por_hnf_rn_phys_id29
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra58
+F 16 1 remote_ra58
+F 17 2 cpa_grp_ra58
+F 30 1 cpa_en_ra58
+F 31 1 valid_ra58
+F 32 11 nodeid_ra59
+F 48 1 remote_ra59
+F 49 2 cpa_grp_ra59
+F 62 1 cpa_en_ra59
+F 63 1 valid_ra59
+R 0xe18 64 - S por_hnf_rn_phys_id30
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra60
+F 16 1 remote_ra60
+F 17 2 cpa_grp_ra60
+F 30 1 cpa_en_ra60
+F 31 1 valid_ra60
+F 32 11 nodeid_ra61
+F 48 1 remote_ra61
+F 49 2 cpa_grp_ra61
+F 62 1 cpa_en_ra61
+F 63 1 valid_ra61
+R 0xe20 64 - S por_hnf_rn_phys_id31
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra62
+F 16 1 remote_ra62
+F 17 2 cpa_grp_ra62
+F 30 1 cpa_en_ra62
+F 31 1 valid_ra62
+F 32 11 nodeid_ra63
+F 48 1 remote_ra63
+F 49 2 cpa_grp_ra63
+F 62 1 cpa_en_ra63
+F 63 1 valid_ra63
+R 0xe28 64 - S por_hnf_rn_phys_id32
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra64
+F 16 1 remote_ra64
+F 17 2 cpa_grp_ra64
+F 30 1 cpa_en_ra64
+F 31 1 valid_ra64
+F 32 11 nodeid_ra65
+F 48 1 remote_ra65
+F 49 2 cpa_grp_ra65
+F 62 1 cpa_en_ra65
+F 63 1 valid_ra65
+R 0xe30 64 - S por_hnf_rn_phys_id33
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra66
+F 16 1 remote_ra66
+F 17 2 cpa_grp_ra66
+F 30 1 cpa_en_ra66
+F 31 1 valid_ra66
+F 32 11 nodeid_ra67
+F 48 1 remote_ra67
+F 49 2 cpa_grp_ra67
+F 62 1 cpa_en_ra67
+F 63 1 valid_ra67
+R 0xe38 64 - S por_hnf_rn_phys_id34
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra68
+F 16 1 remote_ra68
+F 17 2 cpa_grp_ra68
+F 30 1 cpa_en_ra68
+F 31 1 valid_ra68
+F 32 11 nodeid_ra69
+F 48 1 remote_ra69
+F 49 2 cpa_grp_ra69
+F 62 1 cpa_en_ra69
+F 63 1 valid_ra69
+R 0xe40 64 - S por_hnf_rn_phys_id35
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra70
+F 16 1 remote_ra70
+F 17 2 cpa_grp_ra70
+F 30 1 cpa_en_ra70
+F 31 1 valid_ra70
+F 32 11 nodeid_ra71
+F 48 1 remote_ra71
+F 49 2 cpa_grp_ra71
+F 62 1 cpa_en_ra71
+F 63 1 valid_ra71
+R 0xe48 64 - S por_hnf_rn_phys_id36
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra72
+F 16 1 remote_ra72
+F 17 2 cpa_grp_ra72
+F 30 1 cpa_en_ra72
+F 31 1 valid_ra72
+F 32 11 nodeid_ra73
+F 48 1 remote_ra73
+F 49 2 cpa_grp_ra73
+F 62 1 cpa_en_ra73
+F 63 1 valid_ra73
+R 0xe50 64 - S por_hnf_rn_phys_id37
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra74
+F 16 1 remote_ra74
+F 17 2 cpa_grp_ra74
+F 30 1 cpa_en_ra74
+F 31 1 valid_ra74
+F 32 11 nodeid_ra75
+F 48 1 remote_ra75
+F 49 2 cpa_grp_ra75
+F 62 1 cpa_en_ra75
+F 63 1 valid_ra75
+R 0xe58 64 - S por_hnf_rn_phys_id38
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra76
+F 16 1 remote_ra76
+F 17 2 cpa_grp_ra76
+F 30 1 cpa_en_ra76
+F 31 1 valid_ra76
+F 32 11 nodeid_ra77
+F 48 1 remote_ra77
+F 49 2 cpa_grp_ra77
+F 62 1 cpa_en_ra77
+F 63 1 valid_ra77
+R 0xe60 64 - S por_hnf_rn_phys_id39
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra78
+F 16 1 remote_ra78
+F 17 2 cpa_grp_ra78
+F 30 1 cpa_en_ra78
+F 31 1 valid_ra78
+F 32 11 nodeid_ra79
+F 48 1 remote_ra79
+F 49 2 cpa_grp_ra79
+F 62 1 cpa_en_ra79
+F 63 1 valid_ra79
+R 0xe68 64 - S por_hnf_rn_phys_id40
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra80
+F 16 1 remote_ra80
+F 17 2 cpa_grp_ra80
+F 30 1 cpa_en_ra80
+F 31 1 valid_ra80
+F 32 11 nodeid_ra81
+F 48 1 remote_ra81
+F 49 2 cpa_grp_ra81
+F 62 1 cpa_en_ra81
+F 63 1 valid_ra81
+R 0xe70 64 - S por_hnf_rn_phys_id41
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra82
+F 16 1 remote_ra82
+F 17 2 cpa_grp_ra82
+F 30 1 cpa_en_ra82
+F 31 1 valid_ra82
+F 32 11 nodeid_ra83
+F 48 1 remote_ra83
+F 49 2 cpa_grp_ra83
+F 62 1 cpa_en_ra83
+F 63 1 valid_ra83
+R 0xe78 64 - S por_hnf_rn_phys_id42
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra84
+F 16 1 remote_ra84
+F 17 2 cpa_grp_ra84
+F 30 1 cpa_en_ra84
+F 31 1 valid_ra84
+F 32 11 nodeid_ra85
+F 48 1 remote_ra85
+F 49 2 cpa_grp_ra85
+F 62 1 cpa_en_ra85
+F 63 1 valid_ra85
+R 0xe80 64 - S por_hnf_rn_phys_id43
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra86
+F 16 1 remote_ra86
+F 17 2 cpa_grp_ra86
+F 30 1 cpa_en_ra86
+F 31 1 valid_ra86
+F 32 11 nodeid_ra87
+F 48 1 remote_ra87
+F 49 2 cpa_grp_ra87
+F 62 1 cpa_en_ra87
+F 63 1 valid_ra87
+R 0xe88 64 - S por_hnf_rn_phys_id44
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra88
+F 16 1 remote_ra88
+F 17 2 cpa_grp_ra88
+F 30 1 cpa_en_ra88
+F 31 1 valid_ra88
+F 32 11 nodeid_ra89
+F 48 1 remote_ra89
+F 49 2 cpa_grp_ra89
+F 62 1 cpa_en_ra89
+F 63 1 valid_ra89
+R 0xe90 64 - S por_hnf_rn_phys_id45
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra90
+F 16 1 remote_ra90
+F 17 2 cpa_grp_ra90
+F 30 1 cpa_en_ra90
+F 31 1 valid_ra90
+F 32 11 nodeid_ra91
+F 48 1 remote_ra91
+F 49 2 cpa_grp_ra91
+F 62 1 cpa_en_ra91
+F 63 1 valid_ra91
+R 0xe98 64 - S por_hnf_rn_phys_id46
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra92
+F 16 1 remote_ra92
+F 17 2 cpa_grp_ra92
+F 30 1 cpa_en_ra92
+F 31 1 valid_ra92
+F 32 11 nodeid_ra93
+F 48 1 remote_ra93
+F 49 2 cpa_grp_ra93
+F 62 1 cpa_en_ra93
+F 63 1 valid_ra93
+R 0xea0 64 - S por_hnf_rn_phys_id47
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra94
+F 16 1 remote_ra94
+F 17 2 cpa_grp_ra94
+F 30 1 cpa_en_ra94
+F 31 1 valid_ra94
+F 32 11 nodeid_ra95
+F 48 1 remote_ra95
+F 49 2 cpa_grp_ra95
+F 62 1 cpa_en_ra95
+F 63 1 valid_ra95
+R 0xea8 64 - S por_hnf_rn_phys_id48
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra96
+F 16 1 remote_ra96
+F 17 2 cpa_grp_ra96
+F 30 1 cpa_en_ra96
+F 31 1 valid_ra96
+F 32 11 nodeid_ra97
+F 48 1 remote_ra97
+F 49 2 cpa_grp_ra97
+F 62 1 cpa_en_ra97
+F 63 1 valid_ra97
+R 0xeb0 64 - S por_hnf_rn_phys_id49
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra98
+F 16 1 remote_ra98
+F 17 2 cpa_grp_ra98
+F 30 1 cpa_en_ra98
+F 31 1 valid_ra98
+F 32 11 nodeid_ra99
+F 48 1 remote_ra99
+F 49 2 cpa_grp_ra99
+F 62 1 cpa_en_ra99
+F 63 1 valid_ra99
+R 0xeb8 64 - S por_hnf_rn_phys_id50
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra100
+F 16 1 remote_ra100
+F 17 2 cpa_grp_ra100
+F 30 1 cpa_en_ra100
+F 31 1 valid_ra100
+F 32 11 nodeid_ra101
+F 48 1 remote_ra101
+F 49 2 cpa_grp_ra101
+F 62 1 cpa_en_ra101
+F 63 1 valid_ra101
+R 0xec0 64 - S por_hnf_rn_phys_id51
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra102
+F 16 1 remote_ra102
+F 17 2 cpa_grp_ra102
+F 30 1 cpa_en_ra102
+F 31 1 valid_ra102
+F 32 11 nodeid_ra103
+F 48 1 remote_ra103
+F 49 2 cpa_grp_ra103
+F 62 1 cpa_en_ra103
+F 63 1 valid_ra103
+R 0xec8 64 - S por_hnf_rn_phys_id52
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra104
+F 16 1 remote_ra104
+F 17 2 cpa_grp_ra104
+F 30 1 cpa_en_ra104
+F 31 1 valid_ra104
+F 32 11 nodeid_ra105
+F 48 1 remote_ra105
+F 49 2 cpa_grp_ra105
+F 62 1 cpa_en_ra105
+F 63 1 valid_ra105
+R 0xed0 64 - S por_hnf_rn_phys_id53
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra106
+F 16 1 remote_ra106
+F 17 2 cpa_grp_ra106
+F 30 1 cpa_en_ra106
+F 31 1 valid_ra106
+F 32 11 nodeid_ra107
+F 48 1 remote_ra107
+F 49 2 cpa_grp_ra107
+F 62 1 cpa_en_ra107
+F 63 1 valid_ra107
+R 0xed8 64 - S por_hnf_rn_phys_id54
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra108
+F 16 1 remote_ra108
+F 17 2 cpa_grp_ra108
+F 30 1 cpa_en_ra108
+F 31 1 valid_ra108
+F 32 11 nodeid_ra109
+F 48 1 remote_ra109
+F 49 2 cpa_grp_ra109
+F 62 1 cpa_en_ra109
+F 63 1 valid_ra109
+R 0xee0 64 - S por_hnf_rn_phys_id55
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra110
+F 16 1 remote_ra110
+F 17 2 cpa_grp_ra110
+F 30 1 cpa_en_ra110
+F 31 1 valid_ra110
+F 32 11 nodeid_ra111
+F 48 1 remote_ra111
+F 49 2 cpa_grp_ra111
+F 62 1 cpa_en_ra111
+F 63 1 valid_ra111
+R 0xee8 64 - S por_hnf_rn_phys_id56
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra112
+F 16 1 remote_ra112
+F 17 2 cpa_grp_ra112
+F 30 1 cpa_en_ra112
+F 31 1 valid_ra112
+F 32 11 nodeid_ra113
+F 48 1 remote_ra113
+F 49 2 cpa_grp_ra113
+F 62 1 cpa_en_ra113
+F 63 1 valid_ra113
+R 0xef0 64 - S por_hnf_rn_phys_id57
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra114
+F 16 1 remote_ra114
+F 17 2 cpa_grp_ra114
+F 30 1 cpa_en_ra114
+F 31 1 valid_ra114
+F 32 11 nodeid_ra115
+F 48 1 remote_ra115
+F 49 2 cpa_grp_ra115
+F 62 1 cpa_en_ra115
+F 63 1 valid_ra115
+R 0xef8 64 - S por_hnf_rn_phys_id58
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra116
+F 16 1 remote_ra116
+F 17 2 cpa_grp_ra116
+F 30 1 cpa_en_ra116
+F 31 1 valid_ra116
+F 32 11 nodeid_ra117
+F 48 1 remote_ra117
+F 49 2 cpa_grp_ra117
+F 62 1 cpa_en_ra117
+F 63 1 valid_ra117
+R 0xf00 64 - S por_hnf_sf_cxg_blocked_ways
+RESET 0x0 0x3
+F 0 2 sf_blocked_ways
+R 0xf10 64 - S por_hnf_cml_port_aggr_grp0_add_mask
+RESET 0x40 0xffffffffffc0
+F 6 42 addr_mask
+R 0xf18 64 - S por_hnf_cml_port_aggr_grp1_add_mask
+RESET 0x40 0xffffffffffc0
+F 6 42 addr_mask
+R 0xf28 64 - S por_hnf_cml_port_aggr_grp0_reg
+RESET 0x0 0x37ff7ff7ff7ff
+F 48 2 num_cxg_pag0
+F 36 11 pag0_tgtid3
+F 24 11 pag0_tgtid2
+F 12 11 pag0_tgtid1
+F 0 11 pag0_tgtid0
+R 0xf30 64 - S por_hnf_cml_port_aggr_grp1_reg
+RESET 0x0 0x37ff7ff7ff7ff
+F 48 2 num_cxg_pag1
+F 36 11 pag1_tgtid3
+F 24 11 pag1_tgtid2
+F 12 11 pag1_tgtid1
+F 0 11 pag1_tgtid0
+R 0xf40 64 - S hn_sam_hash_addr_mask_reg
+RESET 0xffffffffffc0 0xffffffffffc0
+F 6 42 addr_mask
+R 0xf48 64 - S hn_sam_region_cmp_addr_mask_reg
+RESET 0xfffffc000000 0xfffffc000000
+F 26 22 addr_mask
+R 0xf50 64 - S por_hnf_abf_lo_addr
+RESET 0x0 0xffffffffffff
+F 0 48 abf_lo_addr
+R 0xf58 64 - S por_hnf_abf_hi_addr
+RESET 0x0 0xffffffffffff
+F 0 48 abf_hi_addr
+R 0xf60 64 - S por_hnf_abf_pr
+RESET 0x0 0x7
+F 0 1 abf_enable
+F 1 2 abf_mode
+R 0xf68 64 RO - por_hnf_abf_sr
+RESET 0x0 0xf
+F 0 1 abf_complete
+F 1 1 abf_invalid_req_abort
+F 2 1 abf_sf_pm_transition_abort
+F 3 1 abf_sf_disable_abort
+R 0xf70 64 - S por_hnf_rn_phys_id59
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra118
+F 16 1 remote_ra118
+F 17 2 cpa_grp_ra118
+F 30 1 cpa_en_ra118
+F 31 1 valid_ra118
+F 32 11 nodeid_ra119
+F 48 1 remote_ra119
+F 49 2 cpa_grp_ra119
+F 62 1 cpa_en_ra119
+F 63 1 valid_ra119
+R 0xf78 64 - S por_hnf_rn_phys_id60
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra120
+F 16 1 remote_ra120
+F 17 2 cpa_grp_ra120
+F 30 1 cpa_en_ra120
+F 31 1 valid_ra120
+F 32 11 nodeid_ra121
+F 48 1 remote_ra121
+F 49 2 cpa_grp_ra121
+F 62 1 cpa_en_ra121
+F 63 1 valid_ra121
+R 0xf80 64 - S por_hnf_rn_phys_id61
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra122
+F 16 1 remote_ra122
+F 17 2 cpa_grp_ra122
+F 30 1 cpa_en_ra122
+F 31 1 valid_ra122
+F 32 11 nodeid_ra123
+F 48 1 remote_ra123
+F 49 2 cpa_grp_ra123
+F 62 1 cpa_en_ra123
+F 63 1 valid_ra123
+R 0xf88 64 - S por_hnf_rn_phys_id62
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra124
+F 16 1 remote_ra124
+F 17 2 cpa_grp_ra124
+F 30 1 cpa_en_ra124
+F 31 1 valid_ra124
+F 32 11 nodeid_ra125
+F 48 1 remote_ra125
+F 49 2 cpa_grp_ra125
+F 62 1 cpa_en_ra125
+F 63 1 valid_ra125
+R 0xf90 64 - S por_hnf_rn_phys_id63
+RESET 0x0 0xc00707ffc00707ff
+F 0 11 nodeid_ra126
+F 16 1 remote_ra126
+F 17 2 cpa_grp_ra126
+F 30 1 cpa_en_ra126
+F 31 1 valid_ra126
+F 32 11 nodeid_ra127
+F 48 1 remote_ra127
+F 49 2 cpa_grp_ra127
+F 62 1 cpa_en_ra127
+F 63 1 valid_ra127
+R 0xf98 64 - S por_hnf_ldid_map_table_reg0
+RESET 0x0 0x807f07ff807f07ff
+F 0 11 srcid_cxha0
+F 16 7 starting_ldid_cxha0
+F 31 1 valid_cxha0
+F 32 11 srcid_cxha1
+F 48 7 starting_ldid_cxha1
+F 63 1 valid_cxha1
+R 0xfa0 64 - S por_hnf_ldid_map_table_reg1
+RESET 0x0 0x807f07ff807f07ff
+F 0 11 srcid_cxha2
+F 16 7 starting_ldid_cxha2
+F 31 1 valid_cxha2
+F 32 11 srcid_cxha3
+F 48 7 starting_ldid_cxha3
+F 63 1 valid_cxha3
+R 0xfa8 64 - S por_hnf_ldid_map_table_reg2
+RESET 0x0 0x807f07ff807f07ff
+F 0 11 srcid_cxha4
+F 16 7 starting_ldid_cxha4
+F 31 1 valid_cxha4
+F 32 11 srcid_cxha5
+F 48 7 starting_ldid_cxha5
+F 63 1 valid_cxha5
+R 0xfb0 64 - S por_hnf_ldid_map_table_reg3
+RESET 0x0 0x807f07ff807f07ff
+F 0 11 srcid_cxha6
+F 16 7 starting_ldid_cxha6
+F 31 1 valid_cxha6
+F 32 11 srcid_cxha7
+F 48 7 starting_ldid_cxha7
+F 63 1 valid_cxha7
+R 0x1000 32 - S por_hnf_ppu_pwpr
+RESET 0x0 0x1ff
+F 0 4 policy
+F 4 4 op_mode
+F 8 1 dyn_en
+R 0x1008 32 ROV - por_hnf_ppu_pwsr
+RESET 0x0 0x1ff
+F 0 4 pow_status
+F 4 4 op_mode_status
+F 8 1 dyn_en_status
+R 0x1014 32 RO - por_hnf_ppu_misr
+RESET 0x0 0x1
+F 0 1 pcsmaccept_status
+R 0x1100 64 - S por_hnf_ppu_dyn_ret_threshold
+RESET 0x0 0xfff
+F 0 12 dyn_ret_threshold
+R 0x1fb0 32 RO - por_hnf_ppu_idr0
+RESET 0x801a540 0x3ff7ffff
+F 29 1 dyn_wrm_rst_spt
+F 28 1 dyn_all_on_spt
+F 27 1 dyn_fnc_ret_spt
+F 26 1 dyn_full_ret_spt
+F 25 1 dyn_mem_off_spt
+F 24 1 dyn_lgc_ret_spt
+F 23 1 dyn_mem_ret_emu_spt
+F 22 1 dyn_mem_ret_spt
+F 21 1 dyn_off_emu_spt
+F 20 1 dyn_all_off_spt
+F 18 1 sta_dbg_recov_spt
+F 17 1 sta_wrm_rst_spt
+F 16 1 sta_all_on_spt
+F 15 1 sta_fnc_ret_spt
+F 14 1 sta_full_ret_spt
+F 13 1 sta_mem_off_spt
+F 12 1 sta_lgc_ret_spt
+F 11 1 sta_mem_ret_emu_spt
+F 10 1 sta_mem_ret_spt
+F 9 1 sta_off_emu_spt
+F 8 1 sta_all_off_spt
+F 4 4 num_opmodes
+F 0 4 devchan
+R 0x1fb4 32 RO - por_hnf_ppu_idr1
+RESET 0x0 0xf
+F 3 1 dyn_policy_min_irq_spt
+F 2 1 off_lock_spt
+F 1 1 sw_dev_del_config_spt
+F 0 1 pwr_mode_entry_del_spt
+R 0x1fc8 32 RO - por_hnf_ppu_iidr
+RESET 0x4340043b 0xffffffff
+F 20 12 product_id
+F 16 4 variant
+F 12 4 revision
+F 0 12 implementer
+R 0x1fcc 32 RO - por_hnf_ppu_aidr
+RESET 0x11 0xff
+F 4 4 arch_rev_major
+F 0 4 arch_rev_minor
+R 0x2000 64 - - por_hnf_pmu_event_sel
+RESET 0x0 0x71f1f1f1f
+F 0 5 pmu_event0_id
+F 8 5 pmu_event1_id
+F 16 5 pmu_event2_id
+F 24 5 pmu_event3_id
+F 32 3 pmu_occup1_id
+R 0x3000 64 RO S por_hnf_errfr
+RESET 0x48a5 0x7cff
+F 0 2 ED
+F 2 2 DE
+F 4 2 UI
+F 6 2 FI
+F 10 2 CFI
+F 12 3 CEC
+R 0x3008 64 - S por_hnf_errctlr
+RESET 0x0 0x10f
+F 0 1 ED
+F 1 1 DE
+F 2 1 UI
+F 3 1 FI
+F 8 1 CFI
+R 0x3010 64 - S por_hnf_errstatus
+RESET 0x0 0xed800000
+F 31 1 AV
+F 30 1 V
+F 29 1 UE
+F 27 1 OF
+F 26 1 MV
+F 24 1 CE
+F 23 1 DE
+R 0x3018 64 - S por_hnf_erraddr
+RESET 0x0 0x8000ffffffffffff
+F 63 1 NS
+F 0 48 ADDR
+R 0x3020 64 - S por_hnf_errmisc
+RESET 0x0 0xdfffffff00037fff
+F 63 1 CECOF
+F 32 16 CEC
+F 4 11 SRCID
+F 16 2 OPTYPE
+F 48 13 ERRSET
+F 62 1 SETMATCH
+F 0 4 ERRSRC
+R 0x3030 64 - S por_hnf_err_inj
+RESET 0x0 0x7ff01f1
+F 0 1 hnf_err_inj_en
+F 4 5 hnf_err_inj_lpid
+F 16 11 hnf_err_inj_srcid
+R 0x3038 64 WO S por_hnf_byte_par_err_inj
+RESET 0x0 0x1f
+F 0 5 hnf_byte_par_err_inj
+R 0x3100 64 RO - por_hnf_errfr_NS
+RESET 0x48a5 0x7cff
+F 0 2 ED
+F 2 2 DE
+F 4 2 UI
+F 6 2 FI
+F 10 2 CFI
+F 12 3 CEC
+R 0x3108 64 - - por_hnf_errctlr_NS
+RESET 0x0 0x10f
+F 0 1 ED
+F 1 1 DE
+F 2 1 UI
+F 3 1 FI
+F 8 1 CFI
+R 0x3110 64 - - por_hnf_errstatus_NS
+RESET 0x0 0xed800000
+F 31 1 AV
+F 30 1 V
+F 29 1 UE
+F 27 1 OF
+F 26 1 MV
+F 24 1 CE
+F 23 1 DE
+R 0x3118 64 - - por_hnf_erraddr_NS
+RESET 0x0 0x8000ffffffffffff
+F 63 1 NS
+F 0 48 ADDR
+R 0x3120 64 - - por_hnf_errmisc_NS
+RESET 0x0 0xdfffffff00037fff
+F 63 1 CECOF
+F 32 16 CEC
+F 4 11 SRCID
+F 16 2 OPTYPE
+F 48 13 ERRSET
+F 62 1 SETMATCH
+F 0 4 ERRSRC
+ENDGROUP
+GROUP por_dn_registers
+R 0x0 64 RO - por_dn_node_info
+RESET 0x1 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x80 64 RO - por_dn_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x900 64 RO - por_dn_build_info
+RESET 0x1 0x1
+F 0 1 dvm_v8_1_en
+PAR DN_DVM_V8_1_EN_PARAM
+R 0x980 64 - S por_dn_secure_register_groups_override
+RESET 0x0 0x1
+F 0 1 vmf
+R 0xa00 64 - S por_dn_aux_ctl
+RESET 0x0 0x7
+F 0 1 disable_vmf
+PAR POR_R2_ENABLE_PARAM
+F 1 1 disable_clk_gating
+F 2 1 enable_rnd_icache_ops
+PAR POR_R2_ENABLE_PARAM
+R 0xc00 64 - S por_dn_vmf0_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xc08 64 - S por_dn_vmf0_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xc10 64 - S por_dn_vmf0_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xc18 64 - S por_dn_vmf0_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xc20 64 - S por_dn_vmf1_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xc28 64 - S por_dn_vmf1_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xc30 64 - S por_dn_vmf1_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xc38 64 - S por_dn_vmf1_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xc40 64 - S por_dn_vmf2_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xc48 64 - S por_dn_vmf2_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xc50 64 - S por_dn_vmf2_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xc58 64 - S por_dn_vmf2_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xc60 64 - S por_dn_vmf3_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xc68 64 - S por_dn_vmf3_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xc70 64 - S por_dn_vmf3_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xc78 64 - S por_dn_vmf3_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xc80 64 - S por_dn_vmf4_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xc88 64 - S por_dn_vmf4_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xc90 64 - S por_dn_vmf4_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xc98 64 - S por_dn_vmf4_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xca0 64 - S por_dn_vmf5_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xca8 64 - S por_dn_vmf5_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xcb0 64 - S por_dn_vmf5_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xcb8 64 - S por_dn_vmf5_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xcc0 64 - S por_dn_vmf6_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xcc8 64 - S por_dn_vmf6_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xcd0 64 - S por_dn_vmf6_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xcd8 64 - S por_dn_vmf6_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xce0 64 - S por_dn_vmf7_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xce8 64 - S por_dn_vmf7_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xcf0 64 - S por_dn_vmf7_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xcf8 64 - S por_dn_vmf7_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xd00 64 - S por_dn_vmf8_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xd08 64 - S por_dn_vmf8_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xd10 64 - S por_dn_vmf8_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xd18 64 - S por_dn_vmf8_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xd20 64 - S por_dn_vmf9_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xd28 64 - S por_dn_vmf9_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xd30 64 - S por_dn_vmf9_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xd38 64 - S por_dn_vmf9_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xd40 64 - S por_dn_vmf10_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xd48 64 - S por_dn_vmf10_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xd50 64 - S por_dn_vmf10_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xd58 64 - S por_dn_vmf10_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xd60 64 - S por_dn_vmf11_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xd68 64 - S por_dn_vmf11_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xd70 64 - S por_dn_vmf11_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xd78 64 - S por_dn_vmf11_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xd80 64 - S por_dn_vmf12_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xd88 64 - S por_dn_vmf12_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xd90 64 - S por_dn_vmf12_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xd98 64 - S por_dn_vmf12_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xda0 64 - S por_dn_vmf13_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xda8 64 - S por_dn_vmf13_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xdb0 64 - S por_dn_vmf13_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xdb8 64 - S por_dn_vmf13_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xdc0 64 - S por_dn_vmf14_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xdc8 64 - S por_dn_vmf14_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xdd0 64 - S por_dn_vmf14_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xdd8 64 - S por_dn_vmf14_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xde0 64 - S por_dn_vmf15_ctrl
+RESET 0xffff00000000 0xffff0001ffff
+F 0 1 valid
+F 1 16 vmid
+F 32 16 mask
+R 0xde8 64 - S por_dn_vmf15_rnf0
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec0
+R 0xdf0 64 - S por_dn_vmf15_rnd
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0xdf8 64 - S por_dn_vmf15_cxra
+RESET 0x0 0xffffffffffffffff
+F 0 64 snp_destvec
+R 0x2000 64 - - por_dn_pmu_event_sel
+RESET 0x0 0xf3f3f3f3f
+F 0 6 pmu_event0_id
+F 8 6 pmu_event1_id
+F 16 6 pmu_event2_id
+F 24 6 pmu_event3_id
+F 32 4 pmu_occup1_id
+ENDGROUP
+GROUP por_cxg_ha_registers
+R 0x0 64 RO - por_cxg_ha_node_info
+RESET 0x101 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x8 64 - S por_cxg_ha_id
+RESET 0x0 0x3f
+F 0 6 ccix_haid
+R 0x80 64 RO - por_cxg_ha_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x900 64 RO - por_cxg_ha_unit_info
+RESET 0x404100802010100 0x7fffffffffffffff
+F 0 9 request_tracker_depth
+PAR CXG_HA_NUM_REQS_PARAM
+F 9 9 rdb_depth
+PAR CXG_HA_NUM_RDBUF_PARAM
+F 18 9 wdb_depth
+PAR CXG_HA_NUM_WRBUF_PARAM
+F 27 9 snoop_request_sinkbuffer_depth
+PAR CXG_HA_SSB_DEPTH_PARAM
+F 36 9 snoop_tracker_depth
+PAR CXG_HA_NUM_SNPREQS_PARAM
+F 45 9 snoop_databuffer_depth
+PAR CXG_HA_NUM_SNPBUF_PARAM
+F 54 9 snoop_compack_hazbuf_depth
+PAR CXG_HA_CSHAZBUF_DEPTH_PARAM
+R 0x980 64 - S por_cxg_ha_secure_register_groups_override
+RESET 0x0 0x3
+F 0 1 ldid_ctl
+F 1 1 linkid_ctl
+R 0xa08 64 - S por_cxg_ha_aux_ctl
+RESET 0x8 0x1003f
+F 0 1 cg_disable
+F 1 1 snoop_dataret_disable
+F 2 1 remote_chia_rnf_present
+F 3 1 early_compack_en
+F 4 1 disable_secure_access
+F 5 1 disable_cg_flopen
+F 16 1 smp_mode_en
+PAR CXG_SMP_MODE_EN_PARAM
+R 0xc00 64 - S por_cxg_ha_rnf_raid_to_ldid_reg0
+RESET 0x0 0xbfbfbfbfbfbfbfbf
+F 0 6 ldid0
+F 7 1 ldid0_rnf
+F 8 6 ldid1
+F 15 1 ldid1_rnf
+F 16 6 ldid2
+F 23 1 ldid2_rnf
+F 24 6 ldid3
+F 31 1 ldid3_rnf
+F 32 6 ldid4
+F 39 1 ldid4_rnf
+F 40 6 ldid5
+F 47 1 ldid5_rnf
+F 48 6 ldid6
+F 55 1 ldid6_rnf
+F 56 6 ldid7
+F 63 1 ldid7_rnf
+R 0xc08 64 - S por_cxg_ha_rnf_raid_to_ldid_reg1
+RESET 0x0 0xbfbfbfbfbfbfbfbf
+F 0 6 ldid8
+F 7 1 ldid8_rnf
+F 8 6 ldid9
+F 15 1 ldid9_rnf
+F 16 6 ldid10
+F 23 1 ldid10_rnf
+F 24 6 ldid11
+F 31 1 ldid11_rnf
+F 32 6 ldid12
+F 39 1 ldid12_rnf
+F 40 6 ldid13
+F 47 1 ldid13_rnf
+F 48 6 ldid14
+F 55 1 ldid14_rnf
+F 56 6 ldid15
+F 63 1 ldid15_rnf
+R 0xc10 64 - S por_cxg_ha_rnf_raid_to_ldid_reg2
+RESET 0x0 0xbfbfbfbfbfbfbfbf
+F 0 6 ldid16
+F 7 1 ldid16_rnf
+F 8 6 ldid17
+F 15 1 ldid17_rnf
+F 16 6 ldid18
+F 23 1 ldid18_rnf
+F 24 6 ldid19
+F 31 1 ldid19_rnf
+F 32 6 ldid20
+F 39 1 ldid20_rnf
+F 40 6 ldid21
+F 47 1 ldid21_rnf
+F 48 6 ldid22
+F 55 1 ldid22_rnf
+F 56 6 ldid23
+F 63 1 ldid23_rnf
+R 0xc18 64 - S por_cxg_ha_rnf_raid_to_ldid_reg3
+RESET 0x0 0xbfbfbfbfbfbfbfbf
+F 0 6 ldid24
+F 7 1 ldid24_rnf
+F 8 6 ldid25
+F 15 1 ldid25_rnf
+F 16 6 ldid26
+F 23 1 ldid26_rnf
+F 24 6 ldid27
+F 31 1 ldid27_rnf
+F 32 6 ldid28
+F 39 1 ldid28_rnf
+F 40 6 ldid29
+F 47 1 ldid29_rnf
+F 48 6 ldid30
+F 55 1 ldid30_rnf
+F 56 6 ldid31
+F 63 1 ldid31_rnf
+R 0xc20 64 - S por_cxg_ha_rnf_raid_to_ldid_reg4
+RESET 0x0 0xbfbfbfbfbfbfbfbf
+F 0 6 ldid32
+F 7 1 ldid32_rnf
+F 8 6 ldid33
+F 15 1 ldid33_rnf
+F 16 6 ldid34
+F 23 1 ldid34_rnf
+F 24 6 ldid35
+F 31 1 ldid35_rnf
+F 32 6 ldid36
+F 39 1 ldid36_rnf
+F 40 6 ldid37
+F 47 1 ldid37_rnf
+F 48 6 ldid38
+F 55 1 ldid38_rnf
+F 56 6 ldid39
+F 63 1 ldid39_rnf
+R 0xc28 64 - S por_cxg_ha_rnf_raid_to_ldid_reg5
+RESET 0x0 0xbfbfbfbfbfbfbfbf
+F 0 6 ldid40
+F 7 1 ldid40_rnf
+F 8 6 ldid41
+F 15 1 ldid41_rnf
+F 16 6 ldid42
+F 23 1 ldid42_rnf
+F 24 6 ldid43
+F 31 1 ldid43_rnf
+F 32 6 ldid44
+F 39 1 ldid44_rnf
+F 40 6 ldid45
+F 47 1 ldid45_rnf
+F 48 6 ldid46
+F 55 1 ldid46_rnf
+F 56 6 ldid47
+F 63 1 ldid47_rnf
+R 0xc30 64 - S por_cxg_ha_rnf_raid_to_ldid_reg6
+RESET 0x0 0xbfbfbfbfbfbfbfbf
+F 0 6 ldid48
+F 7 1 ldid48_rnf
+F 8 6 ldid49
+F 15 1 ldid49_rnf
+F 16 6 ldid50
+F 23 1 ldid50_rnf
+F 24 6 ldid51
+F 31 1 ldid51_rnf
+F 32 6 ldid52
+F 39 1 ldid52_rnf
+F 40 6 ldid53
+F 47 1 ldid53_rnf
+F 48 6 ldid54
+F 55 1 ldid54_rnf
+F 56 6 ldid55
+F 63 1 ldid55_rnf
+R 0xc38 64 - S por_cxg_ha_rnf_raid_to_ldid_reg7
+RESET 0x0 0xbfbfbfbfbfbfbfbf
+F 0 6 ldid56
+F 7 1 ldid56_rnf
+F 8 6 ldid57
+F 15 1 ldid57_rnf
+F 16 6 ldid58
+F 23 1 ldid58_rnf
+F 24 6 ldid59
+F 31 1 ldid59_rnf
+F 32 6 ldid60
+F 39 1 ldid60_rnf
+F 40 6 ldid61
+F 47 1 ldid61_rnf
+F 48 6 ldid62
+F 55 1 ldid62_rnf
+F 56 6 ldid63
+F 63 1 ldid63_rnf
+R 0xc40 64 - S por_cxg_ha_agentid_to_linkid_reg0
+RESET 0x0 0x303030303030303
+F 0 2 agent0_linkid
+F 8 2 agent1_linkid
+F 16 2 agent2_linkid
+F 24 2 agent3_linkid
+F 32 2 agent4_linkid
+F 40 2 agent5_linkid
+F 48 2 agent6_linkid
+F 56 2 agent7_linkid
+R 0xc48 64 - S por_cxg_ha_agentid_to_linkid_reg1
+RESET 0x0 0x303030303030303
+F 0 2 agent8_linkid
+F 8 2 agent9_linkid
+F 16 2 agent10_linkid
+F 24 2 agent11_linkid
+F 32 2 agent12_linkid
+F 40 2 agent13_linkid
+F 48 2 agent14_linkid
+F 56 2 agent15_linkid
+R 0xc50 64 - S por_cxg_ha_agentid_to_linkid_reg2
+RESET 0x0 0x303030303030303
+F 0 2 agent16_linkid
+F 8 2 agent17_linkid
+F 16 2 agent18_linkid
+F 24 2 agent19_linkid
+F 32 2 agent20_linkid
+F 40 2 agent21_linkid
+F 48 2 agent22_linkid
+F 56 2 agent23_linkid
+R 0xc58 64 - S por_cxg_ha_agentid_to_linkid_reg3
+RESET 0x0 0x303030303030303
+F 0 2 agent24_linkid
+F 8 2 agent25_linkid
+F 16 2 agent26_linkid
+F 24 2 agent27_linkid
+F 32 2 agent28_linkid
+F 40 2 agent29_linkid
+F 48 2 agent30_linkid
+F 56 2 agent31_linkid
+R 0xc60 64 - S por_cxg_ha_agentid_to_linkid_reg4
+RESET 0x0 0x303030303030303
+F 0 2 agent32_linkid
+F 8 2 agent33_linkid
+F 16 2 agent34_linkid
+F 24 2 agent35_linkid
+F 32 2 agent36_linkid
+F 40 2 agent37_linkid
+F 48 2 agent38_linkid
+F 56 2 agent39_linkid
+R 0xc68 64 - S por_cxg_ha_agentid_to_linkid_reg5
+RESET 0x0 0x303030303030303
+F 0 2 agent40_linkid
+F 8 2 agent41_linkid
+F 16 2 agent42_linkid
+F 24 2 agent43_linkid
+F 32 2 agent44_linkid
+F 40 2 agent45_linkid
+F 48 2 agent46_linkid
+F 56 2 agent47_linkid
+R 0xc70 64 - S por_cxg_ha_agentid_to_linkid_reg6
+RESET 0x0 0x303030303030303
+F 0 2 agent48_linkid
+F 8 2 agent49_linkid
+F 16 2 agent50_linkid
+F 24 2 agent51_linkid
+F 32 2 agent52_linkid
+F 40 2 agent53_linkid
+F 48 2 agent54_linkid
+F 56 2 agent55_linkid
+R 0xc78 64 - S por_cxg_ha_agentid_to_linkid_reg7
+RESET 0x0 0x303030303030303
+F 0 2 agent56_linkid
+F 8 2 agent57_linkid
+F 16 2 agent58_linkid
+F 24 2 agent59_linkid
+F 32 2 agent60_linkid
+F 40 2 agent61_linkid
+F 48 2 agent62_linkid
+F 56 2 agent63_linkid
+R 0xd00 64 - S por_cxg_ha_agentid_to_linkid_val
+RESET 0x0 0xffffffffffffffff
+F 0 64 valid
+R 0xd08 64 - S por_cxg_ha_rnf_raid_to_ldid_val
+RESET 0x0 0xffffffffffffffff
+F 0 64 valid
+R 0x1000 64 V S por_cxg_ha_cxprtcl_link0_ctl
+RESET 0x0 0xfff
+F 0 1 lnk0_link_en
+F 1 1 lnk0_link_req
+F 2 1 lnk0_link_up
+F 3 1 lnk0_snoopdomain_req
+F 4 4 lnk0_num_reqcrds
+F 8 4 lnk0_num_datcrds
+R 0x1008 64 ROV S por_cxg_ha_cxprtcl_link0_status
+RESET 0x2 0x7
+F 0 1 lnk0_link_ack
+F 1 1 lnk0_link_down
+F 2 1 lnk0_snoopdomain_ack
+R 0x1010 64 V S por_cxg_ha_cxprtcl_link1_ctl
+RESET 0x0 0xfff
+F 0 1 lnk1_link_en
+F 1 1 lnk1_link_req
+F 2 1 lnk1_link_up
+F 3 1 lnk1_snoopdomain_req
+F 4 4 lnk1_num_reqcrds
+F 8 4 lnk1_num_datcrds
+R 0x1018 64 ROV S por_cxg_ha_cxprtcl_link1_status
+RESET 0x2 0x7
+F 0 1 lnk1_link_ack
+F 1 1 lnk1_link_down
+F 2 1 lnk1_snoopdomain_ack
+R 0x1020 64 V S por_cxg_ha_cxprtcl_link2_ctl
+RESET 0x0 0xfff
+F 0 1 lnk2_link_en
+F 1 1 lnk2_link_req
+F 2 1 lnk2_link_up
+F 3 1 lnk2_snoopdomain_req
+F 4 4 lnk2_num_reqcrds
+F 8 4 lnk2_num_datcrds
+R 0x1028 64 ROV S por_cxg_ha_cxprtcl_link2_status
+RESET 0x2 0x7
+F 0 1 lnk2_link_ack
+F 1 1 lnk2_link_down
+F 2 1 lnk2_snoopdomain_ack
+R 0x2000 64 - - por_cxg_ha_pmu_event_sel
+RESET 0x0 0xf3f3f3f3f
+F 0 6 pmu_event0_id
+F 8 6 pmu_event1_id
+F 16 6 pmu_event2_id
+F 24 6 pmu_event3_id
+F 32 4 pmu_occup1_id
+R 0x3000 64 RO S por_cxg_ha_errfr
+RESET 0xa5 0x7cff
+F 0 2 ED
+F 2 2 DE
+F 4 2 UI
+F 6 2 FI
+F 10 2 CFI
+F 12 3 CEC
+R 0x3008 64 - S por_cxg_ha_errctlr
+RESET 0x0 0x10f
+F 0 1 ED
+F 1 1 DE
+F 2 1 UI
+F 3 1 FI
+F 8 1 CFI
+R 0x3010 64 - S por_cxg_ha_errstatus
+RESET 0x0 0xed800000
+F 31 1 AV
+F 30 1 V
+F 29 1 UE
+F 27 1 OF
+F 26 1 MV
+F 24 1 CE
+F 23 1 DE
+R 0x3018 64 - S por_cxg_ha_erraddr
+RESET 0x0 0x8000ffffffffffff
+F 63 1 NS
+F 0 48 ADDR
+R 0x3020 64 - S por_cxg_ha_errmisc
+RESET 0x0 0xff0000000003f3
+F 4 6 SRCID
+F 48 8 ERRSET
+F 0 2 ERRSRC
+R 0x3100 64 RO S por_cxg_ha_errfr_NS
+RESET 0xa5 0x7cff
+F 0 2 ED
+F 2 2 DE
+F 4 2 UI
+F 6 2 FI
+F 10 2 CFI
+F 12 3 CEC
+R 0x3108 64 - S por_cxg_ha_errctlr_NS
+RESET 0x0 0x10f
+F 0 1 ED
+F 1 1 DE
+F 2 1 UI
+F 3 1 FI
+F 8 1 CFI
+R 0x3110 64 - S por_cxg_ha_errstatus_NS
+RESET 0x0 0xed800000
+F 31 1 AV
+F 30 1 V
+F 29 1 UE
+F 27 1 OF
+F 26 1 MV
+F 24 1 CE
+F 23 1 DE
+R 0x3118 64 - S por_cxg_ha_erraddr_NS
+RESET 0x0 0x8000ffffffffffff
+F 63 1 NS
+F 0 48 ADDR
+R 0x3120 64 - S por_cxg_ha_errmisc_NS
+RESET 0x0 0xff0000000003f3
+F 4 6 SRCID
+F 48 8 ERRSET
+F 0 2 ERRSRC
+ENDGROUP
+GROUP por_cxg_ra_registers
+R 0x0 64 RO - por_cxg_ra_node_info
+RESET 0x100 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x80 64 RO - por_cxg_ra_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x900 64 RO - por_cxg_ra_unit_info
+RESET 0x208020021000006 0x1fffffffffffff5f
+F 0 5 num_mem_regions
+PAR CXG_RA_SAM_NUM_ADDR_REGION_PARAM
+F 6 1 num_mem_region_limit_enabled
+PAR CXG_RA_SAM_MEM_REGION_LIMIT_EN_PARAM
+F 8 8 a4s_logicalid
+PAR CXG_A4S_LOGICALID_PARAM
+F 16 9 request_tracker_depth
+PAR CXG_RA_NUM_REQS_PARAM
+F 25 9 rdb_depth
+PAR CXG_RA_NUM_RDBUF_PARAM
+F 34 9 wdb_depth
+PAR CXG_RA_NUM_WRBUF_PARAM
+F 43 9 snoop_tracker_depth
+PAR CXG_RA_NUM_SNPREQS_PARAM
+F 52 9 snoop_databuffer_depth
+PAR CXG_RA_NUM_SNPBUF_PARAM
+R 0x980 64 - S por_cxg_ra_secure_register_groups_override
+RESET 0x0 0xf
+F 0 1 cfg_ctl
+F 1 1 rasam_ctl
+F 2 1 linkid_ctl
+F 3 1 ldid_ctl
+R 0xa00 64 - S por_cxg_ra_cfg_ctl
+RESET 0x2 0x307
+F 0 1 pcie_qos15_entry_rsv_en
+PAR CXG_SMP_MODE_EN_PARAM
+F 1 1 qos15_entry_rsv_en
+F 2 1 pcie_nonqos15_entry_rsv_en
+PAR CXG_SMP_MODE_EN_PARAM
+F 8 1 en_cxla_pmucmd_prop
+F 9 1 cxsa_mode_en
+R 0xa08 64 - S por_cxg_ra_aux_ctl
+RESET 0x6 0x107ff
+F 0 1 cg_disable
+F 1 1 early_rdrcpt_en
+F 2 1 early_compack_en
+F 3 1 devnr_ord_wfc
+F 4 1 sameaddr_ord_wfc
+F 5 1 dis_rem_secure_access
+F 6 1 r2byp_en
+F 7 1 dis_rdreqchain
+F 8 1 dis_wrreqchain
+F 9 1 dis_dbiddispq_rsp
+F 10 1 dis_cxsa_early_write_comp
+F 16 1 smp_mode_en
+PAR CXG_SMP_MODE_EN_PARAM
+R 0xda8 64 - S por_cxg_ra_sam_addr_region_reg0
+RESET 0x0 0x83f0ffffffff003f
+F 63 1 reg0_valid
+F 52 6 reg0_ha_tgtid
+F 16 32 reg0_base_addr
+F 0 6 reg0_size
+R 0xdb0 64 - S por_cxg_ra_sam_addr_region_reg1
+RESET 0x0 0x83f0ffffffff003f
+F 63 1 reg1_valid
+F 52 6 reg1_ha_tgtid
+F 16 32 reg1_base_addr
+F 0 6 reg1_size
+R 0xdb8 64 - S por_cxg_ra_sam_addr_region_reg2
+RESET 0x0 0x83f0ffffffff003f
+F 63 1 reg2_valid
+F 52 6 reg2_ha_tgtid
+F 16 32 reg2_base_addr
+F 0 6 reg2_size
+R 0xdc0 64 - S por_cxg_ra_sam_addr_region_reg3
+RESET 0x0 0x83f0ffffffff003f
+F 63 1 reg3_valid
+F 52 6 reg3_ha_tgtid
+F 16 32 reg3_base_addr
+F 0 6 reg3_size
+R 0xdc8 64 - S por_cxg_ra_sam_addr_region_reg4
+RESET 0x0 0x83f0ffffffff003f
+F 63 1 reg4_valid
+F 52 6 reg4_ha_tgtid
+F 16 32 reg4_base_addr
+F 0 6 reg4_size
+R 0xdd0 64 - S por_cxg_ra_sam_addr_region_reg5
+RESET 0x0 0x83f0ffffffff003f
+F 63 1 reg5_valid
+F 52 6 reg5_ha_tgtid
+F 16 32 reg5_base_addr
+F 0 6 reg5_size
+R 0xdd8 64 - S por_cxg_ra_sam_addr_region_reg6
+RESET 0x0 0x83f0ffffffff003f
+F 63 1 reg6_valid
+F 52 6 reg6_ha_tgtid
+F 16 32 reg6_base_addr
+F 0 6 reg6_size
+R 0xde0 64 - S por_cxg_ra_sam_addr_region_reg7
+RESET 0x0 0x83f0ffffffff003f
+F 63 1 reg7_valid
+F 52 6 reg7_ha_tgtid
+F 16 32 reg7_base_addr
+F 0 6 reg7_size
+R 0xe00 64 - S por_cxg_ra_sam_mem_region0_limit_reg
+RESET 0x0 0xffffffff0000
+F 16 32 reg0_limit_addr
+R 0xe08 64 - S por_cxg_ra_sam_mem_region1_limit_reg
+RESET 0x0 0xffffffff0000
+F 16 32 reg1_limit_addr
+R 0xe10 64 - S por_cxg_ra_sam_mem_region2_limit_reg
+RESET 0x0 0xffffffff0000
+F 16 32 reg2_limit_addr
+R 0xe18 64 - S por_cxg_ra_sam_mem_region3_limit_reg
+RESET 0x0 0xffffffff0000
+F 16 32 reg3_limit_addr
+R 0xe20 64 - S por_cxg_ra_sam_mem_region4_limit_reg
+RESET 0x0 0xffffffff0000
+F 16 32 reg4_limit_addr
+R 0xe28 64 - S por_cxg_ra_sam_mem_region5_limit_reg
+RESET 0x0 0xffffffff0000
+F 16 32 reg5_limit_addr
+R 0xe30 64 - S por_cxg_ra_sam_mem_region6_limit_reg
+RESET 0x0 0xffffffff0000
+F 16 32 reg6_limit_addr
+R 0xe38 64 - S por_cxg_ra_sam_mem_region7_limit_reg
+RESET 0x0 0xffffffff0000
+F 16 32 reg7_limit_addr
+R 0xe60 64 - S por_cxg_ra_agentid_to_linkid_reg0
+RESET 0x0 0x303030303030303
+F 0 2 agent0_linkid
+F 8 2 agent1_linkid
+F 16 2 agent2_linkid
+F 24 2 agent3_linkid
+F 32 2 agent4_linkid
+F 40 2 agent5_linkid
+F 48 2 agent6_linkid
+F 56 2 agent7_linkid
+R 0xe68 64 - S por_cxg_ra_agentid_to_linkid_reg1
+RESET 0x0 0x303030303030303
+F 0 2 agent8_linkid
+F 8 2 agent9_linkid
+F 16 2 agent10_linkid
+F 24 2 agent11_linkid
+F 32 2 agent12_linkid
+F 40 2 agent13_linkid
+F 48 2 agent14_linkid
+F 56 2 agent15_linkid
+R 0xe70 64 - S por_cxg_ra_agentid_to_linkid_reg2
+RESET 0x0 0x303030303030303
+F 0 2 agent16_linkid
+F 8 2 agent17_linkid
+F 16 2 agent18_linkid
+F 24 2 agent19_linkid
+F 32 2 agent20_linkid
+F 40 2 agent21_linkid
+F 48 2 agent22_linkid
+F 56 2 agent23_linkid
+R 0xe78 64 - S por_cxg_ra_agentid_to_linkid_reg3
+RESET 0x0 0x303030303030303
+F 0 2 agent24_linkid
+F 8 2 agent25_linkid
+F 16 2 agent26_linkid
+F 24 2 agent27_linkid
+F 32 2 agent28_linkid
+F 40 2 agent29_linkid
+F 48 2 agent30_linkid
+F 56 2 agent31_linkid
+R 0xe80 64 - S por_cxg_ra_agentid_to_linkid_reg4
+RESET 0x0 0x303030303030303
+F 0 2 agent32_linkid
+F 8 2 agent33_linkid
+F 16 2 agent34_linkid
+F 24 2 agent35_linkid
+F 32 2 agent36_linkid
+F 40 2 agent37_linkid
+F 48 2 agent38_linkid
+F 56 2 agent39_linkid
+R 0xe88 64 - S por_cxg_ra_agentid_to_linkid_reg5
+RESET 0x0 0x303030303030303
+F 0 2 agent40_linkid
+F 8 2 agent41_linkid
+F 16 2 agent42_linkid
+F 24 2 agent43_linkid
+F 32 2 agent44_linkid
+F 40 2 agent45_linkid
+F 48 2 agent46_linkid
+F 56 2 agent47_linkid
+R 0xe90 64 - S por_cxg_ra_agentid_to_linkid_reg6
+RESET 0x0 0x303030303030303
+F 0 2 agent48_linkid
+F 8 2 agent49_linkid
+F 16 2 agent50_linkid
+F 24 2 agent51_linkid
+F 32 2 agent52_linkid
+F 40 2 agent53_linkid
+F 48 2 agent54_linkid
+F 56 2 agent55_linkid
+R 0xe98 64 - S por_cxg_ra_agentid_to_linkid_reg7
+RESET 0x0 0x303030303030303
+F 0 2 agent56_linkid
+F 8 2 agent57_linkid
+F 16 2 agent58_linkid
+F 24 2 agent59_linkid
+F 32 2 agent60_linkid
+F 40 2 agent61_linkid
+F 48 2 agent62_linkid
+F 56 2 agent63_linkid
+R 0xea0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg0
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid0_raid
+F 8 6 ldid1_raid
+F 16 6 ldid2_raid
+F 24 6 ldid3_raid
+F 32 6 ldid4_raid
+F 40 6 ldid5_raid
+F 48 6 ldid6_raid
+F 56 6 ldid7_raid
+R 0xea8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg1
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid8_raid
+F 8 6 ldid9_raid
+F 16 6 ldid10_raid
+F 24 6 ldid11_raid
+F 32 6 ldid12_raid
+F 40 6 ldid13_raid
+F 48 6 ldid14_raid
+F 56 6 ldid15_raid
+R 0xeb0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg2
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid16_raid
+F 8 6 ldid17_raid
+F 16 6 ldid18_raid
+F 24 6 ldid19_raid
+F 32 6 ldid20_raid
+F 40 6 ldid21_raid
+F 48 6 ldid22_raid
+F 56 6 ldid23_raid
+R 0xeb8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg3
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid24_raid
+F 8 6 ldid25_raid
+F 16 6 ldid26_raid
+F 24 6 ldid27_raid
+F 32 6 ldid28_raid
+F 40 6 ldid29_raid
+F 48 6 ldid30_raid
+F 56 6 ldid31_raid
+R 0xec0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg4
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid32_raid
+F 8 6 ldid33_raid
+F 16 6 ldid34_raid
+F 24 6 ldid35_raid
+F 32 6 ldid36_raid
+F 40 6 ldid37_raid
+F 48 6 ldid38_raid
+F 56 6 ldid39_raid
+R 0xec8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg5
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid40_raid
+F 8 6 ldid41_raid
+F 16 6 ldid42_raid
+F 24 6 ldid43_raid
+F 32 6 ldid44_raid
+F 40 6 ldid45_raid
+F 48 6 ldid46_raid
+F 56 6 ldid47_raid
+R 0xed0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg6
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid48_raid
+F 8 6 ldid49_raid
+F 16 6 ldid50_raid
+F 24 6 ldid51_raid
+F 32 6 ldid52_raid
+F 40 6 ldid53_raid
+F 48 6 ldid54_raid
+F 56 6 ldid55_raid
+R 0xed8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg7
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid56_raid
+F 8 6 ldid57_raid
+F 16 6 ldid58_raid
+F 24 6 ldid59_raid
+F 32 6 ldid60_raid
+F 40 6 ldid61_raid
+F 48 6 ldid62_raid
+F 56 6 ldid63_raid
+R 0xee0 64 - S por_cxg_ra_rni_ldid_to_raid_reg0
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid0_raid
+F 8 6 ldid1_raid
+F 16 6 ldid2_raid
+F 24 6 ldid3_raid
+F 32 6 ldid4_raid
+F 40 6 ldid5_raid
+F 48 6 ldid6_raid
+F 56 6 ldid7_raid
+R 0xee8 64 - S por_cxg_ra_rni_ldid_to_raid_reg1
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid8_raid
+F 8 6 ldid9_raid
+F 16 6 ldid10_raid
+F 24 6 ldid11_raid
+F 32 6 ldid12_raid
+F 40 6 ldid13_raid
+F 48 6 ldid14_raid
+F 56 6 ldid15_raid
+R 0xef0 64 - S por_cxg_ra_rni_ldid_to_raid_reg2
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid16_raid
+F 8 6 ldid17_raid
+F 16 6 ldid18_raid
+F 24 6 ldid19_raid
+F 32 6 ldid20_raid
+F 40 6 ldid21_raid
+F 48 6 ldid22_raid
+F 56 6 ldid23_raid
+R 0xef8 64 - S por_cxg_ra_rni_ldid_to_raid_reg3
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid24_raid
+F 8 6 ldid25_raid
+F 16 6 ldid26_raid
+F 24 6 ldid27_raid
+F 32 6 ldid28_raid
+F 40 6 ldid29_raid
+F 48 6 ldid30_raid
+F 56 6 ldid31_raid
+R 0xf00 64 - S por_cxg_ra_rnd_ldid_to_raid_reg0
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid0_raid
+F 8 6 ldid1_raid
+F 16 6 ldid2_raid
+F 24 6 ldid3_raid
+F 32 6 ldid4_raid
+F 40 6 ldid5_raid
+F 48 6 ldid6_raid
+F 56 6 ldid7_raid
+R 0xf08 64 - S por_cxg_ra_rnd_ldid_to_raid_reg1
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid8_raid
+F 8 6 ldid9_raid
+F 16 6 ldid10_raid
+F 24 6 ldid11_raid
+F 32 6 ldid12_raid
+F 40 6 ldid13_raid
+F 48 6 ldid14_raid
+F 56 6 ldid15_raid
+R 0xf10 64 - S por_cxg_ra_rnd_ldid_to_raid_reg2
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid16_raid
+F 8 6 ldid17_raid
+F 16 6 ldid18_raid
+F 24 6 ldid19_raid
+F 32 6 ldid20_raid
+F 40 6 ldid21_raid
+F 48 6 ldid22_raid
+F 56 6 ldid23_raid
+R 0xf18 64 - S por_cxg_ra_rnd_ldid_to_raid_reg3
+RESET 0x0 0x3f3f3f3f3f3f3f3f
+F 0 6 ldid24_raid
+F 8 6 ldid25_raid
+F 16 6 ldid26_raid
+F 24 6 ldid27_raid
+F 32 6 ldid28_raid
+F 40 6 ldid29_raid
+F 48 6 ldid30_raid
+F 56 6 ldid31_raid
+R 0xf20 64 - S por_cxg_ra_agentid_to_linkid_val
+RESET 0x0 0xffffffffffffffff
+F 0 64 valid
+R 0xf28 64 - S por_cxg_ra_rnf_ldid_to_raid_val
+RESET 0x0 0xffffffffffffffff
+F 0 64 valid
+R 0xf30 64 - S por_cxg_ra_rni_ldid_to_raid_val
+RESET 0x0 0xffffffff
+F 0 32 valid
+R 0xf38 64 - S por_cxg_ra_rnd_ldid_to_raid_val
+RESET 0x0 0xffffffff
+F 0 32 valid
+R 0x1000 64 V S por_cxg_ra_cxprtcl_link0_ctl
+RESET 0x0 0x1ff
+F 0 1 lnk0_link_en
+F 1 1 lnk0_link_req
+F 2 1 lnk0_link_up
+F 3 1 lnk0_dvmdomain_req
+F 4 4 lnk0_num_snpcrds
+F 8 1 lnk0_dis_cpuevent_prop
+R 0x1008 64 ROV S por_cxg_ra_cxprtcl_link0_status
+RESET 0x2 0xf
+F 0 1 lnk0_link_ack
+F 1 1 lnk0_link_down
+F 2 1 lnk0_dvmdomain_ack
+F 3 1 lnk0_ot_cbkwr
+R 0x1010 64 V S por_cxg_ra_cxprtcl_link1_ctl
+RESET 0x0 0x1ff
+F 0 1 lnk1_link_en
+F 1 1 lnk1_link_req
+F 2 1 lnk1_link_up
+F 3 1 lnk1_dvmdomain_req
+F 4 4 lnk1_num_snpcrds
+F 8 1 lnk1_dis_cpuevent_prop
+R 0x1018 64 ROV S por_cxg_ra_cxprtcl_link1_status
+RESET 0x2 0xf
+F 0 1 lnk1_link_ack
+F 1 1 lnk1_link_down
+F 2 1 lnk1_dvmdomain_ack
+F 3 1 lnk1_ot_cbkwr
+R 0x1020 64 V S por_cxg_ra_cxprtcl_link2_ctl
+RESET 0x0 0x1ff
+F 0 1 lnk2_link_en
+F 1 1 lnk2_link_req
+F 2 1 lnk2_link_up
+F 3 1 lnk2_dvmdomain_req
+F 4 4 lnk2_num_snpcrds
+F 8 1 lnk2_dis_cpuevent_prop
+R 0x1028 64 ROV S por_cxg_ra_cxprtcl_link2_status
+RESET 0x2 0xf
+F 0 1 lnk2_link_ack
+F 1 1 lnk2_link_down
+F 2 1 lnk2_dvmdomain_ack
+F 3 1 lnk2_ot_cbkwr
+R 0x2000 64 - - por_cxg_ra_pmu_event_sel
+RESET 0x0 0xf3f3f3f3f
+F 0 6 pmu_event0_id
+F 8 6 pmu_event1_id
+F 16 6 pmu_event2_id
+F 24 6 pmu_event3_id
+F 32 4 pmu_occup1_id
+ENDGROUP
+GROUP por_rni_registers
+R 0x0 64 RO - por_rni_node_info
+RESET 0xa 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x80 64 RO - por_rni_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x900 64 RO - por_rni_unit_info
+RESET 0x81808020 0xff7ffffffff
+F 0 10 num_wr_reqs
+PAR RNID_NUM_WR_REQ_PARAM
+F 10 10 num_rd_reqs
+PAR RNID_NUM_RD_REQ_PARAM
+F 20 10 num_rd_bufs
+PAR RNID_NUM_RD_BUF_PARAM
+F 30 1 ax_data_256bit
+PAR RNID_AXDATA256_EN_PARAM
+F 31 1 ax_datapoison_en
+PAR RNID_AXDATAPOISON_EN_PARAM
+F 32 1 force_rdb_prealloc
+PAR RNID_FORCE_RDB_PREALLOC_PARAM
+F 33 2 a4s_num
+PAR RNI_A4S_NUM_PARAM
+F 36 8 a4s_logicalid_base
+PAR RNI_A4S_LOGICALID_BASE_PARAM
+R 0x980 64 - S por_rni_secure_register_groups_override
+RESET 0x0 0x7
+F 0 1 cfg_ctl
+F 1 1 port_ctrl
+F 2 1 qos_ctrl
+R 0xa00 64 - S por_rni_cfg_ctl
+RESET 0x200201401 0x3ff3ff777f
+F 0 1 qpc_en
+F 1 1 wfc
+F 2 1 dis_wr_stream
+F 3 1 force_prealloc_rdb
+PAR RNID_FORCE_RDB_PREALLOC_PARAM
+F 4 1 qpc15_entry_rsv_en
+F 5 1 pcie_mstr_present
+F 6 1 dis_ncwr_stream
+F 8 3 rrt_crdgnt_weight
+F 12 3 wrt_crdgnt_weight
+F 16 10 max_rrt_outstd_chitxn_cnt
+PAR RNID_NUM_RD_REQ_PARAM
+F 28 10 max_wrt_outstd_chitxn_cnt
+PAR RNID_NUM_WR_REQ_PARAM
+R 0xa08 64 - S por_rni_aux_ctl
+RESET 0x12 0x3f
+F 0 1 cg_disable
+F 1 1 ar_byp_en
+F 2 1 park_port_arb_ptr
+F 3 1 dis_norm_rdstream
+F 4 1 upstrm_datcheck_en
+PAR POR_DATACHECK_EN_PARAM
+F 5 1 sameid_wrstash_stream_en
+PAR POR_R2_ENABLE_PARAM
+R 0xa10 64 - S por_rni_s0_port_control
+RESET 0x0 0x7ff
+F 0 11 s0_lpid_mask
+R 0xa18 64 - S por_rni_s1_port_control
+RESET 0x0 0x7ff
+F 0 11 s1_lpid_mask
+R 0xa20 64 - S por_rni_s2_port_control
+RESET 0x0 0x7ff
+F 0 11 s2_lpid_mask
+R 0xa80 64 - S por_rni_s0_qos_control
+RESET 0x0 0xff00ff
+F 0 1 s0_aw_lat_en
+F 1 1 s0_ar_lat_en
+F 2 1 s0_aw_qos_override_en
+F 3 1 s0_ar_qos_override_en
+F 4 1 s0_aw_reg_mode
+F 5 1 s0_ar_reg_mode
+F 6 1 s0_aw_pqv_mode
+F 7 1 s0_ar_pqv_mode
+F 16 4 s0_aw_qos_override
+F 20 4 s0_ar_qos_override
+R 0xa88 64 - S por_rni_s0_qos_lat_tgt
+RESET 0x0 0xfff0fff
+F 0 12 s0_aw_lat_tgt
+F 16 12 s0_ar_lat_tgt
+R 0xa90 64 - S por_rni_s0_qos_lat_scale
+RESET 0x0 0x707
+F 0 3 s0_aw_lat_scale
+F 8 3 s0_ar_lat_scale
+R 0xa98 64 - S por_rni_s0_qos_lat_range
+RESET 0x0 0xf0f0f0f
+F 0 4 s0_aw_lat_min_qos
+F 8 4 s0_aw_lat_max_qos
+F 16 4 s0_ar_lat_min_qos
+F 24 4 s0_ar_lat_max_qos
+R 0xaa0 64 - S por_rni_s1_qos_control
+RESET 0x0 0xff00ff
+F 0 1 s1_aw_lat_en
+F 1 1 s1_ar_lat_en
+F 2 1 s1_aw_qos_override_en
+F 3 1 s1_ar_qos_override_en
+F 4 1 s1_aw_reg_mode
+F 5 1 s1_ar_reg_mode
+F 6 1 s1_aw_pqv_mode
+F 7 1 s1_ar_pqv_mode
+F 16 4 s1_aw_qos_override
+F 20 4 s1_ar_qos_override
+R 0xaa8 64 - S por_rni_s1_qos_lat_tgt
+RESET 0x0 0xfff0fff
+F 0 12 s1_aw_lat_tgt
+F 16 12 s1_ar_lat_tgt
+R 0xab0 64 - S por_rni_s1_qos_lat_scale
+RESET 0x0 0x707
+F 0 3 s1_aw_lat_scale
+F 8 3 s1_ar_lat_scale
+R 0xab8 64 - S por_rni_s1_qos_lat_range
+RESET 0x0 0xf0f0f0f
+F 0 4 s1_aw_lat_min_qos
+F 8 4 s1_aw_lat_max_qos
+F 16 4 s1_ar_lat_min_qos
+F 24 4 s1_ar_lat_max_qos
+R 0xac0 64 - S por_rni_s2_qos_control
+RESET 0x0 0xff00ff
+F 0 1 s2_aw_lat_en
+F 1 1 s2_ar_lat_en
+F 2 1 s2_aw_qos_override_en
+F 3 1 s2_ar_qos_override_en
+F 4 1 s2_aw_reg_mode
+F 5 1 s2_ar_reg_mode
+F 6 1 s2_aw_pqv_mode
+F 7 1 s2_ar_pqv_mode
+F 16 4 s2_aw_qos_override
+F 20 4 s2_ar_qos_override
+R 0xac8 64 - S por_rni_s2_qos_lat_tgt
+RESET 0x0 0xfff0fff
+F 0 12 s2_aw_lat_tgt
+F 16 12 s2_ar_lat_tgt
+R 0xad0 64 - S por_rni_s2_qos_lat_scale
+RESET 0x0 0x707
+F 0 3 s2_aw_lat_scale
+F 8 3 s2_ar_lat_scale
+R 0xad8 64 - S por_rni_s2_qos_lat_range
+RESET 0x0 0xf0f0f0f
+F 0 4 s2_aw_lat_min_qos
+F 8 4 s2_aw_lat_max_qos
+F 16 4 s2_ar_lat_min_qos
+F 24 4 s2_ar_lat_max_qos
+R 0x2000 64 - - por_rni_pmu_event_sel
+RESET 0x0 0x1f1f1f1f
+F 0 5 pmu_event0_id
+F 8 5 pmu_event1_id
+F 16 5 pmu_event2_id
+F 24 5 pmu_event3_id
+ENDGROUP
+GROUP por_mxp_registers
+R 0x0 64 RO - por_mxp_node_info
+RESET 0x6 0xffffffffffff
+F 0 16 node_type
+F 16 16 xy_id
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x8 64 RO - por_mxp_device_port_connect_info_p0
+RESET 0x0 0xffff0f9f
+F 0 5 device_type_p0
+PAR MXP_DEV_TYPE_P0_PARAM
+F 7 1 cal_connected_p0
+PAR (MXP_NUM_DEV_P0_PARAM > 1) ? 1'b1 : 1'b0
+F 8 4 num_ccs_p0
+PAR MXP_NUM_CCS_CONNECTED_P0_PARAM
+F 16 4 num_dcs_p0_d0
+PAR MXP_NUM_DCS_CONNECTED_P0_D0_PARAM
+F 20 4 num_dcs_p0_d1
+PAR MXP_NUM_DCS_CONNECTED_P0_D1_PARAM
+F 24 4 num_dcs_p0_d2
+PAR MXP_NUM_DCS_CONNECTED_P0_D2_PARAM
+F 28 4 num_dcs_p0_d3
+PAR MXP_NUM_DCS_CONNECTED_P0_D3_PARAM
+R 0x10 64 RO - por_mxp_device_port_connect_info_p1
+RESET 0x0 0xffff0f9f
+F 0 5 device_type_p1
+PAR MXP_DEV_TYPE_P1_PARAM
+F 7 1 cal_connected_p1
+PAR (MXP_NUM_DEV_P1_PARAM > 1) ? 1'b1 : 1'b0
+F 8 4 num_ccs_p1
+PAR MXP_NUM_CCS_CONNECTED_P1_PARAM
+F 16 4 num_dcs_p1_d0
+PAR MXP_NUM_DCS_CONNECTED_P1_D0_PARAM
+F 20 4 num_dcs_p1_d1
+PAR MXP_NUM_DCS_CONNECTED_P1_D1_PARAM
+F 24 4 num_dcs_p1_d2
+PAR MXP_NUM_DCS_CONNECTED_P1_D2_PARAM
+F 28 4 num_dcs_p1_d3
+PAR MXP_NUM_DCS_CONNECTED_P1_D3_PARAM
+R 0x18 64 RO - por_mxp_mesh_port_connect_info_east
+RESET 0x0 0xf
+F 0 4 num_mcs_east
+PAR MXP_NUM_MCS_CONNECTED_E_PARAM
+R 0x20 64 RO - por_mxp_mesh_port_connect_info_north
+RESET 0x0 0xf
+F 0 4 num_mcs_north
+PAR MXP_NUM_MCS_CONNECTED_N_PARAM
+R 0x80 64 RO - por_mxp_child_info
+RESET 0x1000000 0xffffffff
+F 0 16 child_count
+PAR MXP_CHILD_COUNT_PARAM
+F 16 16 child_ptr_offset
+R 0x100 64 RO - por_mxp_child_pointer_0
+RESET 0x0 0xffffffff
+F 0 32 relative_address_0
+R 0x108 64 RO - por_mxp_child_pointer_1
+RESET 0x0 0xffffffff
+F 0 32 relative_address_1
+R 0x110 64 RO - por_mxp_child_pointer_2
+RESET 0x0 0xffffffff
+F 0 32 relative_address_2
+R 0x118 64 RO - por_mxp_child_pointer_3
+RESET 0x0 0xffffffff
+F 0 32 relative_address_3
+R 0x120 64 RO - por_mxp_child_pointer_4
+RESET 0x0 0xffffffff
+F 0 32 relative_address_4
+R 0x128 64 RO - por_mxp_child_pointer_5
+RESET 0x0 0xffffffff
+F 0 32 relative_address_5
+R 0x130 64 RO - por_mxp_child_pointer_6
+RESET 0x0 0xffffffff
+F 0 32 relative_address_6
+R 0x138 64 RO - por_mxp_child_pointer_7
+RESET 0x0 0xffffffff
+F 0 32 relative_address_7
+R 0x140 64 RO - por_mxp_child_pointer_8
+RESET 0x0 0xffffffff
+F 0 32 relative_address_8
+R 0x148 64 RO - por_mxp_child_pointer_9
+RESET 0x0 0xffffffff
+F 0 32 relative_address_9
+R 0x150 64 RO - por_mxp_child_pointer_10
+RESET 0x0 0xffffffff
+F 0 32 relative_address_10
+R 0x158 64 RO - por_mxp_child_pointer_11
+RESET 0x0 0xffffffff
+F 0 32 relative_address_11
+R 0x160 64 RO - por_mxp_child_pointer_12
+RESET 0x0 0xffffffff
+F 0 32 relative_address_12
+R 0x168 64 RO - por_mxp_child_pointer_13
+RESET 0x0 0xffffffff
+F 0 32 relative_address_13
+R 0x170 64 RO - por_mxp_child_pointer_14
+RESET 0x0 0xffffffff
+F 0 32 relative_address_14
+R 0x178 64 RO - por_mxp_child_pointer_15
+RESET 0x0 0xffffffff
+F 0 32 relative_address_15
+R 0x900 64 RO - por_mxp_p0_info
+RESET 0x0 0xff3fb7
+F 0 3 num_dev_p0
+PAR MXP_NUM_DEV_P0_PARAM
+F 4 1 poison_en_p0
+PAR MXP_DEV_POISON_EN_P0_PARAM
+F 5 1 datacheck_en_p0
+PAR MXP_DEV_DATACHECK_EN_P0_PARAM
+F 7 1 ext_sam_en_p0
+PAR MXP_EXT_SAM_EN_P0_PARAM
+F 8 3 rxbuf_num_entries_p0
+PAR MXP_RXBUF_NUM_ENTRIES_P0_PARAM
+F 11 3 a4s_num_p0
+PAR MXP_A4S_NUM_P0_PARAM
+F 16 8 a4s_logicalid_base_p0
+PAR MXP_A4S_LOGICALID_BASE_P0_PARAM
+R 0x908 64 RO - por_mxp_p1_info
+RESET 0x0 0xff3fb7
+F 0 3 num_dev_p1
+PAR MXP_NUM_DEV_P1_PARAM
+F 4 1 poison_en_p1
+PAR MXP_DEV_POISON_EN_P1_PARAM
+F 5 1 datacheck_en_p1
+PAR MXP_DEV_DATACHECK_EN_P1_PARAM
+F 7 1 ext_sam_en_p1
+PAR MXP_EXT_SAM_EN_P1_PARAM
+F 8 3 rxbuf_num_entries_p1
+PAR MXP_RXBUF_NUM_ENTRIES_P1_PARAM
+F 11 3 a4s_num_p1
+PAR MXP_A4S_NUM_P1_PARAM
+F 16 8 a4s_logicalid_base_p1
+PAR MXP_A4S_LOGICALID_BASE_P1_PARAM
+R 0x980 64 - S por_mxp_secure_register_groups_override
+RESET 0x0 0x1
+F 0 1 qos
+R 0xa00 64 - S por_mxp_aux_ctl
+RESET 0x0 0x1
+F 0 1 clkgate_disable
+R 0xa80 64 - S por_mxp_p0_qos_control
+RESET 0x0 0xf0055
+F 0 1 p0_lat_en
+F 2 1 p0_qos_override_en
+F 4 1 p0_reg_mode
+F 6 1 p0_pqv_mode
+F 16 4 p0_qos_override
+R 0xa88 64 - S por_mxp_p0_qos_lat_tgt
+RESET 0x0 0xfff
+F 0 12 p0_lat_tgt
+R 0xa90 64 - S por_mxp_p0_qos_lat_scale
+RESET 0x0 0x7
+F 0 3 p0_lat_scale
+R 0xa98 64 - S por_mxp_p0_qos_lat_range
+RESET 0x0 0xf0f
+F 0 4 p0_lat_min_qos
+F 8 4 p0_lat_max_qos
+R 0xaa0 64 - S por_mxp_p1_qos_control
+RESET 0x0 0xf0055
+F 0 1 p1_lat_en
+F 2 1 p1_qos_override_en
+F 4 1 p1_reg_mode
+F 6 1 p1_pqv_mode
+F 16 4 p1_qos_override
+R 0xaa8 64 - S por_mxp_p1_qos_lat_tgt
+RESET 0x0 0xfff
+F 0 12 p1_lat_tgt
+R 0xab0 64 - S por_mxp_p1_qos_lat_scale
+RESET 0x0 0x7
+F 0 3 p1_lat_scale
+R 0xab8 64 - S por_mxp_p1_qos_lat_range
+RESET 0x0 0xf0f
+F 0 4 p1_lat_min_qos
+F 8 4 p1_lat_max_qos
+R 0x1000 64 - - por_mxp_p0_syscoreq_ctl
+RESET 0x0 0xf
+F 0 1 snpdvm_req_p0_d0
+F 1 1 snpdvm_req_p0_d1
+F 2 1 snpdvm_req_p0_d2
+F 3 1 snpdvm_req_p0_d3
+R 0x1008 64 - - por_mxp_p1_syscoreq_ctl
+RESET 0x0 0xf
+F 0 1 snpdvm_req_p1_d0
+F 1 1 snpdvm_req_p1_d1
+F 2 1 snpdvm_req_p1_d2
+F 3 1 snpdvm_req_p1_d3
+R 0x1010 64 RO - por_mxp_p0_syscoack_status
+RESET 0x0 0xf
+F 0 1 snpdvm_ack_p0_d0
+F 1 1 snpdvm_ack_p0_d1
+F 2 1 snpdvm_ack_p0_d2
+F 3 1 snpdvm_ack_p0_d3
+R 0x1018 64 RO - por_mxp_p1_syscoack_status
+RESET 0x0 0xf
+F 0 1 snpdvm_ack_p1_d0
+F 1 1 snpdvm_ack_p1_d1
+F 2 1 snpdvm_ack_p1_d2
+F 3 1 snpdvm_ack_p1_d3
+R 0x2000 64 - - por_mxp_pmu_event_sel
+RESET 0x0 0xffffffff
+F 0 8 pmu_event0_id
+F 8 8 pmu_event1_id
+F 16 8 pmu_event2_id
+F 24 8 pmu_event3_id
+R 0x2100 64 - - por_dtm_control
+RESET 0x0 0xf
+F 0 1 dtm_enable
+F 1 1 trace_tag_enable
+F 2 1 sample_profile_enable
+F 3 1 trace_no_atb
+R 0x2118 64 - - por_dtm_fifo_entry_ready
+RESET 0x0 0xf
+F 0 4 ready
+R 0x2120 64 ROV - por_dtm_fifo_entry0_0
+RESET 0x0 0xffffffffffffffff
+F 0 64 fifo_data0
+R 0x2128 64 ROV - por_dtm_fifo_entry0_1
+RESET 0x0 0xffffffffffffffff
+F 0 64 fifo_data1
+R 0x2130 64 ROV - por_dtm_fifo_entry0_2
+RESET 0x0 0xffffffff
+F 0 16 fifo_data2
+F 16 16 fifo_cycle_count
+R 0x2138 64 ROV - por_dtm_fifo_entry1_0
+RESET 0x0 0xffffffffffffffff
+F 0 64 fifo_data0
+R 0x2140 64 ROV - por_dtm_fifo_entry1_1
+RESET 0x0 0xffffffffffffffff
+F 0 64 fifo_data1
+R 0x2148 64 ROV - por_dtm_fifo_entry1_2
+RESET 0x0 0xffffffff
+F 0 16 fifo_data2
+F 16 16 fifo_cycle_count
+R 0x2150 64 ROV - por_dtm_fifo_entry2_0
+RESET 0x0 0xffffffffffffffff
+F 0 64 fifo_data0
+R 0x2158 64 ROV - por_dtm_fifo_entry2_1
+RESET 0x0 0xffffffffffffffff
+F 0 64 fifo_data1
+R 0x2160 64 ROV - por_dtm_fifo_entry2_2
+RESET 0x0 0xffffffff
+F 0 16 fifo_data2
+F 16 16 fifo_cycle_count
+R 0x2168 64 ROV - por_dtm_fifo_entry3_0
+RESET 0x0 0xffffffffffffffff
+F 0 64 fifo_data0
+R 0x2170 64 ROV - por_dtm_fifo_entry3_1
+RESET 0x0 0xffffffffffffffff
+F 0 64 fifo_data1
+R 0x2178 64 ROV - por_dtm_fifo_entry3_2
+RESET 0x0 0xffffffff
+F 0 16 fifo_data2
+F 16 16 fifo_cycle_count
+R 0x21a0 64 - - por_dtm_wp0_config
+RESET 0x0 0x7f7f
+F 0 1 wp_dev_sel
+F 1 3 wp_chn_sel
+F 4 1 wp_grp
+F 5 1 wp_exclusive
+F 6 1 wp_combine
+F 8 1 wp_pkt_gen
+F 9 3 wp_pkt_type
+F 12 1 wp_cc_en
+F 13 1 wp_ctrig_en
+F 14 1 wp_dbgtrig_en
+R 0x21a8 64 - - por_dtm_wp0_val
+RESET 0x0 0xffffffffffffffff
+F 0 64 val
+R 0x21b0 64 - - por_dtm_wp0_mask
+RESET 0x0 0xffffffffffffffff
+F 0 64 mask
+R 0x21b8 64 - - por_dtm_wp1_config
+RESET 0x0 0x7f3f
+F 0 1 wp_dev_sel
+F 1 3 wp_chn_sel
+F 4 1 wp_grp
+F 5 1 wp_exclusive
+F 8 1 wp_pkt_gen
+F 9 3 wp_pkt_type
+F 12 1 wp_cc_en
+F 13 1 wp_ctrig_en
+F 14 1 wp_dbgtrig_en
+R 0x21c0 64 - - por_dtm_wp1_val
+RESET 0x0 0xffffffffffffffff
+F 0 64 val
+R 0x21c8 64 - - por_dtm_wp1_mask
+RESET 0x0 0xffffffffffffffff
+F 0 64 mask
+R 0x21d0 64 - - por_dtm_wp2_config
+RESET 0x0 0x7f7f
+F 0 1 wp_dev_sel
+F 1 3 wp_chn_sel
+F 4 1 wp_grp
+F 5 1 wp_exclusive
+F 6 1 wp_combine
+F 8 1 wp_pkt_gen
+F 9 3 wp_pkt_type
+F 12 1 wp_cc_en
+F 13 1 wp_ctrig_en
+F 14 1 wp_dbgtrig_en
+R 0x21d8 64 - - por_dtm_wp2_val
+RESET 0x0 0xffffffffffffffff
+F 0 64 val
+R 0x21e0 64 - - por_dtm_wp2_mask
+RESET 0x0 0xffffffffffffffff
+F 0 64 mask
+R 0x21e8 64 - - por_dtm_wp3_config
+RESET 0x0 0x7f3f
+F 0 1 wp_dev_sel
+F 1 3 wp_chn_sel
+F 4 1 wp_grp
+F 5 1 wp_exclusive
+F 8 1 wp_pkt_gen
+F 9 3 wp_pkt_type
+F 12 1 wp_cc_en
+F 13 1 wp_ctrig_en
+F 14 1 wp_dbgtrig_en
+R 0x21f0 64 - - por_dtm_wp3_val
+RESET 0x0 0xffffffffffffffff
+F 0 64 val
+R 0x21f8 64 - - por_dtm_wp3_mask
+RESET 0x0 0xffffffffffffffff
+F 0 64 mask
+R 0x2200 64 - - por_dtm_pmsicr
+RESET 0x0 0xffffffff
+F 0 32 count
+R 0x2208 64 - - por_dtm_pmsirr
+RESET 0x0 0xffffff00
+F 8 24 interval
+R 0x2210 64 - - por_dtm_pmu_config
+RESET 0x0 0x3f3f3f3f777701ff
+F 0 1 pmu_en
+F 1 1 pmevcnt01_combined
+F 2 1 pmevcnt23_combined
+F 3 1 pmevcntall_combined
+F 4 4 pmevcnt_paired
+F 8 1 cntr_rst
+F 16 3 pmevcnt0_global_num
+F 20 3 pmevcnt1_global_num
+F 24 3 pmevcnt2_global_num
+F 28 3 pmevcnt3_global_num
+F 32 6 pmevcnt0_input_sel
+F 40 6 pmevcnt1_input_sel
+F 48 6 pmevcnt2_input_sel
+F 56 6 pmevcnt3_input_sel
+R 0x2220 64 - - por_dtm_pmevcnt
+RESET 0x0 0xffffffffffffffff
+F 0 16 pmevcnt0
+F 16 16 pmevcnt1
+F 32 16 pmevcnt2
+F 48 16 pmevcnt3
+R 0x2240 64 - - por_dtm_pmevcntsr
+RESET 0x0 0xffffffffffffffff
+F 0 16 pmevcntsr0
+F 16 16 pmevcntsr1
+F 32 16 pmevcntsr2
+F 48 16 pmevcntsr3
+R 0x3000 64 RO S por_mxp_errfr
+RESET 0xa5 0x7cff
+F 0 2 ED
+F 2 2 DE
+F 4 2 UI
+F 6 2 FI
+F 10 2 CFI
+F 12 3 CEC
+R 0x3008 64 - S por_mxp_errctlr
+RESET 0x0 0x10f
+F 0 1 ED
+F 1 1 DE
+F 2 1 UI
+F 3 1 FI
+F 8 1 CFI
+R 0x3010 64 - S por_mxp_errstatus
+RESET 0x0 0xed800000
+F 31 1 AV
+F 30 1 V
+F 29 1 UE
+F 27 1 OF
+F 26 1 MV
+F 24 1 CE
+F 23 1 DE
+R 0x3028 64 - S por_mxp_errmisc
+RESET 0x0 0x7ff0000003f7ff7
+F 48 11 TGTID
+F 16 6 OPCODE
+F 4 11 SRCID
+F 0 3 ERRSRC
+R 0x3030 64 WO S por_mxp_p0_byte_par_err_inj
+RESET 0x0 0x1f
+F 0 5 p0_byte_parity_err_inj
+R 0x3038 64 WO S por_mxp_p1_byte_par_err_inj
+RESET 0x0 0x1f
+F 0 5 p1_byte_parity_err_inj
+R 0x3100 64 RO - por_mxp_errfr_NS
+RESET 0xa5 0x7cff
+F 0 2 ED
+F 2 2 DE
+F 4 2 UI
+F 6 2 FI
+F 10 2 CFI
+F 12 3 CEC
+R 0x3108 64 - - por_mxp_errctlr_NS
+RESET 0x0 0x10f
+F 0 1 ED
+F 1 1 DE
+F 2 1 UI
+F 3 1 FI
+F 8 1 CFI
+R 0x3110 64 - - por_mxp_errstatus_NS
+RESET 0x0 0xed800000
+F 31 1 AV
+F 30 1 V
+F 29 1 UE
+F 27 1 OF
+F 26 1 MV
+F 24 1 CE
+F 23 1 DE
+R 0x3128 64 - - por_mxp_errmisc_NS
+RESET 0x0 0x7ff0000003f7ff7
+F 48 11 TGTID
+F 16 6 OPCODE
+F 4 11 SRCID
+F 0 3 ERRSRC
+ENDGROUP
+GROUP por_cfgm_registers
+R 0x0 64 RO - por_cfgm_node_info
+RESET 0x2 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x8 64 RO - por_cfgm_periph_id_0_periph_id_1
+RESET 0xb400000034 0xff000000ff
+F 0 8 periph_id_0
+PAR POR_PERIPH_ID_0_PARAM
+F 32 8 periph_id_1
+R 0x10 64 RO - por_cfgm_periph_id_2_periph_id_3
+RESET 0xb 0xff000000ff
+F 0 8 periph_id_2
+PAR POR_PERIPH_ID_2_PARAM
+F 32 8 periph_id_3
+R 0x18 64 RO - por_cfgm_periph_id_4_periph_id_5
+RESET 0xc4 0xff000000ff
+F 0 8 periph_id_4
+F 32 8 periph_id_5
+R 0x20 64 RO - por_cfgm_periph_id_6_periph_id_7
+RESET 0x0 0xff000000ff
+F 0 8 periph_id_6
+F 32 8 periph_id_7
+R 0x28 64 RO - por_cfgm_component_id_0_component_id_1
+RESET 0xf00000000d 0xff000000ff
+F 0 8 component_id_0
+F 32 8 component_id_1
+R 0x30 64 RO - por_cfgm_component_id_2_component_id_3
+RESET 0xb100000005 0xff000000ff
+F 0 8 component_id_2
+F 32 8 component_id_3
+R 0x80 64 RO - por_cfgm_child_info
+RESET 0x1000040 0xffffffff
+F 0 16 child_count
+PAR POR_NUM_XP_PARAM
+F 16 16 child_ptr_offset
+R 0x100 64 RO - por_cfgm_child_pointer_0
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x108 64 RO - por_cfgm_child_pointer_1
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x110 64 RO - por_cfgm_child_pointer_2
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x118 64 RO - por_cfgm_child_pointer_3
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x120 64 RO - por_cfgm_child_pointer_4
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x128 64 RO - por_cfgm_child_pointer_5
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x130 64 RO - por_cfgm_child_pointer_6
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x138 64 RO - por_cfgm_child_pointer_7
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x140 64 RO - por_cfgm_child_pointer_8
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x148 64 RO - por_cfgm_child_pointer_9
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x150 64 RO - por_cfgm_child_pointer_10
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x158 64 RO - por_cfgm_child_pointer_11
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x160 64 RO - por_cfgm_child_pointer_12
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x168 64 RO - por_cfgm_child_pointer_13
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x170 64 RO - por_cfgm_child_pointer_14
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x178 64 RO - por_cfgm_child_pointer_15
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x180 64 RO - por_cfgm_child_pointer_16
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x188 64 RO - por_cfgm_child_pointer_17
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x190 64 RO - por_cfgm_child_pointer_18
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x198 64 RO - por_cfgm_child_pointer_19
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1a0 64 RO - por_cfgm_child_pointer_20
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1a8 64 RO - por_cfgm_child_pointer_21
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1b0 64 RO - por_cfgm_child_pointer_22
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1b8 64 RO - por_cfgm_child_pointer_23
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1c0 64 RO - por_cfgm_child_pointer_24
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1c8 64 RO - por_cfgm_child_pointer_25
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1d0 64 RO - por_cfgm_child_pointer_26
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1d8 64 RO - por_cfgm_child_pointer_27
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1e0 64 RO - por_cfgm_child_pointer_28
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1e8 64 RO - por_cfgm_child_pointer_29
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1f0 64 RO - por_cfgm_child_pointer_30
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x1f8 64 RO - por_cfgm_child_pointer_31
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x200 64 RO - por_cfgm_child_pointer_32
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x208 64 RO - por_cfgm_child_pointer_33
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x210 64 RO - por_cfgm_child_pointer_34
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x218 64 RO - por_cfgm_child_pointer_35
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x220 64 RO - por_cfgm_child_pointer_36
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x228 64 RO - por_cfgm_child_pointer_37
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x230 64 RO - por_cfgm_child_pointer_38
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x238 64 RO - por_cfgm_child_pointer_39
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x240 64 RO - por_cfgm_child_pointer_40
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x248 64 RO - por_cfgm_child_pointer_41
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x250 64 RO - por_cfgm_child_pointer_42
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x258 64 RO - por_cfgm_child_pointer_43
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x260 64 RO - por_cfgm_child_pointer_44
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x268 64 RO - por_cfgm_child_pointer_45
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x270 64 RO - por_cfgm_child_pointer_46
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x278 64 RO - por_cfgm_child_pointer_47
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x280 64 RO - por_cfgm_child_pointer_48
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x288 64 RO - por_cfgm_child_pointer_49
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x290 64 RO - por_cfgm_child_pointer_50
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x298 64 RO - por_cfgm_child_pointer_51
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2a0 64 RO - por_cfgm_child_pointer_52
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2a8 64 RO - por_cfgm_child_pointer_53
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2b0 64 RO - por_cfgm_child_pointer_54
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2b8 64 RO - por_cfgm_child_pointer_55
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2c0 64 RO - por_cfgm_child_pointer_56
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2c8 64 RO - por_cfgm_child_pointer_57
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2d0 64 RO - por_cfgm_child_pointer_58
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2d8 64 RO - por_cfgm_child_pointer_59
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2e0 64 RO - por_cfgm_child_pointer_60
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2e8 64 RO - por_cfgm_child_pointer_61
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2f0 64 RO - por_cfgm_child_pointer_62
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x2f8 64 RO - por_cfgm_child_pointer_63
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x300 64 RO - por_cfgm_child_pointer_64
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x308 64 RO - por_cfgm_child_pointer_65
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x310 64 RO - por_cfgm_child_pointer_66
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x318 64 RO - por_cfgm_child_pointer_67
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x320 64 RO - por_cfgm_child_pointer_68
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x328 64 RO - por_cfgm_child_pointer_69
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x330 64 RO - por_cfgm_child_pointer_70
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x338 64 RO - por_cfgm_child_pointer_71
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x340 64 RO - por_cfgm_child_pointer_72
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x348 64 RO - por_cfgm_child_pointer_73
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x350 64 RO - por_cfgm_child_pointer_74
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x358 64 RO - por_cfgm_child_pointer_75
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x360 64 RO - por_cfgm_child_pointer_76
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x368 64 RO - por_cfgm_child_pointer_77
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x370 64 RO - por_cfgm_child_pointer_78
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x378 64 RO - por_cfgm_child_pointer_79
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x380 64 RO - por_cfgm_child_pointer_80
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x388 64 RO - por_cfgm_child_pointer_81
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x390 64 RO - por_cfgm_child_pointer_82
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x398 64 RO - por_cfgm_child_pointer_83
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3a0 64 RO - por_cfgm_child_pointer_84
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3a8 64 RO - por_cfgm_child_pointer_85
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3b0 64 RO - por_cfgm_child_pointer_86
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3b8 64 RO - por_cfgm_child_pointer_87
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3c0 64 RO - por_cfgm_child_pointer_88
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3c8 64 RO - por_cfgm_child_pointer_89
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3d0 64 RO - por_cfgm_child_pointer_90
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3d8 64 RO - por_cfgm_child_pointer_91
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3e0 64 RO - por_cfgm_child_pointer_92
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3e8 64 RO - por_cfgm_child_pointer_93
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3f0 64 RO - por_cfgm_child_pointer_94
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x3f8 64 RO - por_cfgm_child_pointer_95
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x400 64 RO - por_cfgm_child_pointer_96
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x408 64 RO - por_cfgm_child_pointer_97
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x410 64 RO - por_cfgm_child_pointer_98
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x418 64 RO - por_cfgm_child_pointer_99
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x420 64 RO - por_cfgm_child_pointer_100
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x428 64 RO - por_cfgm_child_pointer_101
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x430 64 RO - por_cfgm_child_pointer_102
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x438 64 RO - por_cfgm_child_pointer_103
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x440 64 RO - por_cfgm_child_pointer_104
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x448 64 RO - por_cfgm_child_pointer_105
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x450 64 RO - por_cfgm_child_pointer_106
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x458 64 RO - por_cfgm_child_pointer_107
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x460 64 RO - por_cfgm_child_pointer_108
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x468 64 RO - por_cfgm_child_pointer_109
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x470 64 RO - por_cfgm_child_pointer_110
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x478 64 RO - por_cfgm_child_pointer_111
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x480 64 RO - por_cfgm_child_pointer_112
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x488 64 RO - por_cfgm_child_pointer_113
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x490 64 RO - por_cfgm_child_pointer_114
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x498 64 RO - por_cfgm_child_pointer_115
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4a0 64 RO - por_cfgm_child_pointer_116
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4a8 64 RO - por_cfgm_child_pointer_117
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4b0 64 RO - por_cfgm_child_pointer_118
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4b8 64 RO - por_cfgm_child_pointer_119
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4c0 64 RO - por_cfgm_child_pointer_120
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4c8 64 RO - por_cfgm_child_pointer_121
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4d0 64 RO - por_cfgm_child_pointer_122
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4d8 64 RO - por_cfgm_child_pointer_123
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4e0 64 RO - por_cfgm_child_pointer_124
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4e8 64 RO - por_cfgm_child_pointer_125
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4f0 64 RO - por_cfgm_child_pointer_126
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x4f8 64 RO - por_cfgm_child_pointer_127
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x500 64 RO - por_cfgm_child_pointer_128
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x508 64 RO - por_cfgm_child_pointer_129
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x510 64 RO - por_cfgm_child_pointer_130
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x518 64 RO - por_cfgm_child_pointer_131
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x520 64 RO - por_cfgm_child_pointer_132
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x528 64 RO - por_cfgm_child_pointer_133
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x530 64 RO - por_cfgm_child_pointer_134
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x538 64 RO - por_cfgm_child_pointer_135
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x540 64 RO - por_cfgm_child_pointer_136
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x548 64 RO - por_cfgm_child_pointer_137
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x550 64 RO - por_cfgm_child_pointer_138
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x558 64 RO - por_cfgm_child_pointer_139
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x560 64 RO - por_cfgm_child_pointer_140
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x568 64 RO - por_cfgm_child_pointer_141
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x570 64 RO - por_cfgm_child_pointer_142
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x578 64 RO - por_cfgm_child_pointer_143
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x580 64 RO - por_cfgm_child_pointer_144
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x588 64 RO - por_cfgm_child_pointer_145
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x590 64 RO - por_cfgm_child_pointer_146
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x598 64 RO - por_cfgm_child_pointer_147
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5a0 64 RO - por_cfgm_child_pointer_148
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5a8 64 RO - por_cfgm_child_pointer_149
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5b0 64 RO - por_cfgm_child_pointer_150
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5b8 64 RO - por_cfgm_child_pointer_151
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5c0 64 RO - por_cfgm_child_pointer_152
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5c8 64 RO - por_cfgm_child_pointer_153
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5d0 64 RO - por_cfgm_child_pointer_154
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5d8 64 RO - por_cfgm_child_pointer_155
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5e0 64 RO - por_cfgm_child_pointer_156
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5e8 64 RO - por_cfgm_child_pointer_157
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5f0 64 RO - por_cfgm_child_pointer_158
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x5f8 64 RO - por_cfgm_child_pointer_159
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x600 64 RO - por_cfgm_child_pointer_160
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x608 64 RO - por_cfgm_child_pointer_161
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x610 64 RO - por_cfgm_child_pointer_162
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x618 64 RO - por_cfgm_child_pointer_163
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x620 64 RO - por_cfgm_child_pointer_164
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x628 64 RO - por_cfgm_child_pointer_165
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x630 64 RO - por_cfgm_child_pointer_166
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x638 64 RO - por_cfgm_child_pointer_167
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x640 64 RO - por_cfgm_child_pointer_168
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x648 64 RO - por_cfgm_child_pointer_169
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x650 64 RO - por_cfgm_child_pointer_170
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x658 64 RO - por_cfgm_child_pointer_171
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x660 64 RO - por_cfgm_child_pointer_172
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x668 64 RO - por_cfgm_child_pointer_173
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x670 64 RO - por_cfgm_child_pointer_174
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x678 64 RO - por_cfgm_child_pointer_175
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x680 64 RO - por_cfgm_child_pointer_176
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x688 64 RO - por_cfgm_child_pointer_177
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x690 64 RO - por_cfgm_child_pointer_178
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x698 64 RO - por_cfgm_child_pointer_179
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6a0 64 RO - por_cfgm_child_pointer_180
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6a8 64 RO - por_cfgm_child_pointer_181
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6b0 64 RO - por_cfgm_child_pointer_182
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6b8 64 RO - por_cfgm_child_pointer_183
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6c0 64 RO - por_cfgm_child_pointer_184
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6c8 64 RO - por_cfgm_child_pointer_185
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6d0 64 RO - por_cfgm_child_pointer_186
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6d8 64 RO - por_cfgm_child_pointer_187
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6e0 64 RO - por_cfgm_child_pointer_188
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6e8 64 RO - por_cfgm_child_pointer_189
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6f0 64 RO - por_cfgm_child_pointer_190
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x6f8 64 RO - por_cfgm_child_pointer_191
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x700 64 RO - por_cfgm_child_pointer_192
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x708 64 RO - por_cfgm_child_pointer_193
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x710 64 RO - por_cfgm_child_pointer_194
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x718 64 RO - por_cfgm_child_pointer_195
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x720 64 RO - por_cfgm_child_pointer_196
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x728 64 RO - por_cfgm_child_pointer_197
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x730 64 RO - por_cfgm_child_pointer_198
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x738 64 RO - por_cfgm_child_pointer_199
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x740 64 RO - por_cfgm_child_pointer_200
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x748 64 RO - por_cfgm_child_pointer_201
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x750 64 RO - por_cfgm_child_pointer_202
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x758 64 RO - por_cfgm_child_pointer_203
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x760 64 RO - por_cfgm_child_pointer_204
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x768 64 RO - por_cfgm_child_pointer_205
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x770 64 RO - por_cfgm_child_pointer_206
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x778 64 RO - por_cfgm_child_pointer_207
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x780 64 RO - por_cfgm_child_pointer_208
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x788 64 RO - por_cfgm_child_pointer_209
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x790 64 RO - por_cfgm_child_pointer_210
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x798 64 RO - por_cfgm_child_pointer_211
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7a0 64 RO - por_cfgm_child_pointer_212
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7a8 64 RO - por_cfgm_child_pointer_213
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7b0 64 RO - por_cfgm_child_pointer_214
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7b8 64 RO - por_cfgm_child_pointer_215
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7c0 64 RO - por_cfgm_child_pointer_216
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7c8 64 RO - por_cfgm_child_pointer_217
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7d0 64 RO - por_cfgm_child_pointer_218
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7d8 64 RO - por_cfgm_child_pointer_219
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7e0 64 RO - por_cfgm_child_pointer_220
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7e8 64 RO - por_cfgm_child_pointer_221
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7f0 64 RO - por_cfgm_child_pointer_222
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x7f8 64 RO - por_cfgm_child_pointer_223
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x800 64 RO - por_cfgm_child_pointer_224
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x808 64 RO - por_cfgm_child_pointer_225
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x810 64 RO - por_cfgm_child_pointer_226
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x818 64 RO - por_cfgm_child_pointer_227
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x820 64 RO - por_cfgm_child_pointer_228
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x828 64 RO - por_cfgm_child_pointer_229
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x830 64 RO - por_cfgm_child_pointer_230
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x838 64 RO - por_cfgm_child_pointer_231
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x840 64 RO - por_cfgm_child_pointer_232
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x848 64 RO - por_cfgm_child_pointer_233
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x850 64 RO - por_cfgm_child_pointer_234
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x858 64 RO - por_cfgm_child_pointer_235
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x860 64 RO - por_cfgm_child_pointer_236
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x868 64 RO - por_cfgm_child_pointer_237
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x870 64 RO - por_cfgm_child_pointer_238
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x878 64 RO - por_cfgm_child_pointer_239
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x880 64 RO - por_cfgm_child_pointer_240
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x888 64 RO - por_cfgm_child_pointer_241
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x890 64 RO - por_cfgm_child_pointer_242
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x898 64 RO - por_cfgm_child_pointer_243
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8a0 64 RO - por_cfgm_child_pointer_244
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8a8 64 RO - por_cfgm_child_pointer_245
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8b0 64 RO - por_cfgm_child_pointer_246
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8b8 64 RO - por_cfgm_child_pointer_247
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8c0 64 RO - por_cfgm_child_pointer_248
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8c8 64 RO - por_cfgm_child_pointer_249
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8d0 64 RO - por_cfgm_child_pointer_250
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8d8 64 RO - por_cfgm_child_pointer_251
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8e0 64 RO - por_cfgm_child_pointer_252
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8e8 64 RO - por_cfgm_child_pointer_253
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8f0 64 RO - por_cfgm_child_pointer_254
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x8f8 64 RO - por_cfgm_child_pointer_255
+RESET 0x0 0xffffffff
+F 0 32 relative_address
+R 0x900 64 RO - por_info_global
+RESET 0x3303008 0x303fff3ffffff
+F 0 8 chi_req_rsvdc_width
+PAR POR_CHIB_REQ_RSVDC_WIDTH_PARAM
+F 8 8 chi_req_addr_width
+PAR POR_CHIB_REQ_ADDR_WIDTH_PARAM
+F 16 8 physical_address_width
+PAR POR_PA_WIDTH_PARAM
+F 24 1 datacheck_en
+PAR POR_DATACHECK_EN_PARAM
+F 25 1 flit_parity_en
+PAR POR_FLIT_PAR_EN_PARAM
+F 28 8 num_remote_rnf
+PAR POR_NUM_REMOTE_RNF_PARAM
+F 36 6 rnsam_num_add_hashed_tgt
+PAR POR_RNSAM_NUM_ADD_HASHED_TGT_PARAM
+F 48 1 r2_enable
+PAR POR_R2_ENABLE_PARAM
+F 49 1 chic_mode_en
+PAR POR_CHIC_MODE_EN_PARAM
+R 0x980 64 - S por_cfgm_secure_access
+RESET 0x0 0x3
+F 0 2 configure_secure_access
+R 0x1000 64 - S por_ppu_int_enable
+RESET 0x0 0xffffffffffffffff
+F 0 64 hnf_ppu_enable
+R 0x1008 64 - S por_ppu_int_status
+RESET 0x0 0xffffffffffffffff
+F 0 64 hnf_ppu_status
+R 0x1010 64 - S por_ppu_qactive_hyst
+RESET 0x10 0xffff
+F 0 16 hnf_ppu_qact_hyst
+R 0x3000 64 RO S por_cfgm_errgsr0
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status0
+R 0x3008 64 RO S por_cfgm_errgsr1
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status1
+R 0x3010 64 RO S por_cfgm_errgsr2
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status2
+R 0x3018 64 RO S por_cfgm_errgsr3
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status3
+R 0x3020 64 RO S por_cfgm_errgsr4
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status4
+R 0x3080 64 RO S por_cfgm_errgsr5
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status5
+R 0x3088 64 RO S por_cfgm_errgsr6
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status6
+R 0x3090 64 RO S por_cfgm_errgsr7
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status7
+R 0x3098 64 RO S por_cfgm_errgsr8
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status8
+R 0x30a0 64 RO S por_cfgm_errgsr9
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status9
+R 0x3100 64 RO - por_cfgm_errgsr0_NS
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status0_ns
+R 0x3108 64 RO - por_cfgm_errgsr1_NS
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status1_ns
+R 0x3110 64 RO - por_cfgm_errgsr2_NS
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status2_ns
+R 0x3118 64 RO - por_cfgm_errgsr3_NS
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status3_ns
+R 0x3120 64 RO S por_cfgm_errgsr4_NS
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status4_ns
+R 0x3180 64 RO - por_cfgm_errgsr5_NS
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status5_ns
+R 0x3188 64 RO - por_cfgm_errgsr6_NS
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status6_ns
+R 0x3190 64 RO - por_cfgm_errgsr7_NS
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status7_ns
+R 0x3198 64 RO - por_cfgm_errgsr8_NS
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status8_ns
+R 0x31a0 64 RO S por_cfgm_errgsr9_NS
+RESET 0x0 0xffffffffffffffff
+F 0 64 err_status9_ns
+R 0x3fa8 64 RO - por_cfgm_errdevaff
+RESET 0x0 0xffffffffffffffff
+F 0 64 devaff
+R 0x3fb8 64 RO - por_cfgm_errdevarch
+RESET 0x47700a0000000000 0xffffffff00000000
+F 32 16 archid
+F 48 4 revision
+F 52 1 present
+F 53 11 architect
+R 0x3fc8 64 RO - por_cfgm_erridr
+RESET 0x1 0xffff
+F 0 16 recnum
+PAR RCB_NUM_ERR_RECORD_PARAM
+R 0x3fd0 64 RO - por_cfgm_errpidr45
+RESET 0x4 0xff000000ff
+F 0 8 pidr4
+F 32 8 pidr5
+R 0x3fd8 64 RO - por_cfgm_errpidr67
+RESET 0x0 0xff000000ff
+F 0 8 pidr6
+F 32 8 pidr7
+R 0x3fe0 64 RO - por_cfgm_errpidr01
+RESET 0xb400000034 0xff000000ff
+F 0 8 pidr0
+F 32 8 pidr1
+R 0x3fe8 64 RO - por_cfgm_errpidr23
+RESET 0x7 0xff000000ff
+F 0 8 pidr2
+F 32 8 pidr3
+R 0x3ff0 64 RO - por_cfgm_errcidr01
+RESET 0xff0000000d 0xff000000ff
+F 0 8 cidr0
+F 32 8 cidr1
+R 0x3ff8 64 RO - por_cfgm_errcidr23
+RESET 0xb100000005 0xff000000ff
+F 0 8 cidr2
+F 32 8 cidr3
+ENDGROUP
+GROUP por_rnsam_registers
+R 0x0 64 RO - por_rnsam_node_info
+RESET 0xf 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+R 0x80 64 RO - por_rnsam_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x900 64 RO - por_rnsam_unit_info
+RESET 0x900040020 0x3f000f00ff
+F 0 8 num_hnf
+PAR POR_RNSAM_NUM_HASHED_TGT_PARAM
+F 16 4 num_sys_cache_group
+PAR POR_RNSAM_NUM_SCGROUP_PARAM
+F 32 6 num_non_hash_group
+PAR POR_RNSAM_NUM_NONHASHGROUP_PARAM
+R 0x980 64 - S por_rnsam_secure_register_groups_override
+RESET 0x0 0x1
+F 0 1 mem_range
+R 0xc00 64 - S rnsam_status
+RESET 0x1 0x3
+F 0 1 use_default_node
+F 1 1 nstall_req
+R 0xc08 64 - S non_hash_mem_region_reg0
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region1_base_addr
+F 36 5 region1_size
+F 34 2 region1_target_type
+F 32 1 region1_valid
+F 9 22 region0_base_addr
+F 4 5 region0_size
+F 2 2 region0_target_type
+F 0 1 region0_valid
+R 0xc10 64 - S non_hash_mem_region_reg1
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region3_base_addr
+F 36 5 region3_size
+F 34 2 region3_target_type
+F 32 1 region3_valid
+F 9 22 region2_base_addr
+F 4 5 region2_size
+F 2 2 region2_target_type
+F 0 1 region2_valid
+R 0xc18 64 - S non_hash_mem_region_reg2
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region5_base_addr
+F 36 5 region5_size
+F 34 2 region5_target_type
+F 32 1 region5_valid
+F 9 22 region4_base_addr
+F 4 5 region4_size
+F 2 2 region4_target_type
+F 0 1 region4_valid
+R 0xc20 64 - S non_hash_mem_region_reg3
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region7_base_addr
+F 36 5 region7_size
+F 34 2 region7_target_type
+F 32 1 region7_valid
+F 9 22 region6_base_addr
+F 4 5 region6_size
+F 2 2 region6_target_type
+F 0 1 region6_valid
+R 0xc28 64 - S non_hash_mem_region_reg4
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region9_base_addr
+F 36 5 region9_size
+F 34 2 region9_target_type
+F 32 1 region9_valid
+F 9 22 region8_base_addr
+F 4 5 region8_size
+F 2 2 region8_target_type
+F 0 1 region8_valid
+R 0xc30 64 - S non_hash_tgt_nodeid0
+RESET 0x0 0x7ff7ff7ff7ff
+F 0 11 nodeid_0
+F 12 11 nodeid_1
+F 24 11 nodeid_2
+F 36 11 nodeid_3
+R 0xc38 64 - S non_hash_tgt_nodeid1
+RESET 0x0 0x7ff7ff7ff7ff
+F 0 11 nodeid_4
+F 12 11 nodeid_5
+F 24 11 nodeid_6
+F 36 11 nodeid_7
+R 0xc40 64 - S non_hash_tgt_nodeid2
+RESET 0x0 0x7ff7ff7ff7ff
+F 0 11 nodeid_8
+F 12 11 nodeid_9
+F 24 11 nodeid_10
+F 36 11 nodeid_11
+R 0xc48 64 - S sys_cache_grp_region0
+RESET 0x0 0x7fffffff7ffffffd
+F 41 22 region1_base_addr
+F 36 5 region1_size
+F 34 2 region1_target_type
+F 33 1 region1_nonhash_reg_en
+F 32 1 region1_valid
+F 9 22 region0_base_addr
+F 4 5 region0_size
+F 2 2 region0_target_type
+F 0 1 region0_valid
+R 0xc50 64 - S sys_cache_grp_region1
+RESET 0x0 0x7fffffff7fffffff
+F 41 22 region3_base_addr
+F 36 5 region3_size
+F 34 2 region3_target_type
+F 33 1 region3_nonhash_reg_en
+F 32 1 region3_valid
+F 9 22 region2_base_addr
+F 4 5 region2_size
+F 2 2 region2_target_type
+F 1 1 region2_nonhash_reg_en
+F 0 1 region2_valid
+R 0xc58 64 - S sys_cache_grp_hn_nodeid_reg0
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_3
+F 24 11 nodeid_2
+F 12 11 nodeid_1
+F 0 11 nodeid_0
+R 0xc60 64 - S sys_cache_grp_hn_nodeid_reg1
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_7
+F 24 11 nodeid_6
+F 12 11 nodeid_5
+F 0 11 nodeid_4
+R 0xc68 64 - S sys_cache_grp_hn_nodeid_reg2
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_11
+F 24 11 nodeid_10
+F 12 11 nodeid_9
+F 0 11 nodeid_8
+R 0xc70 64 - S sys_cache_grp_hn_nodeid_reg3
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_15
+F 24 11 nodeid_14
+F 12 11 nodeid_13
+F 0 11 nodeid_12
+R 0xc78 64 - S sys_cache_grp_hn_nodeid_reg4
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_19
+F 24 11 nodeid_18
+F 12 11 nodeid_17
+F 0 11 nodeid_16
+R 0xc80 64 - S sys_cache_grp_hn_nodeid_reg5
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_23
+F 24 11 nodeid_22
+F 12 11 nodeid_21
+F 0 11 nodeid_20
+R 0xc88 64 - S sys_cache_grp_hn_nodeid_reg6
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_27
+F 24 11 nodeid_26
+F 12 11 nodeid_25
+F 0 11 nodeid_24
+R 0xc90 64 - S sys_cache_grp_hn_nodeid_reg7
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_31
+F 24 11 nodeid_30
+F 12 11 nodeid_29
+F 0 11 nodeid_28
+R 0xc98 64 - S sys_cache_grp_nonhash_nodeid
+RESET 0x0 0x7ff7ff7ff
+F 0 11 scg1_nodeid
+F 12 11 scg2_nodeid
+F 24 11 scg3_nodeid
+R 0xca0 64 - S non_hash_mem_region_reg5
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region11_base_addr
+F 36 5 region11_size
+F 34 2 region11_target_type
+F 32 1 region11_valid
+F 9 22 region10_base_addr
+F 4 5 region10_size
+F 2 2 region10_target_type
+F 0 1 region10_valid
+R 0xca8 64 - S non_hash_mem_region_reg6
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region13_base_addr
+F 36 5 region13_size
+F 34 2 region13_target_type
+F 32 1 region13_valid
+F 9 22 region12_base_addr
+F 4 5 region12_size
+F 2 2 region12_target_type
+F 0 1 region12_valid
+R 0xcb0 64 - S non_hash_mem_region_reg7
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region15_base_addr
+F 36 5 region15_size
+F 34 2 region15_target_type
+F 32 1 region15_valid
+F 9 22 region14_base_addr
+F 4 5 region14_size
+F 2 2 region14_target_type
+F 0 1 region14_valid
+R 0xcb8 64 - S non_hash_mem_region_reg8
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region17_base_addr
+F 36 5 region17_size
+F 34 2 region17_target_type
+F 32 1 region17_valid
+F 9 22 region16_base_addr
+F 4 5 region16_size
+F 2 2 region16_target_type
+F 0 1 region16_valid
+R 0xcc0 64 - S non_hash_mem_region_reg9
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region19_base_addr
+F 36 5 region19_size
+F 34 2 region19_target_type
+F 32 1 region19_valid
+F 9 22 region18_base_addr
+F 4 5 region18_size
+F 2 2 region18_target_type
+F 0 1 region18_valid
+R 0xce0 64 - S non_hash_tgt_nodeid3
+RESET 0x0 0x7ff7ff7ff7ff
+F 0 11 nodeid_12
+F 12 11 nodeid_13
+F 24 11 nodeid_14
+F 36 11 nodeid_15
+R 0xce8 64 - S non_hash_tgt_nodeid4
+RESET 0x0 0x7ff7ff7ff7ff
+F 0 11 nodeid_16
+F 12 11 nodeid_17
+F 24 11 nodeid_18
+F 36 11 nodeid_19
+R 0xd00 64 - S sys_cache_group_hn_count
+RESET 0x0 0x7f7f7f7f
+F 0 7 scg0_num_hnf
+F 8 7 scg1_num_hnf
+F 16 7 scg2_num_hnf
+F 24 7 scg3_num_hnf
+R 0xd08 64 - S sys_cache_grp_sn_nodeid_reg0
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_3
+F 24 11 sn_nodeid_2
+F 12 11 sn_nodeid_1
+F 0 11 sn_nodeid_0
+R 0xd10 64 - S sys_cache_grp_sn_nodeid_reg1
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_7
+F 24 11 sn_nodeid_6
+F 12 11 sn_nodeid_5
+F 0 11 sn_nodeid_4
+R 0xd18 64 - S sys_cache_grp_sn_nodeid_reg2
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_11
+F 24 11 sn_nodeid_10
+F 12 11 sn_nodeid_9
+F 0 11 sn_nodeid_8
+R 0xd20 64 - S sys_cache_grp_sn_nodeid_reg3
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_15
+F 24 11 sn_nodeid_14
+F 12 11 sn_nodeid_13
+F 0 11 sn_nodeid_12
+R 0xd28 64 - S sys_cache_grp_sn_nodeid_reg4
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_19
+F 24 11 sn_nodeid_18
+F 12 11 sn_nodeid_17
+F 0 11 sn_nodeid_16
+R 0xd30 64 - S sys_cache_grp_sn_nodeid_reg5
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_23
+F 24 11 sn_nodeid_22
+F 12 11 sn_nodeid_21
+F 0 11 sn_nodeid_20
+R 0xd38 64 - S sys_cache_grp_sn_nodeid_reg6
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_27
+F 24 11 sn_nodeid_26
+F 12 11 sn_nodeid_25
+F 0 11 sn_nodeid_24
+R 0xd40 64 - S sys_cache_grp_sn_nodeid_reg7
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_31
+F 24 11 sn_nodeid_30
+F 12 11 sn_nodeid_29
+F 0 11 sn_nodeid_28
+R 0xd48 64 - S sys_cache_grp_sn_sam_cfg0
+RESET 0x0 0x3f3f3f3f3f3f
+F 0 6 scg0_top_address_bit0
+F 8 6 scg0_top_address_bit1
+F 16 6 scg0_top_address_bit2
+F 24 6 scg1_top_address_bit0
+F 32 6 scg1_top_address_bit1
+F 40 6 scg1_top_address_bit2
+R 0xd50 64 - S sys_cache_grp_sn_sam_cfg1
+RESET 0x0 0x3f3f3f3f3f3f
+F 0 6 scg2_top_address_bit0
+F 8 6 scg2_top_address_bit1
+F 16 6 scg2_top_address_bit2
+F 24 6 scg3_top_address_bit0
+F 32 6 scg3_top_address_bit1
+F 40 6 scg3_top_address_bit2
+R 0xd58 64 - S gic_mem_region_reg
+RESET 0x0 0x7ff0ffffffff007d
+F 52 11 gic_region_nodeid
+F 16 32 gic_region_base_addr
+F 4 3 gic_region_size
+F 2 2 gic_region_target_type
+F 0 1 gic_region_valid
+R 0xd60 64 - S sys_cache_grp_sn_attr
+RESET 0x0 0x31003100310031
+F 0 1 inv_top_address_bit_sys_cache_grp0
+F 4 2 sn_mode_sys_cache_grp0
+F 16 1 inv_top_address_bit_sys_cache_grp1
+F 20 2 sn_mode_sys_cache_grp1
+F 32 1 inv_top_address_bit_sys_cache_grp2
+F 36 2 sn_mode_sys_cache_grp2
+F 48 1 inv_top_address_bit_sys_cache_grp3
+F 52 2 sn_mode_sys_cache_grp3
+R 0xd68 64 - S sys_cache_grp_hn_cpa_en_reg
+RESET 0x0 0xffffffffffffffff
+F 0 64 hash_cpa_en
+R 0xd70 64 - S sys_cache_grp_hn_cpa_grp_reg
+RESET 0x0 0x3000300030003
+F 0 2 cpa_grp_scg0
+F 16 2 cpa_grp_scg1
+F 32 2 cpa_grp_scg2
+F 48 2 cpa_grp_scg3
+R 0xe00 64 - S cml_port_aggr_mode_ctrl_reg
+RESET 0x0 0xd7777777
+F 0 1 region0_pag_en
+F 1 2 region0_pag_grpid
+F 4 1 region1_pag_en
+F 5 2 region1_pag_grpid
+F 8 1 region2_pag_en
+F 9 2 region2_pag_grpid
+F 12 1 region3_pag_en
+F 13 2 region3_pag_grpid
+F 16 1 region4_pag_en
+F 17 2 region4_pag_grpid
+F 20 1 region5_pag_en
+F 21 2 region5_pag_grpid
+F 24 1 region6_pag_en
+F 25 2 region6_pag_grpid
+F 28 1 region7_pag_en
+F 30 2 region7_pag_grpid
+R 0xe08 64 - S cml_port_aggr_grp0_add_mask
+RESET 0x40 0xffffffffffc0
+F 6 42 addr_mask
+R 0xe10 64 - S cml_port_aggr_grp1_add_mask
+RESET 0x40 0xffffffffffc0
+F 6 42 addr_mask
+R 0xe30 64 - S cml_port_aggr_mode_ctrl_reg1
+RESET 0x0 0x777777777777
+F 0 1 region8_pag_en
+F 1 2 region8_pag_grpid
+F 4 1 region9_pag_en
+F 5 2 region9_pag_grpid
+F 8 1 region10_pag_en
+F 9 2 region10_pag_grpid
+F 12 1 region11_pag_en
+F 13 2 region11_pag_grpid
+F 16 1 region12_pag_en
+F 17 2 region12_pag_grpid
+F 20 1 region13_pag_en
+F 21 2 region13_pag_grpid
+F 24 1 region14_pag_en
+F 25 2 region14_pag_grpid
+F 28 1 region15_pag_en
+F 29 2 region15_pag_grpid
+F 32 1 region16_pag_en
+F 33 2 region16_pag_grpid
+F 36 1 region17_pag_en
+F 37 2 region17_pag_grpid
+F 40 1 region18_pag_en
+F 41 2 region18_pag_grpid
+F 44 1 region19_pag_en
+F 45 2 region19_pag_grpid
+R 0xe40 64 - S cml_port_aggr_grp0_reg
+RESET 0x0 0x37ff7ff7ff7ff
+F 48 2 num_cxg_pag0
+F 36 11 pag0_tgtid3
+F 24 11 pag0_tgtid2
+F 12 11 pag0_tgtid1
+F 0 11 pag0_tgtid0
+R 0xe48 64 - S cml_port_aggr_grp1_reg
+RESET 0x0 0x37ff7ff7ff7ff
+F 48 2 num_cxg_pag1
+F 36 11 pag1_tgtid3
+F 24 11 pag1_tgtid2
+F 12 11 pag1_tgtid1
+F 0 11 pag1_tgtid0
+R 0xf00 64 - S sys_cache_grp_secondary_reg0
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region1_scndry_base_addr
+F 36 5 region1_scndry_size
+F 34 2 region1_scndry_target_type
+F 32 1 region1_scndry_valid
+F 9 22 region0_scndry_base_addr
+F 4 5 region0_scndry_size
+F 2 2 region0_scndry_target_type
+F 0 1 region0_scndry_valid
+R 0xf08 64 - S sys_cache_grp_secondary_reg1
+RESET 0x0 0x7ffffffd7ffffffd
+F 41 22 region3_scndry_base_addr
+F 36 5 region3_scndry_size
+F 34 2 region3_scndry_target_type
+F 32 1 region3_scndry_valid
+F 9 22 region2_scndry_base_addr
+F 4 5 region2_scndry_size
+F 2 2 region2_scndry_target_type
+F 0 1 region2_scndry_valid
+R 0xf10 64 - S sys_cache_grp_cal_mode_reg
+RESET 0x0 0x1000100010001
+F 48 1 scg3_hnf_cal_mode_en
+F 32 1 scg2_hnf_cal_mode_en
+F 16 1 scg1_hnf_cal_mode_en
+F 0 1 scg0_hnf_cal_mode_en
+R 0xf18 64 - S rnsam_hash_addr_mask_reg
+RESET 0xffffffffffc0 0xffffffffffc0
+F 6 42 addr_mask
+R 0xf20 64 - S rnsam_region_cmp_addr_mask_reg
+RESET 0xffffffff0000 0xffffffff0000
+F 16 32 addr_mask
+R 0xf58 64 - S sys_cache_grp_hn_nodeid_reg8
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_35
+F 24 11 nodeid_34
+F 12 11 nodeid_33
+F 0 11 nodeid_32
+R 0xf60 64 - S sys_cache_grp_hn_nodeid_reg9
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_39
+F 24 11 nodeid_38
+F 12 11 nodeid_37
+F 0 11 nodeid_36
+R 0xf68 64 - S sys_cache_grp_hn_nodeid_reg10
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_43
+F 24 11 nodeid_42
+F 12 11 nodeid_41
+F 0 11 nodeid_40
+R 0xf70 64 - S sys_cache_grp_hn_nodeid_reg11
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_47
+F 24 11 nodeid_46
+F 12 11 nodeid_45
+F 0 11 nodeid_44
+R 0xf78 64 - S sys_cache_grp_hn_nodeid_reg12
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_51
+F 24 11 nodeid_50
+F 12 11 nodeid_49
+F 0 11 nodeid_48
+R 0xf80 64 - S sys_cache_grp_hn_nodeid_reg13
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_55
+F 24 11 nodeid_54
+F 12 11 nodeid_53
+F 0 11 nodeid_52
+R 0xf88 64 - S sys_cache_grp_hn_nodeid_reg14
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_59
+F 24 11 nodeid_58
+F 12 11 nodeid_57
+F 0 11 nodeid_56
+R 0xf90 64 - S sys_cache_grp_hn_nodeid_reg15
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 nodeid_63
+F 24 11 nodeid_62
+F 12 11 nodeid_61
+F 0 11 nodeid_60
+R 0x1008 64 - S sys_cache_grp_sn_nodeid_reg8
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_35
+F 24 11 sn_nodeid_34
+F 12 11 sn_nodeid_33
+F 0 11 sn_nodeid_32
+R 0x1010 64 - S sys_cache_grp_sn_nodeid_reg9
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_39
+F 24 11 sn_nodeid_38
+F 12 11 sn_nodeid_37
+F 0 11 sn_nodeid_36
+R 0x1018 64 - S sys_cache_grp_sn_nodeid_reg10
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_43
+F 24 11 sn_nodeid_42
+F 12 11 sn_nodeid_41
+F 0 11 sn_nodeid_40
+R 0x1020 64 - S sys_cache_grp_sn_nodeid_reg11
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_47
+F 24 11 sn_nodeid_46
+F 12 11 sn_nodeid_45
+F 0 11 sn_nodeid_44
+R 0x1028 64 - S sys_cache_grp_sn_nodeid_reg12
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_51
+F 24 11 sn_nodeid_50
+F 12 11 sn_nodeid_49
+F 0 11 sn_nodeid_48
+R 0x1030 64 - S sys_cache_grp_sn_nodeid_reg13
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_55
+F 24 11 sn_nodeid_54
+F 12 11 sn_nodeid_53
+F 0 11 sn_nodeid_52
+R 0x1038 64 - S sys_cache_grp_sn_nodeid_reg14
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_59
+F 24 11 sn_nodeid_58
+F 12 11 sn_nodeid_57
+F 0 11 sn_nodeid_56
+R 0x1040 64 - S sys_cache_grp_sn_nodeid_reg15
+RESET 0x0 0x7ff7ff7ff7ff
+F 36 11 sn_nodeid_63
+F 24 11 sn_nodeid_62
+F 12 11 sn_nodeid_61
+F 0 11 sn_nodeid_60
+ENDGROUP
+GROUP por_hni_registers
+R 0x0 64 RO - por_hni_node_info
+RESET 0x4 0xffffffffffff
+F 0 16 node_type
+F 16 16 node_id
+PAR NODEID_PARAM
+F 32 16 logical_id
+PAR LOGICALID_PARAM
+R 0x80 64 RO - por_hni_child_info
+RESET 0x0 0xffffffff
+F 0 16 child_count
+F 16 16 child_ptr_offset
+R 0x900 64 RO - por_hni_unit_info
+RESET 0x8102020 0xf1fffff
+F 0 8 num_excl
+PAR HNI_NUM_EXCL_REQS_PARAM
+F 8 8 num_ax_reqs
+PAR HNI_NUM_AXI_REQS_PARAM
+F 16 5 num_wr_data_buf
+PAR HNI_NUM_WR_BUF_PARAM
+F 24 1 axdata_width
+PAR HNI_AXDATA256_EN_PARAM
+F 25 2 a4s_num
+PAR HNI_A4S_NUM_PARAM
+F 27 1 axdata_poison_en
+PAR HNI_AXDATAPOISON_EN_PARAM
+R 0x980 64 - S por_hni_secure_register_groups_override
+RESET 0x0 0x3
+F 0 1 cfg_ctl
+F 1 1 sam
+R 0xa00 64 - S por_hni_cfg_ctl
+RESET 0x1 0x1
+F 0 1 reqerr_cohreq_en
+R 0xa08 64 - S por_hni_aux_ctl
+RESET 0x0 0x11
+F 0 1 cg_disable
+F 4 1 side_reader_for_phymem_present
+R 0xc00 64 - S por_hni_sam_addrregion0_cfg
+RESET 0x600000000000003f 0x7c0000000000003f
+F 0 6 order_region_size
+F 58 1 physical_mem_en
+F 59 1 ser_all_wr
+F 60 1 ser_devne_wr
+F 61 1 pos_early_rdack_en
+F 62 1 pos_early_wr_comp_en
+R 0xc08 64 - S por_hni_sam_addrregion1_cfg
+RESET 0x6000000000000000 0xfcfffffffff0fc3f
+F 0 6 order_region_size
+F 10 6 addr_region_size
+F 20 36 base_addr
+F 58 1 physical_mem_en
+F 59 1 ser_all_wr
+F 60 1 ser_devne_wr
+F 61 1 pos_early_rdack_en
+F 62 1 pos_early_wr_comp_en
+F 63 1 valid
+R 0xc10 64 - S por_hni_sam_addrregion2_cfg
+RESET 0x6000000000000000 0xfcfffffffff0fc3f
+F 0 6 order_region_size
+F 10 6 addr_region_size
+F 20 36 base_addr
+F 58 1 physical_mem_en
+F 59 1 ser_all_wr
+F 60 1 ser_devne_wr
+F 61 1 pos_early_rdack_en
+F 62 1 pos_early_wr_comp_en
+F 63 1 valid
+R 0xc18 64 - S por_hni_sam_addrregion3_cfg
+RESET 0x6000000000000000 0xfcfffffffff0fc3f
+F 0 6 order_region_size
+F 10 6 addr_region_size
+F 20 36 base_addr
+F 58 1 physical_mem_en
+F 59 1 ser_all_wr
+F 60 1 ser_devne_wr
+F 61 1 pos_early_rdack_en
+F 62 1 pos_early_wr_comp_en
+F 63 1 valid
+R 0x2000 64 - - por_hni_pmu_event_sel
+RESET 0x0 0x3f3f3f3f
+F 0 6 pmu_event0_id
+F 8 6 pmu_event1_id
+F 16 6 pmu_event2_id
+F 24 6 pmu_event3_id
+R 0x3000 64 RO S por_hni_errfr
+RESET 0xa5 0x7cff
+F 0 2 ED
+F 2 2 DE
+F 4 2 UI
+F 6 2 FI
+F 10 2 CFI
+F 12 3 CEC
+R 0x3008 64 - S por_hni_errctlr
+RESET 0x0 0x10f
+F 0 1 ED
+F 1 1 DE
+F 2 1 UI
+F 3 1 FI
+F 8 1 CFI
+R 0x3010 64 - S por_hni_errstatus
+RESET 0x0 0xed800000
+F 23 1 DE
+F 24 1 CE
+F 26 1 MV
+F 27 1 OF
+F 29 1 UE
+F 30 1 V
+F 31 1 AV
+R 0x3018 64 - S por_hni_erraddr
+RESET 0x0 0x8000ffffffffffff
+F 0 48 ADDR
+F 63 1 NS
+R 0x3020 64 - S por_hni_errmisc
+RESET 0x0 0x1f300007f3f7fff
+F 0 4 ERRSRC
+F 4 11 SRCID
+F 16 6 OPCODE
+F 24 4 MEMATTR
+F 28 3 SIZE
+F 48 2 ORDER
+F 52 5 LPID
+R 0x3100 64 RO - por_hni_errfr_NS
+RESET 0xa5 0x7cff
+F 0 2 ED
+F 2 2 DE
+F 4 2 UI
+F 6 2 FI
+F 10 2 CFI
+F 12 3 CEC
+R 0x3108 64 - - por_hni_errctlr_NS
+RESET 0x0 0x10f
+F 0 1 ED
+F 1 1 DE
+F 2 1 UI
+F 3 1 FI
+F 8 1 CFI
+R 0x3110 64 - - por_hni_errstatus_NS
+RESET 0x0 0xed800000
+F 23 1 DE
+F 24 1 CE
+F 26 1 MV
+F 27 1 OF
+F 29 1 UE
+F 30 1 V
+F 31 1 AV
+R 0x3118 64 - - por_hni_erraddr_NS
+RESET 0x0 0x8000ffffffffffff
+F 0 48 ADDR
+F 63 1 NS
+R 0x3120 64 - - por_hni_errmisc_NS
+RESET 0x0 0x1f300007f3f7fff
+F 0 4 ERRSRC
+F 4 11 SRCID
+F 16 6 OPCODE
+F 24 4 MEMATTR
+F 28 3 SIZE
+F 48 2 ORDER
+F 52 5 LPID
+ENDGROUP
