@@ -269,10 +269,11 @@ def load_sysfs_events():
 def event_file_name(product_id):
     """
     Generate the canonical CSV file name for a given CMN product id, e.g. 0434 for CMN-600.
-    This should be located in the same directory as this module.
+    This should be located in the 'events' directory of this module's parent directory.
     """
     fn = "cmn-events-%04x.csv" % (product_id)
-    return os.path.join(os.path.dirname(__file__), fn)
+    edir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "events")
+    return os.path.join(edir, fn)
 
 
 hns_events = {
