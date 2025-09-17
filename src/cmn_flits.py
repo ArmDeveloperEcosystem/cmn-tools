@@ -868,6 +868,7 @@ class CMNFlitGroup:
                     f.returntxnid = BITS(x,50,12)
                     f.size = BITS(x,69,3)
                     f.NS = BIT(x,72)
+                    f.NSE = BIT(x,73)
                     f.likelyshared = BIT(x,74)
                     f.allowretry = BIT(x,75)
                     f.order = BITS(x,76,2)
@@ -933,7 +934,7 @@ class CMNFlitGroup:
                     else:
                         f.mpam = BITS(x,55,11)
                         f.addr = BITS(x,66,49) << 3
-                elif self.cfg.cmn_product_id != PART_CMN_S3:
+                elif self.cfg._cmn_base_type == 2:
                     f.fwdnid = BITS(x,27,11)
                     f.NS = BIT(x,55)
                     if not self.cfg.has_MPAM:
@@ -942,9 +943,10 @@ class CMNFlitGroup:
                     else:
                         f.mpam = BITS(x,59,11)
                         f.addr = BITS(x,70,49) << 3
-                elif self.cfg.cmn_product_id == PART_CMN_S3:
+                elif self.cfg._cmn_base_type == 3:
                     f.fwdnid = BITS(x,27,11)
                     f.NS = BIT(x,55)
+                    f.NSE = BIT(x,56)
                     if not self.cfg.has_MPAM:
                         f.addr = BITS(x,76,49) << 3
                         f.mpam = None
@@ -982,7 +984,7 @@ class CMNFlitGroup:
                     f.chunkv = BITS(x,82,2)
                     f.devevent = BITS(x,84,2)
                     f.rsvdc = BITS(x,86,8)
-                else:
+                elif self.cfg._cmn_base_type == 2:
                     f.homenid = BITS(x,38,11)
                     f.resperr = BITS(x,53,2)
                     f.resp = BITS(x,55,3)
@@ -994,6 +996,19 @@ class CMNFlitGroup:
                     f.rsvdc = BITS(x,96,8)
                     f.poison = BITS(x,104,4)
                     f.chunkv = BITS(x,108,2)
+                    f.devevent = BITS(x,110,2)
+                else:
+                    f.homenid = BITS(x,38,11)
+                    f.resperr = BITS(x,53,2)
+                    f.resp = BITS(x,55,3)
+                    fws_ds = BITS(x,58,8)
+                    f.cbusy = BITS(x,67,3)
+                    f.dbid = BITS(x,70,12)
+                    f.ccid = BITS(x,86,2)
+                    f.dataid = BITS(x,88,2)
+                    f.rsvdc = BITS(x,115,8)
+                    f.poison = BITS(x,103,4)
+                    f.chunkv = BITS(x,109,2)
                     f.devevent = BITS(x,110,2)
                 if f.opcode == 6:
                     # SnpRespDataFwded

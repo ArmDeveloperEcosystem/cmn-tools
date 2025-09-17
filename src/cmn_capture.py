@@ -167,7 +167,7 @@ class CMNVis:
     def set_cmn(self, cmn):
         self.cmn = cmn
         config = cmn.product_config
-        self.cfg = CMNTraceConfig(config.product_id, has_MPAM=config.mpam_enabled, cmn_product_revision=config.revision)
+        self.cfg = CMNTraceConfig(config.product_id, has_MPAM=config.mpam_enabled, cmn_product_revision=config.revision_code)
         self.last_xp = None
         self.build_id_map()
 

@@ -29,6 +29,7 @@ import sys
 
 import chi_spec
 import cmn_base
+import cmn_config
 import cmn_json
 
 
@@ -255,7 +256,7 @@ class Watchpoint:
     """
     def __init__(self, chn=0, up=None, cmn_version=None, grp=None, mask=None, name=None, **matches):
         assert cmn_version is not None
-        #assert isinstance(cmn_version, cmn_base.CMNConfig)
+        #assert isinstance(cmn_version, cmn_config.CMNConfig)
         try:
             chn = _chi_channels.index(chn.upper())
         except Exception:
@@ -434,14 +435,26 @@ Documentation in the TRMs, from "REQ channel: primary match group" onwards
    CMN-600: 5.1, tables 5-1 on
    CMN-650: 7.1, tables 7-1 on
    CMN-700: 6.1, tables 6-1 on
+   CMN S3 r0: 5.1, tables 5-1 on
+   CMN S3 r2: 6.1, tables 6-1 on
 
-Some fields may exist in multple match groups, while others only exist
-in one. This gives us some flexibility in how we allocate fields.
+Some fields may exist in multple match groups, while others only exist in one.
+This gives us some flexibility in how we allocate fields.
 
-CMN-650, CMN-700 and CI-700 appear to be the same.
+CMN-650 is mostly the same as CMN-700 and CI-700, but lacks MTE support.
 
 For each field we define:
-  (lookup, [CMN-600 positions], [CMN-650/700 positions], (optional: CMN-S3 positions))
+  (lookup,
+   [CMN-600 positions],
+   [CMN-650/700 positions],
+   [(optional: CMN-S3 positions),
+   (optional: CMN-S3 r2 positions))
+
+If a position list is None, or missing, then it means use the previous one.
+
+If a position list is explicitly empty, the field is not supported for this product.
+
+The lookup can be an array, or a callable.
 """
 
 _resperr = ["OK", "EXOK", "DERR", "NDERR"]
@@ -451,27 +464,34 @@ _req_fields = {
     "srcid":      (None,   [(0, 0, 11)],  [(0, 0, 11), (2, 0, 11)]),
     "tgtid":      (None,   [(0, 0, 11)],  [(0, 0, 11), (2, 0, 11)]),
     "returnnid":  (None,   [(0, 11, 11)], [(0, 11, 11)]),
+    "stashnid":   (None,   [],            [(0, 11, 11)]),
+    "stashtgtvalid":  (None,  [],         [(0, 22, 1)]),
     "endian":     (None,   [(0, 22, 1)],  [(0, 22, 1)]),     # overlays wth stashnidvalid/deep
     "opcode":     (chi_spec.opcodes_REQ, [(0, 31, 6)],  [(0, 29, 7), (2, 11, 7)]),
     "size":       (None,   [(0, 37, 3)],  [(0, 36, 3)]),
     "ns":         (chi_spec.NS,   [(0, 40, 1)],  [(0, 39, 1)]),
-    "allowretry": (None,   [(0, 41, 1)],  [(0, 40, 1)]),
-    "order":      (None,   [(0, 43, 2)],  [(0, 41, 2)]),
+    "allowretry": (None,   [(0, 41, 1)],  [(0, 40, 1)],  None,  [(0, 40, 1), (2, 32, 1)],  [(2, 35, 1)]),
+    "order":      (None,   [(0, 42, 2)],  [(0, 41, 2)]),
     "pcrdtype":   (None,   [(0, 44, 4)],  [(0, 43, 4)]),
     "lpid":       (None,   [(0, 48, 5)],  [(0, 47, 5)]),
-    "groupidext": (None,   None,          [(0, 52, 3)]),
-    "expcompack": (None,   None,          [(0, 55, 1)]),
+    "groupidext": (None,   [],            [(0, 52, 3)]),
+    "expcompack": (None,   [],            [(0, 55, 1)]),
     "rsvdc":      (None,   [(0, 55, 8)],  [(0, 56, 8)]),
     "qos":        (None,   [(1, 0, 4)],   [(1, 0, 4)]),
     "addr":       (None,   [(1, 4, 48)],  [(1, 4, 52)]),
-    "mpam":       (None,   None,          [(2, 18, 11)]),
+    "mpam":       (None,   [],            [(2, 18, 11)],   None,   [(2, 18, 12)],  [(2, 18, 15)]),
     "likelyshared": (None, [(1, 52, 1)],  [(1, 56, 1)]),
     "memattr":    (None,   [(1, 53, 4)],  [(1, 57, 4)]),
     "snpattr":    (None,   [(1, 57, 1)],  [(1, 61, 1)]),
     "excl":       (None,   [(1, 58, 1)],  [(1, 62, 1)]),
     "snoopme":    (None,   [(1, 58, 1)],  [(1, 62, 1)]),
-    "tagop":      (None,   None,          [(2, 29, 2)]),
+    "tagop":      (None,   [],            [],            [(2, 29, 2)],    [(2, 30, 2)],   [(2, 33, 2)]),
+    "mecid":      (None,   [],            [],            [],              [],             [(2, 40, 16)]),
+    "cah":        (None,   [],            [],            [],              [(1, 62, 1)]),
+    "deep":       (None,   [],            [],            [],              [(0, 22, 1)]),
+    "nse":        (None,   [],            [],            [],              [],      [(0, 40, 1)]),
 }
+
 
 _rsp_fields = {
     "tracetag":   (None,   [(0, 39, 1)],  [(0, 49, 1)]),
@@ -482,11 +502,12 @@ _rsp_fields = {
     "resperr":    (_resperr,   [(0, 19, 2)], [(0, 20, 2)]),
     "resp":       (None,   [(0, 21, 3)],  [(0, 22, 3)]),
     "fwdstate":   (None,   [(0, 24, 3)],  [(0, 25, 3)]),    # SnpRespFwded
-    "cbusy":      (None,   None,          [(0, 28, 3)]),
+    "cbusy":      (None,   [],            [(0, 28, 3)]),
     "dbid":       (None,   [(0, 27, 8)],  [(0, 31, 12)]),
     "pcrdtype":   (None,   [(0, 35, 4)],  [(0, 43, 4)]),
     "devevent":   (None,   [(0, 40, 2)],  [(0, 50, 2)]),
-    "tagop":      (None,   None,          [(0, 47, 2)]),
+    "tagop":      (None,   [],            [],             [(0, 47, 2)]),
+    "datapull":   (None,   [],            [],             [],    [(0, 25, 3)]),
 }
 
 
@@ -507,43 +528,58 @@ assert snp_addr("0xxx40") == "0bxxxxxxxx01000"
 
 
 _snp_fields = {
-    "tracetag":   (None,   [(0, 27, 1)],  [(0, 38, 1)]),
-    "srcid":      (None,   [(0, 0, 11), (1, 0, 11)],  [(0, 0, 11), (1, 0, 11)]),
-    "opcode":     (chi_spec.opcodes_SNP,   [(0, 19, 5)],  [(0, 30, 5)]),
+    "tracetag":   (None,   [(0, 27, 1), (1, 27, 1)],  [(0, 38, 1)],   None,  None, [(0, 39, 1)]),
+    "srcid":      (None,   [(0, 0, 11), (1, 0, 11)],  [(0, 0, 11), (1, 0, 11)], None, None, [(0, 0, 11)]),
+    "opcode":     (chi_spec.opcodes_SNP,   [(0, 19, 5), (1, 19, 5)],  [(0, 30, 5)]),
+    "fwdtxnid":   (None,   [],          [(0, 11, 8)]),
+    "fwdnid":     (None,   [],          [(0, 19, 11)]),
     "ns":         (chi_spec.NS,   [(0, 24, 1), (1, 24, 1)],  [(0, 35, 1)]),
-    "donotgotosd":(None,   [(0, 25, 1), (1, 25, 1)],  [(0, 36, 1)]),
-    "rettosrc":   (None,   [(0, 26, 1), (1, 26, 1)],  [(0, 37, 1)]),
-    "addr":       (snp_addr,   [(0, 28, 36)], [(1, 11, 49)]),
-    "addr13":     (None,   [(1, 32, 32)],  None),
-    "mpam":       (None,   None,          [(0, 43, 11)]),
-    "qos":        (None,   None,          [(0, 39, 4)]),
+    "donotgotosd":(None,   [(0, 25, 1), (1, 25, 1)],  [(0, 36, 1)],  None,  None, [(0, 37, 1)]),
+    "rettosrc":   (None,   [(0, 26, 1), (1, 26, 1)],  [(0, 37, 1)],  None,  None, [(0, 38, 1)]),
+    "addr":       (snp_addr,   [(0, 28, 36)], [(1, 11, 49)],   [(1, 11, 49)], None,  [(1, 0, 49)]),
+    "addr13":     (None,   [(1, 32, 32)], []),
+    "mpam":       (None,   [],          [(0, 43, 11)],    None,     [],   [(1, 49, 15)]),
+    "qos":        (None,   [],          [(0, 39, 4)],     None,     None, [(0, 40, 4)]),
+    "nse":        (None,   [],          [],               [],           [],   [(0, 36, 1)]),
+    "mecid":      (None,   [],          [],               [],           [(0, 43, 16)],   [(0, 44, 16)]),
+    "streamid":   (None,   [],          [],               [],           [(0, 43, 16)],   [(0, 44, 16)]),
 }
+
 
 _resp_DAT = ["I", "SC", "UC", None, None, None, "UD_PD", "SD_PD"]
 
+
+# fwdstate/datasrc are overlaid, currently we don't link this to the opcode
+# fwdstate is valid for: SnpRespDataFwded
+# datasrc is valid for:  CompData, DataSepResp, SnpRespData, SnpRespDataPtl
+
 _dat_fields = {
-    "tracetag":   (None,   [(0, 49, 1)],  [(1, 44, 1)]),
+    "tracetag":   (None,   [(0, 49, 1)],  [(1, 44, 1)],    None,    None,   [(1, 32, 1)]),
     "qos":        (None,   [(0, 0, 4)],   [(0, 0, 4)]),
     "srcid":      (None,   [(0, 4, 11)],  [(0, 4, 11), (1, 0, 11)]),
     "tgtid":      (None,   [(0, 4, 11)],  [(0, 4, 11), (1, 0, 11)]),
     "homenid":    (None,   [(0, 15, 11)], [(0, 15, 11)]),
     "opcode":     (chi_spec.opcodes_DAT,   [(0, 26, 3)],  [(0, 26, 4), (1, 11, 4)]),
     "resperr":    (_resperr,    [(0, 29, 2)],  [(0, 30, 2), (1, 15, 2)]),
-    "resp":       (_resp_DAT,   [(0, 31, 3)],  [(0, 32, 3), (1, 17, 2)]),
-    "fwdstate":   (None,   [(0, 34, 3)],  [(0, 35, 4)]),     # SnpRespDataFwded
-    "datasrc":    (None,   [(0, 34, 3)],  [(0, 35, 4)]),     # CompData, DataSepResp, SnpRespData, SnpRespDataPtl
-    "cbusy":      (None,   None,          [(0, 39, 3)],                [(0, 40, 3)]),
-    "dbid":       (None,   [(0, 37, 8)],  [(0, 42, 12), (1, 32, 12)],  [(0, 43, 12), (1, 32, 12)]),
-    "ccid":       (None,   [(0, 45, 2)],  [(0, 54, 2)]),
-    "dataid":     (None,   [(0, 47, 2)],  [(0, 56, 2)],                [(0, 57, 2)]),
-    "poison":     (None,   [(0, 50, 1)],  [(0, 58, 4)],                [(0, 59, 4)]),
-    "chunkv":     (None,   [(0, 51, 2)],  [(1, 45, 2)]),
-    "devevent":   (None,   [(0, 53, 2)],  [(0, 62, 2), (1, 47, 2)],    [(1, 47, 2)]),
-    "cah":        (None,   None,          None,          [(1, 49, 1)]),
-    "rsvdc":      (None,   [(0, 55, 8)],  [(1, 49, 8)]),
-    "tagop":      (None,   None,          [(1, 20, 2)]),
-    "tag":        (None,   None,          [(1, 22, 8)]),
-    "tu":         (None,   None,          [(1, 30, 2)]),
+    "resp":       (_resp_DAT,   [(0, 31, 3)],  [(0, 32, 3), (1, 17, 3)]),
+    "fwdstate":   (None,   [(0, 34, 3)],  [(0, 35, 4)],    None,            [(0, 35, 5)],    [(0, 35, 8)]),
+    "datasrc":    (None,   [(0, 34, 3)],  [(0, 35, 4)],    None,            [(0, 35, 5)],    [(0, 35, 8)]),
+    "stash":      (None,   [],            [(0, 35, 4)],    None,            [(0, 35, 5)],    []),
+    "cbusy":      (None,   [],            [(0, 39, 3)],    None,            [(0, 40, 3)],    [(0, 44, 3)]),
+    "dbid":       (None,   [(0, 37, 8)],  [(0, 42, 12), (1, 32, 12)],  None, [(0, 43, 12), (1, 32, 12)],  [(0, 47, 16)]),
+    "ccid":       (None,   [(0, 45, 2)],  [(0, 54, 2)],    None,            [(0, 55, 2)],    [(1, 38, 2)]),
+    "dataid":     (None,   [(0, 47, 2)],  [(0, 56, 2)],    None,            [(0, 57, 2)],    [(1, 40, 2)]),
+    "poison":     (None,   [(0, 50, 1)],  [(0, 58, 4)],    None,            [(0, 59, 4)],    [(1, 42, 4)]),
+    "chunkv":     (None,   [(0, 51, 2)],  [(1, 45, 2)],    None,            None,            [(1, 33, 2)]),
+    "devevent":   (None,   [(0, 53, 2)],  [(0, 62, 2), (1, 47, 2)],   None,  [(1, 47, 2)],    [(1, 35, 2)]),
+    "cah":        (None,   [],            [],              [],              [(1, 49, 1)],    [(1, 37, 1)]),
+    "rsvdc":      (None,   [(0, 55, 8)],  [(1, 49, 8)],    None,            [(1, 50, 8)],    [(1, 49, 8)]),
+    "tagop":      (None,   [],            [],         [(1, 20, 2)]),
+    "tag":        (None,   [],            [],         [(1, 22, 8)]),
+    "tu":         (None,   [],            [],         [(1, 30, 2)]),
+    "datapull":   (None,   [],            [],         [],        [],    [(0, 43, 1)]),
+    "numdat":     (None,   [],            [],         [],        [],    [(1, 46, 2)]),
+    "replicate":  (None,   [],            [],         [],        [],    [(1, 48, 1)]),
 }
 
 
@@ -552,10 +588,17 @@ _dat_fields = {
 _field_selector = {
     cmn_base.PART_CMN600: 1,
     cmn_base.PART_CMN650: 2,
-    cmn_base.PART_CMN700: 2,
-    cmn_base.PART_CI700: 2,
-    cmn_base.PART_CMN_S3: 3,
+    cmn_base.PART_CMN700: 3,
+    cmn_base.PART_CI700: 3,
+    cmn_base.PART_CMN_S3: 4,    # but CMN S3 r2 is 5
 }
+
+def field_selector_for_product(cfg):
+    if cfg.product_id == cmn_config.PART_CMN_S3:
+        assert cfg.revision_major is not None, "CMN S3 needs to know revision"
+        return 5 if cfg.revision_major >= 2 else 4
+    else:
+        return  _field_selector[cfg.product_id]
 
 
 # Add DVM fields as sub-fields of the address
@@ -655,6 +698,18 @@ def fix_matches_obj_for_dvm(chn, o):
                 o.dvmfrag = frag
 
 
+def field_positions(meta, mix):
+    """
+    Given a positions array, and an index (e.g. 0 for CMN-600),
+    find the effective positions for this product.
+    """
+    eff_mix = min(mix, len(meta)-1)
+    while meta[eff_mix] is None:
+        assert eff_mix >= 2
+        eff_mix -= 1
+    return meta[eff_mix]
+
+
 def apply_matches_obj_to_watchpoint(wp, o):
     """
     Set fields in the match group(s).
@@ -672,7 +727,7 @@ def apply_matches_obj_to_watchpoint(wp, o):
     exclusive = getattr(o, "exclusive", None)
     fields = _fields[wp.chn]
     # Index of this CMN's field positions in the tuple
-    mix = _field_selector[wp.cmn_version.product_id]
+    mix = field_selector_for_product(wp.cmn_version)
     fix_matches_obj_for_dvm(wp.chn, o)
     for phase in [0, 1]:
         for (k, meta) in fields.items():
@@ -688,10 +743,8 @@ def apply_matches_obj_to_watchpoint(wp, o):
                     if wp.up is False:    # n.b. not None
                         raise WatchpointBadValue(val, "can't specify TGTID on download", k, wp.chn)
                     wp.up = True      # tgtid specified, force watchpoint to "up"
-                # Currently, CMN-S3 is almost always the same as CMN-700, so we allow most
-                # fields to not bother with a separate CMN-S3 configuration.
-                eff_mix = min(mix, len(meta)-1)
-                if meta[eff_mix] is None:
+                poses = field_positions(meta, mix)
+                if not poses:
                     raise WatchpointBadValue(val, ("field not supported in this product (%s)" % wp.cmn_version), k, wp.chn)
                 # Get the value-parsing function, so we can do e.g. "resp=UC"
                 # Each channel has its own opcode lookup function.
@@ -715,7 +768,6 @@ def apply_matches_obj_to_watchpoint(wp, o):
                     raise WatchpointBadValue(val, e.reason, k, wp.chn)
                 # First do fields that only have one possible group
                 try:
-                    poses = meta[eff_mix]
                     if phase == 0 and len(poses) == 1:
                         # Only one possible group for this field
                         (grp, pos, width) = poses[0]
@@ -764,16 +816,17 @@ def list_fields(cmn_version):
     """
     List all CHI fields that can be matched.
     """
-    mix = _field_selector[cmn_version.product_id]
+    mix = field_selector_for_product(cmn_version)
     for (chn, cf) in zip(_chi_channels, _fields):
+        print()
         print("%s fields:" % chn)
         for (f, meta) in cf.items():
-            eff_mix = min(mix, len(meta)-1)
-            poses = meta[eff_mix]
-            if poses is None and not o_verbose:
+            poses = field_positions(meta, mix)
+            if not poses and not o_verbose:
+                # For this product, this field is not present or not observable
                 continue
             print("%12s " % f, end="")
-            if poses is None:
+            if not poses:
                 print("- n/a", end="")
             else:
                 nbits = poses[0][2]
@@ -782,15 +835,25 @@ def list_fields(cmn_version):
             # Print any enumerator for this CHI field
             keys = meta[0]
             if keys is not None and not o_verbose:
-                keys = [k for k in keys if k is not None]
-                print(', '.join(keys[:5]), end="")
-                if len(keys) > 5:
-                    print("...", end="")
+                if callable(keys):
+                    print("(special)", end="")
+                else:
+                    keys = [k for k in keys if k is not None]
+                    print(', '.join(keys[:5]), end="")
+                    if len(keys) > 5:
+                        print("...", end="")
             print()
+            if o_verbose:
+                # print individual positions
+                for (grp, pos, nbits) in poses:
+                    print("%s.%s: group %u: width %u, bit range %u:%u" % (chn, f, grp, nbits, pos+nbits-1, pos))
             if keys is not None and poses is not None and o_verbose:
-                for (i, k) in enumerate(keys):
-                    if k is not None and not k.startswith("?") and i < (1 << nbits):
-                        print("            %s (%u)" % (k, i))
+                if callable(keys):
+                    print("        (special)")
+                else:
+                    for (i, k) in enumerate(keys):
+                        if k is not None and not k.startswith("?") and i < (1 << nbits):
+                            print("            %s (%u)" % (k, i))
 
 
 def parse_short_watchpoint(ws, opts, cmn_version=None):
@@ -859,8 +922,8 @@ if __name__ == "__main__":
         return int(s, 16)
     def arg_cmn_version(s):
         try:
-            v = cmn_base.cmn_version(s)
-            assert isinstance(v, cmn_base.CMNConfig)
+            v = cmn_config.cmn_version(s)
+            assert isinstance(v, cmn_config.CMNConfig)
         except KeyError:
             raise argparse.ArgumentTypeError("invalid CMN product identifier")
         return v
@@ -908,7 +971,7 @@ if __name__ == "__main__":
         except Exception:
             print("cannot discover CMN product version: run discovery tools", file=sys.stderr)
             sys.exit(1)
-    assert isinstance(cmn_version, cmn_base.CMNConfig)
+    assert isinstance(cmn_version, cmn_config.CMNConfig)
     if opts.verbose:
         print("CMN version: %s" % cmn_version, file=sys.stderr)
     if opts.list:

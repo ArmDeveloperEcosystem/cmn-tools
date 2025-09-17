@@ -32,6 +32,7 @@ import struct
 
 
 import cmn_base
+import cmn_config
 import cmn_json
 import app_data
 
@@ -99,11 +100,11 @@ def iomem_regions(iomem=None):
 
 # "ARMHC" prefix isn't enough, ARMHC502 is something different
 cmn_acpi_names = {
-    "ARMHC600": cmn_base.PART_CMN600,
-    "ARMHC650": cmn_base.PART_CMN650,
-    "ARMHC700": cmn_base.PART_CMN700,
-    "ARMHC800": cmn_base.PART_CMN_S3,   # pp https://neoverse-reference-design.docs.arm.com/en/latest/features/ras/ras.html
-    "ARMHC003": cmn_base.PART_CMN_S3,   # pp DEN0093 v1.2
+    "ARMHC600": cmn_config.PART_CMN600,
+    "ARMHC650": cmn_config.PART_CMN650,
+    "ARMHC700": cmn_config.PART_CMN700,
+    "ARMHC800": cmn_config.PART_CMN_S3,   # pp https://neoverse-reference-design.docs.arm.com/en/latest/features/ras/ras.html
+    "ARMHC003": cmn_config.PART_CMN_S3,   # pp DEN0093 v1.2
 }
 
 
@@ -116,10 +117,20 @@ def cmn_iomem_regions(iomem=None):
             yield r
 
 
+def _canon_product_id(n):
+    if n == 600:
+        return cmn_config.PART_CMN600
+    if n == 650:
+        return cmn_config.PART_CMN650
+    if n == 700:
+        return cmn_config.PART_CMN700
+    return n
+
+
 class CMNLocator:
     """
     Specification of where CMN is. This has the base address (PERIPHBASE),
-    root node address, and CMN product number (e.g. cmn_base.PART_CMN700).
+    root node address, and CMN product number (e.g. cmn_config.PART_CMN700).
     We get it from /proc/iomem, ACPI tables, user override etc.
     """
     def __init__(self, periphbase=None, rootnode_offset=None, product_id=None, seq=None, where_found=None):
@@ -127,11 +138,11 @@ class CMNLocator:
         self.periphbase = periphbase
         self.rootnode_offset = rootnode_offset
         self.node_skiplist = None
-        self.product_id = cmn_base.canon_product_id(product_id)
+        self.product_id = _canon_product_id(product_id)
         self.where_found = where_found
 
     def __str__(self):
-        s = cmn_base.product_id_str(self.product_id)
+        s = cmn_config.product_id_str(self.product_id)
         s += " at 0x%x" % self.periphbase
         if self.rootnode_offset:
             s += " (root +0x%x)" % self.rootnode_offset
@@ -142,7 +153,7 @@ class CMNLocator:
 
 def cmn_locators_from_iomem(iomem=None):
     """
-    Yield all known CMN instances.
+    Yield all known CMN instances from /proc/iomem.
     """
     locs = []
     loc = None
@@ -183,6 +194,9 @@ _dt_compats = {
 
 
 def cmn_locators_from_dt(dt_base=None):
+    """
+    Yield CMN locators from Device Tree.
+    """
     if dt_base is None:
         dt_base = DT_BASE_DEFAULT
     if o_verbose:

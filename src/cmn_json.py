@@ -22,6 +22,7 @@ except NameError:
 
 import app_data
 import cmn_base
+import cmn_config
 import cmn_enum
 
 
@@ -58,9 +59,8 @@ def cmn_from_json(j, S):
         v = j["version"]
         if isinstance(v, int):
             v = "CMN-" + str(v)
-        C.product_config = cmn_base.CMNConfig(product_name=v)
-        if "revision" in j:
-            C.product_config.revision = j["revision"]
+        revision_code = j.get("revision", None)
+        C.product_config = cmn_config.CMNConfig(product_name=v, revision_code=revision_code)
     C.product_config.mpam_enabled = jc.get("mpam_enabled", False)
     C.product_config.chi_version = jc.get("chi_version", None)
     C.frequency = j.get("frequency", None)
@@ -245,7 +245,7 @@ def json_from_cmn(C):
         "type": "interconnect",
         "product": "CMN",
         "version": C.product_config.product_name(),
-        "revision": C.product_config.revision,
+        "revision": C.product_config.revision_code,
         "config": {
             "mpam_enabled": C.product_config.mpam_enabled,
             "chi_version": C.product_config.chi_version,

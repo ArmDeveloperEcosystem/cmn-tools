@@ -27,6 +27,7 @@ import devmem
 import cmn_devmem_find
 from cmn_devmem_regs import *
 import cmn_base
+import cmn_config
 from cmn_enum import *
 import cmn_events
 
@@ -1308,12 +1309,12 @@ class CMN:
         id01 = temp_m.read64(CMN_CFG_PERIPH_01)
         product_id = (BITS(id01, 32, 4) << 8) | BITS(id01, 0, 8)
         if cmn_loc.product_id is not None:
-            assert cmn_loc.product_id == product_id, "expecting %s, found %s" % (cmn_base.product_id_str(cmn_loc.product_id), cmn_base.product_id_str(product_id))
+            assert cmn_loc.product_id == product_id, "expecting %s, found %s" % (cmn_config.product_id_str(cmn_loc.product_id), cmn_base.product_id_str(product_id))
         # For now, if we see CMN-600AE, pretend it's CMN-600, to not break tests in code.
         if product_id == cmn_base.PART_CMN600AE:
             product_id = cmn_base.PART_CMN600
         # We can't get chi_version() until we've read unit_info (por_info_global)
-        self.product_config = cmn_base.CMNConfig(product_id=product_id)
+        self.product_config = cmn_config.CMNConfig(product_id=product_id)
         del temp_m
 
         # Load the PMU event database, if available
@@ -1350,7 +1351,7 @@ class CMN:
         self.root_security = "ROOT" if self.part_ge_S3() else "S"
 
         # The release is e.g. r0p0, r1p2
-        self.product_config.revision = BITS(self.rootnode.read64(CMN_CFG_PERIPH_23), 4, 4)
+        self.product_config.set_revision_code(BITS(self.rootnode.read64(CMN_CFG_PERIPH_23), 4, 4))
         self.product_config.mpam_enabled = self.part_ge_650() and (BIT(self.unit_info, 49) != 0)
         self.product_config.chi_version = self.chi_version()
         assert self.product_config.chi_version >= 2, "failed to detect CHI version: info=0x%x" % self.unit_info

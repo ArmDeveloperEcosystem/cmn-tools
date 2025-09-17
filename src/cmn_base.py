@@ -21,6 +21,7 @@ CMN itself has no knowledge of which CPUs are connected where.
 from __future__ import print_function
 
 from cmn_enum import *
+from cmn_config import *
 from memsize_str import memsize_str
 
 
@@ -187,140 +188,6 @@ class CPU:
     def __str__(self):
         s = "CPU#%u at %s SRCID=0x%x LPID=%u" % (self.cpu, self.port, self.id, self.lpid)
         return s
-
-
-PART_CMN600 = 0x434
-PART_CMN650 = 0x436
-PART_CMN600AE = 0x438
-PART_CMN700 = 0x43c
-PART_CI700  = 0x43a
-PART_CMN_S3 = 0x43e
-
-
-_cmn_product_names_by_id = {
-    0x434: "CMN-600",
-    0x436: "CMN-650",
-    0x438: "CMN-600AE",
-    0x43c: "CMN-700",
-    0x43a: "CI-700",
-    0x43e: "CMN S3",
-}
-
-
-def product_id_str(n):
-    if n is None:
-        return "CMN-unknown"
-    elif n in _cmn_product_names_by_id:
-        return _cmn_product_names_by_id[n]
-    elif n in [600, 650, 700]:
-        return "CMN-%u" % n   # Legacy
-    return "CMN-0x%x??" % n
-
-
-def canon_product_id(n):
-    if n == 600:
-        return PART_CMN600
-    if n == 650:
-        return PART_CMN650
-    if n == 700:
-        return PART_CMN700
-    return n
-
-
-cmn_products_by_name = {
-    "CMN-600": 0x434,
-    "CMN-650": 0x436,
-    "CMN-700": 0x43c,
-    "CI-700": 0x43a,
-    "CMN-S3": 0x43e,
-}
-
-
-# map the periph_id_2 codes on to releases.
-# Not systematic - CMN-600 r2p1 has a higher code than r3p0
-# TBD: the CMN-600 r2p1 and r3p2 TRMs disagree on the numbering.
-# TBD: CMN S3 r2p1, r2p2 and r2p3 are tentative awaiting documentation.
-
-cmn_revisions = {
-    0x434: ["r1p0", "r1p1", "r1p2", "r1p3", "r2p0", "r3p0", "r2p1"],
-    0x436: ["r0p0", "r1p0", "r1p1", "r2p0", "r1p2"],
-    0x43c: ["r0p0", "r1p0", "r2p0", "r3p0"],
-    0x43a: ["r0p0", "r1p0", "r2p0"],
-    0x43e: ["r0p0", "r0p1", "r1p0", "r2p0", "r2p1", "r2p2", "r2p3"],
-}
-
-
-class CMNConfig:
-    """
-    CMN product and major configuration. This object models the overall
-    identity of the CMN product that we're dealing with, namely:
-      - which out of CMN-600, CMN-650, CMN-700, CI-700 etc.
-      - revision number
-    Instance-specific configuration e.g. X and Y dimensions,
-    is not modelled here.
-
-    It is tempting to assign a linear correspondence between product versions/releases,
-    and features, but we don't know if that's a valid assumption. E.g. maybe some feature
-    is added in product N+1 but also in release R+1 of a previous product.
-    """
-    def __init__(self, product_id=None, product_name=None, revision=None, chi_version=None, mpam_enabled=None):
-        self.product_id = product_id
-        if product_name is not None:
-            assert product_id is None
-            product_name = product_name.upper().replace(' ', '-')
-            self.product_id = cmn_products_by_name[product_name]
-        self.mpam_enabled = mpam_enabled
-        self.chi_version = chi_version
-        self.revision = revision
-
-    def product_name(self, revision=False):
-        """
-        Look up the product id and revision to get a product name,
-        e.g. "CMN 700 r1p0"
-        """
-        try:
-            s = _cmn_product_names_by_id[self.product_id]
-        except LookupError:
-            s = "unknown product (%s)" % str(self.product_id)
-        if revision:
-            if self.revision is not None:
-                try:
-                    s += " " + cmn_revisions[self.product_id][self.revision]
-                except LookupError:
-                    s += " rev=%u?" % self.revision
-            else:
-                s += " rev?"
-        return s
-
-    def chi_version_str(self):
-        if self.chi_version is None:
-            return None
-        else:
-            try:
-                return "CHI-" + ("?ABCDEFGHI"[self.chi_version])
-            except LookupError:
-                return "CHI-?(%s)" % self.chi_version
-
-    def __eq__(self, b):
-        return isinstance(b, CMNConfig) and self.product_id == b.product_id and self.mpam_enabled == b.mpam_enabled
-
-    def __ne__(self, b):
-        return not self == b
-
-    def __str__(self):
-        s = self.product_name(revision=True)
-        if self.mpam_enabled:
-            s += " (MPAM)"
-        return s
-
-
-def cmn_version(s):
-    """
-    Given a string, e.g. "cmn-700", return a CMNConfig object.
-    """
-    if s.find('-') < 0:
-        s = "cmn-" + s
-    return CMNConfig(product_name=s)
 
 
 def id_coord_bits(dimX, dimY):
