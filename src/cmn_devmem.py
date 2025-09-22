@@ -1284,7 +1284,8 @@ class CMN:
         # CMNProductConfig object will be created when we read CMN_CFG_PERIPH_01
         # from the root node
         self.product_config = None
-        self.D = devmem.DevMem(write=False, check=check_writes)
+        self.D = devmem.DevMem(write=False, check=check_writes, space=cmn_loc.mem_space)
+        self.D.cmn_mesh_name = cmn_loc.name
         self.is_local = self.D.is_local    # False when accessing via remote debugger etc.
         self.offset_node = {}     # nodes indexed by register space offset
         # How do we find the dimensions?

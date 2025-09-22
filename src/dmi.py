@@ -714,6 +714,18 @@ def os_dmi_string(s):
         return None
 
 
+def print_os_dmi_strings():
+    """
+    Print all DMI strings that the OS is exposing (e.g. Linux /sys)
+    """
+    for k in os.listdir(DEFAULT_DMI_STRINGS):
+        try:
+            s = os_dmi_string(k)
+        except IOError:
+            s = "<n/a>"      # almost certainly a permission error
+        print("%20s = %s" % (k, s))
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="read SMBIOS DMI file")
@@ -725,6 +737,7 @@ if __name__ == "__main__":
     parser.add_argument("--uuid", action="store_true", help="print system UUID")
     parser.add_argument("--memory", action="store_true", help="print memory records")
     parser.add_argument("--dump-bin", type=str, help="dump contents to a file")
+    parser.add_argument("--os-strings", action="store_true", help="dump DMI strings from OS")
     parser.add_argument("-t", "--type", type=int, help="DMI record type")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
@@ -753,6 +766,9 @@ if __name__ == "__main__":
         with open(opts.dump_bin, "wb") as fo:
             fo.write(eps)
             fo.write(st)
+        sys.exit(0)
+    if opts.os_strings:
+        print_os_dmi_strings()
         sys.exit(0)
     try:
         D = DMI(opts.input)

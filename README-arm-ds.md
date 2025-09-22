@@ -120,3 +120,21 @@ or the hardware architecture), will be to the machine locally running DS.
 There is no built-in method of communicating with any OS running on the
 target. It is also not possible to directly read ACPI/SMBIOS tables on
 the target - indeed they may not yet have been created.
+
+
+CMN trace capture over CoreSight ATB using DS
+---------------------------------------------
+
+The cmn_capture.py script will capture CMN trace into a buffer within the
+CMN mesh. For capturing larger amounts of trace, it's instead necessary to
+send the trace out of the CMN mesh, and onto the CoreSight ATB bus. The
+trace can then be captured on-chip from a trace sink such as an ETF or ETR,
+or sent off-chip via a TPIU or ETR to be captured by an external debug
+probe (such as a DSTREAM-ST/-PT/-XT).
+
+This can be done using the cmn_trace_setup_ds.py script. See
+README-capture-ATB.md for more details.
+
+For general information about trace capture using Arm DS, see the 'Arm
+Development Studio Trace User Guide': https://developer.arm.com/documentation/109870/0100
+Please contact Arm Support if any issues are encountered whilst using Arm DS.

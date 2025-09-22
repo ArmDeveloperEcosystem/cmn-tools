@@ -35,6 +35,7 @@ import cmn_base
 import cmn_config
 import cmn_json
 import app_data
+import devmem
 
 
 o_verbose = 0
@@ -133,19 +134,23 @@ class CMNLocator:
     root node address, and CMN product number (e.g. cmn_config.PART_CMN700).
     We get it from /proc/iomem, ACPI tables, user override etc.
     """
-    def __init__(self, periphbase=None, rootnode_offset=None, product_id=None, seq=None, where_found=None):
+    def __init__(self, periphbase=None, rootnode_offset=None, product_id=None, seq=None, where_found=None, name=None, mem_space=None):
         self.seq = seq
         self.periphbase = periphbase
         self.rootnode_offset = rootnode_offset
         self.node_skiplist = None
         self.product_id = _canon_product_id(product_id)
         self.where_found = where_found
+        self.name = name
+        self.mem_space = mem_space
 
     def __str__(self):
         s = cmn_config.product_id_str(self.product_id)
         s += " at 0x%x" % self.periphbase
         if self.rootnode_offset:
             s += " (root +0x%x)" % self.rootnode_offset
+        if self.name:
+            s += " named %s" % self.name
         if self.where_found is not None:
             s += " - found in %s" % self.where_found
         return s
@@ -289,6 +294,28 @@ def json_from_cmn_locators(locs):
     return j
 
 
+def get_locs_from_dtsl():
+    """
+    If this is an Arm Debugger connection, where the CMN locations have been added to the
+    target config, call the getCMNLocations() DTSL method
+    """
+    from arm_ds.debugger_v1 import Debugger
+    from com.arm.debug.dtsl import ConnectionManager
+    debugger = Debugger()
+    dtslConnectionConfigurationKey = debugger.getConnectionConfigurationKey()
+    dtslConnection = ConnectionManager.openConnection(dtslConnectionConfigurationKey)
+    dtslCfg = dtslConnection.getConfiguration()
+    if hasattr(dtslCfg, "cmn_config"):
+        for dtsl_loc in dtslCfg.cmn_config.getCMNLocations():
+            yield CMNLocator(dtsl_loc.getPeriphbase(),
+                             dtsl_loc.getRootNodeOffset(),
+                             cmn_base.cmn_products_by_name[dtsl_loc.getCMNProduct().getName()],
+                             where_found="Arm Debugger configuration database",
+                             name=dtsl_loc.getCMNMeshName(),
+                             mem_space=dtsl_loc.getCMNMemorySpace()
+                            )
+
+
 def cmn_locators(opts=None, single_instance=False):
     """
     Process command-line options to locate CMN instances.
@@ -309,6 +336,10 @@ def cmn_locators(opts=None, single_instance=False):
     # Check if a CMN locator JSON file is explicitly provided
     if not locs and opts is not None and opts.cmn_locations is not None:
         for loc in cmn_locators_from_json(opts.cmn_locations):
+            locs.append(loc)
+    # Check if CMN locators are defined in armdbg configuration database
+    if not locs and devmem.RUNNING_IN_ARM_DEBUGGER:
+        for loc in get_locs_from_dtsl():
             locs.append(loc)
     # Check for a previously cached CMN locator file
     if not locs and not opts.cmn_locs_no_cache:
