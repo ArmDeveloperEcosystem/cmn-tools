@@ -199,6 +199,11 @@ class CMNRegMapper:
                 s += ".p%u.d%u.%s" % (p, d, ntype)
         return s
 
+    def reg_selected(self, name):
+        if not self.o_match_reg_names:
+            return True
+        return any([e.search(name) for e in self.o_match_reg_names])
+
     def node_dump_regs(self, n):
         if self.o_match_nodes and not self.o_match_nodes.match_node(n):
             return
@@ -215,7 +220,7 @@ class CMNRegMapper:
         rm = self.regmaps[nident]
         printed_node = False
         for reg in rm.regs():
-            if self.o_match_reg_names and not any([re.search(e, reg.name, flags=re.I) for e in self.o_match_reg_names]):
+            if not self.reg_selected(reg.name):
                 continue
             if reg.access == "RO" and not self.o_include_read_only:
                 if o_verbose >= 2:
@@ -283,6 +288,11 @@ class CMNRegMapper:
 
 if __name__ == "__main__":
     import argparse
+    def regex(s):
+        try:
+            return re.compile(s, flags=re.I)
+        except Exception as e:
+            raise ValueError(s)
     parser = argparse.ArgumentParser(description="CMN register dump")
     parser.add_argument("--include-read-only", action="store_true", default=True, help="include read-only registers")
     parser.add_argument("-w", "--exclude-read-only", dest="include_read_only", action="store_false", help="exclude read-only registers")
@@ -292,7 +302,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--descriptions", action="store_true", help="show register and field descriptions")
     parser.add_argument("--no-descriptions", dest="descriptions", action="store_false", help="don't show descriptions")
     parser.add_argument("-n", "--node", type=cmn_select.CMNSelect, action="append", help="match nodes or node types")
-    parser.add_argument("-r", "--reg", type=str, action="append", help="match register name")
+    parser.add_argument("-r", "--reg", type=regex, action="append", help="match register name")
     parser.add_argument("--flat", action="store_true", help="unformatted display")
     parser.add_argument("--max-desc", type=int, default=72, help="maximum length to print for descriptions")
     cmn_devmem_find.add_cmnloc_arguments(parser)
