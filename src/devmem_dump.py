@@ -51,7 +51,7 @@ class DumpBusError(Exception):
 
 
 class DumpMemFactory(DevMapFactory):
-    def __init__(self, write=False, check=True):
+    def __init__(self, write=False, check=True, space=None):
         DevMapFactory.__init__(self, write=write, check=check, is_local=False)
         self.dump = Dump(os.environ["CMN_DUMP"])
 
