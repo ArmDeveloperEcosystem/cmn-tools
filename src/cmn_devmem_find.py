@@ -342,7 +342,7 @@ def cmn_locators(opts=None, single_instance=False):
         for loc in get_locs_from_dtsl():
             locs.append(loc)
     # Check for a previously cached CMN locator file
-    if not locs and not opts.cmn_locs_no_cache:
+    if not locs and opts is not None and not opts.cmn_locs_no_cache:
         cpath = _cmn_location_cache()
         if os.path.exists(cpath):
             opts.cmn_locs_no_cache = True   # don't write back
@@ -364,7 +364,7 @@ def cmn_locators(opts=None, single_instance=False):
     if not locs:
         print("No CMN locations found", file=sys.stderr)
         sys.exit(1)
-    if not opts.cmn_locs_no_cache:
+    if opts is not None and not opts.cmn_locs_no_cache:
         # Save these locations for next time
         cpath = _cmn_location_cache()
         j = json_from_cmn_locators(locs)
@@ -385,7 +385,7 @@ def cmn_single_locator(opts=None):
     """
     locs = list(cmn_locators(opts, single_instance=True))
     if locs:
-        return locs[0]
+        return locs[opts.cmn_instance] if opts.cmn_instance else locs[0]
     else:
         return None
 

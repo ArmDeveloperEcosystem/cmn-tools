@@ -10,7 +10,9 @@ SPDX-License-Identifer: Apache 2.0
 
 from __future__ import print_function
 
+
 import struct
+
 
 from cs_decode import TraceCorrupt
 from cmn_flits import CMNTraceConfig, CMNFlitGroup, CMNFlit
@@ -57,6 +59,9 @@ class CMNDecoder:
         s = "CMN{v=%s,n_sync=%u, ts=%s}" % (self.cfg, self.n_sync, self.ts_string())
         return s
 
+    def msg(self, s):
+        print("CMN: %s" % (s))
+
     def decode(self, sync=True):
         self.n_ts_bytes_valid = 0
         if self.verbose:
@@ -68,7 +73,7 @@ class CMNDecoder:
             # rather than the correct 15*0x00 0x80. Note that this creates a possible
             # ambiguity since this sequence might be seen in the payload of a data packet.
             if self.verbose:
-                print("CMN: scanning for sync sequence")
+                self.msg("scanning for %u-byte sync sequence" % self.sync_size)
             seen_zeroes = 0
             n_discarded = 0
             while True:
@@ -82,10 +87,12 @@ class CMNDecoder:
                         elif x == 0x00 and (yield) == 0x00 and (yield) == 0x00 and (yield) == 0x80:
                             break
                 else:
+                    if self.verbose >= 2 and seen_zeroes > 0:
+                        self.msg("discarded %u zeroes" % seen_zeroes)
                     seen_zeroes = 0
                     n_discarded += 1
             if self.verbose:
-                print("CMN: sync sequence found, %u bytes discarded" % n_discarded)
+                self.msg("sync sequence found, %u bytes discarded" % n_discarded)
             self.n_sync += 1
         else:
             # Caller is asserting that the stream begins on a packet boundary.
@@ -93,7 +100,7 @@ class CMNDecoder:
         while True:
             x = (yield)
             if self.verbose:
-                print("CMN: packet header 0x%02x" % (x))
+                self.msg("packet header 0x%02x" % (x))
             if x == 0x00:
                 # Alignment sync packet after seeing other packets; or possibly at the
                 # start when we didn't request sync.
@@ -112,7 +119,9 @@ class CMNDecoder:
                     x = (yield)
                 self.n_sync += 1
             elif (x & 0xc0) == 0x40:
-                # Data packet. Note that the header for CMN-700 is different.
+                # Data packet. Note that the header for CMN-700 has a different format,
+                # but for the purposes of packet identification we don't need to decode the header fully.
+                # Full decode is left to cmn_flits.py.
                 CC = BIT(x, 4)     # not bit 1 as indicated in the CMN-600 TRM
                 b1 = (yield)
                 b2 = (yield)
@@ -149,7 +158,7 @@ class CMNDecoder:
                 self.n_ts_bytes_valid = max(self.n_ts_bytes_valid, TSn)
                 self.emit_timestamp(ts_new, cc=cx)
             else:
-                print("unknown CMN trace header byte 0x%02x" % x)
+                self.msg("unknown CMN trace header byte 0x%02x" % x)
                 raise TraceCorrupt("unknown header byte 0x%02x" % x)
 
     def output_cc(self, cc):

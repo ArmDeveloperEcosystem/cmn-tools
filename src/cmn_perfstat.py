@@ -134,7 +134,6 @@ def perf_raw(events, time=None, command=None, system_wide=True):
             if o_verbose:
                 print("not supported: %s" % toks[2])
             raise PerfNotAvailable(toks[2])
-            counts.append(None)
         elif toks[0] == "<not counted>":
             # Valid specifier, but we were (presumably) not able to schedule it
             n_uncounted += 1

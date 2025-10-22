@@ -359,7 +359,8 @@ def measure_and_print_topdown(recipe):
         # It might be better to print the rates per microsecond,
         # or use scientific notation.
         if print_rate_bandwidth:
-            print(" %12s/s" % memsize_str(rate_bandwidth*td.rate[c], decimal=o_print_decimal), end="")
+            rb = rate_bandwidth or 64      # default if --print-rate-bandwidth
+            print(" %12s/s" % memsize_str(rb*td.rate[c], decimal=o_print_decimal), end="")
         else:
             print(" %14.2f" % (td.rate[c]), end="")
         # For TOP_CAT this will always be 100%

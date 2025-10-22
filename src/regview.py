@@ -162,6 +162,9 @@ class RegMap:
         Load this regmap from the current position in file-like object.
         It is assumed a GROUP line has been read. Return when a regmap has been read,
         leaving the file-like object open for more reading.
+
+        The input file is assumed to be machine-generated (likely by this module);
+        formatting errors will generally trigger asserts.
         """
         r = None
         fld = None
@@ -192,6 +195,7 @@ class RegMap:
                 (_, value) = ln.split(None, 1)
                 fld.set_reset(value)
             elif ln.startswith("DESC "):
+                assert r is not None
                 (_, desc) = ln.split(None, 1)
                 if fld is not None:
                     fld.desc = desc
@@ -201,6 +205,8 @@ class RegMap:
             elif ln.startswith("ENDGROUP"):
                 break
             elif in_desc:
+                # continuation line
+                assert r is not None       # should be true by construction
                 if fld is not None:
                     fld.desc += " " + ln
                 else:
@@ -261,6 +267,13 @@ class Register:
     @property
     def is_volatile(self):
         return self.access.endswith("V")
+
+    @property
+    def is_secure(self):
+        """
+        Return true if register is anything other than NonSecure accessible
+        """
+        return self.security
 
     @property
     def is_parameterized(self):
@@ -369,6 +382,12 @@ class RegField:
 
     def extract(self, x):
         return BITS(x, self.pos, self.width)
+
+    def insert(self, x, v):
+        if v >= (1 << self.width):
+            raise ValueError("value 0x%x too wide for %u-bit field" % (v, self.width))
+        m = self.mask_in_reg
+        return (x & ~m) | (v << self.pos)
 
     def set_reset(self, value):
         self.reset = value

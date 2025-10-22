@@ -320,9 +320,9 @@ class CMNNode:
             self.C.n_XPs_discovered_devices += 1
         cobits = 30 if self.C.part_ge_650() else 28
         if self.is_XP() and self.C.isolation_enabled and self.C.node_skiplist is None:
-            # In S3, scanning isolated child HNs will fault and lock up the system.
-            # From S3 r2p0 on, child isolation status is flagged in the child offsets.
-            # Before then, we could check if there are any HN connected ports,
+            # In S3, scanning isolated child HN-F/HN-Ss will fault and lock up the system.
+            # From S3 r2p0 on, child isolation status is flagged in bit 30 of the child offsets.
+            # Before then, we could check if there are any HN-F/HN-S connected ports for this XP,
             # and abandon the scan if so. Or we could try and make a secure
             # access to por_mxp_device_port_disable and check if any ports are disabled.
             # We could even try to infer the port numbers from the offsets and skip
@@ -359,16 +359,32 @@ class CMNNode:
                 self.C.log("%s: skipping external device at 0x%x" % (self, child_offset), level=1)
                 continue
             is_isolated = BIT(child, 30) and self.C.part_ge_S3r2()
-            if is_isolated:
-                self.C.log("%s: skipping isolated device at 0x%x (bit 30 set)" % (self, child_offset), level=1)
-                self.skipped_nodes = SKIP_SPECIFIC
-                continue
             if self.C.node_skiplist is not None:
+                # The skiplist can be used to skip isolated nodes (e.g. in CMN S3 r0 where bit 30
+                # is not implemented, or to override isolation bits.
                 is_skipped = (child_offset in self.C.node_skiplist or (self.C.periphbase+child_offset) in self.C.node_skiplist)
+            else:
+                is_skipped = None
+            # There are now six cases:
+            #   !is_isolated  is_skipped=None    - go ahead (normal case for pre-S3 and S3 r2)
+            #   !is_isolated  is_skipped=False   - go ahead (S3 r0, not isolated)
+            #   !is_isolated  is_skipped=True    - skip (S3 r0, isolated)
+            #   is_isolated   is_skipped=None    - skip (normal case for S3 r2 where isolation bit is set)
+            #   is_isolated   is_skipped=False   - go ahead (override for S3 r2 incorrect isolation bit)
+            #   is_isolated   is_skipped=True    - skip (S3 r2, isolation bit correctly set but skip list needed for other nodes)
+            if is_isolated:
+                if is_skipped is None or is_skipped:
+                    self.C.log("%s: skipping isolated device at 0x%x (bit 30 set)" % (self, child_offset), level=1)
+                    self.skipped_nodes = SKIP_SPECIFIC
+                    continue
+                # is_skipped is False - skiplist was provided, but does not contain this node
+                self.C.log("%s: device at 0x%x is marked as isolated (bit 30 set), but is not in skiplist" % (self, child_offset), level=0)
+            else:
                 if is_skipped:
                     self.C.log("%s: skipping skiplist marked node at 0x%x" % (self, child_offset), level=0)
-                    # we only expect a skiplist match when discovering an XP's devices
-                    # In fact, skiplist validation will check all skiplist entries are under XPs
+                    # We only expect a skiplist match when discovering an XP's devices,
+                    # and not when discovering child XPs of the root configuration node.
+                    # In fact, skiplist validation will check all skiplist entries are under XPs.
                     if not self.is_XP():
                         self.C.log("Unexpected skiplist match when discovering XPs!", level=0)
                     self.skipped_nodes = SKIP_SPECIFIC
@@ -804,6 +820,9 @@ class DTMWatchpoint:
             self.decode()
 
     def decode(self):
+        """
+        Unpack watchpoint configuration, from the configuration register value
+        """
         self.chn = BITS(self.cfg, 1, 2)
         self.dev = BIT(self.cfg, 0)
         if self.dtm.xp.n_device_ports() > 2:
@@ -811,9 +830,14 @@ class DTMWatchpoint:
         self.grp = BITS(self.cfg, 4, (1 if self.C.product_config.product_id == cmn_base.PART_CMN600 else 2))
         self.type = BITS(self.cfg, self.C.DTM_WP_PKT_TYPE_SHIFT, 3)
         self.cc = BIT(self.cfg, self.C.DTM_WP_PKT_TYPE_SHIFT+3)
+        self.exclusive = (self.cfg & self.C.DTM_WP_EXCLUSIVE) != 0
+        self.combine = (self.cfg & self.C.DTM_WP_COMBINE) != 0
         return self
 
     def __str__(self):
+        """
+        Generate a watchpoint descriptor, in the same format as the Linux PMU driver
+        """
         s = "watchpoint"
         if self.up is not None:
             s += "_" + ["down", "up"][self.up]
@@ -827,6 +851,10 @@ class DTMWatchpoint:
             s += ",wp_val=0x%x" % self.value
         if self.mask is not None:
             s += ",wp_mask=0x%x" % self.mask
+        if self.exclusive:
+            s += ",wp_exclusive=1"
+        if self.combine:
+            s += ",wp_combine=1"
         return s
 
 #
@@ -936,7 +964,7 @@ class CMNDTM:
         elif self.C.product_config.product_id == cmn_base.PART_CMN650:
             dwidth = 160
         elif ((self.C.product_config.product_id != cmn_base.PART_CMN_S3) or
-             self.C.product_config.revision < 2):
+             self.C.product_config.revision_major < 2):
             dwidth = 176
         else:
             dwidth = 196
@@ -968,24 +996,27 @@ class CMNDTM:
         cc = BIT(cfg, self.C.DTM_WP_PKT_TYPE_SHIFT+3)
         return (self.xp.node_id(), dev, wp, VC, type, cc)
 
-    def dtm_wp_config(self, wp):
+    def dtm_wp_config(self, wp, value=True):
         """
         Return a DTMWatchpoint object with the current configuration of a watchpoint.
         """
+        assert 0 <= wp and wp <= DTM_N_WATCHPOINTS
         w = DTMWatchpoint(self, wp=wp, cfg=self.dtm_read64(CMN_DTM_WP0_CONFIG_off+(wp*24)))
-        w.value = self.dtm_read64(CMN_DTM_WP0_VAL_off+(wp*24))
-        w.mask = self.dtm_read64(CMN_DTM_WP0_MASK_off+(wp*24))
+        if value:
+            w.value = self.dtm_read64(CMN_DTM_WP0_VAL_off+(wp*24))
+            w.mask = self.dtm_read64(CMN_DTM_WP0_MASK_off+(wp*24))
         return w
 
     def dtm_atb_packet_header(self, wp, lossy=0):
         """
         Construct a trace packet header, as if for a packet output on ATB.
         """
-        (nid, dev, wp, VC, type, cc) = self.dtm_wp_details(wp)
+        w = self.dtm_wp_config(wp)
+        nid = self.xp.node_id()
         if self.C.product_config.product_id == cmn_base.PART_CMN600:
-            h = (VC << 30) | (dev << 29) | (wp << 27) | (type << 24) | (nid << 8) | 0x40 | (cc << 4) | lossy
+            h = (w.chn << 30) | (w.dev << 29) | (w.wp << 27) | (w.type << 24) | (nid << 8) | 0x40 | (w.cc << 4) | lossy
         else:
-            h = (VC << 28) | (wp << 24) | ((nid >> 3) << 11) | (dev << 8) | 0x40 | (cc << 4) | (type << 1) | lossy
+            h = (w.chn << 28) | (w.wp << 24) | ((nid >> 3) << 11) | (w.dev << 8) | 0x40 | (w.cc << 4) | (w.type << 1) | lossy
         return h
 
     def pmu_enable(self):
@@ -1079,7 +1110,7 @@ class CMNDTM:
                 dev1 = dev >> 1
                 config |= (dev1 << 17)
         if group is not None:
-            config |= (group << 4)     # for CMN-650 and CMN-700 this is a 2-bit field[5:4]
+            config |= (group << 4)     # for CMN-650 onwards this is a 2-bit field[5:4]
         if cc:
             # note: must also be enabled in the DTM
             config |= self.C.DTM_WP_CC_EN
@@ -1358,7 +1389,7 @@ class CMN:
         assert self.product_config.chi_version >= 2, "failed to detect CHI version: info=0x%x" % self.unit_info
         if not self.part_ge_S3():
             self.DTM_BASE = CMN_DTM_BASE_OLD   # 0x2000
-        elif self.product_config.product_id == cmn_base.PART_CMN_S3 and self.product_config.revision < 2:
+        elif self.product_config.product_id == cmn_base.PART_CMN_S3 and self.product_config.revision_major == 0:
             self.DTM_BASE = CMN_DTM_BASE_S3r0  # 0xD900
         else:
             self.DTM_BASE = CMN_DTM_BASE_S3r1  # 0xA000
@@ -1434,6 +1465,8 @@ class CMN:
 
         if self.node_skiplist is not None:
             self.validate_skiplist()
+        if self.verbose:
+            self.log("Mesh discovery complete%s" % (" (device discovery is lazy)" if self.defer_device_discovery else ""), level=1)
 
     def validate_skiplist(self):
         """
@@ -1491,13 +1524,13 @@ class CMN:
 
     def part_ge_S3r1(self):
         if self.product_config.product_id == cmn_base.PART_CMN_S3:
-            return self.product_config.revision >= 2
+            return self.product_config.revision_major >= 1
         return self.part_ge_S3()
 
     def part_ge_S3r2(self):
         # everything from S3 R2 onwards
         if self.product_config.product_id == cmn_base.PART_CMN_S3:
-            return self.product_config.revision >= 3
+            return self.product_config.revision_major >= 2
         return self.part_ge_S3()
 
     def __str__(self):

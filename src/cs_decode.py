@@ -97,7 +97,7 @@ class TraceCorrupt(TraceDecodeException):
         self.msg = msg
 
     def __str__(self):
-        return repr(self.msg)
+        return str(self.msg)
 
 
 def frame_changes_id(fr):

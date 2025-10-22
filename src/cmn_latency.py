@@ -123,10 +123,10 @@ class Watchpoint:
     """
     def __init__(self, dtm, wp_num):
         self.dtm = dtm
-        self.trace_config = CMNTraceConfig(dtm.C.product_config.product_id, has_MPAM=dtm.C.product_config.mpam_enabled, cmn_product_revision=dtm.C.product_config.revision_code)
+        self.trace_config = CMNTraceConfig(dtm.C.product_config.product_id, has_MPAM=dtm.C.product_config.mpam_enabled, cmn_product_revision=dtm.C.product_config.revision_major)
         self.wp = wp_num
-        det = dtm.dtm_wp_details(wp_num)
-        (self.dev, self.vc, self.ty, self.cce) = (det[1], det[3], det[4], det[5])
+        w = dtm.dtm_wp_config(wp_num)
+        (self.dev, self.vc, self.ty, self.cce) = (w.dev, w.chn, w.type, w.cc)
         if o_verbose >= 2:
             print("Trace config: %s %s %s %s %s" % (self.trace_config, self.dev, self.vc, self.ty, self.cce))
 

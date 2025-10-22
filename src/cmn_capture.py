@@ -167,7 +167,7 @@ class CMNVis:
     def set_cmn(self, cmn):
         self.cmn = cmn
         config = cmn.product_config
-        self.cfg = CMNTraceConfig(config.product_id, has_MPAM=config.mpam_enabled, cmn_product_revision=config.revision_code)
+        self.cfg = CMNTraceConfig(config.product_id, has_MPAM=config.mpam_enabled, cmn_product_revision=config.revision_major)
         self.last_xp = None
         self.build_id_map()
 
@@ -200,8 +200,8 @@ class CMNVis:
         print(fg)
 
     def decode_packet(self, xp, wp, data, cc):
-        (nid, DEV, wp, VC, format, _) = xp.dtm.dtm_wp_details(wp)
-        fg = CMNFlitGroupX(self.cfg, cmn_seq=self.cmn.seq, nodeid=nid, DEV=DEV, VC=VC, format=format, cc=cc, vis=self)
+        w = xp.dtm.dtm_wp_config(wp, value=False)
+        fg = CMNFlitGroupX(self.cfg, cmn_seq=self.cmn.seq, nodeid=xp.node_id(), DEV=w.dev, VC=w.chn, format=w.type, cc=w.cc, vis=self)
         fg.decode(data)
         self.handle_flitgroup(xp, wp, fg)
 

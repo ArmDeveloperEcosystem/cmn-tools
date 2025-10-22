@@ -78,6 +78,10 @@ class CMNConfig:
     It is tempting to assign a linear correspondence between product versions/releases,
     and features, but we don't know if that's a valid assumption. E.g. maybe some feature
     is added in product N+1 but also in release R+1 of a previous product.
+
+    The object has two fields indicating the revision:
+      - revision_code is the field as it occurs in por_cfgm_periph_id_2_periph_id_3.periph_id_2
+      - revision_major is the major revision number, i.e. 'x' in 'rxpy'
     """
     def __init__(self, product_id=None, product_name=None, revision_code=None, chi_version=None, mpam_enabled=None):
         self.product_id = product_id
@@ -167,15 +171,16 @@ def cmn_version(s):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="CMN product versions and configurations")
-    parser.add_argument("version", type=cmn_version, nargs="+", help="versions")
+    parser.add_argument("version", type=cmn_version, nargs="*", help="versions")
     parser.add_argument("--list", action="store_true", help="list known revisions")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
-    if opts.list:
+    if opts.list or not opts.version:
         print("CMN revisions:")
         for id in sorted(_cmn_revisions.keys()):
             print("  %s:" % (_cmn_product_names_by_id[id]))
             for (i, s) in enumerate(_cmn_revisions[id]):
-                print("   %2u: %s" % (i, s))
+                cfg = CMNConfig(product_id=id, revision_code=i)
+                print("   %2u: %s (%s)" % (i, s, cfg))
     for v in opts.version:
         print("%s (major %s)" % (v, v.revision_major))

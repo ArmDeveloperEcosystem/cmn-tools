@@ -130,6 +130,9 @@ def print_dtm_list(x, pfx="", detail=0):
 N_WATCHPOINTS = 4
 
 def print_dtm_watchpoints(dtm, pfx="    "):
+    """
+    Show any DTM watchpoints that are "configured" i.e. have a non-trivial (non-reset) setting.
+    """
     for wp in range(0, N_WATCHPOINTS):
         w = dtm.dtm_wp_config(wp)
         if w.cfg or w.value or w.mask:
@@ -165,6 +168,7 @@ def print_dtm_pmu_config(dtm, pfx="    "):
     """
     pcfg = dtm.dtm_read64(CMN_DTM_PMU_CONFIG_off)
     if pcfg != 0:
+        # Show the configuration of each of the DTM's four counters
         cnt = dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
         print("%sPMU config: 0x%016x, counts: 0x%016x" % (pfx, pcfg, cnt))
         for i in range(0, 4):
@@ -180,15 +184,21 @@ def print_dtm_pmu_config(dtm, pfx="    "):
 
 def print_dtm_pmu(dtm, pfx="    "):
     """
-    Show DTM PMU configuration and counts
+    Show DTM PMU configuration and counts,
+    and also show the PMU (export) configuration of the XP's connected devices.
     """
     print_dtm_pmu_config(dtm, pfx=pfx)
+    printed_header = False
     # DTM may be counting events from connected devices.
     for p in range(0, dtm.xp.n_device_ports()):
         for n in dtm.xp.port_nodes(p):
+            # A device may have zero, one or several PMUs that can export events to the DTM
             for soff in n.PMU_EVENT_SEL:
                 pmu_sel = n.read64(soff)
-                print("%s      %016x  %s" % (pfx, pmu_sel, n))
+                if not printed_header:
+                    print("%s  Device PMU exports:" % pfx)
+                    printed_header = True
+                print("%s    %016x  %s" % (pfx, pmu_sel, n))
                 pmu_filter = BITS(pmu_sel, 32, 8)
                 for e in range(0, 4):
                     esel = BITS(pmu_sel, e*8, 8)

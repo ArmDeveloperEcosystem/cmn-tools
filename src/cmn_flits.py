@@ -559,6 +559,8 @@ class CMNTraceConfig:
     The CMN tools have their own class for CMN configuration,
     but we keep this one separate so we can use the flit decoder
     independently as part of a CoreSight trace decoder.
+
+    The revision number is the major revision number, not the code from periph_id_2.
     """
     def __init__(self, cmn_product_id, has_MPAM, cmn_product_revision=0):
         if cmn_product_id in [600, 650, 700]:

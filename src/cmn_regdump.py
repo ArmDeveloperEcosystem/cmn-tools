@@ -15,8 +15,6 @@ import sys
 import re
 
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from cmn_devmem import cmn_from_opts
 from cmn_enum import *
 import cmn_base
@@ -41,21 +39,14 @@ _cmn_part_map = {
 
 
 def get_pident(cfg):
+    """
+    Given a CMN configuration (product and revision), get the identifier for the
+    register mapping file. This is ad hoc and reflects the major breaking changes
+    between published CMN versions.
+    """
     pident = _cmn_part_map.get(cfg.product_id, None)
-    if cfg.product_id == cmn_base.PART_CMN700:
-        if cfg.revision < 1:
-            pident += "-r0"
-        elif cfg.revision < 2:
-            pident += "-r1"
-        else:
-            pident += "-r3"
-    if cfg.product_id == cmn_base.PART_CMN_S3:
-        if cfg.revision < 2:
-            pident += "-r0"
-        elif cfg.revision < 3:
-            pident += "-r1"
-        else:
-            pident += "-r2"
+    if cfg.product_id in [cmn_base.PART_CMN700, cmn_base.PART_CMN_S3]:
+        pident += ("-r%u" % cfg.revision_major)
     return pident
 
 
@@ -92,40 +83,26 @@ def node_ident(n):
     Given a CMN node type, construct the register group name.
     """
     nident = _cmn_node_map.get(n.type(), None)
+    if nident is None:
+        return None
     if nident.startswith("por_hnf"):
         # HN-F or one of its MPAM nodes
-        if (n.C.part_ge_700() and n.C.product_config.revision >= 3) or n.C.part_ge_S3():
+        if (n.C.part_ge_700() and n.C.product_config.revision_code >= 3) or n.C.part_ge_S3():
             nident = "cmn_hns" + nident[7:]    # not "por_hnf"...
-    return nident + "_registers" if nident is not None else None
+    return nident + "_registers"
 
 
 class CMNRegMapper:
     """
-    Dump CMN configuration registers
+    Map CMN configuration registers by name
     """
-    def __init__(self, regdefs_dir=None, regmaps=None, descriptions=True, description_limit=100, fields=True, include_read_only=False, skip_zeroes=True, match_reg_names=None, match_nodes=None, flat=False):
+    def __init__(self, regdefs_dir=None, regmaps=None):
         self.regdefs_dir = regdefs_dir
         self.regmaps = regmaps
         self.regmaps_product = None
-        self.o_descriptions = descriptions
-        self.description_limit = 100
-        self.o_fields = fields
-        self.o_include_read_only = include_read_only
-        self.o_match_reg_names = match_reg_names
-        self.o_match_nodes = match_nodes
-        self.o_skip_zeroes = skip_zeroes
-        self.o_flat = flat
-        self.n_regs_reserved_bits_set = 0
         if regdefs_dir is None:
             rdir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "regdefs")
             self.set_regdefs_dir(rdir)
-
-    def had_errors(self):
-        """
-        See if any errors were encountered - this could be reserved bits set,
-        or (in future) invalid values for enumerators.
-        """
-        return self.n_regs_reserved_bits_set > 0
 
     def set_regdefs_dir(self, regdefs_dir):
         self.regdefs_dir = regdefs_dir
@@ -164,6 +141,43 @@ class CMNRegMapper:
         self.regmaps = regmaps
         self.regmaps_product = None
 
+    def node_regmap(self, n):
+        nident = node_ident(n)
+        if nident is None:
+            print("%s: node type not known" % (n), file=sys.stderr)
+            return None
+        if nident not in self.regmaps:
+            if o_verbose:
+                print("%s: no register map (%s), type=0x%x" % (n, nident, n.type()), file=sys.stderr)
+            #sys.exit(1)
+            return None
+        rm = self.regmaps[nident]
+        return rm
+
+
+class CMNRegDumper(CMNRegMapper):
+    """
+    Dump CMN configuration registers
+    """
+    def __init__(self, regdefs_dir=None, regmaps=None, descriptions=True, description_limit=100, fields=True, include_read_only=False, skip_zeroes=True, match_reg_names=None, match_nodes=None, flat=False):
+        CMNRegMapper.__init__(self, regdefs_dir=regdefs_dir, regmaps=regmaps)
+        self.o_descriptions = descriptions
+        self.description_limit = 100
+        self.o_fields = fields
+        self.o_include_read_only = include_read_only
+        self.o_match_reg_names = match_reg_names
+        self.o_match_nodes = match_nodes
+        self.o_skip_zeroes = skip_zeroes
+        self.o_flat = flat
+        self.n_regs_reserved_bits_set = 0
+
+    def had_errors(self):
+        """
+        See if any errors were encountered - this could be reserved bits set,
+        or (in future) invalid values for enumerators.
+        """
+        return self.n_regs_reserved_bits_set > 0
+
     @staticmethod
     def valstr(x, width=None):
         # Print a value in hex or decimal, taking account of the value itself and its field width.
@@ -178,14 +192,62 @@ class CMNRegMapper:
             return s[:self.description_limit] + "..."
         return s
 
-    def cmn_dump_regs(self, C):
+    def cmn_nodes_iter(self, C):
         self.set_regmaps_from_cmn_product(C.product_config)
-        self.node_dump_regs(C.rootnode)
+        yield C.rootnode
         for xp in C.XPs():
-            self.node_dump_regs(xp)
+            yield xp
             for i in range(0, 4):
                 for node in xp.port_nodes(i):
-                    self.node_dump_regs(node)
+                    yield node
+
+    def cmn_nodes(self, C):
+        for node in self.cmn_nodes_iter(C):
+            if self.o_match_nodes and not self.o_match_nodes.match_node(node):
+                return
+            yield node
+
+    def cmn_dump_regs(self, C):
+        for node in self.cmn_nodes(C):
+            self.node_dump_regs(node)
+
+    def cmn_access_reg(self, C, reg_name, fld_name, val):
+        for n in self.cmn_nodes(C):
+            rm = self.node_regmap(n)
+            if rm is None:
+                continue
+            reg = rm.regs_by_name.get(reg_name, None)
+            if reg is None:
+                continue
+            rname = self.locator_str(n) + reg_name
+            if reg.is_secure and not n.C.secure_accessible:
+                print("** %s is secure and not accessible" % (rname))
+                continue
+            if fld_name is not None:
+                fld = reg.field_by_name(fld_name)
+                if fld is None:
+                    print("%s has no field '%s'" % (reg_name, fld_name), file=sys.stderr)
+                    sys.exit(1)
+            else:
+                fld = None
+            old_val = n.read64(reg.addr)
+            if fld_name is not None:
+                rname += "." + fld_name
+            if fld is None:
+                if val is None:
+                    print("%s = 0x%x" % (rname, old_val))
+                else:
+                    n.write64(reg.addr, val)
+                    rb_val = n.read64(reg.addr)
+                    print("%s = 0x%x -> 0x%x" % (rname, old_val, rb_val))
+            else:
+                if val is None:
+                    print("%s = 0x%x" % (rname, fld.extract(old_val)))
+                else:
+                    new_val = fld.insert(old_val, val)
+                    n.write64(reg.addr, new_val)
+                    rb_val = n.read64(reg.addr)
+                    print("%s = 0x%x -> 0x%x" % (rname, fld.extract(old_val), fld.extract(rb_val)))
 
     @staticmethod
     def locator_str(n):
@@ -205,19 +267,10 @@ class CMNRegMapper:
         return any([e.search(name) for e in self.o_match_reg_names])
 
     def node_dump_regs(self, n):
-        if self.o_match_nodes and not self.o_match_nodes.match_node(n):
-            return
-        nident = node_ident(n)
-        if nident is None:
-            print("%s: node type not known" % (n), file=sys.stderr)
-            return
-        if nident not in self.regmaps:
-            if o_verbose:
-                print("%s: no register map (%s), type=0x%x" % (n, nident, n.type()), file=sys.stderr)
-            #sys.exit(1)
+        rm = self.node_regmap(n)
+        if rm is None:
             return
         self.node_loc_str = self.locator_str(n)
-        rm = self.regmaps[nident]
         printed_node = False
         for reg in rm.regs():
             if not self.reg_selected(reg.name):
@@ -226,7 +279,7 @@ class CMNRegMapper:
                 if o_verbose >= 2:
                     print("%s: excluded as read-only" % reg)
                 continue
-            if reg.security == "S" and not n.C.secure_accessible:
+            if reg.is_secure and not n.C.secure_accessible:
                 if o_verbose >= 2:
                     print("%s: excluded as Secure" % reg)
                 # this would read as zero if we tried
@@ -305,16 +358,31 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--reg", type=regex, action="append", help="match register name")
     parser.add_argument("--flat", action="store_true", help="unformatted display")
     parser.add_argument("--max-desc", type=int, default=72, help="maximum length to print for descriptions")
+    parser.add_argument("regs", type=str, nargs="*", help="register names or field names")
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
-    D = CMNRegMapper(descriptions=opts.descriptions, description_limit=opts.max_desc, fields=opts.fields,
+    D = CMNRegDumper(descriptions=opts.descriptions, description_limit=opts.max_desc, fields=opts.fields,
                      include_read_only=opts.include_read_only, skip_zeroes=(not opts.include_zero),
                      match_reg_names=opts.reg,
                      match_nodes=cmn_select.cmn_select_merge(opts.node),
                      flat=opts.flat)
     CS = cmn_from_opts(opts)
+    if opts.regs:
+        for rs in opts.regs:
+            if '=' in rs:
+                (rs, val) = rs.split('=')
+                val = int(val, 16)
+            else:
+                val = None
+            if '.' in rs:
+                (rs, fld) = rs.split('.')
+            else:
+                fld = None
+            for C in CS:
+                D.cmn_access_reg(C, rs, fld, val)
+        sys.exit()
     printed_sec_warning = False
     for C in CS:
         if not C.secure_accessible and not printed_sec_warning:

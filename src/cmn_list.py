@@ -56,6 +56,8 @@ class CMNLister:
         """
         if cmn is not None:
             self.cmn = cmn
+        else:
+            assert self.cmn is not None   # must have been set in construction
         print("%s:" % self.cmn)
         print("  %s" % cmn.rootnode)
         if not (self.node_match is not None and not self.node_match.match_node(self.cmn.rootnode)):
