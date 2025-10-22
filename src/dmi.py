@@ -718,7 +718,7 @@ def print_os_dmi_strings():
     """
     Print all DMI strings that the OS is exposing (e.g. Linux /sys)
     """
-    for k in os.listdir(DEFAULT_DMI_STRINGS):
+    for k in sorted(os.listdir(DEFAULT_DMI_STRINGS)):
         try:
             s = os_dmi_string(k)
         except IOError:
