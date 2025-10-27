@@ -71,7 +71,9 @@ def cmn_from_json(j, S):
     if "skiplist" in j:
         C.node_skiplist = [int(se, 16) for se in j["skiplist"]]
     for jxp in jc["xps"]:
-        np = jxp["n_ports"]
+        np = jxp.get("n_ports", None)
+        if np is None:
+            np = len(jxp["ports"])
         xp = C.create_xp(jxp["X"], jxp["Y"], n_ports=np, id=jxp["id"], logical_id=jxp.get("logical_id", None))
         if "dtc" in jxp:
             xp.dtc = jxp["dtc"]
@@ -122,7 +124,7 @@ def dmi_system_type():
     """
     try:
         return " ".join([open(os.path.join("/sys/class/dmi/id", s)).read().strip()
-                         for s in ["sys_vendor", "product_name", "product_version"]])
+                         for s in ["sys_vendor", "product_name", "product_version"]]).strip()
     except FileNotFoundError:
         return None
 
@@ -133,14 +135,16 @@ def system_from_json(j, filename=None):
     """
     S = cmn_base.System(filename=filename)
     S.system_type = j.get("system_type", None)
+    if S.system_type is not None:
+        S.system_type = S.system_type.strip()
     S.system_uuid = uuid.UUID(j["system_uuid"]) if "system_uuid" in j else None
     S.processor_type = j.get("processor_type", None)
     if S.system_type is not None and S.processor_type is not None:
         os_type = dmi_system_type()
         if os_type is not None and os_type != S.system_type:
             print("CMN file might be for different system:", file=sys.stderr)
-            print("  This system:    %s" % os_type, file=sys.stderr)
-            print("  System in file: %s" % S.system_type, file=sys.stderr)
+            print("  This system:    '%s'" % os_type, file=sys.stderr)
+            print("  System in file: '%s'" % S.system_type, file=sys.stderr)
     if "date" in j and j["date"] is not None:
         # Currently a float as per time.time()
         S.timestamp = float(j["date"])
@@ -306,24 +310,19 @@ def json_dump_file_from_system(S, fn):
             app_data.change_to_real_user_if_sudo(fn)
 
 
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="CMN mesh interconnect model")
-    parser.add_argument("-i", "--input", type=str, help="input JSON")
-    parser.add_argument("-o", "--output", type=str, help="output JSON")
-    parser.add_argument("--filename", action="store_true", help="display filename")
-    parser.add_argument("--nodes", action="store_true", help="list all nodes")
-    parser.add_argument("--nodeid", type=(lambda s: int(s, 16)), help="look up node id")
-    parser.add_argument("--ports", action="store_true", help="list all ports")
-    parser.add_argument("--xps", action="store_true", help="list all crosspoints")
-    parser.add_argument("--requesters", action="store_true", help="list requesters")
-    parser.add_argument("--home-nodes", action="store_true", help="list home nodes")
-    parser.add_argument("--cpus", action="store_true", help="list CPUs")
-    parser.add_argument("--cmn-instance", type=int, help="select CMN instance")
-    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
-    opts.input = cmn_config_default(opts.input)
-    S = system_from_json_file(opts.input)
+def file_print_summary_info(fn, opts):
+    """
+    Print a summary of JSON contents, as controlled by options
+    """
+    S = system_from_json_file(fn)
+    system_print_summary_info(S, opts)
+    return S
+
+
+def system_print_summary_info(S, opts):
+    """
+    Print summary information about a system.
+    """
     if opts.verbose:
         print("System type: %s" % S.system_type)
         print("CMN version: %s" % S.cmn_version())
@@ -332,12 +331,39 @@ if __name__ == "__main__":
         print("%s: CMN interconnect not found" % (S.filename), file=sys.stderr)
         sys.exit(1)
     if not (opts.filename or (opts.nodeid is not None) or
-            opts.nodes or opts.ports or opts.home_nodes or opts.cpus or opts.xps or opts.output):
+            opts.nodes or opts.ports or opts.home_nodes or opts.cpus or opts.xps or
+            opts.summary or opts.output):
         print(S)
+    if opts.summary:
+        C0 = S.CMNs[0]
+        vsn = S.cmn_version()
+        print("%-40s " % S.filename, end="")
+        if C0.has_cpu_mappings():
+            print(" %3u CPUs" % len(S.cpu_node), end="")
+        else:
+            print("         ", end="")
+        print("  ", end="")
+        if len(S.CMNs) != 1:
+            print("%u x " % len(S.CMNs), end="")
+        else:
+            print("    ", end="")
+        print("%-12s %2ux%-2u " % (vsn.product_name(revision=True), C0.dimX, C0.dimY), end="")
+        print(" %s" % vsn.chi_version_str(), end="")
+        if vsn.mpam_enabled:
+            print(" MPAM", end="")
+        max_cal = 0
+        for p in S.ports():
+            max_cal = max(max_cal, p.cal)
+        if max_cal:
+            print(" CAL%u" % max_cal, end="")
+        if S.has_HNS():
+            print(" HN-S", end="")
+        if S.system_type:
+            print(" -- %s" % S.system_type, end="")
+        print()
+        return
     if opts.filename:
         print(S.filename)
-    if opts.output is not None:
-        json_dump_file_from_system(S, opts.output)
     if opts.xps:
         for C in S.CMNs:
             print("  %s" % C)
@@ -411,3 +437,37 @@ if __name__ == "__main__":
             print(p)
         else:
             print("No port matching ID 0x%02x" % opts.nodeid)
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="CMN mesh interconnect model")
+    parser.add_argument("-i", "--input", type=str, help="input JSON")
+    parser.add_argument("-o", "--output", type=str, help="output JSON")
+    parser.add_argument("--filename", action="store_true", help="display filename")
+    parser.add_argument("--summary", action="store_true", help="print single-line summary")
+    parser.add_argument("--nodes", action="store_true", help="list all nodes")
+    parser.add_argument("--nodeid", type=(lambda s: int(s, 16)), help="look up node id")
+    parser.add_argument("--ports", action="store_true", help="list all ports")
+    parser.add_argument("--xps", action="store_true", help="list all crosspoints")
+    parser.add_argument("--requesters", action="store_true", help="list requesters")
+    parser.add_argument("--home-nodes", action="store_true", help="list home nodes")
+    parser.add_argument("--cpus", action="store_true", help="list CPUs")
+    parser.add_argument("--cmn-instance", type=int, help="select CMN instance")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
+    parser.add_argument("all_inputs", type=str, nargs="*", help="input JSON")
+    opts = parser.parse_args()
+    if opts.all_inputs:
+        if opts.input is not None:
+            opts.all_inputs.insert(0, opts.input)
+    else:
+        opts.all_inputs = [cmn_config_default(opts.input)]
+    if len(opts.all_inputs) > 1:
+        if opts.output:
+            print("-o can only be used with a single input", file=sys.stderr)
+            sys.exit(1)
+        opts.filename = True
+    for fn in opts.all_inputs:
+        S = file_print_summary_info(fn, opts)
+        if opts.output is not None and S is not None:
+            json_dump_file_from_system(S, opts.output)

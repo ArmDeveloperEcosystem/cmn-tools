@@ -45,6 +45,11 @@ class RegDefs:
         for n in sorted(self.keys()):
             yield self._maps[n]
 
+    def regs(self):
+        for rm in self.maps():
+            for r in rm.regs():
+                yield r
+
     def __getitem__(self, n):
         return self._maps[n]
 
@@ -87,17 +92,24 @@ class RegMap:
         self.regs_by_name = {}
 
     def add_register(self, r):
+        """
+        Add a Register object.
+        """
         if r.addr in self.regs_by_addr:
             print("%s: duplicate address %s vs. %s" % (self.name, self.reg_at(r.addr), r), file=sys.stderr)
         self.regs_by_addr[r.addr] = r
         if r.name in self.regs_by_name:
             print("%s: duplicate name %s vs. %s" % (self.name, self.regs_by_name[r.name], r), file=sys.stderr)
         self.regs_by_name[r.name] = r
+        r.regmap = self          # back pointer from Register to RegMap
 
     def addrs_sorted(self):
         return sorted(self.regs_by_addr.keys())
 
     def regs(self):
+        """
+        Yield registers in address order
+        """
         for raddr in self.addrs_sorted():
             reg = self.regs_by_addr[raddr]
             yield reg
@@ -252,6 +264,7 @@ class Register:
     """
     def __init__(self, addr, name, desc=None, n_bits=64, access=None, security=None, external=False):
         assert n_bits > 0
+        self.regmap = None       # Will be back pointer when added to RegMap
         self.addr = addr
         self.n_bits = n_bits
         self.name = name

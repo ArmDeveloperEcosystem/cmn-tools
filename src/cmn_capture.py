@@ -498,7 +498,7 @@ class TraceSession:
             # the global PMU enable.
             for dtc in self.C.DTCs():
                 dtc.pmu_clear()
-                dtc.set64(cmn.CMN_DTC_PMCR, cmn.CMN_DTC_PMCR_PMU_EN)
+                dtc.pmu_enable()
 
         # Start CMN generating ATB trace
         if self.opts.cg_disable:

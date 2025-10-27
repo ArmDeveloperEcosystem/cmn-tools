@@ -91,20 +91,25 @@ CMN_DTC_CTL_CG_DISABLE             = 0x400    # Disable DT architectural clock g
 CMN_DTC_TRACECTRL   = 0xA30
 CMN_DTC_TRACECTRL_CC_ENABLE        = 0x100    # Cycle count enable
 CMN_DTC_TRACEID     = 0xA48
-CMN_DTC_PMEVCNT    = 0x2000    # AB at 0x2000, CD at 0x2010, EF at 0x2020, GH at 0x2030
-CMN_DTC_PMCCNTR    = 0x2040    # cycle counter (40-bit)
-CMN_DTC_PMEVCNTSR  = 0x2050    # AB at 0x2050, CD at 0x2060, EF at 0x2070, GH at 0x2080 (shadow regs)
-CMN_DTC_PMCCNTRSR  = 0x2090    # cycle counter (shadow register)
-CMN_DTC_PMCR       = 0x2100    # PMU control register
+
+# DTC PMU registers relative to dtc.PM_BASE
+CMN_DTC_PM_BASE_OLD    = 0x2000
+CMN_DTC_PM_BASE_S3     = 0xd900
+
+CMN_DTC_PMEVCNT_off    = 0x0000    # AB at 0x2000, CD at 0x2010, EF at 0x2020, GH at 0x2030
+CMN_DTC_PMCCNTR_off    = 0x0040    # cycle counter (40-bit)
+CMN_DTC_PMEVCNTSR_off  = 0x0050    # AB at 0x2050, CD at 0x2060, EF at 0x2070, GH at 0x2080 (shadow regs)
+CMN_DTC_PMCCNTRSR_off  = 0x0090    # cycle counter (shadow register)
+CMN_DTC_PMCR_off       = 0x0100    # PMU control register
 CMN_DTC_PMCR_PMU_EN        = 0x01
 CMN_DTC_PMCR_OVFL_INTR_EN  = 0x40
-CMN_DTC_PMOVSR     = 0x2118    # PMU overflow status (read-only)
-CMN_DTC_PMOVSR_CLR = 0x2120    # PMU overflow clear (write-only)
-CMN_DTC_PMSSR      = 0x2128    # PMU snapshot status (read-only)
+CMN_DTC_PMOVSR_off     = 0x0118    # PMU overflow status (read-only)
+CMN_DTC_PMOVSR_CLR_off = 0x0120    # PMU overflow clear (write-only)
+CMN_DTC_PMSSR_off      = 0x0128    # PMU snapshot status (read-only)
 CMN_DTC_PMSSR_SS_STATUS     =  0x01ff   # Snapshot status (7:0 events; 8 cycles)
 CMN_DTC_PMSSR_SS_CFG_ACTIVE =  0x8000   # PMU snapshot activated from configuration write
 CMN_DTC_PMSSR_SS_PIN_ACTIVE = 0x10000   # PMU snapshot activated from PMUSNAPSHOTREQ
-CMN_DTC_PMSRR      = 0x2130    # PMU snapshot request (write-only)
+CMN_DTC_PMSRR_off      = 0x0130    # PMU snapshot request (write-only)
 CMN_DTC_PMSRR_SS_REQ          = 0x01    # Write-only - request a snapshot
 
 # PrimeCell regs are offset 0x1E00 on CMN-600

@@ -92,23 +92,29 @@ def node_ident(n):
     return nident + "_registers"
 
 
+def get_regdefs_dir(d=None):
+    """
+    Check the regdefs directory, defaulting it if not supplied.
+    """
+    if d is None:
+        d = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "regdefs")
+    if not os.path.isdir(d):
+        print("%s: can't find register definitions directory" % d, file=sys.stderr)
+        sys.exit(1)
+    return d
+
+
 class CMNRegMapper:
     """
     Map CMN configuration registers by name
     """
     def __init__(self, regdefs_dir=None, regmaps=None):
-        self.regdefs_dir = regdefs_dir
         self.regmaps = regmaps
         self.regmaps_product = None
-        if regdefs_dir is None:
-            rdir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "regdefs")
-            self.set_regdefs_dir(rdir)
+        self.set_regdefs_dir(regdefs_dir)
 
     def set_regdefs_dir(self, regdefs_dir):
-        self.regdefs_dir = regdefs_dir
-        if regdefs_dir is not None and not os.path.isdir(regdefs_dir):
-            print("%s: can't find register definitions directory" % regdefs_dir, file=sys.stderr)
-            sys.exit(1)
+        self.regdefs_dir = get_regdefs_dir(regdefs_dir)
 
     def set_regmaps_from_cmn_product(self, cfg):
         if o_verbose:
@@ -169,6 +175,8 @@ class CMNRegDumper(CMNRegMapper):
         self.o_match_nodes = match_nodes
         self.o_skip_zeroes = skip_zeroes
         self.o_flat = flat
+        self.n_selected = 0    # Selected as matching name, regex etc.
+        self.n_selected_2 = 0  # Selected after other filtering criteria (RO, zero etc.)
         self.n_regs_reserved_bits_set = 0
 
     def had_errors(self):
@@ -212,6 +220,7 @@ class CMNRegDumper(CMNRegMapper):
             self.node_dump_regs(node)
 
     def cmn_access_reg(self, C, reg_name, fld_name, val):
+        n_found = 0
         for n in self.cmn_nodes(C):
             rm = self.node_regmap(n)
             if rm is None:
@@ -219,7 +228,8 @@ class CMNRegDumper(CMNRegMapper):
             reg = rm.regs_by_name.get(reg_name, None)
             if reg is None:
                 continue
-            rname = self.locator_str(n) + reg_name
+            n_found += 1
+            rname = self.locator_str(n) + "." + reg_name
             if reg.is_secure and not n.C.secure_accessible:
                 print("** %s is secure and not accessible" % (rname))
                 continue
@@ -248,6 +258,8 @@ class CMNRegDumper(CMNRegMapper):
                     n.write64(reg.addr, new_val)
                     rb_val = n.read64(reg.addr)
                     print("%s = 0x%x -> 0x%x" % (rname, fld.extract(old_val), fld.extract(rb_val)))
+        if n_found == 0:
+            print("** Register not found: '%s'" % reg_name, file=sys.stderr)
 
     @staticmethod
     def locator_str(n):
@@ -275,6 +287,7 @@ class CMNRegDumper(CMNRegMapper):
         for reg in rm.regs():
             if not self.reg_selected(reg.name):
                 continue
+            self.n_selected += 1
             if reg.access == "RO" and not self.o_include_read_only:
                 if o_verbose >= 2:
                     print("%s: excluded as read-only" % reg)
@@ -294,6 +307,7 @@ class CMNRegDumper(CMNRegMapper):
                 if o_verbose >= 2:
                     print("%s: excluded because zero" % reg)
                 continue
+            self.n_selected_2 += 1
             if not printed_node:
                 print()
                 print("Node: %s at 0x%x" % (n, n.node_base_addr))
@@ -339,6 +353,62 @@ class CMNRegDumper(CMNRegMapper):
             print()
 
 
+def search_all_in_regdefs(reg_ex, rd, file_name=None, description=False, fields=False, flat=False):
+    """
+    Search and describe registers in a regdefs
+    """
+    n_found = 0
+    printed_file = False
+    last_regmap = None
+    for r in rd.regs():
+        if reg_ex.search(r.name):
+            if file_name is not None and not printed_file:
+                print("%s:" % file_name)
+                printed_file = True
+            if flat:
+                print("%s.%s" % (r.regmap.name, r.name))
+                if fields:
+                    for f in r.fields:
+                        print("%s.%s%s %s" % (r.regmap.name, r.name, f.range_str(), f.name))
+                continue
+            if r.regmap != last_regmap:
+                print("  %s" % r.regmap)
+                last_regmap = r.regmap
+            print("    %s" % r, end="")
+            if description and r.desc:
+                print(" -- %s " % r.desc, end="")
+            print()
+            if fields:
+                for f in r.fields:
+                    print("      %s" % f)
+            n_found += 1
+    return n_found
+
+
+def search_all(reg_ex, description=False, fields=False, flat=False):
+    """
+    Given a register regex, search for it in all known register definitions, i.e. across all products.
+    """
+    rdir = get_regdefs_dir()
+    n_found = 0
+    for d in sorted(os.listdir(rdir)):
+        if not d.endswith(".regdefs"):
+            continue
+        if description:
+            if not d.endswith("-desc.regdefs") and os.path.isfile(os.path.join(rdir, d[:-8] + "-desc.regdefs")):
+                continue
+        else:
+            if d.endswith("-desc.regdefs") and os.path.isfile(os.path.join(rdir, d[:-13] + ".regdefs")):
+                continue
+        rf = os.path.join(rdir, d)
+        rd = regview.regdefs_from_file(rf)
+        n_found += search_all_in_regdefs(reg_ex, rd, file_name=rf, description=description, fields=fields, flat=flat)
+    if not n_found:
+        # str(reg_ex) will be something like "re.compile('xxx', re.IGNORECASE)".
+        # Ideally we want to turn it back to a grep-like syntax.
+        print("No matches found for '%s'" % reg_ex.pattern)
+
+
 if __name__ == "__main__":
     import argparse
     def regex(s):
@@ -358,17 +428,37 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--reg", type=regex, action="append", help="match register name")
     parser.add_argument("--flat", action="store_true", help="unformatted display")
     parser.add_argument("--max-desc", type=int, default=72, help="maximum length to print for descriptions")
+    parser.add_argument("--search", action="store_true", help="search and describe registers")
+    parser.add_argument("--search-all", action="store_true", help="find register descriptions across all products")
     parser.add_argument("regs", type=str, nargs="*", help="register names or field names")
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
+    if opts.search:
+        opts.descriptions = True
+    if opts.search_all:
+        if not opts.reg and not opts.regs:
+            print("must specify register(s) to search for", file=sys.stderr)
+            sys.exit(1)
+        opts.regs = [regex(r) for r in opts.regs]
+        if opts.reg:
+            opts.regs.insert(0, opts.reg)
+        for r in opts.regs:
+            search_all(r, description=opts.descriptions, fields=opts.fields, flat=opts.flat)
+        sys.exit()
     D = CMNRegDumper(descriptions=opts.descriptions, description_limit=opts.max_desc, fields=opts.fields,
                      include_read_only=opts.include_read_only, skip_zeroes=(not opts.include_zero),
                      match_reg_names=opts.reg,
                      match_nodes=cmn_select.cmn_select_merge(opts.node),
                      flat=opts.flat)
     CS = cmn_from_opts(opts)
+    if opts.search:
+        D.set_regmaps_from_cmn_product(CS[0].product_config)
+        opts.regs = [regex(r) for r in opts.regs]
+        for reg_ex in opts.regs:
+            search_all_in_regdefs(reg_ex, D.regmaps, description=True, fields=True, flat=opts.flat)
+        sys.exit()
     if opts.regs:
         for rs in opts.regs:
             if '=' in rs:
@@ -389,5 +479,9 @@ if __name__ == "__main__":
             print("** Showing Non-Secure registers only", file=sys.stderr)
             printed_sec_warning = True
         D.cmn_dump_regs(C)
+    if D.n_selected == 0:
+        print("** No registers matched expressions", file=sys.stderr)
+    elif D.n_selected_2 == 0:
+        print("** Registers matched, but skipped", file=sys.stderr)
     if D.had_errors():
         print("** Warnings/errors encountered - check full output for details", file=sys.stderr)

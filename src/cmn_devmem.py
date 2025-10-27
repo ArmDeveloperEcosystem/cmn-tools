@@ -626,8 +626,8 @@ class CMNNodeXP(CMNNode):
             self.dtms.append(CMNDTM(self, index=1))
         self.port_objects = {}
         self.skipped_nodes = None
-        # At this point, child nodes are not yet discovered.
-        # In CMN S3, discovery may be hindered by node isolation.
+        # At this point, child device nodes are not yet discovered.
+        # In CMN S3, device discovery may be hindered by node isolation.
 
     def DTMs(self):
         for dtm in self.dtms:
@@ -800,8 +800,12 @@ class CMNNodeXP(CMNNode):
         """
         Get the event selector for the XP itself. This will only be relevant
         if a DTM in the XP has selected an XP event.
+
+        From CMN-700 onwards, XP event export selectors are 16-bit fields.
+        (Device event export selectors remain as 8-bit fields.)
         """
-        return BITS(self.read64(self.PMU_EVENT_SEL[0]), (eix*8), 8)
+        fw = 16 if self.C.part_ge_700() else 8
+        return BITS(self.read64(self.PMU_EVENT_SEL[0]), (eix*fw), fw)
 
 
 class DTMWatchpoint:
@@ -1130,6 +1134,9 @@ class CMNDTM:
         combination, each capable of exporting events.
         In general, we must iterate through the connected devices and
         find one that is exporting an event.
+
+        Note that XP's (although not devices) move to 16-bit event fields
+        from CMN-700 onwards. We might see devices start to do that.
         """
         for n in self.xp.port_device_nodes(port, device):
             for soff in n.PMU_EVENT_SEL:
@@ -1147,6 +1154,13 @@ class CMNNodeDT(CMNNode):
     DTC (debug/trace controller) node. There is one per DTC domain.
     The one located in the HN-D is designated as DTC0.
     """
+    def __init__(self, *args, **kwargs):
+        CMNNode.__init__(self, *args, **kwargs)
+        if not self.C.part_ge_S3():
+            self.PM_BASE = CMN_DTC_PM_BASE_OLD
+        else:
+            self.PM_BASE = CMN_DTC_PM_BASE_S3
+
     def atb_traceid(self):
         return BITS(self.read64(CMN_DTC_TRACEID),0,7)
 
@@ -1189,24 +1203,24 @@ class CMNNodeDT(CMNNode):
         return self.test64(CMN_DTC_CTL, CMN_DTC_CTL_DT_EN)
 
     def pmu_enable(self):
-        self.set64(CMN_DTC_PMCR, CMN_DTC_PMCR_PMU_EN)
+        self.set64(self.PM_BASE + CMN_DTC_PMCR_off, CMN_DTC_PMCR_PMU_EN)
 
     def pmu_disable(self):
-        self.clear64(CMN_DTC_PMCR, CMN_DTC_PMCR_PMU_EN)
+        self.clear64(self.PM_BASE + CMN_DTC_PMCR_off, CMN_DTC_PMCR_PMU_EN)
 
     def pmu_is_enabled(self):
-        return self.test64(CMN_DTC_PMCR, CMN_DTC_PMCR_PMU_EN)
+        return self.test64(self.PM_BASE + CMN_DTC_PMCR_off, CMN_DTC_PMCR_PMU_EN)
 
     def pmu_clear(self):
         for i in range(0,8,2):
-            self.write64(CMN_DTC_PMEVCNT + 8*i, 0)
-            self.write64(CMN_DTC_PMEVCNTSR + 8*i, 0)
+            self.write64(self.PM_BASE + CMN_DTC_PMEVCNT_off + 8*i, 0)
+            self.write64(self.PM_BASE + CMN_DTC_PMEVCNTSR_off + 8*i, 0)
 
     def pmu_counter(self, n, snapshot=False):
         """
         Get the current value of a DTC PMU counter.
         """
-        base = CMN_DTC_PMEVCNT if not snapshot else CMN_DTC_PMEVCNTSR
+        base = self.PM_BASE + (CMN_DTC_PMEVCNT_off if not snapshot else CMN_DTC_PMEVCNTSR_off)
         v = self.read64(base + (n//2)*16)
         return (v >> 32) if (n & 1) else (v & 0xffffffff)
 
@@ -1215,11 +1229,17 @@ class CMNNodeDT(CMNNode):
 
     def pmu_cc(self):
         """
-        Read the fixed-function cycle counter. Currently this is 40 bits,
+        Read the DTC's fixed-function cycle counter. Currently this is 40 bits,
         so at a typical frequency of 2Ghz we might expect a rollover every
         ten minutes.
         """
-        return self.read64(CMN_DTC_PMCCNTR)
+        return self.read64(self.PM_BASE + CMN_DTC_PMCCNTR_off)
+
+    def pmu_clear_cc(self):
+        """
+        Reset the DTC's fixed-function cycle counter to zero
+        """
+        self.write64(self.PM_BASE + CMN_DTC_PMCCNTR_off, 0)
 
     def pmu_cc_subtract(self, t1, t0):
         """
@@ -1239,14 +1259,14 @@ class CMNNodeDT(CMNNode):
         if self.C.verbose > 0:
             self.C.log("PMU snapshot from %s" % (self))
         c0 = self.pmu_cc()
-        s0 = self.read64(CMN_DTC_PMSSR)
-        self.write64(CMN_DTC_PMSRR, CMN_DTC_PMSRR_SS_REQ, check=False)
-        s1 = self.read64(CMN_DTC_PMSSR)
+        s0 = self.read64(self.PM_BASE + CMN_DTC_PMSSR_off)
+        self.write64(self.PM_BASE + CMN_DTC_PMSRR_off, CMN_DTC_PMSRR_SS_REQ, check=False)
+        s1 = self.read64(self.PM_BASE + CMN_DTC_PMSSR_off)
         # "The DTC updates por_dt_pmssr.ss_status after receiving PMU snapshot
         #  packets. Software can poll this register field to check if the snapshot
         #  process is complete." We also check that the snapshot is not active.
         for i in range(0, 10):
-            ssr = self.read64(CMN_DTC_PMSSR)
+            ssr = self.read64(self.PM_BASE + CMN_DTC_PMSSR_off)
             if not (ssr & CMN_DTC_PMSSR_SS_CFG_ACTIVE):
                 status = BITS(ssr, 0, 9)           # Return the status (0..7: counters, 8: cycle counter)
                 break

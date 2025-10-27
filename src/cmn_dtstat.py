@@ -42,12 +42,12 @@ def print_dtc(dtc, pfx="", detail=0):
     """
     print("%sDTC%u %24s:" % (pfx, dtc.dtc_domain(), dtc), end="")
     ctl = dtc.read64(CMN_DTC_CTL)
-    pmcr = dtc.read64(CMN_DTC_PMCR)
+    pmcr = dtc.read64(dtc.PM_BASE + CMN_DTC_PMCR_off)
     print(("    " if (ctl & CMN_DTC_CTL_DT_EN) else " dis"), end="")
     print(("  " if (ctl & CMN_DTC_CTL_CG_DISABLE) else " cg"), end="")
     print((" pmu" if (pmcr & CMN_DTC_PMCR_PMU_EN) else "    "), end="")
     if detail:
-        print(" %10x" % dtc.pmu_cc(), end="")       # 40-bit cycle counter
+        print(" cc=%10x" % dtc.pmu_cc(), end="")       # 40-bit cycle counter
     ecs = dtc.pmu_counters()
     for i in range(0, 8):
         c = dtc.pmu_counter(i)
@@ -55,9 +55,9 @@ def print_dtc(dtc, pfx="", detail=0):
     print()
     if detail:
         pcoff = 0 if dtc.C.part_ge_650() else 0x1E00
-        ssr = dtc.read64(CMN_DTC_PMSSR)
-        scc = dtc.read64(CMN_DTC_PMCCNTRSR)
-        ovf = dtc.read64(CMN_DTC_PMOVSR)
+        ssr = dtc.read64(dtc.PM_BASE + CMN_DTC_PMSSR_off)
+        scc = dtc.read64(dtc.PM_BASE + CMN_DTC_PMCCNTRSR_off)
+        ovf = dtc.read64(dtc.PM_BASE + CMN_DTC_PMOVSR_off)
         print("%s                     snapshot 0x%08x:" % (pfx, ssr), end="")
         print(" %10x" % scc, end="")
         for i in range(0, 8):
@@ -220,7 +220,7 @@ if __name__ == "__main__":
     parser.add_argument("--dtc-enable", action="store_true", help="enable DTC")
     parser.add_argument("--dtc-disable", action="store_true", help="disable DTC")
     parser.add_argument("--dtc-disable-cg", action="store_true", help="disable DTC clock-gating")
-    parser.add_argument("--dtc-reset-cc", action="store_true")
+    parser.add_argument("--dtc-reset-cc", action="store_true", help="reset cycle counter to zero")
     parser.add_argument("--dtc", type=int, help="select DTC (default all DTCs)")
     parser.add_argument("--dtms", action="store_true", help="show status of all DTMs")
     parser.add_argument("--xp", type=(lambda x:int(x, 16)), action="append", help="select XP (default all XPs/DTMs)")
@@ -236,7 +236,7 @@ if __name__ == "__main__":
                 if opts.dtc_disable:
                     dtc.dtc_disable()
                 if opts.dtc_reset_cc:
-                    dtc.write64(CMN_DTC_PMCCNTR, 0)
+                    dtc.pmu_clear_cc()
                 if opts.dtc_enable:
                     dtc.dtc_enable()
                 if opts.dtc_disable_cg:

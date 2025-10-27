@@ -139,7 +139,7 @@ class CMNConfig:
 
     def chi_version_str(self):
         if self.chi_version is None:
-            return None
+            return "CHI-?"
         else:
             try:
                 return "CHI-" + ("?ABCDEFGHI"[self.chi_version])
