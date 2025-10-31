@@ -295,11 +295,15 @@ class Watchpoint:
             # group might be or have become open, e.g. "--field=0bxxxxx"
             del self.wps[grp]
 
-    def grps(self):
+    def grps(self, allow_empty=False):
         """
         Return the list of watchpoint register groups, drawn from 0, 1 or 2.
-        The list might be empty, if the watchpoint is unrestricted.
+        The list might currently be empty, if the watchpoint is unrestricted.
+        In general we're looking for at least one match group to program into
+        the DTM WP registers, so ensure an open watchpoint unless allow_empty=True.
         """
+        if not self.wps and not allow_empty:
+            self.finalize()
         return sorted(self.wps.keys())
 
     def finalize(self):

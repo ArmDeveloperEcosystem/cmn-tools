@@ -331,9 +331,13 @@ class LatencyMonitor:
             if wps.is_multigrp() or self.is_using_wp(dtm, wpnum+1):
                 raise NotEnoughWatchpoints(dtm, wps.up)
             wpnum += 1
+        wps.finalize()
+        assert wps.grps(), "empty watchpoint: %s" % wps
         for (i, grp) in enumerate(wps.grps()):
             self.dtms[dtm] |= (1 << (wpnum+i))
             M = wps.wps[grp]
+            if self.verbose:
+                print("%s: set watchpoint %s" % (dtm, M))
             dtm.dtm_set_watchpoint(wpnum+i, chn=wps.chn, format=format, cc=True, dev=dev, val=M.val, mask=M.mask, group=M.grp, combine=wps.is_multigrp())
         return Watchpoint(dtm, wpnum)
 
@@ -383,7 +387,9 @@ class LatencyMonitor:
             (pc, wps, format) = self.pending_req
             self._set_req(pc, wps, format)
         if self.verbose:
-            print("Monitoring request on %s and response on %s..." % (self.wp_req, ', '.join([str(w) for w in self.wp_rsps])))
+            print("Monitoring:")
+            print("  Lead:   %s" % (self.wp_req))
+            print("  Follow: %s" % (', '.join([str(w) for w in self.wp_rsps])))
         self.need_reinit_and_program = False
 
     def get_capture(self):
@@ -708,8 +714,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Measure CMN transaction latency using TraceTag")
     cmn_devmem_find.add_cmnloc_arguments(parser)
     cmnwatch.add_chi_arguments(parser)
-    parser.add_argument("--wait", type=float, default=1.0)
-    parser.add_argument("--poll-time", type=float, default=0.01)
+    parser.add_argument("--wait", type=float, default=1.0, help="wait time")
+    parser.add_argument("--poll-time", type=float, default=0.01, help="polling time for watchpoint FIFOs")
     parser.add_argument("-N", "--capture", type=int, default=1, help="number of transactions to capture")
     parser.add_argument("--format", type=int, default=4, help="CMN flit capture format")
     parser.add_argument("--diag", action="store_true")
@@ -720,6 +726,8 @@ if __name__ == "__main__":
     o_verbose = opts.verbose
 
     Cs = cmn.cmn_from_opts(opts)
+    if opts.verbose:
+        print("CMNs: %s" % ', '.join([str(c) for c in Cs]))
 
     reqs = list(port_channels(Cs, opts.req, PortChannel(chn=0, up=True)))
     if len(reqs) != 1:
@@ -751,7 +759,15 @@ if __name__ == "__main__":
             mon.add_rsp(pc_rsp, format=opts.format)
         mon.check_all_FIFOs_empty("after programming tag-catchers")
         if pc_req is not None:
-            mon.set_req(pc_req, cmnwatch.match_obj(opts, chn=pc_req.chn, up=pc_req.up, cmn_version=pc_req.xp.C.product_config), format=opts.format)
+            try:
+                m = cmnwatch.match_obj(opts, chn=pc_req.chn, up=pc_req.up, cmn_version=pc_req.xp.C.product_config)
+            except cmnwatch.WatchpointBadValue as e:
+                print("Bad watchpoint: %s" % e, file=sys.stderr)
+                sys.exit(1)
+            mon.set_req(pc_req, m, format=opts.format)
+        else:
+            if opts.verbose:
+                print("Not setting primary watchpoint!")
         #mon.check_all_FIFOs_empty("after programming tag-setter")
         #mon.run(captures=opts.capture)
         try:

@@ -353,14 +353,7 @@ def cmn_locators(opts=None, single_instance=False):
             pass
     if not locs:
         for loc in cmn_locators_from_iomem_and_dt(opts):
-            if o_verbose:
-                print("#%u: %s" % (n_inst, loc))
-            if single_instance and (opts is None):
-                # No user options overriding: return the first instance discovered
-                locs.append(loc)
-                break
-            if opts is None or opts.cmn_instance is None or n_inst == opts.cmn_instance:
-                locs.append(loc)
+            locs.append(loc)
     if not locs:
         print("No CMN locations found", file=sys.stderr)
         sys.exit(1)
@@ -374,6 +367,13 @@ def cmn_locators(opts=None, single_instance=False):
         # Could guard this with o_verbose, but as it's generally a one-time thing,
         # we might as well remark when it happens.
         print("CMN locations saved in %s" % cpath, file=sys.stderr)
+    if opts is not None and opts.cmn_instance is not None:
+        if opts.cmn_instance >= len(locs):
+            print("Specified CMN instance #%u but only %u instances found" % (opts.cmn_instance, len(locs)), file=sys.stderr)
+            sys.exit(1)
+        locs = [locs[opts.cmn_instance]]
+    elif single_instance:
+        locs = [locs[0]]
     return locs
 
 
@@ -384,10 +384,7 @@ def cmn_single_locator(opts=None):
     return just that one instance. Otherwise return None.
     """
     locs = list(cmn_locators(opts, single_instance=True))
-    if locs:
-        return locs[opts.cmn_instance] if opts.cmn_instance else locs[0]
-    else:
-        return None
+    return locs[0] if locs else None
 
 
 def cmn_at(base_addr):

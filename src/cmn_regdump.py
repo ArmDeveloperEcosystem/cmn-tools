@@ -212,14 +212,17 @@ class CMNRegDumper(CMNRegMapper):
     def cmn_nodes(self, C):
         for node in self.cmn_nodes_iter(C):
             if self.o_match_nodes and not self.o_match_nodes.match_node(node):
-                return
+                continue
             yield node
 
     def cmn_dump_regs(self, C):
         for node in self.cmn_nodes(C):
             self.node_dump_regs(node)
 
-    def cmn_access_reg(self, C, reg_name, fld_name, val):
+    def cmn_access_reg(self, C, reg_name, fld_name, val=None, fields=False):
+        """
+        Read, and optionally write (if val is not None), a register
+        """
         n_found = 0
         for n in self.cmn_nodes(C):
             rm = self.node_regmap(n)
@@ -246,10 +249,15 @@ class CMNRegDumper(CMNRegMapper):
             if fld is None:
                 if val is None:
                     print("%s = 0x%x" % (rname, old_val))
+                    if fields:
+                        self.reg_dump_fields(reg, old_val)
                 else:
                     n.write64(reg.addr, val)
                     rb_val = n.read64(reg.addr)
-                    print("%s = 0x%x -> 0x%x" % (rname, old_val, rb_val))
+                    print("%s = 0x%x -> 0x%x" % (rname, old_val, rb_val), end="")
+                    if rb_val != val:
+                        print(" (wrote 0x%x)" % val, end="")
+                    print()
             else:
                 if val is None:
                     print("%s = 0x%x" % (rname, fld.extract(old_val)))
@@ -257,7 +265,11 @@ class CMNRegDumper(CMNRegMapper):
                     new_val = fld.insert(old_val, val)
                     n.write64(reg.addr, new_val)
                     rb_val = n.read64(reg.addr)
-                    print("%s = 0x%x -> 0x%x" % (rname, fld.extract(old_val), fld.extract(rb_val)))
+                    rb_field = fld.extract(rb_val)
+                    print("%s = 0x%x -> 0x%x" % (rname, fld.extract(old_val), rb_field), end="")
+                    if rb_field != val:
+                        print(" (wrote 0x%x, read 0x%x)" % (new_val, rb_val), end="")
+                    print()
         if n_found == 0:
             print("** Register not found: '%s'" % reg_name, file=sys.stderr)
 
@@ -445,7 +457,9 @@ if __name__ == "__main__":
         if opts.reg:
             opts.regs.insert(0, opts.reg)
         for r in opts.regs:
-            search_all(r, description=opts.descriptions, fields=opts.fields, flat=opts.flat)
+            n = search_all(r, description=opts.descriptions, fields=opts.fields, flat=opts.flat)
+            if n == 0:
+                print("No registers found for '%s'" % r.pattern, file=sys.stderr)
         sys.exit()
     D = CMNRegDumper(descriptions=opts.descriptions, description_limit=opts.max_desc, fields=opts.fields,
                      include_read_only=opts.include_read_only, skip_zeroes=(not opts.include_zero),
@@ -457,7 +471,9 @@ if __name__ == "__main__":
         D.set_regmaps_from_cmn_product(CS[0].product_config)
         opts.regs = [regex(r) for r in opts.regs]
         for reg_ex in opts.regs:
-            search_all_in_regdefs(reg_ex, D.regmaps, description=True, fields=True, flat=opts.flat)
+            n = search_all_in_regdefs(reg_ex, D.regmaps, description=True, fields=True, flat=opts.flat)
+            if n == 0:
+                print("No registers found for '%s'" % reg_ex.pattern, file=sys.stderr)
         sys.exit()
     if opts.regs:
         for rs in opts.regs:
@@ -471,7 +487,7 @@ if __name__ == "__main__":
             else:
                 fld = None
             for C in CS:
-                D.cmn_access_reg(C, rs, fld, val)
+                D.cmn_access_reg(C, rs, fld, val, fields=opts.fields)
         sys.exit()
     printed_sec_warning = False
     for C in CS:

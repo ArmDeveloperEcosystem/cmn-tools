@@ -284,9 +284,23 @@ class CMNFlit:
         self.tgtid = tgtid         # CHI target, 11 bits
         self.tracetag = tracetag
         self.data = data
+        self.NS = None
+        self.NSE = None
 
     def is_DVM(self):
         return (self.group.VC == REQ and self.opcode == 0x14) or (self.group.VC == SNP and self.opcode == 0x0d)
+
+    @property
+    def NSENS(self):
+        """
+        Address space as indicated in NSE/NS: [Secure, Non-Secure, Root, Realm]
+        """
+        if self.NS is None:
+            return None        # e.g. RSP/DAT
+        x = int(self.NS)
+        if self.NSE is not None:
+            x |= (int(self.NSE) << 1)
+        return x
 
     def opcode_str(self, short=False):
         """
@@ -340,6 +354,9 @@ class CMNFlit:
                 s += "/" + (["S", "NS", "RT", "RL"][mpam_space])
             return s
 
+    def addr_str(self):
+        return self.group.addr_str(self.addr, self.NSENS)
+
     def short_str(self):
         """
         Source, target, opcode and transaction id
@@ -375,7 +392,7 @@ class CMNFlit:
                 s += " lpid=%02x" % self.lpid
                 s += " ret=%03x:" % self.returnnid
                 s += self.group.txnid_fmt % self.returntxnid
-                s += " %17s %3u" % (self.group.addr_str(self.addr, self.NS), (1 << self.size))
+                s += " %18s %3u" % (self.addr_str(), (1 << self.size))
                 if self.mpam is not None and self.mpam != 0x01:     # present and interesting
                     s += " %s" % self.mpam_str(self.mpam)
                 if self.opcode != 0x14:
@@ -428,7 +445,7 @@ class CMNFlit:
                     s += " %s" % devevent_str(self.devevent)
             elif self.group.VC == 2:
                 # SNP
-                s += " fwdnid=0x%03x %s0x%012x" % (self.fwdnid, ["S:","  "][self.NS], self.addr)
+                s += " fwdnid=0x%03x %18s" % (self.fwdnid, self.addr_str())
                 if self.mpam is not None and self.mpam != 0x01:
                     s += " %s" % self.mpam_str(self.mpam)
                 if self.opcode == 0x0d:
@@ -649,8 +666,8 @@ class CMNFlitGroup:
         """
         return "%03x" % id
 
-    def addr_str(self, addr, NS=1):
-        return "%s0x%012x" % (["S:","  "][NS], addr)
+    def addr_str(self, addr, NSENS=1):
+        return "%s0x%012x" % (["S:", "", "RT:", "RL:"][NSENS], addr)
 
     def __str__(self):
         """

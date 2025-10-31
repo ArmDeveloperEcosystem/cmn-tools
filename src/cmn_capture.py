@@ -105,10 +105,13 @@ class CMNFlitGroupX(CMNFlitGroup):
         s += "(%-4s)" % ns[:4]
         return s
 
-    def addr_str(self, addr, NS):
+    def addr_str(self, addr, NSENS):
+        """
+        Override default address printing, to identify CMN access itself
+        """
         if self.vis.cmn.contains_addr(addr):
             return "<CMN:%06x>" % (addr & 0xffffff)
-        return CMNFlitGroup.addr_str(self, addr, NS)
+        return CMNFlitGroup.addr_str(self, addr, NSENS)
 
 
 def xp_node_ids(xp):
