@@ -191,7 +191,7 @@ def CHI_DAT_resp_str(dat_opcode, resp):
 
 
 # See e.g. CHI-E Table 11-1. Values 6 and 7 are architected, others are recommended.
-_CMN_datasource_str = [
+_CHI_E_CMN_datasource_str = [
     "default",
     "peer-CPU",
     "local-cluster",
@@ -211,8 +211,27 @@ _CMN_datasource_str = [
 ]
 
 
-def CMN_DAT_datasource_str(ds):
-    return _CMN_datasource_str[ds]
+def CHI_E_CMN_DAT_datasource_str(ds):
+    return _CHI_E_CMN_datasource_str[ds]
+
+
+def CHI_G_CMN_DAT_datasource_str(ds):
+    """
+    DataSource string for CHI-G. The field is now structured into four parts.
+    """
+    compdist = BITS(ds, 0, 2)
+    comptype = BITS(ds, 2, 3)
+    comptype_str = ["dflt", "RAM", "CXL", "HBM", "snoop", "CG1", "CG2", "?7"][comptype]
+    hitd = BIT(ds, 5)
+    func = BITS(ds, 6, 2)
+    s = comptype_str
+    if compdist > 0:
+        s += (":%u" % compdist)
+    if hitd:
+        s += ":HitD"
+    if func > 0:
+        s += (":f%u" % func)
+    return s
 
 
 def CHI_memattr_str(ma, order, snpattr):
@@ -316,6 +335,12 @@ class CMNFlit:
             return CHI_DAT_resp_str(self.opcode, self.resp)
         else:
             return None
+
+    def datasource_str(self):
+        if self.group.cfg.chi_version <= 6:
+            return CHI_E_CMN_DAT_datasource_str(self.datasource)
+        else:
+            return CHI_G_CMN_DAT_datasource_str(self.datasource)
 
     def DVM_opcode(self):
         if self.is_DVM():
@@ -489,7 +514,7 @@ class CMNFlit:
                 if self.fwdstate is not None:
                     s += " fwdstate=%s" % CHI_DAT_resp_str_nonsnoop(self.fwdstate)
                 if self.datasource is not None:
-                    s += " datasource=%s" % CMN_DAT_datasource_str(self.datasource)
+                    s += " datasource=%s" % self.datasource_str()
                 if self.cbusy:
                     s += " cbusy=0x%x" % (self.cbusy)
                 if self.devevent != 0:
@@ -570,6 +595,15 @@ _cmn_product_names = {
 }
 
 
+_chi_version_default = {
+    0x434: 3,
+    0x436: 4,
+    0x43c: 5,
+    0x43a: 5,
+    0x43e: 7,
+}
+
+
 class CMNTraceConfig:
     """
     CMN configuration details, sufficient to decode trace.
@@ -579,13 +613,16 @@ class CMNTraceConfig:
 
     The revision number is the major revision number, not the code from periph_id_2.
     """
-    def __init__(self, cmn_product_id, has_MPAM, cmn_product_revision=0):
+    def __init__(self, cmn_product_id, has_MPAM, cmn_product_revision=0, chi_version=None):
         if cmn_product_id in [600, 650, 700]:
             # legacy compatibility
             cmn_product_id = {600: PART_CMN600, 650: PART_CMN650, 700: PART_CMN700}[cmn_product_id]
         assert cmn_product_id in _cmn_product_names, "unexpected CMN product id: %s" % cmn_product_id
         self.cmn_product_id = cmn_product_id
         self.cmn_product_revision = cmn_product_revision
+        if chi_version is None:
+            chi_version = _chi_version_default[cmn_product_id]
+        self.chi_version = chi_version
         self.has_MPAM = has_MPAM
         # CMN S3 r0 is like CMN-700 (12-bit MPAM id)
         self._cmn_base_type = {PART_CMN600: 0, PART_CMN650: 1, PART_CMN700: 2, PART_CI700: 2, PART_CMN_S3: 3}[self.cmn_product_id]
