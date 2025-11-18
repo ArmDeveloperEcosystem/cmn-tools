@@ -219,11 +219,10 @@ class CMNRegDumper(CMNRegMapper):
         for node in self.cmn_nodes(C):
             self.node_dump_regs(node)
 
-    def cmn_access_reg(self, C, reg_name, fld_name, val=None, fields=False):
+    def cmn_iter_reg(self, C, reg_name):
         """
-        Read, and optionally write (if val is not None), a register
+        Iterate over instances of a named register
         """
-        n_found = 0
         for n in self.cmn_nodes(C):
             rm = self.node_regmap(n)
             if rm is None:
@@ -231,10 +230,18 @@ class CMNRegDumper(CMNRegMapper):
             reg = rm.regs_by_name.get(reg_name, None)
             if reg is None:
                 continue
+            yield (n, reg)
+
+    def cmn_access_reg(self, C, reg_name, fld_name, val=None, fields=False):
+        """
+        Read, and optionally write (if val is not None), a register
+        """
+        n_found = 0
+        for (n, reg) in self.cmn_iter_reg(C, reg_name):
             n_found += 1
             rname = self.locator_str(n) + "." + reg_name
             if reg.is_secure and not n.C.secure_accessible:
-                print("** %s is secure and not accessible" % (rname))
+                print("** %s is secure (%s) and not accessible" % (rname, reg.security))
                 continue
             if fld_name is not None:
                 fld = reg.field_by_name(fld_name)

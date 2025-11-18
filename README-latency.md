@@ -32,17 +32,25 @@ packets, we can record a time or cycle count delta.
 
 Using the cmn_latency tool
 --------------------------
-cmn_latency programs the CMN interconnect performance features directly (bypassing
+`cmn_latency` programs the CMN interconnect performance features directly (bypassing
 the kernel CMN PMU driver if installed). It must be run as root.
 
-cmn_latency operates as follows:
+`cmn_latency` operates as follows:
 
     sudo ./cmn_latency.py <options> <chi fields> <request> <watchers...>
 
-The <request> option specifies where to set the tag. It must be set at an upload
-port somewhere in CMN. Currently the tool supports setting the tag at exactly one
-upload port. You should use the CMN mesh diagram to identify a suitable port.
-<request> is a string that specifies the crosspoint (XP), port, and CHI channel.
+
+### Specifying where the tag is set
+
+The `<request>` argument specifies where to set the tag. It must be set at an upload
+port somewhere in the CMN mesh. The argument also specifies the CHI channel. Often,
+you would want to set the tag on a Request, but for some scenarios you might want to
+set it on a Snoop, or even a Response or Data packet.
+
+Currently the tool supports setting the tag at exactly one upload port.
+You should use the CMN mesh diagram to identify a suitable port.
+
+`<request>` is a string that specifies the crosspoint (XP), port, and CHI channel.
 It is made up of components separated by ':'. Components can be:
 
  - a device identifier e.g. "0x6c"
@@ -65,6 +73,12 @@ Collectively these specify an upload port and channel. For example:
 
 In addition, packet contents can be filtered using CHI fields such as "--opcode=ReadNoSnp"
 or "--memattr=0bxx1x".
+
+If the CHI TraceTag is being set by other means (e.g. CPU SPE), the `<request>` argument
+can be specified as "none" - see "Using the tool with other tag-setting agents" below.
+
+
+### Specifying where the tag is watched for
 
 The tag watcher locations are specified in a similar way to the tag-setting location,
 except that they can be on upload or download ports (or both) and there can be multiple watchers.
@@ -98,20 +112,20 @@ small sample - but hopefully this is enough to show typical latencies.
 
 The total number of captures (defaulting to 1) can be controlled with:
 
-  --capture=<n>
+    --capture=<n>
 
 It may be that nothing is captured - a timeout for the command can be set with:
 
-  --wait=<seconds>
+    --wait=<seconds>
 
 The polling interval is set to a reasonable default but can be adjusted with:
 
-  --poll-time=<seconds>
+    --poll-time=<seconds>
 
 
 Using the tool with other tag-setting agents
 --------------------------------------------
-cmn_latency.py can also capture tagged packets where the tag has been set by other
+`cmn_latency.py` can also capture tagged packets where the tag has been set by other
 tag-setting agents such as CPU statistical profiling (SPE).
 In this case the tag-setting watchpoint specifier should be set as "none".
 
