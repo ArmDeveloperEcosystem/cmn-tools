@@ -107,7 +107,7 @@ class CMNDecoder:
                 for i in range(0, self.sync_size-5):
                     x = (yield)
                     if x != 0x00:
-                        raise TraceCorrupt("invalid sync sequence (sync=%u, n_sync=%u)" % (sync, self.n_sync))
+                        raise TraceCorrupt("invalid CMN trace sync sequence (sync=%u, n_sync=%u)" % (sync, self.n_sync))
                 x = (yield)
                 if x == 0x00:
                     x = (yield)
@@ -119,7 +119,7 @@ class CMNDecoder:
                     x = (yield)
                 self.n_sync += 1
             elif (x & 0xc0) == 0x40:
-                # Data packet. Note that the header for CMN-700 has a different format,
+                # Data packet byte 0. Note that the header for CMN-700 onwards has a different format,
                 # but for the purposes of packet identification we don't need to decode the header fully.
                 # Full decode is left to cmn_flits.py.
                 CC = BIT(x, 4)     # not bit 1 as indicated in the CMN-600 TRM
@@ -185,6 +185,8 @@ class CMNDecoder:
             DEV = 0
             VC = BITS(h, 28, 2)
         g = CMNFlitGroup(self.cfg, format=type, WP=WP, DEV=DEV, VC=VC, nodeid=nodeid, cc=cc, lossy=lossy)
+        if self.verbose:
+            print("  CMN data: %s %s" % (g, bytes_hex(payload)))
         g.decode(payload)
         self.output_flits(g)
 

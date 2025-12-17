@@ -402,7 +402,9 @@ def stream_decode(stream, decoders, verbose=0, name=None):
     count = {}
     unknown_warned = {}
     # start all the coroutines
-    for d in decoders:
+    for d in decoders.keys():
+        if d == "default":
+            continue        # 'default' is a factory function instead
         decoders[d].send(None)   # Start each coroutine
     for (newid, b) in stream_demux(stream, id, trace_frames=verbose):
         if newid is None:
@@ -440,7 +442,16 @@ def stream_decode(stream, decoders, verbose=0, name=None):
                 # Flush response
                 print("** %sflush response: %u" % (sname, b))
             elif "all" in decoders:
+                # A single catch-all decoder, that (simultaneously) handles
+                # trace from all unknown streams. For stateful decoders,
+                # you generally want "default" instead.
                 decoder = decoders["all"]
+            elif "default" in decoders:
+                # A factory function to generate a new decoder for each
+                # previously unencountered stream.
+                decoder = decoders["default"](id)
+                decoder.send(None)
+                decoders[id] = decoder
             else:
                 # no decoder registered for this id
                 if id not in unknown_warned:

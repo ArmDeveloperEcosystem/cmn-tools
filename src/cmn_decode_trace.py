@@ -24,6 +24,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="decode a binary CMN ATB trace file")
     parser.add_argument("-i", "--input", type=str, help="input trace binary")
     parser.add_argument("--cmn-version", type=(lambda x: int(x, 0)), help="CMN version", required=True)
+    parser.add_argument("--cmn-revision", type=int, default=0, help="CMN revision")
     parser.add_argument("--mpam", action="store_true", help="CMN has MPAM enabled")
     parser.add_argument("--no-sync", action="store_true", help="don't look for sync sequence")
     parser.add_argument("--unformatted", action="store_true", help="trace file has no CoreSight framing")
@@ -35,13 +36,17 @@ if __name__ == "__main__":
     if not opts.inputs:
         print("%s: input files are required" % __file__, file=sys.stderr)
         sys.exit(1)
-    cfg = cs_decode_cmn.CMNTraceConfig(opts.cmn_version, opts.mpam)
-    decoder = cs_decode_cmn.CMNDecoder(cfg, verbose=opts.verbose)
-    decoder_fn = decoder.decode(sync=(not opts.no_sync))
+    cfg = cs_decode_cmn.CMNTraceConfig(opts.cmn_version, cmn_product_revision=opts.cmn_revision, has_MPAM=opts.mpam)
+    def new_decoder(id=None):
+        decoder = cs_decode_cmn.CMNDecoder(cfg, verbose=opts.verbose)
+        decoder_fn = decoder.decode(sync=(not opts.no_sync))
+        return decoder_fn
     if opts.unformatted:
-        decode_map = {"unformatted": decoder_fn}
+        # One stream, one decoder
+        decode_map = {"unformatted": new_decoder()}
     else:
-        decode_map = {"all": decoder_fn}
+        # Multiplexed streams: now pass in a factory function
+        decode_map = {"default": new_decoder}
     for fn in opts.inputs:
         if opts.verbose:
             print("Decoding CMN trace in '%s'..." % fn, file=sys.stderr)
