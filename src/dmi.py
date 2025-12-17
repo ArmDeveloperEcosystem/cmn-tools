@@ -53,6 +53,7 @@ DMI_MEMORY_ARRAY           = 0x10
 DMI_MEMORY_DEVICE          = 0x11
 DMI_ARRAY_MAPPED_ADDRESS   = 0x13
 DMI_DEVICE_MAPPED_ADDRESS  = 0x14
+DMI_ADDITIONAL_INFORMATION = 0x28
 DMI_INACTIVE               = 0x7e
 DMI_END_OF_TABLE           = 0x7f
 
@@ -155,6 +156,8 @@ class DMIStructure:
             _decode_array_mapped_address(self)
         elif self.type == DMI_DEVICE_MAPPED_ADDRESS:
             _decode_device_mapped_address(self)
+        elif self.type == DMI_ADDITIONAL_INFORMATION:
+            _decode_additional_information(self)
         return self
 
 
@@ -303,6 +306,25 @@ def _decode_device_mapped_address(d):
         (d.start, d.end) = (start_k << 10, (end_k << 10) + 0x3ff)
 
 
+def _decode_additional_information(d):
+    """
+    DMI_ADDITIONAL_INFORMATION decode
+    """
+    (_, d.n_entries) = struct.unpack("<IB", d.raw[:5])
+    data = d.raw[5:]
+    d.entries = []
+    for i in range(0, d.n_entries):
+        (ln, ref, offset, sr) = struct.unpack("<BHBB", data[:5])
+        s = d.string(sr)
+        value = data[5:ln]
+        assert len(value) == ln-5, "Unexpected length: entry length %u, value %u" % (ln, len(value))
+        entry = (ref, offset, s, value)
+        #print("  entry #%u: %s" % (i, entry))
+        d.entries.append(entry)
+        data = data[ln:]
+    assert not data, "Unexpected extra data (%u bytes)" % len(data)
+
+
 class DMI:
     """
     Provide a basic read interface to DMI (BIOS) definitions.
@@ -315,6 +337,19 @@ class DMI:
         for d in self.raw_structures():
             assert d.handle not in self.index, "DMI: duplicate handle 0x%x" % d.handle
             self.index[d.handle] = d
+
+    def __str__(self):
+        """
+        How to summarize the contents?
+        """
+        dsys = self.system()
+        if dsys is not None:
+            s = "%s %s %s %s" % (dsys.uuid, dsys.mfr, dsys.product, dsys.version)
+        else:
+            s = "?"
+        if self.fn != DEFAULT_DMI:
+            s += " (from %s)" % self.fn
+        return s
 
     def structures(self, type=None, decode=True):
         for d in self.index.values():
@@ -357,6 +392,11 @@ class DMI:
                 yield s
         else:
             with open(self.fn, "rb") as f:
+                """
+                In /sys/firmware/dmi/tables/DMI, there is no header - simply an array of structures.
+                However, a dmidecode "dump" begins with the 24-byte Entry Point Structure.
+                We don't currently handle this in our input.
+                """
                 for s in self.raw_structures_stream(f):
                     yield s
 
@@ -486,17 +526,31 @@ DMI_types = {
     0x12: "32-Bit Memory Error Information",
     0x13: "Memory Array Mapped Address",
     0x14: "Memory Device Mapped Address",
+    0x15: "Built-in Pointing Device",
+    0x16: "Portable Battery",
+    0x17: "System Reset",
     0x18: "Hardware Security",
     0x1a: "Voltage Probe",
     0x1b: "Cooling Device",
     0x1c: "Temperature Probe",
     0x1d: "External Current Probe",
+    0x1e: "Out-of-Band Remote Access",
+    0x1f: "Boot Integrity Services (BIS) Entry Point",
     0x20: "System Boot Information",
+    0x21: "64-Bit Memory Error Information",
+    0x22: "Management Device",
+    0x23: "Management Device Component",
+    0x24: "Management Device Threshold Data",
+    0x25: "Memory Channel",
     0x26: "IPMI Device Information",
     0x27: "System Power Supply",
+    0x28: "Additional Information",
     0x29: "Onboard Devices Extended Information",
     0x2a: "Management Controller Host Interface",
     0x2b: "TPM Device",
+    0x2c: "Processor Additional Information",
+    0x2d: "Firmware Inventory Information",
+    0x2e: "String Property",
     0x7e: "Inactive",         # inactive entry in DMI table
     0x7f: "End Of Table",     # end of DMI table
 }
@@ -606,10 +660,14 @@ def print_DMI_memory(D):
     """
     D.resolve_links()
     def print_memory_device(d):
+        loc_str = d.device_locator
+        if d.bank_locator is not None:
+            loc_str += " " + d.bank_locator
+        print("    %s: " % loc_str, end="")
         if not d.is_installed:
-            print("    (no device installed at %s %s)" % (d.device_locator, d.bank_locator))
+            print("no device installed")
             return
-        print("    %s %u-bit %u-bit size=%s" % (d.mem_type_str, d.t_width, d.d_width, memsize_str(d.size)), end="")
+        print("%s %u-bit %u-bit size=%s" % (d.mem_type_str, d.t_width, d.d_width, memsize_str(d.size)), end="")
         dm = d.p_address_map
         if dm is not None:
             print("  0x%012x - 0x%012x  %6s" % (dm.start, dm.end, memsize_str(dm.end - dm.start)), end="")
@@ -619,11 +677,11 @@ def print_DMI_memory(D):
                 print("  i/l %u" % dm.interleave, end="")
             if dm.depth is not None:
                 print("  depth %u" % dm.depth, end="")
-        print()
+        #print()
         bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
-        print("      speed=%u/%u MT/s" % (d.p_speed_mts, d.c_speed_mts), end="")
+        print(" speed=%u/%u MT/s" % (d.p_speed_mts, d.c_speed_mts), end="")
         print(" - b/w=%u Mbits/s, %u MB/s" % (bw//0x100000, bw//0x100000//8), end="")
-        print("  %s %s %s %s" % (d.mfr, d.part, d.device_locator, d.bank_locator))
+        print("  %s %s" % (d.mfr, d.part))
 
     print("Memory:")
     for da in D.structures(type=DMI_MEMORY_ARRAY):
@@ -650,11 +708,11 @@ def print_DMI_memory(D):
     total_bw_Mb = total_bw // 0x100000
     n_sockets = len(list(D.processors()))
     print("  Total memory: %s, %u mcs" % (memsize_str(total_size), n_memory))
-    print("  Bandwidth:    %u Mbits/s = %s/s" % (total_bw_Mb, memsize_str(total_bw//8)))
+    print("  Bandwidth:    %u Mbits/s = %s/s = %s/s" % (total_bw_Mb, memsize_str(total_bw//8), memsize_str(total_bw//8, decimal=True)))
     if n_sockets > 1:
         bwps = total_bw // n_sockets
         bwps_Mb = total_bw_Mb // n_sockets
-        print("    per socket: %u Mbits/s = %s/s" % (bwps_Mb, memsize_str(bwps//8)))
+        print("    per socket: %u Mbits/s = %s/s = %s/s" % (bwps_Mb, memsize_str(bwps//8), memsize_str(bwps//8, decimal=True)))
     print("Processor caches:")
     def print_cache(c):
         #print("    0x%04x" % c.handle, end="")
@@ -726,7 +784,38 @@ def print_os_dmi_strings():
         print("%20s = %s" % (k, s))
 
 
+def convert_for_dmidecode(ifn, ofn):
+    """
+    Generate a file readable by dmidecode's --from-dump. This needs to include the 24-byte
+    smbios_entry_point header. Synthesize one if needed.
+    """
+    with open(ifn, "rb") as fi:
+        st = fi.read()
+    def bytesum(s):
+        n = 0
+        for c in s:
+            if not isinstance(c, int):
+                c = ord(c)
+            n += c
+        return n & 0xff
+    if ifn == DEFAULT_DMI:
+        with open("/sys/firmware/dmi/tables/smbios_entry_point", "rb") as fi:
+            eps = fi.read()
+    else:
+        # Construct an Entry Point Structure
+        eps = b"_SM3_\0\x18\x03" + struct.pack("<BBBBIQ", 4, 0, 1, 0, len(st), 0x18)
+        chk = (256 - bytesum(eps)) & 0xff
+        eps = eps[:5] + struct.pack("B", chk) + eps[6:]
+    assert len(eps) == 24
+    assert bytesum(eps) == 0
+    with open(ofn, "wb") as fo:
+        fo.write(eps)
+        fo.write(st)
+    return ofn
+
+
 if __name__ == "__main__":
+    import tempfile
     import argparse
     parser = argparse.ArgumentParser(description="read SMBIOS DMI file")
     parser.add_argument("-i", "--input", type=str, default=DEFAULT_DMI, help="input DMI file")
@@ -737,35 +826,22 @@ if __name__ == "__main__":
     parser.add_argument("--uuid", action="store_true", help="print system UUID")
     parser.add_argument("--memory", action="store_true", help="print memory records")
     parser.add_argument("--dump-bin", type=str, help="dump contents to a file")
+    parser.add_argument("--dmidecode", action="store_true", help="run 'dmidecode' command")
     parser.add_argument("--os-strings", action="store_true", help="dump DMI strings from OS")
     parser.add_argument("-t", "--type", type=int, help="DMI record type")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args()
     o_verbose = opts.verbose
     if opts.dump_bin:
-        # Given a binary file, add the 24-byte "smbios_entry_point" to allow dmidecode to read it
-        with open(opts.input, "rb") as fi:
-            st = fi.read()
-        def bytesum(s):
-            n = 0
-            for c in s:
-                if not isinstance(c, int):
-                    c = ord(c)
-                n += c
-            return n & 0xff
-        if opts.input == DEFAULT_DMI:
-            with open("/sys/firmware/dmi/tables/smbios_entry_point", "rb") as fi:
-                eps = fi.read()
-        else:
-            # Construct an Entry Point Structure
-            eps = b"_SM3_\0\x18\x03" + struct.pack("<BBBBIQ", 4, 0, 1, 0, len(st), 0x18)
-            chk = (256 - bytesum(eps)) & 0xff
-            eps = eps[:5] + struct.pack("B", chk) + eps[6:]
-        assert len(eps) == 24
-        assert bytesum(eps) == 0
-        with open(opts.dump_bin, "wb") as fo:
-            fo.write(eps)
-            fo.write(st)
+        convert_for_dmidecode(opts.input, opts.dump_bin)
+        sys.exit(0)
+    if opts.dmidecode:
+        (h, temp_fn) = tempfile.mkstemp()
+        os.close(h)
+        convert_for_dmidecode(opts.input, temp_fn)
+        cmd = "dmidecode --from-dump=%s" % (temp_fn)
+        os.system(cmd)
+        os.remove(temp_fn)
         sys.exit(0)
     if opts.os_strings:
         print_os_dmi_strings()
@@ -777,6 +853,8 @@ if __name__ == "__main__":
         sys.exit(1)
     if opts.verbose:
         print("%s: opening DMI file" % opts.input, file=sys.stderr)
+    print()
+    print(D)
     if not (opts.decode or opts.dump or opts.summary or opts.memory or opts.uuid or opts.dump_bin):
         opts.system = True
     if opts.decode or opts.dump:
