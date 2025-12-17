@@ -381,6 +381,7 @@ def search_all_in_regdefs(reg_ex, rd, file_name=None, description=False, fields=
     last_regmap = None
     for r in rd.regs():
         if reg_ex.search(r.name):
+            n_found += 1
             if file_name is not None and not printed_file:
                 print("%s:" % file_name)
                 printed_file = True
@@ -400,7 +401,6 @@ def search_all_in_regdefs(reg_ex, rd, file_name=None, description=False, fields=
             if fields:
                 for f in r.fields:
                     print("      %s" % f)
-            n_found += 1
     return n_found
 
 

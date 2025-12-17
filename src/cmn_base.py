@@ -169,7 +169,7 @@ class System(NodeGroup):
 class CPU:
     """
     A CPU associated with an RN-F port. Multiple CPUs can be on the
-    same port but should be distinguished by LPID.
+    same port (e.g. with a DSU) but should be distinguished by LPID.
     """
     def __init__(self, cpu, port, id, lpid=0):
         assert isinstance(port, CMNPort)
@@ -405,6 +405,10 @@ class CMNPort:
         self.devices = []     # will be populated with connected CMNNodes
         self.cpus = []        # for RN-Fs, will be populated with CPU objects
 
+    @property
+    def port_number(self):
+        return self.port
+
     def base_id(self):
         """
         The base id for devices on this port. With a CAL, multiple devices
@@ -621,6 +625,9 @@ class CMNXP(CMNNodeBase):
         return pos
 
     def n_links(self):
+        """
+        Return the number of mesh links, e.g. 2 for corner, 3 for edge, 4 for interior
+        """
         return _pos_n_links[self.position()]
 
     def links(self):

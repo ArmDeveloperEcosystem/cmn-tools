@@ -54,6 +54,7 @@ def print_dtc(dtc, pfx="", detail=0):
         print(" %s#%u: %08x" % (" *"[c != ecs[i]], i, c), end="")
     print()
     if detail:
+        # Having printed the PMU counters, also print the snapshot
         pcoff = 0 if dtc.C.part_ge_650() else 0x1E00
         ssr = dtc.read64(dtc.PM_BASE + CMN_DTC_PMSSR_off)
         scc = dtc.read64(dtc.PM_BASE + CMN_DTC_PMCCNTRSR_off)
@@ -66,13 +67,20 @@ def print_dtc(dtc, pfx="", detail=0):
         print()
         if ovf:
             print("%s      overflow: 0x%x" % (pfx, ovf))
+    # wait_for_trigger is documented as DTC0 only
+    if (ctl & CMN_DTC_CTL_DT_WAIT_FOR_TRIGGER):
+        tc = BITS(ctl, 4, 6)
+        print("  Wait for %u cross-triggers" % tc)
+    if (ctl & CMN_DTC_CTL_DBGTRIGGER_EN):
+        print("  Generate debug trigger")
+    if (ctl & CMN_DTC_CTL_ATBTRIGGER_EN):
+        print("  Generate ATB trigger")
+    ts = dtc.trigger_status()
+    if ts is not None:
+        (nodeid, wp) = ts
+        print("  Trigger status: nodeid=0x%x, watchpoint=%u" % (nodeid, wp))
+    if detail:
         print("%s      control: 0x%x" % (pfx, ctl), end="")
-        if ctl & CMN_DTC_CTL_DBGTRIGGER_EN:
-            print(" (dbgtrigger)", end="")
-        if ctl & CMN_DTC_CTL_ATBTRIGGER_EN:
-            print(" (ATB trigger)", end="")
-        if ctl & CMN_DTC_CTL_DT_WAIT_FOR_TRIGGER:
-            print(" (wait for triggers: %u)" % BITS(ctl, 4, 6), end="")
         print()
         tracectrl = dtc.read64(CMN_DTC_TRACECTRL)
         print("%s      trace:   0x%x" % (pfx, tracectrl), end="")
@@ -134,21 +142,25 @@ def print_dtm_watchpoints(dtm, pfx="    "):
     Show any DTM watchpoints that are "configured" i.e. have a non-trivial (non-reset) setting.
     """
     for wp in range(0, N_WATCHPOINTS):
-        w = dtm.dtm_wp_config(wp)
+        w = dtm.dtm_wp_config(wp)      # Get a DTMWatchpoint object
         if w.cfg or w.value or w.mask:
             print("%sWP #%u: ctrl=0x%016x comp=0x%016x mask=0x%016x" % (pfx, wp, w.cfg, w.value, w.mask), end="")
             chn_name = ["REQ", "RSP", "SNP", "DAT"][w.chn]    # values 4..7 are reserved
             dir = ["up", "up", "dn", "dn"][w.wp]
             print(" P%u %s %s type=%u" % (w.dev, dir, chn_name, w.type), end="")
             print(" grp=%u" % w.grp, end="")
-            if w.cfg & dtm.C.DTM_WP_COMBINE:
+            if w.combine:
                 print(" combine", end="")
-            if w.cfg & dtm.C.DTM_WP_EXCLUSIVE:
+            if w.exclusive:
                 print(" exclusive", end="")
-            if w.cfg & dtm.C.DTM_WP_PKT_GEN:
+            if w.pkt_gen:
                 print(" pkt_gen", end="")
-            if w.cfg & dtm.C.DTM_WP_CC_EN:
+            if w.cc:
                 print(" cc", end="")
+            if w.ctrig:
+                print(" cross-trigger", end="")
+            if w.dbgtrig:
+                print(" debug-trigger", end="")
             print()
 
 
@@ -221,8 +233,16 @@ if __name__ == "__main__":
     parser.add_argument("--dtc-disable", action="store_true", help="disable DTC")
     parser.add_argument("--dtc-disable-cg", action="store_true", help="disable DTC clock-gating")
     parser.add_argument("--dtc-reset-cc", action="store_true", help="reset cycle counter to zero")
+    parser.add_argument("--dtc-reset", action="store_true", help="reset DTC configuration")
+    parser.add_argument("--dtc-atbtrigger", type=int, help="DTC trigger -> ATB trigger")
+    parser.add_argument("--dtc-dbgtrigger", type=int, help="DTC trigger -> debug trigger")
+    parser.add_argument("--dtc-trigger-wait", type=int, help="number of triggers to wait for")
+    parser.add_argument("--dtc-clear-trigger", action="store_true", help="clear DTC trigger status")
     parser.add_argument("--dtc", type=int, help="select DTC (default all DTCs)")
     parser.add_argument("--dtms", action="store_true", help="show status of all DTMs")
+    parser.add_argument("--dtm-reset", action="store_true", help="reset DTM programming to match nothing")
+    parser.add_argument("--dtm-clear-fifo", action="store_true", help="clear DTM FIFO")
+    parser.add_argument("--dtm-enable", action="store_true", help="enable DTM")
     parser.add_argument("--xp", type=(lambda x:int(x, 16)), action="append", help="select XP (default all XPs/DTMs)")
     parser.add_argument("-d", "--detail", action="count", default=0, help="increase detail")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
@@ -237,12 +257,24 @@ if __name__ == "__main__":
                     dtc.dtc_disable()
                 if opts.dtc_reset_cc:
                     dtc.pmu_clear_cc()
+                if opts.dtc_reset:
+                    dtc.dtc_reset()
+                if opts.dtc_clear_trigger:
+                    dtc.trigger_clear()
                 if opts.dtc_enable:
                     dtc.dtc_enable()
+                if opts.dtc_atbtrigger is not None or opts.dtc_dbgtrigger is not None or opts.dtc_trigger_wait is not None:
+                    dtc.trigger_set(atbtrigger=opts.dtc_atbtrigger, dbgtrigger=opts.dtc_dbgtrigger, trigger_wait=opts.dtc_trigger_wait)
                 if opts.dtc_disable_cg:
                     dtc.clock_disable_gating(disable_gating=True)
                 print_dtc(dtc, detail=opts.detail)
-        if opts.dtms or opts.xp:
+        if opts.dtms or opts.xp or opts.dtm_reset or opts.dtm_enable or opts.dtm_clear_fifo:
             for dtm in C.DTMs():
                 if opts.xp is None or dtm.xp.node_id() in opts.xp:
                     print_dtm(dtm, detail=opts.detail)
+                    if opts.dtm_reset:
+                        dtm.dtm_reset_wps()
+                    if opts.dtm_clear_fifo:
+                        dtm.dtm_clear_fifo()
+                    if opts.dtm_enable:
+                        dtm.dtm_enable()

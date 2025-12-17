@@ -565,6 +565,10 @@ class CMNPort:
         self.connect_info = xp.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(rP))
         self._port_info = {}
 
+    @property
+    def port_number(self):
+        return self.rP
+
     def device_type(self):
         dtbits = 6 if self.xp.C.part_ge_S3() else 5
         dt = BITS(self.connect_info, 0, dtbits)
@@ -585,6 +589,10 @@ class CMNPort:
         return self._port_info[n]
 
     def has_cal(self):
+        """
+        If the port has a CAL, return a number between 2 and 4 indicating the CAL multiplicity.
+        Otherwise, return 0.
+        """
         has_cal = BIT(self.connect_info, CMN_XP_DEVICE_PORT_CAL_CONNECTED_BIT)
         return BITS(self.port_info(), 0, 3) if has_cal else 0
 
@@ -812,13 +820,24 @@ class DTMWatchpoint:
     """
     Current configuration of a DTM watchpoint.
     """
-    def __init__(self, dtm=None, up=None, wp=None, cfg=None, value=None, mask=None):
+    def __init__(self, dtm=None, up=None, wp=None, cfg=None, value=None, mask=None, chn=None, dev=None, grp=None, type=None, pkt_gen=None, cc=None, exclusive=None, combine=None, ctrig=None, dbgtrig=None):
         self.dtm = dtm
         self.C = self.dtm.C
-        self.wp = wp
+        self.wp = wp           # Watchpoint number
         self.up = up if up is not None else (wp <= 1) if wp is not None else None
         self.value = value
         self.mask = mask
+        self.chn = chn
+        self.dev = dev
+        self.grp = grp
+        self.type = type
+        self.pkt_gen = pkt_gen
+        self.cc = cc
+        self.exclusive = exclusive
+        self.combine = combine    # Valid for even-numbered watchpoints only
+        self.ctrig = ctrig
+        self.dbgtrig = dbgtrig
+        self.rsvdc_bsel = None
         self.cfg = cfg
         if cfg is not None:
             self.decode()
@@ -833,10 +852,55 @@ class DTMWatchpoint:
             self.dev |= (BIT(self.cfg, 17) << 1)
         self.grp = BITS(self.cfg, 4, (1 if self.C.product_config.product_id == cmn_base.PART_CMN600 else 2))
         self.type = BITS(self.cfg, self.C.DTM_WP_PKT_TYPE_SHIFT, 3)
+        self.pkt_gen = (self.cfg & self.C.DTM_WP_PKT_GEN) != 0
         self.cc = BIT(self.cfg, self.C.DTM_WP_PKT_TYPE_SHIFT+3)
         self.exclusive = (self.cfg & self.C.DTM_WP_EXCLUSIVE) != 0
         self.combine = (self.cfg & self.C.DTM_WP_COMBINE) != 0
+        self.ctrig = (self.cfg & self.C.DTM_WP_CTRIG) != 0
+        self.dbgtrig = (self.cfg & self.C.DTM_WP_DBGTRIG) != 0
+        if self.C.DTM_WP_RSVDC_BSEL_SHIFT is not None:
+            self.rsvdc_bsel = BITS(self.cfg, self.C.DTM_WP_RSVDC_BSEL_SHIFT, 2)
+        else:
+            self.rsvdc_bsel = None
         return self
+
+    def encode(self, cfg=0):
+        """
+        Pack (generate) watchpoint configuration register value, from individual properties
+        """
+        config = cfg
+        if self.pkt_gen:
+            config |= self.C.DTM_WP_PKT_GEN
+        if self.combine:
+            config |= self.C.DTM_WP_COMBINE
+        if self.type is not None:
+            config |= (self.type << self.C.DTM_WP_PKT_TYPE_SHIFT)
+        if self.chn is not None:
+            assert self.chn in [0, 1, 2, 3], "bad watchpoint channel: %u" % chn
+            config |= (self.chn << 1)
+        if self.dev is not None:
+            dev0 = self.dev & 1
+            config |= (dev0 << 0)
+            if self.dev >= 2:
+                # dev_sel is actually the port number, not the device number
+                assert self.dev < self.xp.n_device_ports(), "%s: invalid dev_sel=%u" % (self, self.dev)
+                dev1 = self.dev >> 1
+                config |= (dev1 << 17)
+        if self.grp is not None:
+            config |= (self.grp << 4)     # for CMN-650 onwards this is a 2-bit field[5:4]
+        if self.cc:
+            # note: must also be enabled in the DTM
+            config |= self.C.DTM_WP_CC_EN
+        if self.exclusive:
+            config |= self.C.DTM_WP_EXCLUSIVE
+        if self.ctrig:
+            config |= self.C.DTM_WP_CTRIG
+        if self.dbgtrig:
+            config |= self.C.DTM_WP_DBGTRIG
+        if self.rsvdc_bsel is not None and self.C.DTM_WP_RSVDC_BSEL_SHIFT is not None:
+            config |= (self.rsvdc_bsel << self.C.DTM_WP_RSVDC_BSEL_SHIFT)
+        self.cfg = config
+        return self.cfg
 
     def __str__(self):
         """
@@ -859,6 +923,15 @@ class DTMWatchpoint:
             s += ",wp_exclusive=1"
         if self.combine:
             s += ",wp_combine=1"
+        # Remainder are extensions, not recognized by Linux PMU driver
+        if self.rsvdc_bsel:
+            s == ",wp_rsvdc_bsel=%u" % self.rsvdc_bsel
+        if self.pkt_gen:
+            s += ",wp_pkt_gen=1"
+        if self.ctrig:
+            s += ",wp_ctrig=1"
+        if self.dbgtrig:
+            s += ",wp_dbgtrig=1"
         return s
 
 #
@@ -1011,6 +1084,40 @@ class CMNDTM:
             w.mask = self.dtm_read64(CMN_DTM_WP0_MASK_off+(wp*24))
         return w
 
+    def dtm_set_watchpoint(self, wp, val=0, mask=0xffffffffffffffff, gen=True, group=None, format=None, chn=None, dev=None, cc=False, exclusive=False, combine=False):
+        """
+        Configure a watchpoint on the XP. The DTM should be disabled.
+        The mask is the bits we don't care about. I.e. 0 is exact match, 0xffffffffffffffff is don't care.
+        Deprecated: prefer dtm_wp_set instead.
+        """
+        w = DTMWatchpoint(dtm=self, value=val, mask=mask, pkt_gen=gen, combine=combine, type=format, chn=chn, dev=dev, cc=cc, grp=group, exclusive=exclusive)
+        self.dtm_wp_set(wp, w)
+
+    def dtm_wp_set(self, wp, w):
+        """
+        Given a DTMWatchpoint object, program a watchpoint.
+        """
+        assert 0 <= wp and wp <= DTM_N_WATCHPOINTS, "invalid watchpoint number #%u" % wp
+        assert ((wp & 1) == 0) or (not w.combine), "wp_combine invalid in odd-numbered watchpoint #%u" % wp
+        if w.value is not None:
+            self.dtm_write64(CMN_DTM_WP0_VAL_off+(wp*24), w.value)
+            self.dtm_write64(CMN_DTM_WP0_MASK_off+(wp*24), w.mask)
+        self.dtm_write64(CMN_DTM_WP0_CONFIG_off+(wp*24), w.encode())
+
+    def dtm_wp_reset(self, wp):
+        """
+        Reset a watchpoint to match nothing and do nothing
+        """
+        w = DTMWatchpoint(dtm=self, pkt_gen=False, value=0xcccccccccccccccc, mask=0)
+        self.dtm_wp_set(wp, w)
+
+    def dtm_reset_wps(self):
+        """
+        Reset all watchpoints to match nothing
+        """
+        for i in range(0, 4):
+            self.dtm_wp_reset(i)
+
     def dtm_atb_packet_header(self, wp, lossy=0):
         """
         Construct a trace packet header, as if for a packet output on ATB.
@@ -1079,7 +1186,7 @@ class CMNDTM:
 
     def dtm_set_control(self, control=0, atb=False, tag=False, enable=False):
         """
-        Configure the DTM, which controls all watchpoints an PMU.
+        Configure the DTM, which controls all watchpoints and PMU.
         Note that this function isn't read/modify/write.
         """
         if not atb:
@@ -1090,39 +1197,6 @@ class CMNDTM:
             control |= CMN_DTM_CONTROL_DTM_ENABLE
         self.dtm_write64(CMN_DTM_CONTROL_off, control)
         self._dtm_is_enabled = enable
-
-    def dtm_set_watchpoint(self, wp, val=0, mask=0xffffffffffffffff, config=0, gen=True, group=None, format=None, chn=None, dev=None, cc=False, exclusive=False, combine=False):
-        """
-        Configure a watchpoint on the XP. The DTM should be disabled.
-        The mask is the bits we don't care about. I.e. 0 is exact match, 0xffffffffffffffff is don't care.
-        """
-        if gen:
-            config |= self.C.DTM_WP_PKT_GEN
-        if combine:
-            config |= self.C.DTM_WP_COMBINE
-        if format is not None:
-            config |= (format << self.C.DTM_WP_PKT_TYPE_SHIFT)
-        if chn is not None:
-            assert chn in [0, 1, 2, 3], "bad watchpoint channel: %u" % chn
-            config |= (chn << 1)
-        if dev is not None:
-            dev0 = dev & 1
-            config |= (dev0 << 0)
-            if dev >= 2:
-                # dev_sel is actually the port number, not the device number
-                assert dev < self.xp.n_device_ports(), "%s: invalid dev_sel=%u" % (self, dev)
-                dev1 = dev >> 1
-                config |= (dev1 << 17)
-        if group is not None:
-            config |= (group << 4)     # for CMN-650 onwards this is a 2-bit field[5:4]
-        if cc:
-            # note: must also be enabled in the DTM
-            config |= self.C.DTM_WP_CC_EN
-        if exclusive:
-            config |= self.C.DTM_WP_EXCLUSIVE
-        self.dtm_write64(CMN_DTM_WP0_VAL_off+(wp*24), val)
-        self.dtm_write64(CMN_DTM_WP0_MASK_off+(wp*24), mask)
-        self.dtm_write64(CMN_DTM_WP0_CONFIG_off+(wp*24), config)
 
     def device_pmu_event_sel(self, port, device, eix):
         """
@@ -1152,7 +1226,7 @@ class CMNDTM:
 class CMNNodeDT(CMNNode):
     """
     DTC (debug/trace controller) node. There is one per DTC domain.
-    The one located in the HN-D is designated as DTC0.
+    The one located in the HN-D is designated as DTC0, and has additional functions.
     """
     def __init__(self, *args, **kwargs):
         CMNNode.__init__(self, *args, **kwargs)
@@ -1161,8 +1235,11 @@ class CMNNodeDT(CMNNode):
         else:
             self.PM_BASE = CMN_DTC_PM_BASE_S3
 
+    def extra_str(self):
+        return "DTC%u" % self.dtc_domain()
+
     def atb_traceid(self):
-        return BITS(self.read64(CMN_DTC_TRACEID),0,7)
+        return BITS(self.read64(CMN_DTC_TRACEID), 0, 7)
 
     def set_atb_traceid(self, x):
         if self.C.verbose > 0:
@@ -1177,6 +1254,12 @@ class CMNNodeDT(CMNNode):
         (For CMN-600, XP DTMs don't have a dtc_domain indicator.)
         """
         return BITS(self.node_info, 32, 2)
+
+    def is_DTC0(self):
+        return self.dtc_domain() == 0
+
+    def dtc_reset(self):
+        self.write64(CMN_DTC_CTL, 0)
 
     def dtc_enable(self, cc=None, pmu=None, clock_disable_gating=None):
         """
@@ -1284,8 +1367,37 @@ class CMNNodeDT(CMNNode):
         """
         return self.setclear64(CMN_DTC_CTL, CMN_DTC_CTL_CG_DISABLE, disable_gating)
 
-    def extra_str(self):
-        return "DTC%u" % self.dtc_domain()
+    def trigger_status(self):
+        s = self.read64(CMN_DTC_TRIGGER_STATUS)
+        if BIT(s, 0):
+            nodeid = BITS(s, 8, 11)
+            wp = BITS(s, 20, 4)
+            return (nodeid, wp)
+        else:
+            return None
+
+    def trigger_clear(self):
+        self.write64(CMN_DTC_TRIGGER_STATUS_CLR, 1, check=False)
+
+    def trigger_set(self, atbtrigger=None, dbgtrigger=None, trigger_wait=None):
+        x0 = self.read64(CMN_DTC_CTL)
+        x = x0
+        def setclear(x, mask, flag):
+            if flag is None:
+                pass
+            elif flag:
+                x |= mask
+            else:
+                x &= ~mask
+            return x
+        x = setclear(x, CMN_DTC_CTL_ATBTRIGGER_EN, atbtrigger)
+        x = setclear(x, CMN_DTC_CTL_DBGTRIGGER_EN, dbgtrigger)
+        if trigger_wait is not None:
+            x &= ~(0x3f << 4)
+            x |= (trigger_wait << 4)
+            x |= CMN_DTC_CTL_DT_WAIT_FOR_TRIGGER
+        if x != x0:
+            self.write64(CMN_DTC_CTL, x)
 
 
 class CMN:
@@ -1463,17 +1575,23 @@ class CMN:
             self.coord_XP[(X,Y)] = xp
         # Some offsets change from CMN-650 onwards
         if self.product_config.product_id == cmn_base.PART_CMN600:
+            self.DTM_WP_RSVDC_BSEL_SHIFT = None
             self.DTM_WP_EXCLUSIVE    = 0x0020
             self.DTM_WP_COMBINE      = 0x0040
             self.DTM_WP_PKT_GEN      = 0x0100   # capture a packet
             self.DTM_WP_PKT_TYPE_SHIFT = 9
             self.DTM_WP_CC_EN        = 0x1000   # enable cycle count
+            self.DTM_WP_CTRIG        = 0x2000
+            self.DTM_WP_DBGTRIG      = 0x4000
         else:
+            self.DTM_WP_RSVDC_BSEL_SHIFT = 6
             self.DTM_WP_EXCLUSIVE    = 0x0100
             self.DTM_WP_COMBINE      = 0x0200
             self.DTM_WP_PKT_GEN      = 0x0400   # capture a packet
             self.DTM_WP_PKT_TYPE_SHIFT = 11
             self.DTM_WP_CC_EN        = 0x4000   # enable cycle count
+            self.DTM_WP_CTRIG        = 0x8000
+            self.DTM_WP_DBGTRIG      = 0x10000
         if restore_dtc_status:
             self.restore_dtc_status_on_deletion()
         if self.secure_accessible is None:

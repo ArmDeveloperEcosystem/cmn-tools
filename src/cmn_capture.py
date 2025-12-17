@@ -16,11 +16,12 @@ from __future__ import print_function
 import sys
 import time
 
-import cmn_devmem as cmn
+import cmn_devmem
 import cmn_devmem_find
 import cmn_json
 from cmn_enum import *
 import cmnwatch
+import cmn_select
 import cmn_flits
 from cmn_flits import CMNTraceConfig, CMNFlitGroup
 import cmn_dtstat
@@ -43,6 +44,7 @@ def inthex(s):
 def add_trace_arguments(parser):
     parser.add_argument("--cmn", type=int, default=0, help="select CMN instance (default 0)")
     parser.add_argument("--xp", type=inthex, action="append", help="crosspoint number(s)")
+    parser.add_argument("--node", type=cmn_select.CMNSelect, action="append", help="node specifier(s)")
     parser.add_argument("--vc", "--chn", type=int, choices=[0,1,2,3], default=0, help="VC channel number: REQ, RSP, SNP, DAT")
     parser.add_argument("--wp-val", type=inthex, default=0, help="watchpoint value")
     parser.add_argument("--wp-mask", type=inthex, default=0xffffffffffffffff, help="watchpoint mask (don't-care bits)")
@@ -50,6 +52,8 @@ def add_trace_arguments(parser):
     parser.add_argument("--uploads", dest="up", action="store_true", default=None, help="capture uploaded flits only")
     parser.add_argument("--downloads", dest="up", action="store_false", default=None, help="capture downloaded flits only")
     parser.add_argument("--cc", action="store_true", help="enable cycle counts")
+    parser.add_argument("--cross-trigger", action="store_true", help="generate cross trigger on watchpoint match")
+    parser.add_argument("--debug-trigger", action="store_true", help="generate debug trigger on watchpoint match")
     parser.add_argument("--format", type=int, choices=range(8), default=4, help="trace packet format")
     parser.add_argument("--immediate", action="store_true", help="show FIFO contents immediately")
     parser.add_argument("--samples", type=int, default=100, help="number of FIFO samples to collect")
@@ -244,7 +248,10 @@ class CMNHist(CMNVis):
         # Construct a key to classify the flit into a sensible group.
         # We use at least the source and target type, and the opcode.
         if (flit.srcid, 0) not in self.id_map:
-            self.id_map[(flit.srcid, 0)] = "?%03x" % flit.srcid
+            if flit.srcid is not None:
+                self.id_map[(flit.srcid, 0)] = "?%03x" % flit.srcid
+            else:
+                self.id_map[(None, 0)] = "-"    # e.g. format-0 tracing - transaction ids only
         stype = self.id_map[(flit.srcid, 0)]
         if stype.startswith("#"):
             stype = "RN-F"    # undo the CPU mapping!
@@ -313,16 +320,16 @@ class TraceSession:
             self.C.dtc_enable()
 
     def cmn_from_opts(self, opts):
-        loc = cmn.cmn_instance(opts)
+        loc = cmn_devmem.cmn_instance(opts)
         if loc is None:
             print("Can't locate CMN")
             sys.exit(1)
-        C = cmn.CMN(loc, check_writes=(not opts.no_check_writes), verbose=max(0, opts.verbose-1))
+        C = cmn_devmem.CMN(loc, check_writes=(not opts.no_check_writes), verbose=max(0, opts.verbose-1))
         if opts.list:
-            cmn.show_cmn(C)
+            cmn_devmem.show_cmn(C)
             sys.exit()
         if opts.diag:
-            C.diag_trace |= cmn.DIAG_READS | cmn.DIAG_WRITES
+            C.diag_trace |= cmn_devmem.DIAG_READS | cmn_devmem.DIAG_WRITES
         return C
 
     def init_cmn(self):
@@ -340,25 +347,79 @@ class TraceSession:
         # First disable all the non-involved XPs
         for dtm in self.C.DTMs():
             dtm.dtm_disable()
-        if self.opts.xp == [-1]:
-            xps = []
-        elif self.opts.xp is not None:
-            xps = [self.C.XP(x) for x in self.opts.xp]
-        else:
-            xps = list(self.C.XPs())      # all XPs
-        self.xps = xps
         self.construct_watchpoint()
+        self.get_nodes()
         self.reset_next_port()
+
+    def get_nodes(self):
+        """
+        Find out which XPs and ports we're monitoring
+        Four possibilities:
+          no --xp, no --node: monitor all XPs
+          --node, no --xp: monitor ports as selected by node selector
+          --xp, no --node: monitor selected XPs
+          --xp, --node: form the cross-product of the XP and node selectors.
+        """
+        nodes = cmn_select.cmn_select_merge(self.opts.node)     # a CMNSelect object
+        if nodes is None:
+            nodes = cmn_select.CMNSelect()
+        if not self.opts.xp:
+            pass
+        elif self.opts.xp and not self.opts.node:
+            if self.opts.xp == [-1]:
+                pass
+            else:
+                xps = [self.C.XP(x) for x in self.opts.xp]
+                for xp in xps:
+                    sel = cmn_select.CMNSelectSingle(x=xp.x, y=xp.y)
+                    nodes.append(sel)
+        else:
+            # Both were specified: apply the cross-product
+            xps = [self.C.XP(x) for x in self.opts.xp]
+            nsel = []
+            for s in nodes.matchers:
+                for xp in xps:
+                    ns = s.copy()
+                    ns.node_x = xp.x
+                    ns.node_y = xp.y
+                    nsel.append(ns)
+            nodes.matchers = nsel
+        # At this point, the 'nodes' selector should match all ports we're interested in profiling
+        if self.opts.verbose:
+            print("Node selector: %s" % nodes)
+        # We now need to turn 'nodes' into a list of XPs, each tagged with port numbers.
+        self.xps = [xp for xp in self.C.XPs() if nodes.can_match_devices_at_xp(xp)]
+        if self.opts.verbose:
+            print("XPs: %s" % (','.join([str(xp) for xp in self.xps])))
+        for xp in self.xps:
+            xp.dtm.capture_port_list = []
+            for pn in range(0, xp.n_device_ports()):
+                port = xp.port_object(pn)
+                # Check port connected type rather than nodes, as some ports (RN-F, SN-F) have no nodes
+                can_match =  nodes.can_match_devices_at_port(port)
+                if self.opts.verbose >= 2:
+                    print("%s: check %s => %s" % (nodes, port, can_match))
+                if can_match:
+                    xp.dtm.capture_port_list.append(pn)
+        self.xps = [xp for xp in self.xps if xp.dtm.capture_port_list]
+        if not self.xps:
+            print("No ports matched: %s" % (nodes), file=sys.stderr)
+            sys.exit(1)
+        if self.opts.verbose:
+            print("Monitoring ports:")
+            for xp in self.xps:
+                print("%20s: %s" % (xp, str(xp.dtm.capture_port_list)))
+        self.dtms = [xp.dtm for xp in self.xps]
 
     def reset_next_port(self):
         # Some XPs may have more ports than watchpoints, e.g. three ports but
         # only two upload watchpoints and two download watchpoints.
         # Hence, we might not be able to trace all ports at the same time,
         #
-        # So we progressively iterate through each port on each XP.
-        # 'next_port' indicates the next port to do for this XP.
-        for xp in self.xps:
-            xp.next_port = 0
+        # So we progressively iterate through each selected port on each selected XP.
+        # 'next_port' indicates the index (into the port list) of the next port to do for this XP.
+        for dtm in self.dtms:
+            dtm.next_port = 0
 
     def construct_watchpoint(self):
         """
@@ -372,7 +433,7 @@ class TraceSession:
             M = None
         try:
             if self.opts.watchpoint is not None:
-                wps = cmnwatch.parse_short_watchpoint(self.opts.watchpoint, opts, cmn_version=self.C.product_config)
+                wps = cmnwatch.parse_short_watchpoint(self.opts.watchpoint, self.opts, cmn_version=self.C.product_config)
             else:
                 wps = cmnwatch.match_obj(self.opts, chn=self.opts.vc, up=self.opts.up, cmn_version=self.C.product_config, mask=M)
         except cmnwatch.WatchpointError as e:
@@ -383,6 +444,27 @@ class TraceSession:
             print("Watchpoint (groups %s)" % str(wps.grps()))
             print("  %s" % wps)
         self.wps = wps
+
+    def check_need_rotation(self, warn=True):
+        """
+        Check if the watchpoints need dynamic rotation in order to cover all selected ports.
+        Rotation is needed:
+          - for a 1-group watchpoint, if more than 2 ports are selected on an XP
+          - for a 2-group watchpoint, if more than 1 port is selected on an XP
+        Upload/download isn't relevant, since that is a fixed property of DTM watchpoints.
+        TBD: should handle multi-DTM watchpoints.
+        """
+        need_rotation = False
+        n_groups = len(self.wps.grps())
+        printed = False
+        for xp in self.xps:
+            n_ports = len(xp.dtm.capture_port_list)
+            if n_groups > len(xp.dtm.capture_port_list):
+                if warn and not printed:
+                    print("%s monitoring %u ports, can't set up %u-group watchpoint without rotation" % (xp, n_ports, n_groups))
+                    printed = True
+                need_rotation = True
+        return need_rotation
 
     def check_for_aliasing(self):
         """
@@ -398,9 +480,12 @@ class TraceSession:
             xp1.dtm.dtm_disable()
 
     def configure_xp(self, xp):
+        self.configure_dtm(xp.dtm)
+
+    def configure_dtm(self, dtm):
         """
-        Set up the trace configuration in the XP.
-        Each XP has a DTM with four WPs.
+        Set up the trace configuration in the DTM.
+        Each DTM has four WPs.
         This function may also rotate the port selection.
         """
         # (CMN-600 TRM 5.2.1).
@@ -416,67 +501,74 @@ class TraceSession:
         # Also, matching on SRCID or TGTID restricts us to only download or upload.
         #
         if o_verbose >= 2:
-            print("%s: configure trace (next_port=%d)" % (xp, xp.next_port))
-        if xp.n_device_ports() == 0:
+            print("%s: configure trace (ports=%s next_port=%d)" % (dtm, str(dtm.capture_port_list), dtm.next_port))
+        if not dtm.capture_port_list:
+            dtm.dtm_disable()
+            for wp in range(0, 4):
+                dtm.dtm_set_watchpoint(wp, gen=False)
             return
         # In read (non-ATB) mode, it appears that the FIFO starts filling as soon as
         # trace_no_atb is set, regardless of dtm_enable. So make sure the
         # watchpoints are configured and then clear the FIFO.
-        xp.dtm.dtm_disable()
+        dtm.dtm_disable()
         if not self.atb:
-            dtm_control = cmn.CMN_DTM_CONTROL_TRACE_NO_ATB
+            dtm_control = cmn_devmem.CMN_DTM_CONTROL_TRACE_NO_ATB
         else:
             dtm_control = 0
         #if opts.fifo:
-        #    xp.set64(cmn.CMN_DTM_CONTROL, 0x08)
+        #    xp.set64(cmn_devmem.CMN_DTM_CONTROL, 0x08)
         #else:
-        #    xp.clear64(cmn.CMN_DTM_CONTROL, 0x08)    # send to ATB not FIFO
+        #    xp.clear64(cmn_devmem.CMN_DTM_CONTROL, 0x08)    # send to ATB not FIFO
         # Set up WP0 to trace P0 and WP1 to trace P1
         for wp in [0, 1]:
-            dev = xp.next_port
+            dev = dtm.capture_port_list[dtm.next_port]
             for (up, off) in [(True, 0), (False, 2)]:
                 if self.wps.up != (not up):          # i.e. wps is free or matches WPs type
                     for (j, grp) in enumerate(self.wps.grps()):
                         M = self.wps.wps[grp]
                         combine = (self.wps.is_multigrp() and (j == 0))
+                        w = cmn_devmem.DTMWatchpoint(dtm=dtm, pkt_gen=True,
+                                                     value=M.val, mask=M.mask,
+                                                     type=self.opts.format, cc=self.opts.cc,
+                                                     ctrig=self.opts.cross_trigger,
+                                                     dbgtrig=self.opts.debug_trigger,
+                                                     dev=dev, chn=self.wps.chn, grp=M.grp,
+                                                     exclusive=M.exclusive, combine=combine)
                         if o_verbose >= 2:
-                            print("%s: set watchpoint WP%u" % (xp, wp+off+j))
-                        xp.dtm.dtm_set_watchpoint(wp+off+j, val=M.val, mask=M.mask,
-                                                  format=self.opts.format, cc=self.opts.cc,
-                                                  dev=dev, chn=self.wps.chn, group=M.grp,
-                                                  exclusive=M.exclusive, combine=combine)
+                            print("%s: set watchpoint WP%u: %s" % (dtm, wp+off+j, w))
+                        dtm.dtm_wp_set(wp+off+j, w)
                 else:
-                    xp.dtm.dtm_set_watchpoint(wp+off, gen=False)
-            xp.next_port += 1
-            if xp.next_port == xp.n_device_ports():
-                xp.next_port = 0
+                    dtm.dtm_set_watchpoint(wp+off, gen=False)
+            dtm.next_port += 1
+            if dtm.next_port == len(dtm.capture_port_list):
+                dtm.next_port = 0
             if self.wps.is_multigrp():
                 break        # we already used both watchpoints
-            if xp.n_device_ports() <= 1:
+            if len(dtm.capture_port_list) <= 1:
                 break
             # else loop round and see if we can do another port
-        #xp.dtm_enable()
+        #dtm.dtm_enable()
         if not self.atb:
             # Clearing the FIFO only works if trace_no_atb is already set
-            xp.dtm.dtm_set64(cmn.CMN_DTM_CONTROL_off, cmn.CMN_DTM_CONTROL_TRACE_NO_ATB)
-            xp.dtm.dtm_clear_fifo()
-        xp.dtm.dtm_write64(cmn.CMN_DTM_CONTROL_off, dtm_control)   # DTM is still disabled
+            dtm.dtm_set64(cmn_devmem.CMN_DTM_CONTROL_off, cmn_devmem.CMN_DTM_CONTROL_TRACE_NO_ATB)
+            dtm.dtm_clear_fifo()
+        dtm.dtm_write64(cmn_devmem.CMN_DTM_CONTROL_off, dtm_control)   # DTM is still disabled
         if self.opts.count:
             # Program the four local counters to count the four WPs (events 0..3).
             # The DTC has eight global counters which can catch rollovers from the
             # local counters. We have eight DTC counters so we might as well distribute
             # the XP rollovers between them.
-            xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0)     # disable PMU while we're programming it
-            xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_PMEVCNT_off, 0)    # clear the four local counters
-            #xp.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0x0302010000000001)
+            dtm.dtm_write64(cmn_devmem.CMN_DTM_PMU_CONFIG_off, 0)     # disable PMU while we're programming it
+            dtm.dtm_write64(cmn_devmem.CMN_DTM_PMU_PMEVCNT_off, 0)    # clear the four local counters
+            #dtm.dtm_write64(cmn_devmem.CMN_DTM_PMU_CONFIG_off, 0x0302010000000001)
             if wp == 0:
-                xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0x03020100642000f1)
+                dtm.dtm_write64(cmn_devmem.CMN_DTM_PMU_CONFIG_off, 0x03020100642000f1)
             else:
-                xp.dtm.dtm_write64(cmn.CMN_DTM_PMU_CONFIG_off, 0x03020100753100f1)
+                dtm.dtm_write64(cmn_devmem.CMN_DTM_PMU_CONFIG_off, 0x03020100753100f1)
         # "The final step is to write 1'b1 to dtm_control.dtm_enable to enable the WP."
         if self.opts.verbose >= 2:
-            print("enable DTM on %s" % xp)
-        xp.dtm.dtm_enable()
+            print("enable DTM on %s" % dtm)
+        dtm.dtm_enable()
 
     def trace_start(self):
         if self.opts.verbose:
@@ -487,7 +579,7 @@ class TraceSession:
             # them generating ATB trace packets.
             for dtm in self.C.DTMs():
                 dtm.dtm_disable()
-                dtm.dtm_set64(cmn.CMN_DTM_CONTROL_off, cmn.CMN_DTM_CONTROL_TRACE_NO_ATB)
+                dtm.dtm_set64(cmn_devmem.CMN_DTM_CONTROL_off, cmn_devmem.CMN_DTM_CONTROL_TRACE_NO_ATB)
                 dtm.dtm_clear_fifo()
         self.C.dtc_enable()
         for xp in self.xps:
@@ -506,7 +598,7 @@ class TraceSession:
         # Start CMN generating ATB trace
         if self.opts.cg_disable:
             for dtc in self.C.DTCs():
-                dtc.set64(cmn.CMN_DTC_CTL, cmn.CMN_DTC_CTL_CG_DISABLE)    # experimental
+                dtc.set64(cmn_devmem.CMN_DTC_CTL, cmn_devmem.CMN_DTC_CTL_CG_DISABLE)    # experimental
         self.C.dtc_enable()
         if False:
             # Generate some more alignment packets in the ATB stream
@@ -570,7 +662,7 @@ class TraceSession:
             # Show watchpoint counts
             for xp in self.xps:
                 # Read the local counters
-                c = xp.dtm.dtm_read64(cmn.CMN_DTM_PMU_PMEVCNT_off)
+                c = xp.dtm.dtm_read64(cmn_devmem.CMN_DTM_PMU_PMEVCNT_off)
                 for wp in range(0,4):
                     print(" %6u" % bits(c, wp*16, 16), end="")
                 print()
@@ -612,14 +704,23 @@ if __name__ == "__main__":
     add_trace_arguments(parser)
     parser.add_argument("--include-polling", action="store_true", help="include CMN polling reqs from script")
     parser.add_argument("--histogram", action="store_true", help="print histogram of packet types")
+    parser.add_argument("--setup", action="store_true", help="set up but don't capture")
     opts = parser.parse_args()
     o_verbose = opts.verbose
+    if opts.setup and opts.histogram:
+        print("In setup mode, actions like --histogram are not available", file=sys.stderr)
+        sys.exit(1)
     o_include_polling = opts.include_polling
     if opts.histogram:
         vis = CMNHist()
     else:
         vis = CMNVis()
     ts = TraceSession(opts, handler=vis)
+    if opts.setup:
+        if ts.check_need_rotation(warn=True):
+            sys.exit(1)
+        ts.trace_start()
+        sys.exit()
     for _ in range(opts.iterations):
         cap = ts.trace()
         ts.show_captured_trace(cap)

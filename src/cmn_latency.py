@@ -61,8 +61,7 @@ def set_nomatch_watchpoints(dtm):
     if o_verbose >= 2:
         print("%s: set watchpoints to not match anything" % (dtm))
     dtm.dtm_disable()
-    for i in range(0, 4):
-        dtm.dtm_set_watchpoint(i, val=0xcccccccccccccccc, mask=0, gen=False)
+    dtm.dtm_reset_wps()
 
 
 def really_clear_fifo(dtm):

@@ -519,7 +519,7 @@ class CMNLister:
             print(" %s" % reg.target_type_str, end="")
             print()
             if reg.hashed and reg.nodeids is not None:
-                print(pfx + "  HNs: %s" % (','.join([("0x%x" % hn) for hn in reg.nodeids])))
+                print(pfx + "    HNs: %s" % (','.join([("0x%x" % hn) for hn in reg.nodeids])))
         #hash_addr_mask = n.read64(0xF18)
         #print(pfx + "Hash mask: 0x%016x" % hash_addr_mask)
         if not n.C.part_ge_700():

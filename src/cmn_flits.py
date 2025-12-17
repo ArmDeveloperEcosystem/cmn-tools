@@ -77,7 +77,7 @@ CHI_REQ_opcodes = {
     0x37: "Lumn",
     0x38: "Aswp",   # AtomicSwap
     0x39: "Acmp",   # AtomicCompare
-    0x3a: "PfTg",   # PrefetchTarget
+    0x3a: "PfTg",   # PrefetchTgt
     # later CHI with opcode[6]=1; includes combined Write+CMO
     0x41: "MRUn",   # MakeReadUnique
     0x42: "WEoE",   # WriteEvictOrEvict
@@ -237,6 +237,8 @@ def CHI_G_CMN_DAT_datasource_str(ds):
 def CHI_memattr_str(ma, order, snpattr):
     """
     Return a short string that summarizes the various memory attribute fields.
+    See e.g. CHI-G B13.10.4 and B2.7.4.
+    For Order, see e.g. CHI-G B13.10.28.
     """
     Device = BIT(ma, 1)
     Allocate = BIT(ma, 3)
@@ -252,15 +254,15 @@ def CHI_memattr_str(ma, order, snpattr):
             s = "dev-RE"
     elif not Device:
         if not EWA:
-            s = "nCnB"
-        elif not Cacheable:
-            s = "nCB"
+            s = "nCnB"         # Non-cacheable Non-bufferable
+        elif not Allocate and not Cacheable:
+            s = "nCB"          # Non-cacheable Bufferable
         else:
             s = ["nS", "S"][snpattr] + "WB" + ["nA", "A"][Allocate]
-        if order != 0:
-            s += ":ord%u" % order
+        if s is not None and order != 0:
+            s += " " + [None, "req-acc", "req-order", "endpoint-order"][order]
     if s is None:
-        s = "attr=0x%x/%u" % (ma, order)
+        s = "attr=0x%x/order=%u" % (ma, order)
     return s
 
 
@@ -414,6 +416,7 @@ class CMNFlit:
             s += (" %x" % self.qos) if self.qos else "  "
             s += " %02x:%-20s" % (self.opcode, CHI_op_str(self.group.VC, self.opcode))
             if self.group.VC == 0:
+                # REQ
                 s += " lpid=%02x" % self.lpid
                 s += " ret=%03x:" % self.returnnid
                 s += self.group.txnid_fmt % self.returntxnid
@@ -454,8 +457,13 @@ class CMNFlit:
                     s += " rsvdc=0x%02x" % (self.rsvdc)
                 if self.likelyshared:
                     s += " lshr"
-                if not self.allowretry:
-                    s += " no-retry:%u" % (self.pcrdtype)
+                if self.opcode != 0x3a:
+                    if not self.allowretry:
+                        s += " no-retry:%u" % (self.pcrdtype)
+                else:
+                    # PrefetchTgt
+                    if self.allowretry:
+                        s += " allowretry?"
             elif self.group.VC == 1:
                 # RSP
                 s += " resp=%u/%u dbid=0x%02x" % (self.resp, self.resperr, self.dbid)
