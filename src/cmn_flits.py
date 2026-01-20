@@ -558,6 +558,20 @@ def bytes_hex(x):
     return s
 
 
+def bytes_chars(x, replace='.'):
+    s = ""
+    for b in x:
+        try:
+            b = ord(b)
+        except TypeError:
+            pass
+        if b >= 0x20 and b < 0x7F:
+            s += chr(b)
+        else:
+            s += replace
+    return s
+
+
 def bytes_as_int(s):
     """
     Given a byte string or byte-producing iterator
@@ -736,7 +750,10 @@ class CMNFlitGroup:
                     s += "TXNID: "
                 s += sep.join([f.long_str() for f in self.flits])
             elif self.format in [5, 6]:
-                s += "DATA(%s): %36s" % (["lo", "hi"][self.format-5], bytes_hex(reversed(self.payload)))
+                # Should be 16 bytes: spec suggests trailing zeroes will be stripped,
+                # but in fact we see 22 bytes
+                data = self.payload[:16]
+                s += "DATA(%s):  %32s  |%s|" % (["lo", "hi"][self.format-5], bytes_hex(reversed(data)), bytes_chars(data))
             else:
                 s += "raw: %s (format=%s)" % (bytes_hex(self.payload), self.format)
         return s

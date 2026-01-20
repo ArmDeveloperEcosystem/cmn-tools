@@ -42,10 +42,10 @@ def inthex(s):
 
 
 def add_trace_arguments(parser):
-    parser.add_argument("--cmn", type=int, default=0, help="select CMN instance (default 0)")
     parser.add_argument("--xp", type=inthex, action="append", help="crosspoint number(s)")
     parser.add_argument("--node", type=cmn_select.CMNSelect, action="append", help="node specifier(s)")
     parser.add_argument("--vc", "--chn", type=int, choices=[0,1,2,3], default=0, help="VC channel number: REQ, RSP, SNP, DAT")
+    parser.add_argument("--data", type=int, choices=[0,1,2,3], help="capture 16-byte data fragments with headers")
     parser.add_argument("--wp-val", type=inthex, default=0, help="watchpoint value")
     parser.add_argument("--wp-mask", type=inthex, default=0xffffffffffffffff, help="watchpoint mask (don't-care bits)")
     cmnwatch.add_chi_arguments(parser)
@@ -206,8 +206,7 @@ class CMNVis:
         print("  %s WP%u: " % ("><"[(wp >> 1) & 1], wp), end="")
         print(fg)
 
-    def decode_packet(self, xp, wp, data, cc):
-        w = xp.dtm.dtm_wp_config(wp, value=False)
+    def decode_packet(self, xp, wp, w, data, cc):
         fg = CMNFlitGroupX(self.cfg, cmn_seq=self.cmn.seq, nodeid=xp.node_id(), DEV=w.dev, VC=w.chn, format=w.type, cc=w.cc, vis=self)
         fg.decode(data)
         self.handle_flitgroup(xp, wp, fg)
@@ -302,15 +301,22 @@ class TraceSession:
     """
     All the information we need to manage tracing flits.
     """
-    def __init__(self, opts, handler=None, atb=False):
+    def __init__(self, opts, handler=None, atb=False, init=True):
         self.opts = opts
         self.atb = atb
         self.C = None    # in case next line throws
         self.C = self.cmn_from_opts(opts)
+        if (self.opts.data is not None) and not self.C.part_ge_650():
+            print("%s: this product does not support data trace" % self.C, file=sys.stderr)
+            sys.exit(1)
         self.TV = handler
         if handler is not None:
             handler.set_cmn(self.C)        # The trace visualizer
-        self.init_cmn()
+        self.construct_watchpoint()
+        self.get_nodes()
+        self.reset_next_port()
+        if init:
+            self.init_cmn()
 
     def __del__(self):
         """
@@ -346,10 +352,9 @@ class TraceSession:
         self.C.restore_dtc_status_on_deletion()
         # First disable all the non-involved XPs
         for dtm in self.C.DTMs():
+            if self.opts.verbose >= 2:
+                print("cmn_capture: disable DTM %s" % dtm)
             dtm.dtm_disable()
-        self.construct_watchpoint()
-        self.get_nodes()
-        self.reset_next_port()
 
     def get_nodes(self):
         """
@@ -426,7 +431,12 @@ class TraceSession:
         Use the command-line options to construct a watchpoint filter.
         Depending on the user's choice of CHI fields, this might require
         a single watchpoint or a pair of watchpoints.
+        This routine doesn't program any watchpoints.
         """
+        if self.opts.data is not None:
+            self.opts.vc = 3
+            self.opts.dataid = (self.opts.data & 2)
+            self.data_format = 5 + (self.opts.data & 1)
         if self.opts.wp_val or self.opts.wp_mask:
             M = cmnwatch.MatchMask(self.opts.wp_val, self.opts.wp_mask)
         else:
@@ -444,6 +454,9 @@ class TraceSession:
             print("Watchpoint (groups %s)" % str(wps.grps()))
             print("  %s" % wps)
         self.wps = wps
+        if self.opts.data is not None and self.wps.is_multigrp():
+            print("Can't do DAT header+data with multi-group matching", file=sys.stderr)
+            sys.exit(1)
 
     def check_need_rotation(self, warn=True):
         """
@@ -456,6 +469,8 @@ class TraceSession:
         """
         need_rotation = False
         n_groups = len(self.wps.grps())
+        if self.opts.data is not None:
+            n_groups *= 2
         printed = False
         for xp in self.xps:
             n_ports = len(xp.dtm.capture_port_list)
@@ -470,6 +485,7 @@ class TraceSession:
         """
         Check for aliasing between XPs
         """
+        assert False, "This function for testing only"
         for xp1 in self.C.XPs():
             for xp2 in self.C.XPs():
                 xp2.dtm.dtm_disable()
@@ -537,12 +553,16 @@ class TraceSession:
                         if o_verbose >= 2:
                             print("%s: set watchpoint WP%u: %s" % (dtm, wp+off+j, w))
                         dtm.dtm_wp_set(wp+off+j, w)
+                    if self.opts.data is not None:
+                        # Watchpoint is matching the same DAT flits, but capturing data
+                        w.type = self.data_format
+                        dtm.dtm_wp_set(wp+off+1, w)
                 else:
                     dtm.dtm_set_watchpoint(wp+off, gen=False)
             dtm.next_port += 1
             if dtm.next_port == len(dtm.capture_port_list):
                 dtm.next_port = 0
-            if self.wps.is_multigrp():
+            if self.wps.is_multigrp() or (self.opts.data is not None):
                 break        # we already used both watchpoints
             if len(dtm.capture_port_list) <= 1:
                 break
@@ -606,32 +626,45 @@ class TraceSession:
                 self.C.dtc_disable()
                 self.C.dtc_enable()
 
+    def trace_readout(self, fifocap=None, clear=True):
+        """
+        Check for trace and accumulate it into a map:
+            xp -> wp# -> (w, data, cc)
+        """
+        if fifocap is None:
+            fifocap = {}
+        for xp in self.xps:
+            if xp not in fifocap:
+                fifocap[xp] = {}
+        for xp in self.xps:
+            fe = xp.dtm.dtm_fifo_ready()
+            for e in range(0, 4):
+                if fe & (1 << e):
+                    w = xp.dtm.dtm_wp_config(e, value=False)
+                    (data, cc) = xp.dtm.dtm_fifo_entry(e)
+                    if self.opts.immediate:
+                        self.TV.decode_packet(xp, e, w, data, cc)
+                    ee = (e - 1) if (self.opts.data is not None and (e & 1)) else e
+                    if ee not in fifocap[xp]:
+                        fifocap[xp][ee] = []
+                    fifocap[xp][ee].append((w, data, cc))
+            if clear:
+                xp.dtm.dtm_clear_fifo()
+        return fifocap
+
     def trace(self):
         """
         Start trace, capture some FIFO packets (emptying the FIFO) and stop.
         Return a map:
-            xp -> wp# -> (data, cc)
+            xp -> wp# -> (w, data, cc)
         """
         self.trace_start()
         # Prepare to capture FIFO packets
         fifocap = {}
-        for xp in self.xps:
-            fifocap[xp] = {}
-            for i in range(4):
-                fifocap[xp][i] = []
         for i in range(self.opts.samples):
             # Wait for a while
             time.sleep(self.opts.sleep)
-            if True:
-                for xp in self.xps:
-                    fe = xp.dtm.dtm_fifo_ready()
-                    for e in range(0, 4):
-                        if fe & (1 << e):
-                            (data, cc) = xp.dtm.dtm_fifo_entry(e)
-                            if self.opts.immediate:
-                                self.TV.decode_packet(xp, e, data, cc)
-                            fifocap[xp][e].append((data, cc))
-                    xp.dtm.dtm_clear_fifo()
+            self.trace_readout(fifocap, clear=True)
         self.trace_stop()
         return fifocap
 
@@ -640,9 +673,9 @@ class TraceSession:
         Decode and print some flits captured by trace().
         """
         for xp in self.xps:
-            for e in range(0, 4):
-                for (data, cc) in fifocap[xp][e]:
-                    self.TV.decode_packet(xp, e, data, cc)
+            for e in sorted(fifocap[xp].keys()):
+                for (w, data, cc) in fifocap[xp][e]:
+                    self.TV.decode_packet(xp, e, w, data, cc)
 
     def trace_stop(self):
         # Stop generating trace, and collect it
@@ -679,8 +712,9 @@ class TraceSession:
         fe = dtm.dtm_fifo_ready()
         for e in range(0, 4):
             if fe & (1 << e):
+                w = xp.dtm.dtm_wp_config(e, value=False)
                 (data, cc) = dtm.dtm_fifo_entry(e)
-                self.TV.decode_packet(dtm.xp, e, data, cc)
+                self.TV.decode_packet(dtm.xp, e, w, data, cc)
 
     def show_status(self):
         """
@@ -705,21 +739,32 @@ if __name__ == "__main__":
     parser.add_argument("--include-polling", action="store_true", help="include CMN polling reqs from script")
     parser.add_argument("--histogram", action="store_true", help="print histogram of packet types")
     parser.add_argument("--setup", action="store_true", help="set up but don't capture")
+    parser.add_argument("--inspect", action="store_true", help="inspect captured data")
+    parser.add_argument("--no-clear", action="store_true", help="don't clear captured data")
     opts = parser.parse_args()
     o_verbose = opts.verbose
-    if opts.setup and opts.histogram:
-        print("In setup mode, actions like --histogram are not available", file=sys.stderr)
+    if opts.setup and opts.inspect:
+        print("Setup and inspect mode should be used separately", file=sys.stderr)
+        sys.exit(1)
+    if (opts.setup or opts.inspect) and opts.histogram:
+        print("In setup/inspect mode, actions like --histogram are not available", file=sys.stderr)
         sys.exit(1)
     o_include_polling = opts.include_polling
     if opts.histogram:
         vis = CMNHist()
     else:
         vis = CMNVis()
-    ts = TraceSession(opts, handler=vis)
+    ts = TraceSession(opts, handler=vis, init=(not opts.inspect))
     if opts.setup:
+        # With --setup, we set up a specific configuration and then exit, so we don't
+        # have the opportunity to rotate watchpoints between ports.
         if ts.check_need_rotation(warn=True):
             sys.exit(1)
         ts.trace_start()
+        sys.exit()
+    elif opts.inspect:
+        cap = ts.trace_readout(clear=(not opts.no_clear))
+        ts.show_captured_trace(cap)
         sys.exit()
     for _ in range(opts.iterations):
         cap = ts.trace()

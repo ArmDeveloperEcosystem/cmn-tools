@@ -61,7 +61,16 @@ regardless of capture format.
 
 Flit sampling and histograms
 ----------------------------
-cmn_capture.py offers two modes: sampling and histogramming.
+cmn_capture.py offers two modes: sampling, and setup/inspect.
+
+In the sampling mode, cmn_capture.py sets up watchpoints and
+then polls the FIFOs to check for captured data. If data is
+present, it is displayed either as a trace or (with --histogram)
+in histogram form.
+
+In setup/inspect mode, the tool is run first to set up watchpoints,
+then separately to check for captured data. This is described
+in more detail under "Setup/inspect mode" below.
 
 REQ, RSP, SNP and DAT traffic can be selected using the --vc option
 with values of 0 to 3 respectively. Additional command-line options
@@ -93,6 +102,58 @@ is shown indicating a request to a specific physical address.
 Note also the "ret=" field in the request directing the memory
 controller node to send the data directly to node 0x20 -
 likely the original requesting CPU for this data.
+
+
+Setup/inspect mode
+------------------
+In setup/inspect mode, cmn_capture.py is run first to set up
+watchpoints, then can be run again to check for captured data:
+
+    cmn_capture.py --setup ...
+    ... do something to generate traffic ...
+    cmn_capture.py --inspect
+    ... do something else
+    cmn_capture.py --inspect
+
+This mode may be particularly useful when debugging access to
+I/O devices.
+
+
+Data capture
+------------
+In addition to showing header details from REQ, RSP, SNP and DAT
+packets, cmn_capture.py offers limited support for capturing data
+payloads from DAT packets, i.e. the actual data being transported
+across the interconnect.
+
+To use this feature, it is necessary to know something about how
+data payloads are carried in CMN.
+
+Each DAT packet carries up to 32 bytes of data. The 'active' data
+is naturally aligned within the payload, e.g. for a 4-byte write to
+address 0x8018, the value will be at offset 0x18. CMN can capture
+either the low 16 bytes or the high 16 bytes. So to capture data
+for a transaction to a known address, bit 4 of the address should
+be examined to see whether the low or high 16 bytes should be
+captured.
+
+On top of this, 64-byte transfers (e.g. full cache lines) are
+carried in two DAT packets, distinguished by the DataId field
+being 0 or 2. So a single REQ for a 64-byte transfer, will be
+associated with two DAT packets, distinguished by DataId.
+
+In cmn_capture.py, the --data option specifies which data fragment
+to capture:
+
+    0: dataid=0, header + low 16 bytes
+    1: dataid=0, header + high 16 bytes
+    2: dataid=2, header + low 16 bytes
+    3: dataid=2, header + high 16 bytes
+
+In each case, the DAT packet header (with source, destination and
+opcode etc.) is also captured.
+
+This feature is not supported in CMN-600.
 
 
 Flit capture and security

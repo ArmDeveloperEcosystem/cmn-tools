@@ -202,6 +202,8 @@ class CMNSelectSingle:
     def can_match_devices_at_port(self, port):
         """
         Check if the selector can match some devices under a CMNPort object.
+        This may check the port properties (although watch out for CALs!),
+        and possible node ids at the port.
         """
         if not self.can_match_devices_at_xp(port.xp):
             return False
@@ -209,6 +211,13 @@ class CMNSelectSingle:
             return False
         if self.node_props is not None and not port.has_properties(self.node_props):
             return False
+        if self.node_id is not None:
+            # See if the specified node might be at this port. We need to mask off the
+            # device bit(s), and the mask will depend on the number of ports at this XP.
+            nb = port.xp.n_device_bits()
+            id = self.node_id & ~((1 << nb) - 1)
+            if id != port.base_id():
+                return False
         return True
 
 
