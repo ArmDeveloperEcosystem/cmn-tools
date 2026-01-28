@@ -130,10 +130,7 @@ def xp_node_ids(xp):
      - devices with multiple nodes with the same device id
     """
     n_ports = xp.n_device_ports()
-    for port_num in range(n_ports):
-        port = xp.port_object(port_num)
-        if port.device_type() is None:
-            continue
+    for port in xp.ports():
         base_id = port.base_id()
         devices = {}
         port_desc = cmn_port_device_type_str(port.device_type())

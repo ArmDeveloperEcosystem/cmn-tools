@@ -698,7 +698,7 @@ class CMNNodeXP(CMNNodeBase):
         self.dtm = dtm0     # Legacy
         if self.C.multiple_dtms and self.n_device_ports() > 2:
             self.dtms.append(CMNDTM(self, index=1))
-        self.port_objects = {}
+        self._port_objects = {}
         self.skipped_nodes = None
         # At this point, child device nodes are not yet discovered.
         # In CMN S3, device discovery may be hindered by node isolation.
@@ -708,7 +708,7 @@ class CMNNodeXP(CMNNodeBase):
             type = self.connect_info_type(connect_info)
             if type != CMN_PORT_DEVTYPE_NOT_CONNECTED:
                 po = CMNPort(self, pn, connect_info)
-                self.port_objects[pn] = po
+                self._port_objects[pn] = po
         # At this point, CMNPort objects have been created for all ports in use,
         # but we haven't discovered device nodes.
 
@@ -736,7 +736,7 @@ class CMNNodeXP(CMNNodeBase):
         Return the CMNPort object for a given port.
         Return None if port does not exist or is not connected.
         """
-        return self.port_objects.get(port_number, None)
+        return self._port_objects.get(port_number, None)
 
     def port_dtm(self, p):
         if len(self.dtms) > 1 and p >= 2:
@@ -805,9 +805,9 @@ class CMNNodeXP(CMNNodeBase):
         else:
             return "?"
 
-    def ports(self, props):
+    def ports(self, props=CMN_PROP_none):
         """
-        Yield port numbers of any ports with the given properties,
+        Yield port objects of any ports with the given properties,
         based on testing the XP's "port connected device" info.
         This should be usable before scanning child nodes, because we
         rely on it in CMN S3 to avoid lockups due to device isolation.
@@ -815,7 +815,7 @@ class CMNNodeXP(CMNNodeBase):
         for p in range(0, 4):
             pt = self.port_device_type(p)
             if pt is not None and cmn_port_device_type_has_properties(pt, props):
-                yield p
+                yield self.port_object(p)
 
     def has_any_ports(self, props):
         """

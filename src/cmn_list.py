@@ -164,8 +164,7 @@ class CMNLister:
         Show the XP's child devices. Although these are discovered directly from the XP,
         we group them by their device port.
         """
-        for p in range(0, xp.n_device_ports()):
-            port = xp.port_object(p)
+        for port in xp.ports():
             if port.has_properties(self.port_props):
                 self.show_port_itself(port, pfx=pfx)
                 self.show_port_nodes(port, pfx=(pfx+"  "))
