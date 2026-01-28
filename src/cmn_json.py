@@ -89,14 +89,21 @@ def cmn_from_json(j, S):
             # We now omit unconnected ports in the JSON, but some old files had "null" here
             if p_type is None:
                 continue        # unconnected port
-            po = xp.create_port(port=p, type=p_type, type_s=jp["type_s"])
+            po = xp.create_port(port_number=p, type=p_type, type_s=jp["type_s"])
             po.cal = jp.get("cal", 0)
             if isinstance(po.cal, bool):
                 # handle older JSON schema, pre CAL4
                 po.cal = 2 if po.cal else 0
+            po.cal_credited_slices = jp.get("ccs", None)
             if "devices" in jp:
                 for jd in jp["devices"]:
-                    n = C.create_node(type=jd["type"], type_s=jd["type_s"], xp=xp, port=p, id=jd["id"], logical_id=jd.get("logical_id", None))
+                    n = C.create_node(type=jd["type"], type_s=jd["type_s"], xp=xp, port_number=p, id=jd["id"], logical_id=jd.get("logical_id", None))
+            if "pdevices" in jp:
+                for jd in jp["pdevices"]:
+                    dn = jd["device_number"]
+                    if dn in po.pdevices:
+                        if "dcs" in jd:
+                            po.pdevices[dn].device_credited_slices = jd["dcs"]
             if "attached" in jp:
                 for ja in jp["attached"]:
                     if ja["type"] == "cpu":
@@ -188,6 +195,39 @@ def json_from_cpu(co):
     return j
 
 
+def json_from_device_node(d):
+    jd = {
+        "id": d.node_id(),
+        "type": d.type(),
+        "type_s": d.type_str(),
+    }
+    if d.logical_id() is not None:
+        jd["logical_id"] = d.logical_id()
+    return jd
+
+
+def json_from_port(p):
+    jp = {
+        "port": p.port_number,
+        "type": p.connected_type,
+        "type_s": p.connected_type_s,
+    }
+    if p.cal:
+        jp["cal"] = p.cal
+        if p.cal_credited_slices is not None:
+            jp["ccs"] = p.cal_credited_slices
+    jp["pdevices"] = []
+    for dn in p.device_numbers():
+        jd = {
+            "device_number": dn,
+            "id": p.base_id() + dn,
+        }
+        if p.device_credited_slices(dn):
+            jd["dcs"] = p.device_credited_slices(dn)
+        jp["pdevices"].append(jd)
+    return jp
+
+
 def json_from_xp(xp):
     (x, y) = xp.XY()
     j = {
@@ -211,28 +251,12 @@ def json_from_xp(xp):
     if nmcs:
         j["mcs_north"] = nmcs
     for i in range(xp.n_device_ports()):
-        #p = xp.port[i]
-        dt = xp.port_device_type(i)
-        if dt is None:
-            continue     # unused port
-        jp = {
-            "port": i,
-            "type": dt,
-            "type_s": xp.port_device_type_str(i),
-        }
-        if xp.port_has_cal(i):
-            jp["cal"] = xp.port_has_cal(i)
+        p = xp.port_object(i)
+        if p is None:
+            continue
+        jp = json_from_port(p)
         if list(xp.port_nodes(i)):
-            jp["devices"] = []
-            for d in xp.port_nodes(i):
-                jd = {
-                    "id": d.node_id(),
-                    "type": d.type(),
-                    "type_s": d.type_str(),
-                }
-                if d.logical_id() is not None:
-                    jd["logical_id"] = d.logical_id()
-                jp["devices"].append(jd)
+            jp["devices"] = [json_from_device_node(d) for d in xp.port_nodes(i)]
             assert jp["devices"]
         try:
             if xp.port[i].cpus:
@@ -335,6 +359,10 @@ def system_print_summary_info(S, opts):
             opts.summary or opts.output):
         print(S)
     if opts.summary:
+        """
+        Print a single-line summary of the system, with some alignment of fields
+        so that we can compare systems.
+        """
         C0 = S.CMNs[0]
         vsn = S.cmn_version()
         print("%-40s " % S.filename, end="")
@@ -351,11 +379,25 @@ def system_print_summary_info(S, opts):
         print(" %s" % vsn.chi_version_str(), end="")
         if vsn.mpam_enabled:
             print(" MPAM", end="")
+        else:
+            print("     ", end="")
         max_cal = 0
+        max_port_number = 0
         for p in S.ports():
             max_cal = max(max_cal, p.cal)
+            max_port_number = max(max_port_number, p.port_number)
         if max_cal:
             print(" CAL%u" % max_cal, end="")
+        else:
+            print("     ", end="")
+        print(" P%u" % max_port_number, end="")
+        ports_sparse = False
+        for xp in S.XPs():
+            pos = list(xp.ports())
+            if pos and pos[0].port_number != 0:
+                ports_sparse = True
+        if ports_sparse:
+            print(" sp", end="")
         if S.has_HNS():
             print(" HN-S", end="")
         if S.system_type:
@@ -402,6 +444,16 @@ def system_print_summary_info(S, opts):
         for port in S.ports():
             print("  %s: %s" % (port, property_str(port)))
     if opts.requesters:
+        """
+        Show all requesters in the mesh. There are three things we could do here:
+          - show all CMN device nodes classed as requesters. This will miss RN-Fs,
+            which are external and have no device nodes.
+          - show all XP ports which have requester type (or RN-F type specifically).
+            This will pick up RN-F ports, but won't list actual requester nodes
+            with their node ids.
+          - scan the XP RN-F ports and CAL information to produce a list of
+            RN-Fs with their node ids.
+        """
         print("Requester nodes:")
         for node in S.nodes(properties=cmn_enum.CMN_PROP_RN):
             print("  %s" % node)
@@ -409,6 +461,11 @@ def system_print_summary_info(S, opts):
         print("RN-F ports:")
         for port in S.ports(properties=cmn_enum.CMN_PROP_RNF):
             print("  %s" % port)
+        print("RN-Fs:")
+        for port in S.ports(properties=cmn_enum.CMN_PROP_RNF):
+            nd = port.cal if port.cal else 1
+            for d in range(nd):
+                print("  RN-F 0x%x" % (port.base_id() + d))
     if opts.home_nodes:
         print("Home node ports:")
         for port in S.ports():

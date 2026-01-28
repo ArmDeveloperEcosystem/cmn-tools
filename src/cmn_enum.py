@@ -24,10 +24,11 @@ E.g. with Linux perf, CMN node type numbers can be used in the
 
 CMN_PROP_none  = 0
 
-CMN_PROP_CFG   = 0x1000000   # Configuration node
-CMN_PROP_XP    = 0x2000000   # Crosspoint
-CMN_PROP_DEV   = 0x4000000   # Device node
-CMN_PROP_CHI   = (0x8000000 | CMN_PROP_DEV)   # CHI device node
+CMN_PROP_CFG   = 0x1000000   # Configuration node - not connected to mesh
+CMN_PROP_CONN  = 0x2000000   # CHI-connected node, either XP or CHI device node
+CMN_PROP_DEV   = 0x4000000   # Device node of any kind
+CMN_PROP_XP    = (0x8000000 | CMN_PROP_CONN)  # XP
+CMN_PROP_CHI   = (CMN_PROP_CONN | CMN_PROP_DEV)   # CHI device node (i.e. not SAM, MPAM etc.)
 
 CMN_PROP_RN    = (CMN_PROP_CHI | 0x0001)     # Requester e.g. RN-F, RN-I. Does not include HN-F.
 CMN_PROP_HN    = (CMN_PROP_CHI | 0x0002)     # Home node e.g. HN-F, HN-I
@@ -202,6 +203,7 @@ cmn_port_device_type_strings = {
 }
 
 
+CMN_PORT_DEVTYPE_NOT_CONNECTED  = 0x00    # Reserved, but means no devices on this port
 CMN_PORT_DEVTYPE_RNI            = 0x01
 CMN_PORT_DEVTYPE_RND            = 0x02
 CMN_PORT_DEVTYPE_RNF_CHIB       = 0x04
@@ -320,6 +322,8 @@ _prop_strs = {
     "CFG": CMN_PROP_CFG,
     "XP": CMN_PROP_XP,
     "DEV": CMN_PROP_DEV,
+    "CHI": CMN_PROP_CHI,
+    "CONN": CMN_PROP_CONN,
     "ALL": CMN_PROP_none,   # i.e. match everything
 }
 
@@ -349,7 +353,7 @@ def _print_all_enums():
     print()
     print("Connected device types:")
     for (k, v) in globals().items():
-        if k.startswith("CMN_PORT_DEVTYPE_") and not k.startswith("CMN_PORT_DEVTYPE_all_"):
+        if k.startswith("CMN_PORT_DEVTYPE_") and not k.startswith("CMN_PORT_DEVTYPE_all_") and v != CMN_PORT_DEVTYPE_NOT_CONNECTED:
             props = cmn_port_properties[v]
             print("  %-31s %04x  %-12s %04x  %s" % (k, v, cmn_port_device_type_str(v), props, cmn_properties_str(props)))
             #assert (v in CMN_PORT_DEVTYPE_all_HN) == cmn_port_device_type_has_properties(v, CMN_PROP_HN)

@@ -63,8 +63,8 @@ CMN_DTM_CONTROL_TRACE_NO_ATB           = 0x08     # trace to FIFO in XP
 
 CMN_DTM_FIFO_ENTRY_READY_off    = 0x118     # write 1 to clear
 CMN_DTM_FIFO_ENTRY0_0_off       = 0x120
-def CMN_DTM_FIFO_ENTRY_off(fn,dn):
-    return CMN_DTM_FIFO_ENTRY0_0_off + (fn * 24) + (dn * 8)
+def CMN_DTM_FIFO_ENTRY_off(fn, dn, nw):
+    return CMN_DTM_FIFO_ENTRY0_0_off + (fn * (nw * 8)) + (dn * 8)
 CMN_DTM_WP0_CONFIG_off          = 0x1A0
 CMN_DTM_WP0_VAL_off             = 0x1A8
 CMN_DTM_WP0_MASK_off            = 0x1B0    # 1 bit means ignore

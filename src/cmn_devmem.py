@@ -135,7 +135,7 @@ class CMNSecureAccess:
             self.node.set_secure_access(self.old)
 
 
-class CMNNode:
+class CMNNodeBase:
     """
     A single CMN node, at some offset in the overall peripheral space.
     Spans a 16K range of configuration registers.
@@ -182,6 +182,9 @@ class CMNNode:
         self.discovered_children = False
         #self.children = []
         #print("%s%s" % ((self.level()*"  "), self))
+
+    def CMN(self):
+        return self.C
 
     def do_trace_reads(self):
         return (self.diag_trace | self.C.diag_trace) & DIAG_READS
@@ -394,6 +397,9 @@ class CMNNode:
                 # Probably a child of a RN-F port
                 continue
             self.children.append(child_node)
+            if self.is_XP():
+                # The XP will have CMNPort objects for all its ports. The device nodes should point back to the port.
+                child_node.port = self.port_object(child_node.device_port())
         # Check that the other child pointers are zero.
         # TBD: this shouldn't really be controlled by 'verbose'.
         if self.C.verbose >= 4:
@@ -474,6 +480,10 @@ class CMNNode:
         return node_type_has_pmu_events(self.type())
 
     def XY(self):
+        """
+        Get the (X, Y) coordinates for the node. This can only be done when
+        the mesh size is known.
+        """
         id = self.node_id()
         cb = self.C.coord_bits
         assert cb is not None, "can't get coordinates until mesh size is known"
@@ -489,37 +499,45 @@ class CMNNode:
     def y(self):
         return self.XY()[1]
 
-    def coords(self):
+    def PD(self):
         """
-        Return device coordinates as a tuple (X, Y, P, D).
-        For an XP, P and D will be zero.
-        Otherwise, P is the port number, and D is the device number.
-        D is generally zero, but for CAL-attached devices it may be 0 or 1.
+        Get the (port, device) for the node. We need to know the number of ports.
         """
         id = self.node_id()
-        (X, Y) = self.XY()
-        # Old rule (as per docs):
+        # Old rule (as per published CMN TRM):
         #   If the CMN has at least one XP with more than 2 device ports,
         #   all device ids use 2 bits for the port and one for the device.
         #   Otherwise it's 1 bit for the port and 2 for the device.
         # Actual rule:
-        #   If this XP hsa more than 2 device ports, use 2 bits for the port.
+        #   If this XP has more than 2 device ports, use 2 bits for the port.
         if self.parent is not None and self.XP().n_device_bits() == 1:
             D = BIT(id, 0)
             P = BITS(id, 1, 2)
         else:
             D = BITS(id, 0, 2)
             P = BIT(id, 2)
+        return (P, D)
+
+    def coords(self):
+        """
+        Return device coordinates as a tuple (X, Y, P, D).
+        For an XP, P and D will be zero.
+        Otherwise, P is the port number, and D is the device number.
+        D is generally zero, but for CAL-attached devices it may be 0 or 1.
+        (X, Y) can only be discovered after the mesh size is known.
+        """
+        (X, Y) = self.XY()
+        (P, D) = self.PD()
         return (X, Y, P, D)
 
     def device_port(self):
         assert not self.is_XP()
-        (X, Y, P, D) = self.coords()
+        (P, D) = self.PD()
         return P
 
     def device_number(self):
         assert not self.is_XP()
-        (X, Y, P, D) = self.coords()
+        (P, D) = self.PD()
         return D
 
     def show(self):
@@ -558,33 +576,42 @@ class CMNNode:
 class CMNPort:
     """
     Information about an XP port
+    The XP's CMNPort objects are created along with the XP, based on the
+    "connected device info" in the XP. Initially they are not populated
+    with device nodes.
     """
-    def __init__(self, xp, rP):
+    def __init__(self, xp, port_number=None, connect_info=None):
         self.xp = xp
-        self.rP = rP
-        self.connect_info = xp.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(rP))
-        self._port_info = {}
+        self.port_number = port_number
+        self.connect_info = connect_info
+        self.connected_type = self.xp.connect_info_type(self.connect_info)
+        self._port_info = {}    # Cache for the port_info register(s)
 
     @property
-    def port_number(self):
-        return self.rP
+    def connected_type_s(self):
+        return cmn_port_device_type_str(self.connected_type)
 
     def device_type(self):
-        dtbits = 6 if self.xp.C.part_ge_S3() else 5
-        dt = BITS(self.connect_info, 0, dtbits)
-        return dt if dt else None        # None indicates no device(s)
+        return self.connected_type
 
     def has_properties(self, props):
         return cmn_port_device_type_has_properties(self.device_type(), props)
 
     def port_info(self, n=0):
+        """
+        Get the port_info[n] word for the port. Return None if
+        the word is not present for this implementation.
+        Lazy: reads on demand, caches the result.
+        """
         if n not in self._port_info:
             if not self.xp.C.part_ge_700():
-                assert n == 0
-                off = 0x900 + (self.rP * 8)
+                if n > 0:
+                    return None
+                off = CMN_any_UNIT_INFO + (self.port_number * 8)
             else:
-                assert n <= 1
-                off = 0x900 + (self.rP * 16) + (n * 8)
+                if n > 1:
+                    return None
+                off = CMN_any_UNIT_INFO + (self.port_number * 16) + (n * 8)
             self._port_info[n] = self.xp.read64(off)
         return self._port_info[n]
 
@@ -596,16 +623,55 @@ class CMNPort:
         has_cal = BIT(self.connect_info, CMN_XP_DEVICE_PORT_CAL_CONNECTED_BIT)
         return BITS(self.port_info(), 0, 3) if has_cal else 0
 
+    @property
+    def cal(self):
+        return self.has_cal()
+
+    @property
+    def cal_credited_slices(self):
+        return BITS(self.connect_info, 8, 4)
+
+    def device_credited_slices(self, d):
+        """
+        Return device credited slices for device D<d> on this port.
+        Having this as a port function means this works for RN-Fs and SN-Fs,
+        which are external to CMN and don't have node objects.
+        """
+        return BITS(self.connect_info, 16+(d*4), 4)
+
     def nodes(self):
-        # Yield nodes in device order
-        for n in self.xp.port_nodes(self.rP):
+        """
+        Yield port nodes in device-number (and hence node-id) order
+        """
+        for n in self.xp.port_nodes(self.port_number):
             yield n
 
+    def max_devices(self):
+        return 1 << self.xp.n_device_bits()
+
+    def device_numbers(self):
+        """
+        Return the sorted list of device numbers (based at 0) in use at this port
+       """
+        dmap = {}
+        for n in self.nodes():
+            dmap[n.device_number()] = True
+        return sorted(dmap.keys())
+
+    def device_nodes(self, d):
+        """
+        Yield a port's device nodes for a given device number.
+        The order of device nodes is not significant.
+        """
+        for n in self.xp.port_nodes(self.rp):
+            if n.device_number() == d:
+                yield n
+
     def base_id(self):
-        return self.xp.port_base_id(self.rP)
+        return self.xp.port_base_id(self.port_number)
 
     def __str__(self):
-        return "%s P%u" % (self.xp, self.rP)
+        return "%s P%u" % (self.xp, self.port_number)
 
 
 # Remember if we skipped some device nodes
@@ -618,14 +684,14 @@ MCS_EAST   = 0
 MCS_NORTH  = 1
 
 
-class CMNNodeXP(CMNNode):
+class CMNNodeXP(CMNNodeBase):
     """
     Crosspoint node. This has special behavior as follows:
-     - manages child nodes on its ports P0 and P1, possibly several on both.
-     - contains a Debug/Trace Monitor (DTM)
+      - manages child nodes on its ports P0, P1..., possibly several on each
+      - contains a Debug/Trace Monitor (DTM), or possibly multiple DTMs
     """
     def __init__(self, *args, **kwargs):
-        CMNNode.__init__(self, *args, **kwargs)
+        CMNNodeBase.__init__(self, *args, **kwargs)
         # TBD: multiple-DTM configuration
         dtm0 = CMNDTM(self)
         self.dtms = [dtm0]
@@ -636,10 +702,27 @@ class CMNNodeXP(CMNNode):
         self.skipped_nodes = None
         # At this point, child device nodes are not yet discovered.
         # In CMN S3, device discovery may be hindered by node isolation.
+        # But we can discover which ports exist.
+        for pn in range(self.n_device_ports()):
+            connect_info = self.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(pn))
+            type = self.connect_info_type(connect_info)
+            if type != CMN_PORT_DEVTYPE_NOT_CONNECTED:
+                po = CMNPort(self, pn, connect_info)
+                self.port_objects[pn] = po
+        # At this point, CMNPort objects have been created for all ports in use,
+        # but we haven't discovered device nodes.
 
     def DTMs(self):
         for dtm in self.dtms:
             yield dtm
+
+    def connect_info_type(self, connect_info):
+        """
+        Get the "connected device info" from a port-connected-device word.
+        This will indicate whether the port is in use, and its type if so.
+        """
+        dtbits = 6 if self.C.part_ge_S3() else 5
+        return BITS(connect_info, 0, dtbits)
 
     def mesh_credited_slices(self, i):
         assert i in [MCS_EAST, MCS_NORTH]
@@ -648,21 +731,17 @@ class CMNNodeXP(CMNNode):
         mcs = BITS(link, 0, 4)
         return mcs
 
-    def port_object(self, rP):
+    def port_object(self, port_number):
         """
         Return the CMNPort object for a given port.
-        Return None if port does not exist.
+        Return None if port does not exist or is not connected.
         """
-        if rP >= 2 and not self.C.part_ge_700():
-            return None    # older CMN doesn't have P2 onwards
-        if rP not in self.port_objects:
-            self.port_objects[rP] = CMNPort(self, rP)
-        return self.port_objects[rP]
+        return self.port_objects.get(port_number, None)
 
     def port_dtm(self, p):
         if len(self.dtms) > 1 and p >= 2:
             # In the multiple-DTM case, DTM#1 handles P2/P3
-            return self.dtms[1]
+            return self.dtms[p // 2]
         else:
             return self.dtms[0]
 
@@ -1047,7 +1126,7 @@ class CMNDTM:
             dwidth = 196
         ws = []
         for w in range(0, self.N_FIFO_WORDS):
-            ws.append(self.dtm_read64(CMN_DTM_FIFO_ENTRY_off(e, w)))
+            ws.append(self.dtm_read64(CMN_DTM_FIFO_ENTRY_off(e, w, self.N_FIFO_WORDS)))
         cc = BITS(ws[-1], cc_off, 16)
         if self.N_FIFO_WORDS == 3:
             b = struct.pack("<QQQ", ws[0], ws[1], ws[2])[:(dwidth//8)]
@@ -1223,13 +1302,22 @@ class CMNDTM:
         return (None, None, None, None)
 
 
-class CMNNodeDT(CMNNode):
+class CMNNodeDev(CMNNodeBase):
+    """
+    Any device node (not XP or CFG).
+    Currently subclassed for DTC.
+    """
+    def __init__(self, *args, **kwargs):
+        CMNNodeBase.__init__(self, *args, **kwargs)
+
+
+class CMNNodeDT(CMNNodeDev):
     """
     DTC (debug/trace controller) node. There is one per DTC domain.
     The one located in the HN-D is designated as DTC0, and has additional functions.
     """
     def __init__(self, *args, **kwargs):
-        CMNNode.__init__(self, *args, **kwargs)
+        CMNNodeDev.__init__(self, *args, **kwargs)
         if not self.C.part_ge_S3():
             self.PM_BASE = CMN_DTC_PM_BASE_OLD
         else:
@@ -1477,9 +1565,15 @@ class CMN:
         # For now, if we see CMN-600AE, pretend it's CMN-600, to not break tests in code.
         if product_id == cmn_base.PART_CMN600AE:
             product_id = cmn_base.PART_CMN600
-        # We can't get chi_version() until we've read unit_info (por_info_global)
+        # We can't get chi_version() until we've read unit_info (por_info_global) and revision (periph_2/3)
         self.product_config = cmn_config.CMNConfig(product_id=product_id)
         del temp_m
+
+        self.rootnode = self.create_node(rootnode_offset)
+
+        # The release is e.g. r0p0, r1p2
+        self.product_config.set_revision_code(BITS(self.rootnode.read64(CMN_CFG_PERIPH_23), 4, 4))
+        # Now it's safe to discover things whose identifiers are revision-dependent
 
         # Load the PMU event database, if available
         pmu_event_fn = cmn_events.event_file_name(product_id)
@@ -1492,9 +1586,9 @@ class CMN:
         else:
             self.pmu_events = None
 
-        self.rootnode = self.create_node(rootnode_offset)
         self.unit_info = self.rootnode.read64(CMN_any_UNIT_INFO)   # por_info_global
-        self.multiple_dtms = BIT(self.unit_info, 63)
+
+        self.multiple_dtms = BIT(self.unit_info, (59 if self.part_ge_S3r2() else 63))
         if verbose > 0 and self.multiple_dtms:
             self.log("multiple DTMs enabled")
 
@@ -1508,14 +1602,11 @@ class CMN:
         if verbose and self.isolation_enabled:
             self.log("node isolation is enabled - discovery might be affected")
 
-
         # Some registers are only accessible at a higher privilege level.
         # Pre CCA this was Secure. With CCA it's Root, unless LEGACY_TZ_EN.
         # TBD currently we don't discover LEGACY_TZ_EN.
         self.root_security = "ROOT" if self.part_ge_S3() else "S"
 
-        # The release is e.g. r0p0, r1p2
-        self.product_config.set_revision_code(BITS(self.rootnode.read64(CMN_CFG_PERIPH_23), 4, 4))
         self.product_config.mpam_enabled = self.part_ge_650() and (BIT(self.unit_info, 49) != 0)
         self.product_config.chi_version = self.chi_version()
         assert self.product_config.chi_version >= 2, "failed to detect CHI version: info=0x%x" % self.unit_info
@@ -1527,6 +1618,7 @@ class CMN:
             self.DTM_BASE = CMN_DTM_BASE_S3r1  # 0xA000
         if verbose:
             self.log("CMN configuration: %s" % self.product_config, level=1)
+
         #
         # Now traverse the CMN space to discover all the nodes. We can optionally
         # defer device discovery.
@@ -1743,7 +1835,7 @@ class CMN:
         if not self.part_ge_650():
             # In CMN-600 there's a single CHI-C flag
             return 2 + BIT(self.unit_info, 49)
-        elif not self.part_ge_S3():
+        elif not self.part_ge_S3r2():
             return BITS(self.unit_info, 60, 3)
         else:
             return BITS(self.unit_info, 56, 3)
@@ -1807,7 +1899,7 @@ class CMN:
             # Under XPs with RN-F ports, we sometimes see a valid child offset that points to zeroes
             n = None
         else:
-            n = CMNNode(self, node_offset, map=m, parent=parent, is_external=is_external, node_info=node_info)
+            n = CMNNodeDev(self, node_offset, map=m, parent=parent, is_external=is_external, node_info=node_info)
         if n is not None and node_has_logical_id(node_type):
             nid = n.logical_id()
             nk = (node_type, nid)
@@ -2012,11 +2104,11 @@ class CMNDiagramPerf(CMNDiagram):
         for xp in self.C.XPs():
             self.pmu[xp] = xp.dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
 
-    def port_label_color(self, xp, p):
-        (dev_label, dev_color) = CMNDiagram.port_label_color(self, xp, p)
-        if xp.port_device_type_str(p) == "HN-D":
+    def port_label_color(self, po):
+        (dev_label, dev_color) = CMNDiagram.port_label_color(self, po)
+        if po.has_properties(CMN_PROP_HND):
             # Does this have a DTC node, and if so, is it enabled?
-            for nd in xp.port_nodes(p):
+            for nd in po.nodes():
                 if nd.type() == CMN_NODE_DT and nd.dtc_is_enabled():
                     dev_color += "!"
         return (dev_label, dev_color)

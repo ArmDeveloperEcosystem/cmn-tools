@@ -11,7 +11,7 @@ more CMN mesh interconnects. Each mesh consists of a rectangular
 grid of crosspoints (XPs), to which are attached devices such
 as requestors and home nodes.
 
-The classes (System, CMN, CMNNode and CPU) can be used directly,
+The classes (System, CMN, CMNNode... and CPU) can be used directly,
 or subclassed to provide more detailed functionality.
 
 The CPU class is intended to help tools associate CPUs with RN-Fs.
@@ -292,11 +292,11 @@ class CMN(NodeGroup):
         Yield (xp, n) pairs
         """
         for p in self.ports():
-            yield (p.xp, p.port)
+            yield (p.xp, p.port_number)
 
     def nodes(self, properties=0):
         """
-        Yield CMN nodes matching properties. This does not include
+        Yield CMN device nodes matching properties. This does not include
         RN-F and SN-F nodes, as these are external to the CMN.
         """
         for (xp, p) in self.xp_ports():
@@ -347,7 +347,7 @@ class CMN(NodeGroup):
         all be in use. E.g. if the XP is configured with 3 ports of which P0 and P2
         are in use, pass in n_ports=3.
         """
-        xp = CMNXP(owner=self, id=id, logical_id=logical_id, n_ports=n_ports, x=x, y=y)
+        xp = CMNNodeXP(owner=self, id=id, logical_id=logical_id, n_ports=n_ports, x=x, y=y)
         xy = (x, y)
         assert xy not in self.xy_xp, "XP (%u,%u) already registered" % (x, y)
         self.xy_xp[xy] = xp
@@ -360,13 +360,15 @@ class CMN(NodeGroup):
             self.extra_ports = True
         return xp
 
-    def create_node(self, type, type_s=None, port=None, xp=None, id=None, logical_id=None):
+    def create_node(self, type, type_s=None, port_number=None, xp=None, id=None, logical_id=None):
+        """
+        Create a device node associated with a port
+        """
         assert type != CMN_NODE_XP        # use create_xp to create XP node
         assert type != CMN_NODE_CFG       # config node not explicit in data structure
-        pd = xp.port[port]
-        n = CMNNode(type=type, type_s=type_s, owner=pd, id=id, logical_id=logical_id)
+        pd = xp.port[port_number]
+        n = CMNNodeDev(type=type, type_s=type_s, owner=pd, id=id, logical_id=logical_id)
         pd.devices.append(n)
-        n.port = port
         if n.id not in self.id_nodes:
             self.id_nodes[n.id] = {}
         self.id_nodes[n.id][type] = n
@@ -387,27 +389,49 @@ class CMN(NodeGroup):
         return s
 
 
+class CMNDevice:
+    """
+    A 'device' corresponding to a single device number or node id.
+    This may comprise several device nodes.
+    Belongs to a CMNPort object.
+    """
+    def __init__(self, port=None, device_number=None):
+        self.port = port
+        assert device_number < port.max_devices(), "unexpected device number: %s" % device_number
+        self.device_number = device_number
+        self.device_credited_slices = None
+        self.device_nodes = []       # Order of device nodes is not significant
+
+    def node_id(self):
+        return self.port.base_id() + self.device_number
+
+    def __str__(self):
+        return "%s.D%u" % (self.port, self.device_number)
+
+
 class CMNPort:
     """
     Not a separate device, but a port on an XP.
     This may have a "connected device type".
     """
-    def __init__(self, xp=None, port=None, type=None, type_s=None, cal=None):
-        assert isinstance(xp, CMNXP), "attempt to create port on non-XP: %s" % xp
-        assert port in [0, 1, 2, 3], "unexpected port number: %s" % port
+    def __init__(self, xp=None, port_number=None, type=None, type_s=None, cal=None):
+        assert isinstance(xp, CMNNodeXP), "attempt to create port on non-XP: %s" % xp
+        assert port_number in [0, 1, 2, 3], "unexpected port number: %s" % port_number
         self.xp = xp
-        self.port = port
+        self.port_number = port_number
         self.connected_type = type
         if type_s is None and type is not None:
-            type_s = cmn_port_device_type_strings[type]
+            type_s = cmn_port_device_type_str(type)
         self.connected_type_s = type_s
         self.cal = cal
-        self.devices = []     # will be populated with connected CMNNodes
+        self.cal_credited_slices = None
+        self.devices = []     # will be populated with connected CMNNodeDevs
+        self.pdevices = {}    # CMNDevice objects, indexed by device number
         self.cpus = []        # for RN-Fs, will be populated with CPU objects
 
     @property
-    def port_number(self):
-        return self.port
+    def port(self):
+        return self.port_number
 
     def base_id(self):
         """
@@ -415,7 +439,7 @@ class CMNPort:
         will be distinguished by LSBs. The port base id is itself distinguished
         from the XP id, by bit 2 or bits 2:1.
         """
-        return self.xp.node_id() + (self.port << self.xp.id_device_bits())
+        return self.xp.node_id() + (self.port_number << self.xp.id_device_bits())
 
     def ids(self):
         """
@@ -439,6 +463,19 @@ class CMNPort:
         else:
             mask = (1 << self.xp.id_device_bits()) - 1
         return (id & ~mask) == bid
+
+    def max_devices(self):
+        return 1 << self.xp.id_device_bits()
+
+    def device_numbers(self):
+        return sorted(self.pdevices.keys())
+
+    def device_credited_slices(self, d):
+        dn = self.pdevices.get(d, None)
+        return dn.device_credited_slices if dn is not None else None
+
+    def device_nodes(self, d):
+        return self.pdevices[d].device_nodes if d in self.pdevices else []
 
     def add_cpu(self, co):
         self.CMN().id_lpid_cpu[(co.id, co.lpid)] = co
@@ -485,6 +522,9 @@ class CMNNodeBase:
 
     def owning_cmn(self):
         return self.XP().owner
+
+    def CMN(self):
+        return self.owning_cmn()
 
     def logical_id(self):
         return self._logical_id
@@ -543,7 +583,7 @@ class CMNNodeBase:
         return s
 
 
-class CMNNode(CMNNodeBase):
+class CMNNodeDev(CMNNodeBase):
     """
     A CMN device node (not XP), on a port of an XP.
 
@@ -560,7 +600,19 @@ class CMNNode(CMNNodeBase):
             if owner.CMN().product_config.product_id != PART_CMN600:
                 assert False, "unexpected node id 0x%03x on %s" % (id, owner)
         CMNNodeBase.__init__(self, type=type, type_s=type_s, owner=owner, id=id, logical_id=logical_id)
-        self.device = id & device_mask
+        dn = id & device_mask
+        if dn not in self.owner.pdevices:
+            self.owner.pdevices[dn] = CMNDevice(self.owner, device_number=dn)
+        self.device_object = self.owner.pdevices[dn]
+        self.device_object.device_nodes.append(self)
+        self.device = dn
+
+    @property
+    def port(self):
+        return self.owner
+
+    def device_number(self):
+        return self.device
 
     def XP(self):
         return self.owner.xp
@@ -586,7 +638,7 @@ _pos_n_links = [4, 3, 3, 2, 3, 2, 2, 1, 3, 2, 2, 1, 2, 1, 1, 0]
 _links_max_ports = [4, 4, 4, 3, 2]
 
 
-class CMNXP(CMNNodeBase):
+class CMNNodeXP(CMNNodeBase):
     """
     A CMN crosspoint (XP). This has device ports - often two, but sometimes more
     (for edge and corner crosspoints) or fewer.
@@ -643,10 +695,13 @@ class CMNXP(CMNNodeBase):
     def mesh_credited_slices(self, i):
         return [self.mcs_east, self.mcs_north][i]
 
-    def create_port(self, port, type=None, type_s=None, cal=None):
-        p = CMNPort(self, port, type=type, type_s=type_s, cal=cal)
-        self.port[port] = p
+    def create_port(self, port_number, type=None, type_s=None, cal=None):
+        p = CMNPort(self, port_number, type=type, type_s=type_s, cal=cal)
+        self.port[port_number] = p
         return p
+
+    def port_object(self, pn):
+        return self.port.get(pn, None)
 
     def ports(self):
         for pn in sorted(self.port.keys()):

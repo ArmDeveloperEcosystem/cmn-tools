@@ -83,6 +83,7 @@ CHI_REQ_opcodes = {
     0x42: "WEoE",   # WriteEvictOrEvict
     0x43: "WrUZ",   # WriteUniqueZero
     0x44: "WNSZ",   # WriteNoSnoopZero
+    0x4c: "RPUn",   # ReadPreferUnique
 }
 
 

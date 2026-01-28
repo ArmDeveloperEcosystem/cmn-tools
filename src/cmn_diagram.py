@@ -88,24 +88,23 @@ class CMNDiagram(textdiagram.TextDiagram):
             xp_color = "red"
         return (xp_label, xp_color)
 
-    def port_label_color(self, xp, p):
-        devtype = xp.port_device_type(p)
-        if devtype is None:
+    def port_label_color(self, po):
+        if po is None:
             return (None, None)
-        dev_label = xp.port_device_type_str(p)
+        devtype = po.connected_type
+        dev_label = cmn_port_device_type_str(devtype)
         if self.small:
             ix = dev_label.find('_')
             if ix > 0:
                 dev_label = dev_label[:ix]
         dev_color = self.dev_type_color(dev_label)
-        port_cal = xp.port_has_cal(p)
-        if port_cal:
-            dev_label = str(port_cal) + "x" + dev_label   # multiple devices on this port
+        if po.cal:
+            dev_label = str(po.cal) + "x" + dev_label   # multiple devices on this port
             # TBD: handle HCALs
-        dev_label = (self._id_fmt + ":%s") % (xp.port_base_id(p), dev_label)
-        if xp.port_device_type_str(p).startswith("RN-F"):
+        dev_label = (self._id_fmt + ":%s") % (po.base_id(), dev_label)
+        if po.has_properties(CMN_PROP_RNF):
             try:
-                cpus = xp.port[p].cpus
+                cpus = po.cpus
                 if cpus:
                     cpuns = sorted([co.cpu for co in cpus])
                     dev_label += ':' + ','.join([("#%u" % c) for c in cpuns])
@@ -152,11 +151,12 @@ class CMNDiagram(textdiagram.TextDiagram):
             (xp_label, xp_color) = self.xp_label_color(xp)
             self.at(cx, cy, xp_label, color=xp_color)
             for p in range(0, xp.n_device_ports()):
-                (dev_label, dev_color) = self.port_label_color(xp, p)
+                po = xp.port_object(p)
+                (dev_label, dev_color) = self.port_label_color(po)
                 if dev_label is None:
                     continue
                 if dev_color is not None:
-                    if xp.port_device_type_str(p) == "HN-D":
+                    if po.has_properties(CMN_PROP_HND):
                         # Does this have a DTC node, and if so, is it enabled?
                         for nd in xp.port_nodes(p):
                             if nd.type() == CMN_NODE_DT:
@@ -215,9 +215,14 @@ if __name__ == "__main__":
     parser.add_argument("--xheight", type=int, default=0, help="height adjust +/-")
     parser.add_argument("--color", choices=["auto", "always", "never"], default="auto", help="color output")
     parser.add_argument("--test", action="store_true")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
+    parser.add_argument("inputs", type=str, nargs="*", help="additional JSON inputs")
     opts = parser.parse_args()
-    S = cmn_json.system_from_json_file(opts.input)
-    C = S.CMNs[opts.cmn_instance]
-    D = CMNDiagram(C, small=(not opts.large), xwidth=opts.xwidth, xheight=opts.xheight)
-    D.update()
-    print(D.str_color(no_color=(opts.color == "never"), force_color=(opts.color == "always"), for_file=sys.stdout), end="")
+    if not opts.inputs:
+        opts.inputs = [opts.input]
+    for fn in opts.inputs:
+        S = cmn_json.system_from_json_file(fn)
+        C = S.CMNs[opts.cmn_instance]
+        D = CMNDiagram(C, small=(not opts.large), xwidth=opts.xwidth, xheight=opts.xheight)
+        D.update()
+        print(D.str_color(no_color=(opts.color == "never"), force_color=(opts.color == "always"), for_file=sys.stdout), end="")

@@ -171,11 +171,11 @@ class CMNLister:
                 self.show_port_nodes(port, pfx=(pfx+"  "))
 
     def show_port_itself(self, port, pfx="      "):
-        p = port.rP
+        p = port.port_number
         print(pfx + "P%u at 0x%x:" % (p, port.base_id()), end="")
         if True:
             port_info = port.port_info()
-            port_info_1 = port.port_info(1) if port.xp.C.part_ge_700() else None
+            port_info_1 = port.port_info(1)      # May be None for older CMNs
             connected_device_info = port.connect_info
             connected_device_type = port.device_type()
             if connected_device_type is None:
@@ -188,8 +188,8 @@ class CMNLister:
             # For a port with a CAL, num_dev indicates CAL2 vs CAL4.
             # A CCG has num_dev=1 but also has child nodes with device numbers 0 and 1.
             num_dev = BITS(port_info, 0, 3)
-            if BIT(connected_device_info, 7):
-                print(" (CAL%u)" % num_dev, end="")
+            if port.has_cal():
+                print(" (CAL%u)" % port.cal, end="")
             elif num_dev != 1:
                 print(" devices=%u" % num_dev, end="")
             if self.verbose:
@@ -199,13 +199,14 @@ class CMNLister:
             print()
             pfx += "  "
             if o_register_slices:
-                if BITS(connected_device_info, 16, 16) or BITS(connected_device_info, 8, 4):
+                has_dcs = any([(port.device_credited_slices(d) > 0) for d in range(num_dev)])
+                if has_dcs or (port.cal_credited_slices > 0):
                     print(pfx + "Device credited slices:", end="")
                     for d in range(num_dev):
-                        dcs = BITS(connected_device_info, 16+(d*4), 4)
+                        dcs = port.device_credited_slices(d)
                         if dcs > 0:
                             print(" D%u:%u" % (d, dcs), end="")
-                    calcs = BITS(connected_device_info, 8, 4)
+                    calcs = port.cal_credited_slices
                     if calcs > 0:
                         print(" CAL:%u" % (calcs), end="")
                     print()
@@ -614,6 +615,11 @@ def print_routing(CS, verbose=0):
                 print("  %6.2f %6.2f %6.2f  %s" % (rnf_mean_home[node_from], m_rnf, m_rnf_via_home, node_from))
         print("  RN-F to home node:     %s" % s_all_rnf_to_home)
         print("  RN-F to RN-F via home: %s" % s_all_rnf_via_home)
+    if False:
+        for node_from in C.nodes(CMN_PROP_CONN):
+            for node_to in C.nodes(CMN_PROP_CONN):
+                r = cmn_routing.Route(node_from, node_to)
+                print(r)
 
 
 if __name__ == "__main__":
