@@ -91,7 +91,7 @@ CMN_NODE_all_HN = [CMN_NODE_HNI, CMN_NODE_HNF, CMN_NODE_HNP, CMN_NODE_HNS]
 
 
 cmn_node_properties = {
-    CMN_NODE_DN          : CMN_PROP_CHI,    # TBD
+    CMN_NODE_DN          : CMN_PROP_DN,
     CMN_NODE_CFG         : CMN_PROP_CFG,
     CMN_NODE_DT          : CMN_PROP_DEV,    # TBD
     CMN_NODE_HNI         : CMN_PROP_HNI,
@@ -170,9 +170,9 @@ cmn_port_device_type_strings = {
     0x05: "RN-F_B_E",        # CHI Issue B processor/cluster with external SAM
     0x06: "RN-F_A",          # CHI Issue A processor/cluster with built-in SAM
     0x07: "RN-F_A_E",        # CHI Issue A processor/cluster with external SAM
-    0x08: "HN-T",            # HN-I with debug/trace control
+    0x08: "HN-T",            # HN-I with debug/trace control (DTC)
     0x09: "HN-I",            # Home Node I/O, non-coherent
-    0x0a: "HN-D",            # HN-T, with CFG and DVM, power control etc.
+    0x0a: "HN-D",            # HN-T, plus CFG and DVM, power control etc.
     0x0b: "HN-P",
     0x0c: "SN-F",            # Memory controller
     0x0d: "SBSX",            # CHI to AXI bridge
@@ -316,6 +316,7 @@ _prop_strs = {
     "SLC": CMN_PROP_HNF,
     "HN-I": CMN_PROP_HNI,
     "HN-D": CMN_PROP_HND,
+    "HN-T": CMN_PROP_HNT,
     "SN-F": CMN_PROP_SNF,
     "CCG": CMN_PROP_CCG,
     "SBSX": CMN_PROP_SBSX,

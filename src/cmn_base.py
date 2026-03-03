@@ -477,6 +477,11 @@ class CMNPort:
     def device_nodes(self, d):
         return self.pdevices[d].device_nodes if d in self.pdevices else []
 
+    def nodes(self):
+        for d in self.device_numbers():
+            for n in self.device_nodes(d):
+                yield n
+
     def add_cpu(self, co):
         self.CMN().id_lpid_cpu[(co.id, co.lpid)] = co
         self.cpus.append(co)

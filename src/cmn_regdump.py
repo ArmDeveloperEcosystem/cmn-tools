@@ -161,20 +161,29 @@ class CMNRegMapper:
         return rm
 
 
-class CMNRegDumper(CMNRegMapper):
+class Style:
+    """
+    Style controls for printing register information
+    """
+    def __init__(self, descriptions=True, description_limit=100, fields=True, flat=False, reset=True):
+        self.o_descriptions = descriptions
+        self.description_limit = 100
+        self.o_fields = fields
+        self.o_flat = flat
+        self.o_reset = reset
+
+
+class CMNRegDumper(CMNRegMapper, Style):
     """
     Dump CMN configuration registers
     """
     def __init__(self, regdefs_dir=None, regmaps=None, descriptions=True, description_limit=100, fields=True, include_read_only=False, skip_zeroes=True, match_reg_names=None, match_nodes=None, flat=False):
         CMNRegMapper.__init__(self, regdefs_dir=regdefs_dir, regmaps=regmaps)
-        self.o_descriptions = descriptions
-        self.description_limit = 100
-        self.o_fields = fields
+        Style.__init__(self, descriptions=descriptions, description_limit=description_limit, fields=fields, flat=flat)
         self.o_include_read_only = include_read_only
         self.o_match_reg_names = match_reg_names
         self.o_match_nodes = match_nodes
         self.o_skip_zeroes = skip_zeroes
-        self.o_flat = flat
         self.n_selected = 0    # Selected as matching name, regex etc.
         self.n_selected_2 = 0  # Selected after other filtering criteria (RO, zero etc.)
         self.n_regs_reserved_bits_set = 0
@@ -341,6 +350,9 @@ class CMNRegDumper(CMNRegMapper):
                     self.n_regs_reserved_bits_set += 1
 
     def reg_dump(self, reg, x):
+        """
+        Dump a register value (x) with reference to register definitions.
+        """
         if self.o_fields:
             # When listing fields, separate each register with a blank line.
             print()
@@ -351,7 +363,7 @@ class CMNRegDumper(CMNRegMapper):
             if reg.access:
                 print(" (%s)" % reg.access, end="")
             if reg.reset is not None and x == reg.reset[0]:
-                print(" (reset value)", end="")
+                print(" (reset value)", end="")    # i.e. register still has its reset value
             if self.o_descriptions and reg.desc:
                 print("  %s" % self.descstr(reg.desc), end="")
             print()
@@ -359,6 +371,9 @@ class CMNRegDumper(CMNRegMapper):
             self.reg_dump_fields(reg, x)
 
     def reg_dump_fields(self, reg, x):
+        """
+        Dump fields of a register (value x) with reference to register definitions.
+        """
         for fld in reg.fields:
             val = fld.extract(x)
             if val == 0 and self.o_skip_zeroes:
@@ -372,7 +387,7 @@ class CMNRegDumper(CMNRegMapper):
             print()
 
 
-def search_all_in_regdefs(reg_ex, rd, file_name=None, description=False, fields=False, flat=False):
+def search_all_in_regdefs(reg_ex, rd, style, file_name=None):
     """
     Search and describe registers in a regdefs
     """
@@ -385,26 +400,36 @@ def search_all_in_regdefs(reg_ex, rd, file_name=None, description=False, fields=
             if file_name is not None and not printed_file:
                 print("%s:" % file_name)
                 printed_file = True
-            if flat:
-                print("%s.%s" % (r.regmap.name, r.name))
-                if fields:
-                    for f in r.fields:
-                        print("%s.%s%s %s" % (r.regmap.name, r.name, f.range_str(), f.name))
-                continue
-            if r.regmap != last_regmap:
-                print("  %s" % r.regmap)
-                last_regmap = r.regmap
-            print("    %s" % r, end="")
-            if description and r.desc:
-                print(" -- %s " % r.desc, end="")
+            if style.o_flat:
+                reg_name = "%s.%s" % (r.regmap.name, r.name)
+                print("%s" % (reg_name), end="")
+                if style.o_reset and r.reset is not None:
+                    # The reset value typically has a mask of valid bits, but we just print the value here
+                    print(" (reset 0x%x)" % (r.reset[0]), end="")
+            else:
+                if r.regmap != last_regmap:
+                    print("  %s" % r.regmap)
+                    last_regmap = r.regmap
+                print("    %s" % r, end="")
+                if style.o_descriptions and r.desc:
+                    print(" -- %s " % r.desc, end="")
             print()
-            if fields:
+            if style.o_fields:
                 for f in r.fields:
-                    print("      %s" % f)
+                    if style.o_flat:
+                        print("%s%s %s" % (reg_name, f.range_str(), f.name), end="")
+                    else:
+                        print("      %s" % f, end="")
+                    if style.o_reset and f.reset is not None:
+                        # E.g. RTL parameter name
+                        print(" (reset %s)" % (f.reset), end="")
+                    if style.o_descriptions and f.desc:
+                        print(" -- %s" % f.desc, end="")
+                    print()
     return n_found
 
 
-def search_all(reg_ex, description=False, fields=False, flat=False):
+def search_all(reg_ex, style):
     """
     Given a register regex, search for it in all known register definitions, i.e. across all products.
     """
@@ -413,7 +438,7 @@ def search_all(reg_ex, description=False, fields=False, flat=False):
     for d in sorted(os.listdir(rdir)):
         if not d.endswith(".regdefs"):
             continue
-        if description:
+        if style.o_descriptions:
             if not d.endswith("-desc.regdefs") and os.path.isfile(os.path.join(rdir, d[:-8] + "-desc.regdefs")):
                 continue
         else:
@@ -421,7 +446,7 @@ def search_all(reg_ex, description=False, fields=False, flat=False):
                 continue
         rf = os.path.join(rdir, d)
         rd = regview.regdefs_from_file(rf)
-        n_found += search_all_in_regdefs(reg_ex, rd, file_name=rf, description=description, fields=fields, flat=flat)
+        n_found += search_all_in_regdefs(reg_ex, rd, style=style, file_name=rf)
     if not n_found:
         # str(reg_ex) will be something like "re.compile('xxx', re.IGNORECASE)".
         # Ideally we want to turn it back to a grep-like syntax.
@@ -443,6 +468,8 @@ if __name__ == "__main__":
     parser.add_argument("--no-fields", dest="fields", action="store_false", help="don't show register fields")
     parser.add_argument("-d", "--descriptions", action="store_true", help="show register and field descriptions")
     parser.add_argument("--no-descriptions", dest="descriptions", action="store_false", help="don't show descriptions")
+    parser.add_argument("--reset", action="store_true", default=True, help="show reset values")
+    parser.add_argument("--no-reset", dest="reset", action="store_false", help="don't show reset values")
     parser.add_argument("-n", "--node", type=cmn_select.CMNSelect, action="append", help="match nodes or node types")
     parser.add_argument("-r", "--reg", type=regex, action="append", help="match register name")
     parser.add_argument("--flat", action="store_true", help="unformatted display")
@@ -463,8 +490,9 @@ if __name__ == "__main__":
         opts.regs = [regex(r) for r in opts.regs]
         if opts.reg:
             opts.regs.insert(0, opts.reg)
+        style = Style(descriptions=opts.descriptions, fields=opts.fields, flat=opts.flat, reset=opts.reset)
         for r in opts.regs:
-            n = search_all(r, description=opts.descriptions, fields=opts.fields, flat=opts.flat)
+            n = search_all(r, style)
             if n == 0:
                 print("No registers found for '%s'" % r.pattern, file=sys.stderr)
         sys.exit()
@@ -477,8 +505,9 @@ if __name__ == "__main__":
     if opts.search:
         D.set_regmaps_from_cmn_product(CS[0].product_config)
         opts.regs = [regex(r) for r in opts.regs]
+        style = Style(description=True, fields=True, flat=opts.flat, reset=opts.reset)
         for reg_ex in opts.regs:
-            n = search_all_in_regdefs(reg_ex, D.regmaps, description=True, fields=True, flat=opts.flat)
+            n = search_all_in_regdefs(reg_ex, D.regmaps, style)
             if n == 0:
                 print("No registers found for '%s'" % reg_ex.pattern, file=sys.stderr)
         sys.exit()

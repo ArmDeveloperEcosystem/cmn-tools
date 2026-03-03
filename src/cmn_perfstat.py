@@ -247,10 +247,12 @@ if __name__ == "__main__":
     parser.add_argument("--frequency", action="store_true", help="show CMN frequency")
     parser.add_argument("--cmn-instance", type=int, default=0, help="CMN instance for frequency")
     parser.add_argument("-e", "--event", type=str, action="append", default=[], help="events to count")
+    parser.add_argument("--perf-bin", type=str, default="perf", help="perf command")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("--xx-spin", action="store_true", help=argparse.SUPPRESS)
     opts = parser.parse_args()
     o_verbose = opts.verbose
+    o_perf_bin = opts.perf_bin
     if opts.xx_spin:
         # only used when we invoke ourselves recursively
         t_end = modtime.time() + opts.time

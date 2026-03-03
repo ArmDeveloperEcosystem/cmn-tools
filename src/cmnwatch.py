@@ -876,11 +876,12 @@ def parse_short_watchpoint(ws, opts, cmn_version=None):
             spec = ""
         except ValueError:
             raise WatchpointBadShort(ws, "expected <dir>:<channel>:<fields>")
-    up = ["down", "up"].index(wdir.lower())
-    if up < 0:
+    up = {"down": 0, "up": 1, "both": None}.get(wdir.lower(), -1)
+    if up == -1:
         raise WatchpointBadShort(ws, "expected channel up/down")
-    chn = ["req", "rsp", "snp", "dat"].index(chn.lower())
-    if chn < 0:
+    try:
+        chn = ["req", "rsp", "snp", "dat"].index(chn.lower())
+    except ValueError:
         raise WatchpointBadShort(ws, "expected channel REQ/RSP/SNP/DAT")
     flds = {}
     if spec.startswith("not:"):

@@ -317,8 +317,18 @@ class Register:
         return not (self == r)
 
     def add_field(self, f):
+        """
+        Add a field to this register. We're justified in raising assertions for impossible fields,
+        but should be cautious about reporting overlaps etc.
+        """
         assert (f.pos + f.width) <= self.n_bits, "%s: bad field %s" % (self, f)
-        assert (f.mask_in_reg & self.fields_mask) == 0, "%s: overlapping field %s" % (self, f)
+        if (f.mask_in_reg & self.fields_mask) != 0:
+            # This field overlaps with a previous field.
+            print("%s: overlapping field %s:" % (self, f), end="", file=sys.stderr)
+            for of in self.fields:
+                if (f.mask_in_reg & of.mask_in_reg) != 0:
+                    print(" %s" % (of), end="", file=sys.stderr)
+            print("", file=sys.stderr)
         self.fields.append(f)
         self.fields_mask |= f.mask_in_reg
         f.reg = self

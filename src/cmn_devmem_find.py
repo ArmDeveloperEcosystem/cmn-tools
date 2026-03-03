@@ -434,10 +434,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="locate CMN interconnects")
     add_cmnloc_arguments(parser)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    parser.add_argument("--no-cache", action="store_true", help="don't cache results")
     opts = parser.parse_args()
     o_verbose = opts.verbose
-    o_use_cache = not opts.no_cache
     n_printed = 0
     for c in cmn_locators(opts=opts):
         n_printed += 1

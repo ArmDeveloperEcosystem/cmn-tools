@@ -38,7 +38,8 @@ class CMNDecoder:
     Simple decoder for CMN trace stream.
     User will likely want to subclass this class to do something with the payload.
     """
-    def __init__(self, cfg, verbose=0):
+    def __init__(self, cfg, id=None, verbose=0):
+        self.id = id
         self.verbose = verbose
         self.cfg = cfg
         if self.cfg._cmn_base_type == 0:
@@ -46,7 +47,7 @@ class CMNDecoder:
         else:
             self.sync_size = 20
         if self.verbose:
-            print("CMN decoder created (%s)" % (self.cfg))
+            self.msg("CMN decoder created (%s)" % (self.cfg))
         self.reset()
 
     def reset(self):
@@ -56,16 +57,22 @@ class CMNDecoder:
         self.n_timestamps = 0
 
     def __str__(self):
-        s = "CMN{v=%s,n_sync=%u, ts=%s}" % (self.cfg, self.n_sync, self.ts_string())
+        s = "v=%s,n_sync=%u,ts=%s" % (self.cfg, self.n_sync, self.ts_string())
+        if self.id is not None:
+            s += ",id=0x%02x" % self.id
+        s = "CMN{%s}" % s
         return s
 
+    def id_str(self):
+        return ("%02x" % self.id) if self.id is not None else ""
+
     def msg(self, s):
-        print("CMN: %s" % (s))
+        print("CMN[%s]: %s" % (self.id_str(), s))
 
     def decode(self, sync=True):
         self.n_ts_bytes_valid = 0
         if self.verbose:
-            print("%s stream decode start, sync=%u" % (self, sync))
+            self.msg("stream decode start, sync=%u" % (sync))
         if sync:
             # Caller requests that we scan for a sync sequence. Used if we are picking up
             # the decode in mid-stream.
@@ -169,7 +176,8 @@ class CMNDecoder:
 
     def emit_data(self, h, payload, cc=None):
         """
-        Called when we've got a data packet.
+        Called when we've got a data packet. 'h' is the packet header, as a single word,
+        with the first byte (byte 0) at LSB.
         """
         # Header format changed incompatibly between CMN-600 and CMN-650
         lossy = BIT(h, 0)
@@ -184,13 +192,17 @@ class CMNDecoder:
             WP = BITS(h, 24, 2)
             DEV = 0
             VC = BITS(h, 28, 2)
+        # Decode the payload, according to the CMN version.
+        # Show the watchpoint number (which isn't normally interesting in decode),
+        # so we spot the situation where both watchpoints trace the same packet.
         g = CMNFlitGroup(self.cfg, format=type, WP=WP, DEV=DEV, VC=VC, nodeid=nodeid, cc=cc, lossy=lossy)
         if self.verbose:
-            print("  CMN data: %s %s" % (g, bytes_hex(payload)))
+            self.msg("CMN data: %02x.%02x.%02x.%02x WP=%u %s %s" % (BITS(h, 0, 8), BITS(h, 8, 8), BITS(h, 16, 8), BITS(h, 24, 8), WP, g, bytes_hex(payload)))
         g.decode(payload)
         self.output_flits(g)
 
     def output_flits(self, g):
+        print("[%s]  " % (self.id_str()), end="")
         self.output_cc(g.cc)
         # Print flit data to standard output. Decoder user might override this.
         print(g)
@@ -201,7 +213,7 @@ class CMNDecoder:
         return s
 
     def output_ts(self):
-        print("  TS: %s" % self.ts_string())
+        print("[%s]  TS: %s" % (self.id_str(), self.ts_string()))
 
     def emit_timestamp(self, ts, cc=None):
         self.ts_last = ts

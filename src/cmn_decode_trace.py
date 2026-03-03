@@ -27,6 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("--cmn-revision", type=int, default=0, help="CMN revision")
     parser.add_argument("--mpam", action="store_true", help="CMN has MPAM enabled")
     parser.add_argument("--no-sync", action="store_true", help="don't look for sync sequence")
+    parser.add_argument("--ignore", type=str, action="append", help="ignore trace stream(s)")
     parser.add_argument("--unformatted", action="store_true", help="trace file has no CoreSight framing")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("inputs", type=str, nargs="*", help="input trace binaries")
@@ -38,7 +39,7 @@ if __name__ == "__main__":
         sys.exit(1)
     cfg = cs_decode_cmn.CMNTraceConfig(opts.cmn_version, cmn_product_revision=opts.cmn_revision, has_MPAM=opts.mpam)
     def new_decoder(id=None):
-        decoder = cs_decode_cmn.CMNDecoder(cfg, verbose=opts.verbose)
+        decoder = cs_decode_cmn.CMNDecoder(cfg, id=id, verbose=opts.verbose)
         decoder_fn = decoder.decode(sync=(not opts.no_sync))
         return decoder_fn
     if opts.unformatted:
@@ -47,6 +48,10 @@ if __name__ == "__main__":
     else:
         # Multiplexed streams: now pass in a factory function
         decode_map = {"default": new_decoder}
+    for ign_ids in opts.ignore:
+        for ign_id in ign_ids.split(','):
+            id = int(ign_id, 0)
+            decode_map[id] = cs_decode.sink()
     for fn in opts.inputs:
         if opts.verbose:
             print("Decoding CMN trace in '%s'..." % fn, file=sys.stderr)

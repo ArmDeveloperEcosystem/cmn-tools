@@ -42,3 +42,34 @@ the Arm DS GUI).
 The captured trace may then be dumped to local disk (using the Arm
 Debugger 'trace dump' command), and the cmn_decode_trace.py script can
 be run (using your OS's Python) to decode the dumped trace.
+
+
+Offline latency from trace files
+--------------------------------
+If you have a CoreSight trace file (e.g. captured via `cmn_capture.py` or ATB),
+you can report request/response latency from the trace stream:
+
+    ./cmn_trace_latency.py --cmn-version=0x600 --input trace.bin --tagged-only
+
+By default, the tool matches REQ to RSP/DAT using txnid and source/target IDs
+when available; use `--match` to adjust, and `--req-channel`/`--rsp-channels`
+to focus on a specific path.
+
+For end-to-end reads where RN-F requests are serviced by SN-F data directly back
+to the requester, use the DAT response path:
+
+    ./cmn_trace_latency.py --cmn-version=0x43e --input trace.bin --end-to-end
+
+Or equivalently:
+
+    ./cmn_trace_latency.py --cmn-version=0x43e --input trace.bin --rsp-channels=DAT --match=txnid-reqsrc
+
+If you see occasional very large latencies due to missing responses or trace loss,
+cap matches with (default is 5000 cycles):
+
+    ./cmn_trace_latency.py --cmn-version=0x43e --input trace.bin --end-to-end --max-latency=5000
+
+In other cases it may be possible to use filtering on the original tag-setting
+watchpoint, as in the first example where --tgtid was used to filter requests
+to a single HN-F rather than requests to all HN-Fs. This will reduce the number of
+tagged packets in the system.

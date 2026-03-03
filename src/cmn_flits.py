@@ -219,19 +219,28 @@ def CHI_E_CMN_DAT_datasource_str(ds):
 def CHI_G_CMN_DAT_datasource_str(ds):
     """
     DataSource string for CHI-G. The field is now structured into four parts.
+    See CHI-G B11.2.
+    Completer distance:
+      0: local cluster, 1, same die, 2: remote chiplet, 3: remote socket
     """
-    compdist = BITS(ds, 0, 2)
-    comptype = BITS(ds, 2, 3)
-    comptype_str = ["dflt", "RAM", "CXL", "HBM", "snoop", "CG1", "CG2", "?7"][comptype]
+    completer_distance = BITS(ds, 0, 2)
+    completer_type = BITS(ds, 2, 3)
+    comp_type_str = ["dflt", "RAM", "CXL", "HBM", "snoop", "CG1", "CG2", "?7"][completer_type]
     hitd = BIT(ds, 5)
     func = BITS(ds, 6, 2)
-    s = comptype_str
-    if compdist > 0:
-        s += (":%u" % compdist)
+    s = comp_type_str
+    if completer_distance > 0:
+        s += (":dist=%u" % completer_distance)
     if hitd:
         s += ":HitD"
     if func > 0:
-        s += (":f%u" % func)
+        fs = None
+        # Meaning of functional encoding depends on Completer Type.
+        if completer_type in [1, 2, 3]:
+            fs = ["pfnu", "pfu", None, None][func]
+        elif completer_type in [5, 6]:
+            fs = [None, "upf", "lpf", None][func]
+        s += ":" + (fs or ("f%u" % func))
     return s
 
 
@@ -714,9 +723,9 @@ class CMNFlitGroup:
         if self.nodeid is not None:
             s += "@0x%03x " % self.nodeid
         if self.DEV is not None:
-            s += "DEV=%u " % self.DEV
-        if self.WP is not None:
-            s += "WP=%u " % self.WP
+            s += "DEV=%u " % self.DEV       # Port number
+        if False and self.WP is not None:
+            s += "WP=%u " % self.WP         # Direction indicated by TX/RX later
         return s.strip()
 
     def id_str(self, id, lpid=0):
@@ -743,6 +752,9 @@ class CMNFlitGroup:
         if self.debug and self.payload is not None:
             s += "%36s  " % bytes_hex(reversed(self.payload))
         if self.VC is not None:
+            if self.WP is not None:
+                up = self.WP <= 1
+                s += ["RX", "TX"][up]
             s += "%s " % CHI_VC_strings[self.VC]
         if self.payload is not None:
             if self.flits:
@@ -1067,6 +1079,7 @@ class CMNFlitGroup:
                     f.devevent = BITS(x,84,2)
                     f.rsvdc = BITS(x,86,8)
                 elif self.cfg._cmn_base_type == 2:
+                    # CMN-700 or S3 r0
                     f.homenid = BITS(x,38,11)
                     f.resperr = BITS(x,53,2)
                     f.resp = BITS(x,55,3)
@@ -1080,6 +1093,7 @@ class CMNFlitGroup:
                     f.chunkv = BITS(x,108,2)
                     f.devevent = BITS(x,110,2)
                 else:
+                    # S3 r2
                     f.homenid = BITS(x,38,11)
                     f.resperr = BITS(x,53,2)
                     f.resp = BITS(x,55,3)
@@ -1088,10 +1102,12 @@ class CMNFlitGroup:
                     f.dbid = BITS(x,70,12)
                     f.ccid = BITS(x,86,2)
                     f.dataid = BITS(x,88,2)
-                    f.rsvdc = BITS(x,115,8)
+                    f.tagop = BITS(x,90,2)
+                    f.tag = BITS(x,92,8)
                     f.poison = BITS(x,103,4)
-                    f.chunkv = BITS(x,109,2)
-                    f.devevent = BITS(x,110,2)
+                    f.chunkv = BITS(x,107,2)
+                    f.devevent = BITS(x,109,2)
+                    f.rsvdc = BITS(x,115,8)
                 if f.opcode == 6:
                     # SnpRespDataFwded
                     f.fwdstate = fws_ds    # note: 4 bits

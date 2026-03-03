@@ -104,6 +104,106 @@ controller node to send the data directly to node 0x20 -
 likely the original requesting CPU for this data.
 
 
+Setting up watchpoints
+----------------------
+Watchpoints can be set up on multiple ports and channels.
+cmn_capture.py allows any number of watchpoints to be specified,
+but physically the CMN only implements a set number of watchpoints -
+usually four per crosspoint, where two are for upload (devices
+uploading packets into the interconnect) and two for download
+(devices receiving packets from the interconnect).
+
+cmn_capture allows watchpoint expressions to specify a group of
+watchpoints to be set. Watchpoint expressions must specify a
+CHI channel, can optionally specify CHI fields to match on, and
+can also specify a location or group of locations. Locations can
+be specified by crosspoint, port number, or device type.
+
+Locations can be specified in several ways:
+
+    device_type
+    device_type @ node
+    @ node
+    (x, y)
+    (x, y, port)
+
+"Device type" is one of the devices supported by CMN, e.g. RN-F,
+HN-F, SN-F, HN-I etc. "HN-F" will match both HN-F and HN-S devices.
+
+
+Examples
+--------
+
+Monitor REQs sent by RN-Fs and RSPs received by RN-Fs:
+
+    cmn_capture.py rn-f/up:req rn-f/down:rsp
+
+Monitor REQs sent by RN-Fs and REQs downloaded by HN-Fs,
+and RSPs uploaded by HN-Fs. This may result in seeing the same
+packet tiwce (on entry to and on exit from the interconnect),
+or they may be observed only once, because of the way packets
+are sampled:
+
+    cmn_capture.py rn-f/up:req hn-f/down:req hn-f/up:rsp
+
+Monitor RN-F requests with a specific opcode and size of 4 bytes,
+where size is expressed a a power of 2:
+
+    cmn_capture.py rn-f/up:req:opcode=ReadNoSnp:size=2
+
+Monitor RN-F requests with a specific opcode and address.
+As a watchpoint expression, this is similar to the previous case,
+but on current CMN implementations it needs a combination of two
+physical watchpoints. cmn_capture.py handles this automatically.
+
+    cmn_capture.py rn-f/up:req:opcode=ReadNoSnp:addr=0x8000xxxx
+
+Monitor SN-F responses at a specified crosspoint:
+
+    cmn_capture.py sn-f@0x80/up:rsp
+
+Monitor all SNPs sent to port 1 of any node on the left hand side
+of the mesh:
+
+    cmn_capture.py (0,_,1)/down:snp
+
+Monitor REQs received by RN-Fs. Since RN-Fs do not receive REQs,
+nothing will be observed. The tool does not attempt to understand
+which channels are meaningful for which devices:
+
+    cmn_capture.py rn-f/down:req
+
+
+Duplicate packets
+-----------------
+It may happen that a packet is captured by more than one watchpoint.
+One is the case referred to above, where a packet is captured on
+upload and download at different places in the mesh. The other is
+where the same packet is captured at the same time in both watchpoints
+on a single port. This can happen if the watchpoint expressions
+overlap, e.g.
+
+    cmn_capture.py rn-f/up:opcode=ReadNoSnp rn-f/up:addr=0x8000
+
+The tool will set up both watchpoints, and if a packet happens to
+match both, it will be captured in both.
+
+
+Watchpoint rotation
+-------------------
+In CMN, the mesh crosspoints only implemnet two upload and two
+download watchpoints; at any given time each of these is bound to
+a port and channel.
+
+If more watchpoint expressions are specified than there are physical
+watchpoints, cmn_capture will attempt to continually rotate the
+requested watchpoints through the physical watchpoints.
+
+In some cases, a watchpoint expression might need two physical
+watchpoints (combined as a pair): this the case for some combinations
+of CHI field matches, and when capturing data (see below).
+
+
 Setup/inspect mode
 ------------------
 In setup/inspect mode, cmn_capture.py is run first to set up
@@ -117,6 +217,8 @@ watchpoints, then can be run again to check for captured data:
 
 This mode may be particularly useful when debugging access to
 I/O devices.
+
+Watchpoint rotation cannot be used with setup/inspect mode.
 
 
 Data capture

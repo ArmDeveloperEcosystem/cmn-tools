@@ -218,11 +218,12 @@ _chi_channels = ["REQ", "RSP", "SNP", "DAT"]
 
 class PortChannel:
     """
-    A specific CHI channel on a specific XP port, possibly also with a LPID to match.
+    A specific CHI channel on a specific XP port number, possibly also with a LPID to match.
     """
     def __init__(self, xp=None, dev=None, chn=None, up=None, lpid=None):
         self.xp = xp     # XP object, including CMN instance
         self.dev = dev   # port number
+        assert dev is None or (dev >= 0 and dev < 8)
         self.chn = chn
         self.up = up
         self.lpid = lpid
@@ -364,6 +365,7 @@ class LatencyMonitor:
         tag set will be captured by any watchpoint on the channel - i.e. the match on
         TraceTag=1 is not necessary, and any other match fields would be ignored.
         """
+        assert isinstance(pc, PortChannel)
         (xp, dev, chn, up) = (pc.xp, pc.dev, pc.chn, pc.up)
         dtm = pc.dtm()
         key = (dtm, dev, chn, up)
@@ -580,7 +582,7 @@ def port_class(Cs, spec):
             for p in xp.ports(props):
                 if o_verbose:
                     print("%s -> %s P%u" % (spec, xp, p))
-                yield (xp, p)
+                yield (xp, p.port_number)
 
 
 def port_channels(Cs, spec, default_pc):
@@ -652,7 +654,7 @@ def port_channels(Cs, spec, default_pc):
                 sys.exit(1)
             C = Cs[cpu.port.CMN().seq]
             xp = C.XP(cpu.port.xp.node_id())
-            dev = cpu.port.port
+            dev = cpu.port.port_number
             if cpu.lpid is not None:
                 lpid = cpu.lpid
             xp_explicit = True

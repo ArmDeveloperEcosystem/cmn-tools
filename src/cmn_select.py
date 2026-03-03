@@ -32,8 +32,8 @@ _help_text_exprs = """
 selection expressions:
 
   [<type>][<coordinates>]
-  [<type>][0x<node-id>]
-  [<type>][#<logical-id>]
+  <type>@0x<node-id>
+  <type>[#<logical-id>]
 
   Types:
     Node types e.g. XP, SN-F

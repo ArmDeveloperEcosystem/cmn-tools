@@ -580,9 +580,10 @@ class CMNPort:
     "connected device info" in the XP. Initially they are not populated
     with device nodes.
     """
-    def __init__(self, xp, port_number=None, connect_info=None):
+    def __init__(self, xp, port_number=None, connect_info=None, dtm=None):
         self.xp = xp
         self.port_number = port_number
+        self.dtm = dtm
         self.connect_info = connect_info
         self.connected_type = self.xp.connect_info_type(self.connect_info)
         self._port_info = {}    # Cache for the port_info register(s)
@@ -652,7 +653,7 @@ class CMNPort:
     def device_numbers(self):
         """
         Return the sorted list of device numbers (based at 0) in use at this port
-       """
+        """
         dmap = {}
         for n in self.nodes():
             dmap[n.device_number()] = True
@@ -707,7 +708,7 @@ class CMNNodeXP(CMNNodeBase):
             connect_info = self.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(pn))
             type = self.connect_info_type(connect_info)
             if type != CMN_PORT_DEVTYPE_NOT_CONNECTED:
-                po = CMNPort(self, pn, connect_info)
+                po = CMNPort(self, pn, connect_info, dtm=self.port_dtm(pn))
                 self._port_objects[pn] = po
         # At this point, CMNPort objects have been created for all ports in use,
         # but we haven't discovered device nodes.
@@ -909,7 +910,7 @@ class DTMWatchpoint:
         self.chn = chn
         self.dev = dev
         self.grp = grp
-        self.type = type
+        self.type = type          # i.e. format (4 for full flit)
         self.pkt_gen = pkt_gen
         self.cc = cc
         self.exclusive = exclusive
@@ -945,7 +946,8 @@ class DTMWatchpoint:
 
     def encode(self, cfg=0):
         """
-        Pack (generate) watchpoint configuration register value, from individual properties
+        Pack (generate) watchpoint configuration register value, from individual properties.
+        This will be programmed into e.g. por_dtm_wp0_config.
         """
         config = cfg
         if self.pkt_gen:
@@ -1992,7 +1994,7 @@ class CMN:
         Yield DTCs in DTC domain order, starting with the special DTC0.
         This relies on device discovery having been done.
         """
-        self.discover_all_devices(CMN_PROP_HND)
+        self.discover_all_devices(CMN_PROP_HNT)
         for d in self.debug_nodes:
             yield d
 
@@ -2106,7 +2108,7 @@ class CMNDiagramPerf(CMNDiagram):
 
     def port_label_color(self, po):
         (dev_label, dev_color) = CMNDiagram.port_label_color(self, po)
-        if po.has_properties(CMN_PROP_HND):
+        if po.has_properties(CMN_PROP_HNT):
             # Does this have a DTC node, and if so, is it enabled?
             for nd in po.nodes():
                 if nd.type() == CMN_NODE_DT and nd.dtc_is_enabled():

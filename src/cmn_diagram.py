@@ -150,15 +150,15 @@ class CMNDiagram(textdiagram.TextDiagram):
             (cx, cy) = self.XP_xy(xp)
             (xp_label, xp_color) = self.xp_label_color(xp)
             self.at(cx, cy, xp_label, color=xp_color)
-            for p in range(0, xp.n_device_ports()):
-                po = xp.port_object(p)
+            for po in xp.ports():
+                p = po.port_number
                 (dev_label, dev_color) = self.port_label_color(po)
                 if dev_label is None:
                     continue
                 if dev_color is not None:
-                    if po.has_properties(CMN_PROP_HND):
+                    if po.has_properties(CMN_PROP_HNT):
                         # Does this have a DTC node, and if so, is it enabled?
-                        for nd in xp.port_nodes(p):
+                        for nd in po.nodes():
                             if nd.type() == CMN_NODE_DT:
                                 try:
                                     if nd.dtc_is_enabled():

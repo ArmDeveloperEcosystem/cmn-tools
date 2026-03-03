@@ -65,6 +65,14 @@ def align_down(a, size):
 
 assert align_down(0x12345678, 0x1000) == 0x12345000
 
+
+def align_up(a, size):
+    return align_down(a + (size - 1), size)
+
+assert align_up(0x1000, 0x1000) == 0x1000
+assert align_up(0x1, 0x1000) == 0x1000
+
+
 def page_align_down(pa):
     return align_down(pa, os.sysconf("SC_PAGE_SIZE"))
 
@@ -80,14 +88,17 @@ class DevMemDevMap(DevMap):
     discover device type, and then create a subclass object of the required type,
     providing the mapping via the 'map' object.
 
-    TBD: it would be useful to handle sub-page sizes, e.g. 4K device in a 16K page.
+    Sub-page sizes are handled by mapping a whole page and offsetting within it.
     """
     def __init__(self, pa, size, name=None, owner=None, write=False, verbose=0):
         assert isinstance(owner, DevMapFactory)
         DevMap.__init__(self, pa, size, name=name, owner=owner, write=write)
         self.verbose_level = verbose
         self.m = None
-        self.m = owner.mmap(pa, size, write=self.writing)
+        aligned_pa = align_down(pa, owner.page_size)
+        aligned_size = align_up(size, owner.page_size)
+        self.offset_in_page = pa - aligned_pa
+        self.m = owner.mmap(aligned_pa, aligned_size, write=self.writing)
         assert self.m is not None
 
     def verbose(self):
@@ -100,7 +111,11 @@ class DevMemDevMap(DevMap):
         if secure != "NS":
             raise DevMemNoSecure(self, secure)
 
+    def adjust_offset(self, off):
+        return off + self.offset_in_page
+
     def _read(self, off, n, fmt=None):
+        off = self.adjust_offset(off)
         if fmt is None:
             fmt = {1:"B", 2:"H", 4:"I", 8:"Q"}[n]
         if self.verbose():
@@ -113,6 +128,7 @@ class DevMemDevMap(DevMap):
         return x
 
     def _write(self, off, n, data, fmt=None, check=None):
+        off = self.adjust_offset(off)
         if fmt is None:
             fmt = {1:"B", 2:"H", 4:"I", 8:"Q"}[n]
         if self.verbose():
