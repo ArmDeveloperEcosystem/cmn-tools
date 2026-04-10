@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache 2.0
 from __future__ import print_function
 
 
+import sys
 import os
 
 
@@ -78,9 +79,13 @@ class DumpMemDevMap(DevMap):
         raise DevMemWriteProtected(self, off, val)
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="CMN dump test")
     parser.add_argument("file", type=str)
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     D = Dump(opts.file)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

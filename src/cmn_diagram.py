@@ -202,13 +202,13 @@ class CMNDiagram(textdiagram.TextDiagram):
         return self
 
 
-if __name__ == "__main__":
+def main(argv):
     import cmn_json
     import sys
     import argparse
     parser = argparse.ArgumentParser(description="CMN diagram")
     parser.add_argument("-i", "--input", type=str, default=cmn_json.cmn_config_filename(), help="CMN JSON")
-    parser.add_argument("--cmn-instance", type=int, default=0, help="select CMN number")
+    parser.add_argument("--cmn-instance", type=int, help="select CMN number")
     parser.add_argument("--small", action="store_true", help="smaller diagram")
     parser.add_argument("--large", action="store_true", help="more detailed diagram")
     parser.add_argument("--xwidth", type=int, default=0, help="width adjust +/-")
@@ -217,12 +217,18 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("inputs", type=str, nargs="*", help="additional JSON inputs")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     if not opts.inputs:
         opts.inputs = [opts.input]
     for fn in opts.inputs:
         S = cmn_json.system_from_json_file(fn)
-        C = S.CMNs[opts.cmn_instance]
-        D = CMNDiagram(C, small=(not opts.large), xwidth=opts.xwidth, xheight=opts.xheight)
-        D.update()
-        print(D.str_color(no_color=(opts.color == "never"), force_color=(opts.color == "always"), for_file=sys.stdout), end="")
+        for C in S.cmn_instances(instance=opts.cmn_instance):
+            print()
+            print("%s:" % C)
+            D = CMNDiagram(C, small=(not opts.large), xwidth=opts.xwidth, xheight=opts.xheight)
+            D.update()
+            print(D.str_color(no_color=(opts.color == "never"), force_color=(opts.color == "always"), for_file=sys.stdout), end="")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

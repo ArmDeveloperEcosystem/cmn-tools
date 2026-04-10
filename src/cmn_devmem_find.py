@@ -134,8 +134,8 @@ class CMNLocator:
     root node address, and CMN product number (e.g. cmn_config.PART_CMN700).
     We get it from /proc/iomem, ACPI tables, user override etc.
     """
-    def __init__(self, periphbase=None, rootnode_offset=None, product_id=None, seq=None, where_found=None, name=None, mem_space=None):
-        self.seq = seq
+    def __init__(self, periphbase=None, rootnode_offset=None, product_id=None, cmn_seq=None, where_found=None, name=None, mem_space=None):
+        self.cmn_seq = cmn_seq
         self.periphbase = periphbase
         self.rootnode_offset = rootnode_offset
         self.node_skiplist = None
@@ -166,7 +166,7 @@ def cmn_locators_from_iomem(iomem=None):
         if ad.level == 0:
             assert loc is None
             product_id = cmn_acpi_names[ad.name]
-            loc = CMNLocator(periphbase=ad.addr, product_id=product_id, seq=len(locs), where_found="/proc/iomem")
+            loc = CMNLocator(periphbase=ad.addr, product_id=product_id, cmn_seq=len(locs), where_found="/proc/iomem")
             if loc.product_id != cmn_base.PART_CMN600:
                 loc.rootnode_offset = 0
                 yield loc
@@ -231,7 +231,7 @@ def cmn_locators_from_dt(dt_base=None):
                             rootnode_offset = struct.unpack(">I", r.read())[0]
                     except Exception:
                         rootnode_offset = 0
-                    loc = CMNLocator(periphbase=addr, rootnode_offset=rootnode_offset, product_id=_dt_compats[s], seq=n_found, where_found="device-tree")
+                    loc = CMNLocator(periphbase=addr, rootnode_offset=rootnode_offset, product_id=_dt_compats[s], cmn_seq=n_found, where_found="device-tree")
                     n_found += 1
                     yield loc
         else:
@@ -265,17 +265,19 @@ def cmn_locators_from_json(fn):
     except Exception as e:
         print("%s: could not read JSON locations file (%s)" % (fn, e), file=sys.stderr)
         sys.exit(1)
+    cmn_seq = 0
     for e in j["elements"]:
         if e["product"] == "CMN":
             if "base" not in e and "config" in e and "base" in e["config"]:
                 e = e["config"]
             base = int(e["base"], 16)
             root_offset = int(e.get("rootnode_offset", "0"), 16)
-            loc = CMNLocator(base, root_offset, where_found=fn)
+            loc = CMNLocator(base, root_offset, cmn_seq=cmn_seq, where_found=fn)
             if "skiplist" in e:
                 sl = [int(s, 16) for s in e["skiplist"]]
                 loc.node_skiplist = sl
             yield loc
+            cmn_seq += 1
 
 
 def json_from_cmn_locators(locs):
@@ -306,10 +308,11 @@ def get_locs_from_dtsl():
     dtslConnection = ConnectionManager.openConnection(dtslConnectionConfigurationKey)
     dtslCfg = dtslConnection.getConfiguration()
     if hasattr(dtslCfg, "cmn_config"):
-        for dtsl_loc in dtslCfg.cmn_config.getCMNLocations():
+        for (seq, dtsl_loc) in enumerate(dtslCfg.cmn_config.getCMNLocations()):
             yield CMNLocator(dtsl_loc.getPeriphbase(),
                              dtsl_loc.getRootNodeOffset(),
                              cmn_base.cmn_products_by_name[dtsl_loc.getCMNProduct().getName()],
+                             cmn_seq=seq,
                              where_found="Arm Debugger configuration database",
                              name=dtsl_loc.getCMNMeshName(),
                              mem_space=dtsl_loc.getCMNMemorySpace()
@@ -429,12 +432,13 @@ def add_cmnloc_arguments(parser):
     ag.add_argument("--version", action="version", version="%(prog)s 1.0")
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_verbose
     import argparse
     parser = argparse.ArgumentParser(description="locate CMN interconnects")
     add_cmnloc_arguments(parser)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     n_printed = 0
     for c in cmn_locators(opts=opts):
@@ -442,3 +446,7 @@ if __name__ == "__main__":
         print(c)
     if not n_printed:
         print("No CMN interconnects found", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

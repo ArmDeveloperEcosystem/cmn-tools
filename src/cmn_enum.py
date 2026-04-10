@@ -13,6 +13,10 @@ E.g. with Linux perf, CMN node type numbers can be used in the
 'type' field of CMN PMU events.
 """
 
+from __future__ import print_function
+
+
+import sys
 #
 # Node/port properties.
 #
@@ -24,7 +28,7 @@ E.g. with Linux perf, CMN node type numbers can be used in the
 
 CMN_PROP_none  = 0
 
-CMN_PROP_CFG   = 0x1000000   # Configuration node - not connected to mesh
+CMN_PROP_CFG   = 0x1000000   # Configuration node - not connected to mesh, accessed via HN-D
 CMN_PROP_CONN  = 0x2000000   # CHI-connected node, either XP or CHI device node
 CMN_PROP_DEV   = 0x4000000   # Device node of any kind
 CMN_PROP_XP    = (0x8000000 | CMN_PROP_CONN)  # XP
@@ -38,9 +42,9 @@ CMN_PROP_I     = (CMN_PROP_CHI | 0x0020)     # I/O coherent but not fully cohere
 CMN_PROP_F     = (CMN_PROP_CHI | 0x0040)     # Fully coherent
 CMN_PROP_CCG   = (CMN_PROP_CHI | 0x0100)     # Chip-to-chip gateway
 CMN_PROP_MPAM  = (CMN_PROP_DEV | 0x0200)     # MPAM configuration/status node
-CMN_PROP_T     = (CMN_PROP_CHI | 0x0400)     # Debug/trace features
+CMN_PROP_T     = (CMN_PROP_DEV | 0x0400)     # Debug/trace features (DTC)
 CMN_PROP_SBSX  = (CMN_PROP_CHI | 0x0800)     # AXI/ACE-Lite bridge
-CMN_PROP_DN    = (CMN_PROP_CHI | 0x1000)     # DVM node
+CMN_PROP_DN    = (CMN_PROP_CHI | 0x1000)     # DVM node (in HN-D, or later, HN-T)
 CMN_PROP_SAM   = (CMN_PROP_DEV | 0x2000)     # System Address Map
 
 # Combination properties
@@ -49,8 +53,8 @@ CMN_PROP_RNI   = (CMN_PROP_RN | CMN_PROP_I)   # I/O coherent requester
 CMN_PROP_RND   = (CMN_PROP_RN | CMN_PROP_I)   # I/O coherent requester that accepts DVM
 CMN_PROP_HNF   = (CMN_PROP_HN | CMN_PROP_F)
 CMN_PROP_HNI   = (CMN_PROP_HN | CMN_PROP_I)
-CMN_PROP_HNT   = (CMN_PROP_HN | CMN_PROP_I | CMN_PROP_T)
-CMN_PROP_HND   = (CMN_PROP_HN | CMN_PROP_I | CMN_PROP_T | CMN_PROP_DN)
+CMN_PROP_HNT   = (CMN_PROP_HN | CMN_PROP_I | CMN_PROP_T | CMN_PROP_DN)    # DN only in later CMN
+CMN_PROP_HND   = (CMN_PROP_HN | CMN_PROP_I | CMN_PROP_T | CMN_PROP_DN | CMN_PROP_CFG)
 CMN_PROP_SNF   = (CMN_PROP_SN | CMN_PROP_F)
 
 
@@ -93,7 +97,7 @@ CMN_NODE_all_HN = [CMN_NODE_HNI, CMN_NODE_HNF, CMN_NODE_HNP, CMN_NODE_HNS]
 cmn_node_properties = {
     CMN_NODE_DN          : CMN_PROP_DN,
     CMN_NODE_CFG         : CMN_PROP_CFG,
-    CMN_NODE_DT          : CMN_PROP_DEV,    # TBD
+    CMN_NODE_DT          : CMN_PROP_T,
     CMN_NODE_HNI         : CMN_PROP_HNI,
     CMN_NODE_HNF         : CMN_PROP_HNF,
     CMN_NODE_XP          : CMN_PROP_XP,
@@ -244,7 +248,7 @@ CMN_PORT_DEVTYPE_SNF_CHIG       = 0x25
 
 cmn_port_properties = {
     CMN_PORT_DEVTYPE_RNI              : CMN_PROP_RNI,
-    CMN_PORT_DEVTYPE_RND              : CMN_PROP_RN,
+    CMN_PORT_DEVTYPE_RND              : CMN_PROP_RND,
     CMN_PORT_DEVTYPE_RNF_CHIB         : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_RNF_CHIB_ESAM    : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_RNF_CHIA         : CMN_PROP_RNF,
@@ -325,6 +329,8 @@ _prop_strs = {
     "DEV": CMN_PROP_DEV,
     "CHI": CMN_PROP_CHI,
     "CONN": CMN_PROP_CONN,
+    "MPAM": CMN_PROP_MPAM,
+    "SAM": CMN_PROP_SAM,
     "ALL": CMN_PROP_none,   # i.e. match everything
 }
 
@@ -341,7 +347,16 @@ def cmn_properties(s, check=True):
 
 
 def cmn_properties_str(pv, join=", "):
-    return join.join([name for (name, pr) in _prop_strs.items() if (pv & pr) == pr])
+    """
+    Given a property set, return a string describing it. Sort the keys so it's
+    not sensitive to how the Python implementation sorts the dictionary.
+    """
+    return join.join([pn for pn in sorted(_prop_strs.keys()) if (pv & _prop_strs[pn]) == _prop_strs[pn] and pn != "ALL"])
+
+
+assert cmn_properties_str(CMN_PROP_CHI) == "CHI, CONN, DEV", cmn_properties_str(CMN_PROP_CHI)
+assert cmn_properties_str(CMN_PROP_none) == "", cmn_properties_str(CMN_PROP_none)
+assert cmn_properties_str(CMN_PROP_MPAM) == "DEV, MPAM", cmn_properties_str(CMN_PROP_MPAM)
 
 
 def _print_all_enums():
@@ -360,5 +375,9 @@ def _print_all_enums():
             #assert (v in CMN_PORT_DEVTYPE_all_HN) == cmn_port_device_type_has_properties(v, CMN_PROP_HN)
 
 
-if __name__ == "__main__":
+def main(argv):
     _print_all_enums()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

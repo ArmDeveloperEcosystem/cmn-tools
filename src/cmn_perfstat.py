@@ -240,7 +240,8 @@ def cpu_frequency(time=0.1):
     return _perf_rate1("cpu-cycles", time=time, system_wide=False, command=cmd)
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_perf_bin, o_verbose
     import argparse
     parser = argparse.ArgumentParser(description="get PMU events")
     parser.add_argument("--time", type=float, default=1.0, help="time to wait")
@@ -250,7 +251,7 @@ if __name__ == "__main__":
     parser.add_argument("--perf-bin", type=str, default="perf", help="perf command")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("--xx-spin", action="store_true", help=argparse.SUPPRESS)
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     o_perf_bin = opts.perf_bin
     if opts.xx_spin:
@@ -269,3 +270,7 @@ if __name__ == "__main__":
         done = True
     if not done:
         print("Use --event or --frequency")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

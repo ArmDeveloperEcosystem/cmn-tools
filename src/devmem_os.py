@@ -161,7 +161,7 @@ class DevMemDevMap(DevMap):
         self._write(off, 8, data, check=check)
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     def hexstr(s):
         return int(s,16)
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("address", type=hexstr, help="physical address")
     parser.add_argument("width", choices=["b","h","w","d"], help="width")
     parser.add_argument("value", nargs="?", type=hexstr, help="data to be written")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     base = page_align_down(opts.address)
     off = opts.address - base
     width = {"b":1, "h":2, "w":4, "d":8}[opts.width]
@@ -178,3 +178,7 @@ if __name__ == "__main__":
         print("0x%x" % m._read(off, width))
     else:
         m._write(off, width, opts.value)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

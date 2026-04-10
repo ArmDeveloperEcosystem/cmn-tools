@@ -10,8 +10,8 @@ SPDX-License-Identifier: Apache 2.0
 from __future__ import print_function
 
 
-import os
 import sys
+import os
 import subprocess
 import json
 import atexit
@@ -36,7 +36,7 @@ o_print_decimal = False
 o_print_recipe = False
 o_split = False
 
-o_recipe_path = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipes")]
+o_recipe_path = [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "recipes")]
 
 
 g_checked_cmn = False
@@ -167,7 +167,7 @@ def port_watchpoint_events(port, wp):
     Given a cmnwatch.Watchpoint, return a list of perf event strings.
     There will be more than one string if the watchpoint requires multiple matching groups in CMN.
     """
-    wp_events = wp.perf_events(cmn_instance=port.CMN().seq, nodeid=port.XP().node_id(), dev=port.port)
+    wp_events = wp.perf_events(cmn_instance=port.CMN().cmn_seq, nodeid=port.XP().node_id(), dev=port.port)
     return wp_events
 
 
@@ -291,10 +291,11 @@ def create_Topdown(d, measure=True):
             # CMN watchpoint, on a given class of crosspoint ports
             props = decode_properties(m["ports"])
             for port in S.ports(properties=props):
+                ecat = cat
                 if o_split or m.get("split", False):
-                    ecat = cat + ":0x%x" % port.base_id()
-                else:
-                    ecat = cat
+                    if S.has_multiple_cmn():
+                        ecat += ":M%u" % port.CMN().cmn_seq
+                    ecat += ":0x%x" % port.base_id()
                 if "watchpoint_up" in m:
                     td.add_port_watchpoint(ecat, port, up=True, **m["watchpoint_up"])
                 elif "watchpoint_down" in m:
@@ -353,7 +354,7 @@ def measure_and_print_topdown(recipe):
         if c is not None and c != TOP_CAT and td.is_internal_category(c):
             # internal category - don't print
             continue
-        print("  %-13s" % (cname), end="")
+        print("  %-15s" % (cname), end="")
         # These numbers can get pretty big. Potentially things happening
         # at 1GHz in 1000 places, so rates may be around 1e12.
         # It might be better to print the rates per microsecond,
@@ -394,14 +395,16 @@ def recipe_load(name):
     Load a recipe, either from an explicitly specified JSON file,
     or from the recipe path.
     """
-    if name.endswith(".json"):
+    if not name.endswith(".json"):
+        name += ".json"
+    if os.path.isfile(name):
         with open(name) as f:
             return json.load(f)
     for p in o_recipe_path:
-        fn = os.path.join(p, name + ".json")
+        fn = os.path.join(p, name)
         if os.path.isfile(fn):
             return recipe_load(fn)
-    raise IOError
+    raise IOError(name)
 
 
 #
@@ -491,7 +494,7 @@ recipe_bandwidth_cpu = {
 
 
 recipe_bandwidth_rnf = {
-    "name": "CPU/SLC bandwidth",
+    "name": "CPU/SLC bandwidth at CPU",
     "categories": ["read", "write clean", "write dirty"],
     "rate_bandwidth": 64,
     "measure": [
@@ -501,6 +504,23 @@ recipe_bandwidth_rnf = {
         { "measure": "write clean", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteEvictOrEvict" } },  # later CHI only
         { "measure": "write dirty", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteBackFull" } },
         { "measure": "write dirty", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteCleanFull" } },
+        { "measure": "write dirty", "ports": CMN_PROP_RNF, "watchpoint_up": { "opcode": "WriteUniqueFull" } },
+    ]
+}
+
+
+recipe_bandwidth_hnf = {
+    "name": "CPU/SLC bandwidth at SLC",
+    "categories": ["read", "write clean", "write dirty"],
+    "rate_bandwidth": 64,
+    "measure": [
+        { "measure": "read", "ports": CMN_PROP_HNF, "watchpoint_down": { "opcode": "ReadNotSharedDirty" } },
+        { "measure": "read", "ports": CMN_PROP_HNF, "watchpoint_down": { "opcode": "ReadUnique" } },
+        { "measure": "write clean", "ports": CMN_PROP_HNF, "watchpoint_down": { "opcode": "WriteEvictFull" } },
+        { "measure": "write clean", "ports": CMN_PROP_HNF, "watchpoint_down": { "opcode": "WriteEvictOrEvict" } },  # later CHI only
+        { "measure": "write dirty", "ports": CMN_PROP_HNF, "watchpoint_down": { "opcode": "WriteBackFull" } },
+        { "measure": "write dirty", "ports": CMN_PROP_HNF, "watchpoint_down": { "opcode": "WriteCleanFull" } },
+        { "measure": "write dirty", "ports": CMN_PROP_HNF, "watchpoint_down": { "opcode": "WriteUniqueFull" } },
     ]
 }
 
@@ -519,7 +539,7 @@ recipe_bandwidth_dram = {
 
 recipe_bandwidth = {
     "name": "Bandwidth",
-    "subrecipes": [recipe_bandwidth_cpu, recipe_bandwidth_rnf, recipe_bandwidth_dram],
+    "subrecipes": [recipe_bandwidth_cpu, recipe_bandwidth_rnf, recipe_bandwidth_hnf, recipe_bandwidth_dram],
 }
 
 
@@ -549,8 +569,48 @@ recipe_retries = {
 }
 
 
-if __name__ == "__main__":
-    import sys
+# For CBusy analysis, we're only interested in bits [1:0] as these indicate busyness.
+# Bit 2 is "multiple requesters".
+
+recipe_cbusy_hnf = {
+    "name": "CBusy indicated by SLC",
+    "categories": ["very-busy", "50%", "not-busy"],
+    "measure": [
+        { "measure": "very-busy", "ports": CMN_PROP_HNF, "watchpoint_up": { "chn": cmnwatch.DAT, "cbusy": "0bx1x" } },
+        { "measure": "50%", "ports": CMN_PROP_HNF, "watchpoint_up": { "chn": cmnwatch.DAT, "cbusy": "0bx01" } },
+        { "measure": "not-busy", "ports": CMN_PROP_HNF, "watchpoint_up": { "chn": cmnwatch.DAT, "cbusy": "0bx00" } },
+    ]
+}
+
+
+recipe_cbusy_snf = {
+    "name": "CBusy indicated by DRAM",
+    "categories": ["very-busy", "50%", "not-busy"],
+    "measure": [
+        { "measure": "very-busy", "ports": CMN_PROP_SNF, "watchpoint_up": { "chn": cmnwatch.DAT, "cbusy": "0bx1x" } },
+        { "measure": "50%", "ports": CMN_PROP_SNF, "watchpoint_up": { "chn": cmnwatch.DAT, "cbusy": "0bx01" } },
+        { "measure": "not-busy", "ports": CMN_PROP_SNF, "watchpoint_up": { "chn": cmnwatch.DAT, "cbusy": "0bx00" } },
+    ]
+}
+
+
+recipe_cbusy = {
+    "name": "CBusy",
+    "subrecipes": [recipe_cbusy_hnf, recipe_cbusy_snf],
+}
+
+
+recipe_c2c = {
+    "name": "c2c",
+    "categories": ["xfer"],
+    "measure": [
+        { "measure": "xfer", "ports": CMN_PROP_CCG, "watchpoint_up": { "chn": cmnwatch.REQ } },
+    ]
+}
+
+
+def main(argv):
+    global o_dominance_level, o_no_adjust, o_print_decimal, o_print_percent, o_print_rate_bandwidth, o_print_recipe, o_recipe_path, o_split, o_verbose
     import argparse
     parser = argparse.ArgumentParser(description="Top-down performance analysis for CMN interconnect")
     parser.add_argument("--level", type=str, action="append", default=[], help="run specified top-down level")
@@ -568,7 +628,7 @@ if __name__ == "__main__":
     parser.add_argument("--perf-bin", type=str, default="perf", help="perf command")
     parser.add_argument("--cmd", type=str, help="microbenchmark to run (will be killed on exit)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     o_no_adjust = opts.no_adjust
     o_dominance_level = opts.dominance_level
@@ -592,6 +652,7 @@ if __name__ == "__main__":
             print("Mesh size %ux%u: measurement time set to %.2fs" % (cmn0.dimX, cmn0.dimY, opts.time))
     cmn_perfstat.o_time = opts.time
     cmn_perfstat.o_perf_bin = opts.perf_bin
+    cmn_perfcheck.o_perf_bin = opts.perf_bin
     if not opts.level:
         opts.level = ["1"] if (not opts.recipe) else []
     if opts.all or opts.level == ["all"]:
@@ -622,6 +683,10 @@ if __name__ == "__main__":
             print_topdown(recipe_bandwidth)
         elif level == "retries":
             print_topdown(recipe_retries)
+        elif level == "cbusy":
+            print_topdown(recipe_cbusy)
+        elif level == "ccg":
+            print_topdown(recipe_c2c)
         else:
             print("bad topdown level %s" % level, file=sys.stderr)
             sys.exit(1)
@@ -631,5 +696,9 @@ if __name__ == "__main__":
                 recipe = recipe_load(recipe_fn)
                 print_topdown(recipe)
             except IOError as e:
-                print("%s" % e, file=sys.stderr)
+                print("Could not load recipe: %s" % e, file=sys.stderr)
                 sys.exit(1)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

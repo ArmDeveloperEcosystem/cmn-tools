@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import os
 import sys
+import gzip
 
 
 o_verbose = 0
@@ -245,9 +246,16 @@ def regmaps_from_file(fn):
     """
     Yield all RegMap objects from a regdefs file.
     """
-    with open(fn, "r") as f:
-        for rm in regmaps_load(f, filename=fn):
-            yield rm
+    if os.path.isfile(fn + ".gz"):
+        fn += ".gz"
+    if fn.endswith(".gz"):
+        with gzip.open(fn, "rt") as f:
+            for rm in regmaps_load(f, filename=fn):
+                yield rm
+    else:
+        with open(fn, "r") as f:
+            for rm in regmaps_load(f, filename=fn):
+                yield rm
 
 
 def regdefs_from_file(fn, verbose=0):
@@ -265,7 +273,7 @@ class Register:
     def __init__(self, addr, name, desc=None, n_bits=64, access=None, security=None, external=False):
         assert n_bits > 0
         self.regmap = None       # Will be back pointer when added to RegMap
-        self.addr = addr
+        self.addr = addr         # Generally, offset from base address of a component
         self.n_bits = n_bits
         self.name = name
         self.desc = desc
@@ -451,7 +459,7 @@ def diff_regdefs(rda, rdb, file=None):
 
 def regmaps_from_paths(fns):
     for fn in fns:
-        if fn.endswith(".regdefs"):
+        if fn.endswith(".regdefs") or fn.endswith(".regdefs.gz"):
             for rm in regmaps_from_file(fn):
                 yield rm
             continue
@@ -460,7 +468,7 @@ def regmaps_from_paths(fns):
             sys.exit(1)
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="Register descriptions")
     parser.add_argument("-o", "--output", type=str, help="output file")
@@ -469,7 +477,7 @@ if __name__ == "__main__":
     parser.add_argument("--diff", action="store_true", help="show differences")
     parser.add_argument("files", type=str, nargs="+", help="register definition files")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     if opts.diff:
         if len(opts.files) < 2:
@@ -488,3 +496,7 @@ if __name__ == "__main__":
     else:
         for regmap in regmaps_from_paths(opts.files):
             print(regmap)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

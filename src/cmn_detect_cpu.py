@@ -69,10 +69,10 @@ class CMN_RNFPort:
     def perf_events(self, **matches):
         w = cmnwatch.Watchpoint(cmn_version=self.port.CMN().product_config, up=True, **matches)
         flds = "nodeid=0x%x,bynodeid=1,wp_dev_sel=%u" % (self.xp_id, self.port.port)
-        return w.perf_events(flds, cmn_instance=self.port.CMN().seq)
+        return w.perf_events(flds, cmn_instance=self.port.CMN().cmn_seq)
 
     def __str__(self):
-        s = "CMN:%u/XP:0x%x/P%u" % (self.port.CMN().seq, self.xp_id, self.port.port)
+        s = "M%u/XP:0x%x/P%u" % (self.port.CMN().cmn_seq, self.xp_id, self.port.port)
         return s
 
 
@@ -150,12 +150,12 @@ def discover_cpu_lpid(S, cpu):
     return lpid
 
 
-def pick_any_hnf_port(S, seq):
+def pick_any_hnf_port(S, cmn_seq):
     """
     Pick any HN-F/HN-S port in the mesh, so that we can set a
     download-watchpoint on it.
     """
-    cmn = S.CMNs[seq]
+    cmn = S.CMNs[cmn_seq]
     for p in cmn.ports():
         if p.connected_type in [CMN_PORT_DEVTYPE_HNF, CMN_PORT_DEVTYPE_HNS]:
             return p
@@ -184,14 +184,14 @@ def discover_cpu_srcid(S, cpu):
         ids = list(range(bid, bid+rp.port.cal))
     else:
         ids = [bid]
-    hnf = pick_any_hnf_port(S, cmn.seq)
+    hnf = pick_any_hnf_port(S, cmn.cmn_seq)
     if o_verbose >= 2:
         print("setting download-watchpoints on %s" % hnf)
     events = []
     for id in ids:
         w = cmnwatch.Watchpoint(cmn_version=cmn.product_config, up=False, srcid=id)
         flds = "nodeid=0x%x,bynodeid=1,wp_dev_sel=%u" % (hnf.XP().node_id(), hnf.port)
-        e = w.perf_events(flds, cmn_instance=cmn.seq)
+        e = w.perf_events(flds, cmn_instance=cmn.cmn_seq)
         assert len(e) == 1
         events += e
     ix = get_max_event(cpu, events, time=o_time)
@@ -359,7 +359,8 @@ def print_cpus(S):
         print()
 
 
-if __name__ == "__main__":
+def main(argv):
+    global g_diagram, o_factor, o_force_lpid, o_force_srcid, o_retries, o_retry_multiplier, o_time, o_verbose
     import argparse
     parser = argparse.ArgumentParser(description="Discover where CPUs are located in system mesh",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -378,7 +379,7 @@ if __name__ == "__main__":
     parser.add_argument("--perf-bin", type=str, default="perf", help="path to perf command")
     parser.add_argument("--lmbench-bin", type=str, default=None, help="bin directory for lmbench")
     parser.add_argument("-v", "--verbose", action="count", default=1, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     cmn_traffic_gen.o_perf_bin = opts.perf_bin
     cmn_perfcheck.o_perf_bin = opts.perf_bin
     cmn_traffic_gen.o_lmbench = opts.lmbench_bin
@@ -440,3 +441,7 @@ if __name__ == "__main__":
             cmn_json.json_dump_file_from_system(S, ofn)
         if output_temp:
             print("now copy %s to %s or rerun with --update" % (ofn, cmn_json.cmn_config_filename()))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

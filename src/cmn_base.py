@@ -20,6 +20,7 @@ CMN itself has no knowledge of which CPUs are connected where.
 
 from __future__ import print_function
 
+import sys
 from cmn_enum import *
 from cmn_config import *
 from memsize_str import memsize_str
@@ -98,8 +99,13 @@ class System(NodeGroup):
                 return c
         return None
 
+    def cmn_instances(self, instance=None):
+        for (i, c) in enumerate(self.CMNs):
+            if instance is None or instance == i:
+                yield c
+
     def create_CMN(self, dimX=None, dimY=None, extra_ports=None):
-        c = CMN(self, dimX=dimX, dimY=dimY, seq=len(self.CMNs), extra_ports=extra_ports)
+        c = CMN(self, dimX=dimX, dimY=dimY, cmn_seq=len(self.CMNs), extra_ports=extra_ports)
         self.CMNs.append(c)
         return c
 
@@ -210,10 +216,10 @@ class CMN(NodeGroup):
 
     There may be multiple CMN meshes in a system.
     """
-    def __init__(self, owner=None, dimX=None, dimY=None, seq=None, config=None, extra_ports=None):
+    def __init__(self, owner=None, dimX=None, dimY=None, cmn_seq=None, config=None, extra_ports=None):
         self.owner = owner     # e.g. System
         self.product_config = config
-        self.seq = seq         # sequence number within the system
+        self.cmn_seq = cmn_seq          # sequence number within the system
         self.periphbase = None
         self.rootnode_offset = None     # For early CMNs: None means not known
         self.node_skiplist = None
@@ -381,7 +387,7 @@ class CMN(NodeGroup):
         return n
 
     def __str__(self):
-        s = "CMN#%u" % self.seq
+        s = "CMN#%u" % self.cmn_seq
         s += " (%s)" % self.product_config.product_name()
         if False and self.periphbase is not None:
             # Show where the CMN lives in device space - experts only
@@ -502,7 +508,7 @@ class CMNPort:
         """
         String method identifies the port uniquely in the whole system
         """
-        #s = "CMN#%u P%u: %s" % (self.CMN().seq, self.port, self.connected_type_s)
+        #s = "CMN#%u P%u: %s" % (self.CMN().cmn_seq, self.port, self.connected_type_s)
         s = "%s P%u: %s" % (self.XP(), self.port, self.connected_type_s)
         if self.cal:
             s += " CAL"
@@ -598,7 +604,8 @@ class CMNNodeDev(CMNNodeBase):
     """
     def __init__(self, type=None, type_s=None, owner=None, id=None, logical_id=None):
         assert isinstance(owner, CMNPort)
-        assert type != CMN_NODE_XP
+        assert type is not None
+        assert type != CMN_NODE_XP and type != CMN_NODE_CFG
         device_mask = (1 << owner.XP().id_device_bits()) - 1
         assert device_mask in [0x1, 0x3]
         if (id & ~device_mask) != owner.base_id():
@@ -611,6 +618,10 @@ class CMNNodeDev(CMNNodeBase):
         self.device_object = self.owner.pdevices[dn]
         self.device_object.device_nodes.append(self)
         self.device = dn
+        if False:
+            ep = self.properties() & ~owner.properties() & ~(CMN_PROP_SAM | CMN_PROP_MPAM)
+            if ep:
+                print("%s has properties 0x%x (%s) which %s does not" % (self, ep, cmn_properties_str(ep | CMN_PROP_DEV), owner), file=sys.stderr)
 
     @property
     def port(self):
@@ -823,5 +834,9 @@ class CacheGeometry:
         return s
 
 
-if __name__ == "__main__":
+def main(argv):
     assert False, "not designed to run as main program"
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

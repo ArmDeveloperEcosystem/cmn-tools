@@ -131,7 +131,7 @@ class CMNRegMapper:
             regfn = None
         if regfn is None or not os.path.isfile(regfn):
             regfn = os.path.join(regdefs_dir, pident + ".regdefs")
-        if not os.path.isfile(regfn):
+        if not (os.path.isfile(regfn) or os.path.isfile(regfn + ".gz")):
             print("No register definitions yet: %s (expect %s)" % (cfg, regfn), file=sys.stderr)
             sys.exit(1)
         self.set_regmaps_from_file(regfn)
@@ -165,21 +165,22 @@ class Style:
     """
     Style controls for printing register information
     """
-    def __init__(self, descriptions=True, description_limit=100, fields=True, flat=False, reset=True):
+    def __init__(self, descriptions=True, description_limit=100, fields=True, address=False, flat=False, reset=True):
         self.o_descriptions = descriptions
         self.description_limit = 100
         self.o_fields = fields
         self.o_flat = flat
         self.o_reset = reset
+        self.o_address = address
 
 
 class CMNRegDumper(CMNRegMapper, Style):
     """
     Dump CMN configuration registers
     """
-    def __init__(self, regdefs_dir=None, regmaps=None, descriptions=True, description_limit=100, fields=True, include_read_only=False, skip_zeroes=True, match_reg_names=None, match_nodes=None, flat=False):
+    def __init__(self, regdefs_dir=None, regmaps=None, descriptions=True, description_limit=100, fields=True, include_read_only=False, skip_zeroes=True, match_reg_names=None, match_nodes=None, flat=False, address=False):
         CMNRegMapper.__init__(self, regdefs_dir=regdefs_dir, regmaps=regmaps)
-        Style.__init__(self, descriptions=descriptions, description_limit=description_limit, fields=fields, flat=flat)
+        Style.__init__(self, descriptions=descriptions, description_limit=description_limit, fields=fields, flat=flat, address=address)
         self.o_include_read_only = include_read_only
         self.o_match_reg_names = match_reg_names
         self.o_match_nodes = match_nodes
@@ -249,6 +250,8 @@ class CMNRegDumper(CMNRegMapper, Style):
         for (n, reg) in self.cmn_iter_reg(C, reg_name):
             n_found += 1
             rname = self.locator_str(n) + "." + reg_name
+            if self.o_address:
+                rname = ("0x%x:" % (n.node_base_addr + reg.addr)) + rname
             if reg.is_secure and not n.C.secure_accessible:
                 print("** %s is secure (%s) and not accessible" % (rname, reg.security))
                 continue
@@ -289,16 +292,18 @@ class CMNRegDumper(CMNRegMapper, Style):
         if n_found == 0:
             print("** Register not found: '%s'" % reg_name, file=sys.stderr)
 
-    @staticmethod
-    def locator_str(n):
+    def locator_str(self, n):
         if n.type() == CMN_NODE_CFG:
             s = "cfg"
+            cmn = n.CMN()
         else:
             (x, y, p, d) = n.coords()
             s = "mxp(%u,%u)" % (x, y)
             if not n.is_XP():
                 ntype = cmn_node_type_str(n.type()).replace('-', '_').lower()
                 s += ".p%u.d%u.%s" % (p, d, ntype)
+            cmn = n.XP().CMN()
+        s = ("cmn(%u)." % cmn.cmn_seq) + s
         return s
 
     def reg_selected(self, name):
@@ -453,7 +458,8 @@ def search_all(reg_ex, style):
         print("No matches found for '%s'" % reg_ex.pattern)
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_verbose
     import argparse
     def regex(s):
         try:
@@ -468,6 +474,7 @@ if __name__ == "__main__":
     parser.add_argument("--no-fields", dest="fields", action="store_false", help="don't show register fields")
     parser.add_argument("-d", "--descriptions", action="store_true", help="show register and field descriptions")
     parser.add_argument("--no-descriptions", dest="descriptions", action="store_false", help="don't show descriptions")
+    parser.add_argument("--address", action="store_true", help="show address of each register")
     parser.add_argument("--reset", action="store_true", default=True, help="show reset values")
     parser.add_argument("--no-reset", dest="reset", action="store_false", help="don't show reset values")
     parser.add_argument("-n", "--node", type=cmn_select.CMNSelect, action="append", help="match nodes or node types")
@@ -479,7 +486,7 @@ if __name__ == "__main__":
     parser.add_argument("regs", type=str, nargs="*", help="register names or field names")
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     if opts.search:
         opts.descriptions = True
@@ -500,12 +507,13 @@ if __name__ == "__main__":
                      include_read_only=opts.include_read_only, skip_zeroes=(not opts.include_zero),
                      match_reg_names=opts.reg,
                      match_nodes=cmn_select.cmn_select_merge(opts.node),
+                     address=opts.address,
                      flat=opts.flat)
     CS = cmn_from_opts(opts)
     if opts.search:
         D.set_regmaps_from_cmn_product(CS[0].product_config)
         opts.regs = [regex(r) for r in opts.regs]
-        style = Style(description=True, fields=True, flat=opts.flat, reset=opts.reset)
+        style = Style(description=True, fields=True, flat=opts.flat, reset=opts.reset, address=opts.address)
         for reg_ex in opts.regs:
             n = search_all_in_regdefs(reg_ex, D.regmaps, style)
             if n == 0:
@@ -537,3 +545,7 @@ if __name__ == "__main__":
         print("** Registers matched, but skipped", file=sys.stderr)
     if D.had_errors():
         print("** Warnings/errors encountered - check full output for details", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

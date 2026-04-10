@@ -7,6 +7,7 @@ Copyright (C) Arm Ltd. 2024. All rights reserved.
 SPDX-License-Identifier: Apache 2.0
 """
 
+import sys
 # Channels in order used by CMN wp_chn_sel.
 channel = ["REQ", "RSP", "SNP", "DAT"]
 
@@ -259,11 +260,11 @@ DVM_type = [
 DVM_EL = ["hypguest", "EL3", "guest", "hyp"]
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="CHI opcode lookup")
     parser.add_argument("ops", type=str, nargs="*", help="opcode names or codes to look up")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     # Check that all opcode names are unique, across channels
     ops_by_name = {}
     for (ch, ops) in enumerate(opcodes):
@@ -286,3 +287,7 @@ if __name__ == "__main__":
             if op.lower() in ops_by_name:
                 (ch, opc) = ops_by_name[op.lower()]
                 print("  %s %#3x: %s" % (channel[ch], opc, opcodes[ch][opc]))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

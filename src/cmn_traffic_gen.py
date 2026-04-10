@@ -149,7 +149,8 @@ def cpu_gen_traffic(cpu, events=["instructions"], time=0.1, size_M=16, perf_bin=
     return ecounts
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_lmbench, o_verbose
     import argparse
     def cpu_list(s):
         ls = []
@@ -167,8 +168,12 @@ if __name__ == "__main__":
     parser.add_argument("--perf-bin", type=str, default="perf", help="path to perf bin")
     parser.add_argument("--lmbench-bin", type=str, default=None, help="path to lmbench bin")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     o_lmbench = opts.lmbench_bin
     for cpu in opts.cpu_list:
         cpu_gen_traffic(cpu, time=opts.time, size_M=opts.size, perf_bin=opts.perf_bin)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -143,7 +143,7 @@ class mmap:
         x.value = n
 
 
-if __name__ == "__main__":
+def main(argv):
     # Test by mapping this Python file, which starts "#!/usr/bin..."
     f = open(__file__, "rb")
     m = mmap(f.fileno(), os.sysconf("SC_PAGE_SIZE"), MAP_SHARED, PROT_READ, 0)
@@ -152,3 +152,7 @@ if __name__ == "__main__":
     m.close()
     f.close()
     print("mmap() test ok.")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

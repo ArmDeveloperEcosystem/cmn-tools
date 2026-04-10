@@ -653,7 +653,7 @@ def self_test():
     test(b"\x07\xAA\xfb\x12\x34\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02")
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="CoreSight trace decoder")
     parser.add_argument("--test", action="store_true", help="run self-tests")
@@ -661,7 +661,7 @@ if __name__ == "__main__":
     parser.add_argument("--dump", action="store_true", help="dump raw trace")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("trace", type=str, help="trace file to decode")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     if opts.test:
         self_test()
     o_verbose = opts.verbose
@@ -678,3 +678,7 @@ if __name__ == "__main__":
         file_decode(arg, decoders, verbose=o_verbose)
     else:
         inspect_trace(arg, verbose=o_verbose)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

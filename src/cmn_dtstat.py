@@ -224,7 +224,7 @@ def print_dtm_pmu(dtm, pfx="    "):
                         print()
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     import cmn_devmem_find
     parser = argparse.ArgumentParser(description="CMN debug/trace tool")
@@ -246,7 +246,7 @@ if __name__ == "__main__":
     parser.add_argument("--xp", type=(lambda x:int(x, 16)), action="append", help="select XP (default all XPs/DTMs)")
     parser.add_argument("-d", "--detail", action="count", default=0, help="increase detail")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     Cs = cmn_devmem.cmn_from_opts(opts)
     for C in Cs:
         if C.DTC0() is None:
@@ -278,3 +278,7 @@ if __name__ == "__main__":
                         dtm.dtm_clear_fifo()
                     if opts.dtm_enable:
                         dtm.dtm_enable()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

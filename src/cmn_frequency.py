@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache 2.0
 from __future__ import print_function
 
 
+import sys
 import os
 import time
 
@@ -33,14 +34,14 @@ class VarTracker:
         self.v_last = v
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="CMN frequency")
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("--td", type=float, help="frequency measurement time")
     parser.add_argument("--watch", type=float, help="watch interval")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     Cs = cmn_devmem.cmn_from_opts(opts)
     for C in Cs:
         C.freq_var = VarTracker()
@@ -66,3 +67,7 @@ if __name__ == "__main__":
         # n.b. --watch only makes sense if output is to tty
         print("\x1b[%uA" % len(Cs), end="")
         time.sleep(opts.watch)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

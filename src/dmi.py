@@ -271,6 +271,9 @@ def _decode_memory_device(d):
         d.part = d.string(part)
         d.mem_type_str = DMI_memory_types.get(d.mem_type, "?")
     d.h_array = d.h_array if d.h_array else None
+    # Configured memory speed cannot be more than maximum capable speed
+    if d.c_speed_mts > d.p_speed_mts:
+        print("Memory configured speed %u MT/s is greater than capable speed %u MT/s" % (d.c_speed_mts, d.p_speed_mts), file=sys.stderr)
     # Device might have an owning array, but some systems don't have arrays
     d.p_array = None            # not linked yet
     # Device might have a device address map, but sometimes doesn't
@@ -680,7 +683,7 @@ def print_DMI_memory(D):
         #print()
         bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
         print(" speed=%u/%u MT/s" % (d.p_speed_mts, d.c_speed_mts), end="")
-        print(" - b/w=%u Mbits/s, %u MB/s" % (bw//0x100000, bw//0x100000//8), end="")
+        print(" - b/w=%u Mbits/s, %u MB/s" % (bw//1000000, bw//1000000//8), end="")
         print("  %s %s" % (d.mfr, d.part))
 
     print("Memory:")
@@ -814,7 +817,8 @@ def convert_for_dmidecode(ifn, ofn):
     return ofn
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_verbose
     import tempfile
     import argparse
     parser = argparse.ArgumentParser(description="read SMBIOS DMI file")
@@ -830,7 +834,7 @@ if __name__ == "__main__":
     parser.add_argument("--os-strings", action="store_true", help="dump DMI strings from OS")
     parser.add_argument("-t", "--type", type=int, help="DMI record type")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     if opts.dump_bin:
         convert_for_dmidecode(opts.input, opts.dump_bin)
@@ -868,3 +872,7 @@ if __name__ == "__main__":
     if opts.uuid:
         # Bare UUID - should be same as /sys/class/dmi/id/product_uuid
         print("%s" % D.system().uuid)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

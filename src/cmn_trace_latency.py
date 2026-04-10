@@ -314,7 +314,7 @@ def run_for_file(fn, opts, out):
     print_summary(stats, matcher, out)
 
 
-def main():
+def main(argv):
     parser = argparse.ArgumentParser(
         description="Report CMN transaction latency from a trace file"
     )
@@ -358,7 +358,7 @@ def main():
         action="store_true",
         help="print unmatched pending requests at end",
     )
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     if opts.end_to_end:
         opts.match = "txnid-reqsrc"
         opts.rsp_channels = [cmn_flits.DAT]
@@ -378,4 +378,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

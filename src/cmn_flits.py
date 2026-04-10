@@ -305,6 +305,10 @@ class CMNFlit:
     """
     Data about a flit. Ranges from just the TXNID, up to some of the payload,
     depending on the trace format requested at the watchpoint.
+
+    This class also has methods for stringizing flits, or fields of flits.
+    In some cases those will redirect to the owning CMNFlitGroup object.
+    The caller should subclass that object, to customize field stringizing.
     """
     def __init__(self, txnid=None, opcode=None, srcid=None, tgtid=None, tracetag=None, data=None, group=None):
         self.group = group         # will be a CMNFlitGroup
@@ -355,6 +359,10 @@ class CMNFlit:
             return CHI_G_CMN_DAT_datasource_str(self.datasource)
 
     def DVM_opcode(self):
+        """
+        If this is a DVM flit, return the DVM opcode number, which needs to be interpreted
+        in conjunction with the channel (REQ or SNP).
+        """
         if self.is_DVM():
             if self.group.VC == REQ:
                 return BITS(self.addr, 11, 3)
@@ -392,11 +400,17 @@ class CMNFlit:
             return s
 
     def addr_str(self):
+        """
+        String for a flit's address field. Redirect to the FlitGroup object,
+        which may be subclassed.
+        """
         return self.group.addr_str(self.addr, self.NSENS)
 
     def short_str(self):
         """
-        Source, target, opcode and transaction id
+        Source, target, opcode and transaction id.
+        This is used for all flits in a flit group. Since these will always have
+        the same mesh instance, we don't include mesh instance here.
         """
         s = self.group.txnid_fmt % self.txnid
         if self.opcode is not None:
@@ -419,7 +433,7 @@ class CMNFlit:
         fields (RSVDC, DEVEVENT) whose interpretation may be specific to CMN,
         or a CMN node type, or even an implementation of CMN.
         """
-        s = self.short_str()
+        s = self.group.prefix_str() + self.short_str()
         if self.group.format == 4:
             if self.group.VC == 3:
                 s += ".%u" % self.dataid
@@ -713,13 +727,18 @@ class CMNFlitGroup:
         for flit in self.flits:
             yield flit
 
+    def prefix_str(self):
+        if self.cmn_seq is not None:
+            # Use 'M' as mesh number, to avoid confusion with hex C0
+            return "M%u:" % self.cmn_seq
+        else:
+            return ""
+
     def context_str(self):
         """
         Return a string indicating where the data was captured.
         """
-        s = ""
-        if self.cmn_seq is not None:
-            s += "C%u" % self.cmn_seq
+        s = self.prefix_str()
         if self.nodeid is not None:
             s += "@0x%03x " % self.nodeid
         if self.DEV is not None:
@@ -881,10 +900,14 @@ class CMNFlitGroup:
                     f.txnid = BITS(x,26,10)
                     f.opcode = BITS(x,47,4)
                     f.tracetag = BIT(x,77)
-                else:
+                elif self.cfg._cmn_base_type == 2:
                     f.txnid = BITS(x,26,12)
                     f.opcode = BITS(x,49,4)
                     f.tracetag = BIT(x,95)
+                else:
+                    f.txnid = BITS(x,26,12)
+                    f.opcode = BITS(x,49,4)
+                    f.tracetag = BIT(x,102)
             else:
                 assert False, "bad CMN channel %s" % self.VC
             self.add_flit(f)
@@ -1123,7 +1146,7 @@ class CMNFlitGroup:
                 assert False, "unreachable (bad channel %s)" % self.VC
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     import random
     parser = argparse.ArgumentParser(description="CMN CHI flit decoder (self-tests)")
@@ -1134,7 +1157,7 @@ if __name__ == "__main__":
     parser.add_argument("--vc", type=int, help="CHI channel (REQ/RSP/SNP/DAT)")
     parser.add_argument("--tests", type=int, default=1000, help="number of tests to run")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     cfg = CMNTraceConfig(opts.cmn_version, has_MPAM=(not opts.no_mpam), cmn_product_revision=opts.cmn_revision)
     for i in range(opts.tests):
         g = CMNFlitGroup(cfg)
@@ -1148,3 +1171,7 @@ if __name__ == "__main__":
             return x.to_bytes(n, 'big')
         g.decode(randbytes(wbytes))
         print(g)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -25,7 +25,19 @@ import cmn_dtstat
 
 o_verbose = 0
 
+o_decode_raw = False
+
+
 g_system = None
+
+
+def hexstr(x):
+    s = ""
+    # be portable for Python2/3
+    for ix in range(len(x)):
+        s += ("%02x" % ord(x[ix:ix+1]))
+    return s
+
 
 def lookup_cpu(cpu_num):
     """
@@ -148,7 +160,7 @@ class Watchpoint:
             if o_verbose:
                 assert x == self.get_data_cc(), "%s: watchpoint FIFO contents are unstable" % self
             (data, cc) = x
-            fg = CMNFlitGroup(self.trace_config, cmn_seq=self.dtm.xp.C.seq, nodeid=self.dtm.xp.node_id(), WP=self.wp, DEV=self.dev, VC=self.vc, format=self.ty, cc=cc, payload=data)
+            fg = CMNFlitGroup(self.trace_config, cmn_seq=self.dtm.xp.C.cmn_seq, nodeid=self.dtm.xp.node_id(), WP=self.wp, DEV=self.dev, VC=self.vc, format=self.ty, cc=cc, payload=data)
             if o_verbose:
                 print("%s: captured %s" % (self, fg))
             return fg
@@ -168,6 +180,7 @@ class CapturedData:
     """
     def __init__(self, req=None):
         self.req = req
+        assert req is None or isinstance(req, CMNFlitGroup)
         self.rsp = []       # tuples of (Watchpoint, CMNFlitGroup)
 
     def __str__(self):
@@ -178,6 +191,7 @@ class CapturedData:
         """
         Get the latency of a response packet, relative to the baseline request.
         """
+        assert isinstance(rsp, CMNFlitGroup)
         return sub16(rsp.cc, self.req.cc) if (self.req is not None) else None
 
     def ordered_responses(self):
@@ -189,9 +203,17 @@ class CapturedData:
             return sorted(self.rsp, key=(lambda rt:rt[1].cc if rt[1] is not None else 99999))
         return sorted(self.rsp, key=(lambda rt:(self.latency(rt[1]) if rt[1] is not None else 99999)))
 
+    def flit_str(self, fg):
+        """
+        Return a string for a flit (actually a CMNFlitGroup, but we only ever capture one flit).
+        """
+        return str(fg)
+
     def print(self):
         print()
-        print("      %s" % (self.req if (self.req is not None) else "<open>"))
+        if o_decode_raw and self.req is not None:
+            print("%s  " % hexstr(self.req.payload[::-1]), end="")
+        print("      %s" % (self.flit_str(self.req) if (self.req is not None) else "<open>"))
         if not self.rsp:
             # None of the tag-catcher WPs saw anything
             print("        no response")
@@ -207,9 +229,11 @@ class CapturedData:
                 # get_capture() would only have put this in in verbose mode
                 print("        %s - not seen" % (rw))
                 continue
+            if o_decode_raw:
+                print("%s  " % hexstr(rsp.payload[::-1]), end="")
             is_same = (self.req is not None and self.req.payload == rsp.payload)   # doesn't work - RSP will have TAG set
             lat = self.latency(rsp)
-            print("%s%5u  %s" % (" !"[is_same], (lat if lat is not None else rsp.cc), rsp))
+            print("%s%5u  %s" % (" !"[is_same], (lat if lat is not None else rsp.cc), self.flit_str(rsp)))
             n_caught += 1
         return 1 + n_caught
 
@@ -338,7 +362,7 @@ class LatencyMonitor:
             M = wps.wps[grp]
             if self.verbose:
                 print("%s: set watchpoint %s" % (dtm, M))
-            dtm.dtm_set_watchpoint(wpnum+i, chn=wps.chn, format=format, cc=True, dev=dev, val=M.val, mask=M.mask, group=M.grp, combine=wps.is_multigrp())
+            dtm.dtm_set_watchpoint(wpnum+i, chn=wps.chn, format=format, cc=True, dev=dev, val=M.val, mask=M.mask, group=M.grp, combine=(wps.is_multigrp() and i == 0))
         return Watchpoint(dtm, wpnum)
 
     def set_req(self, pc, wps, format=4):
@@ -405,6 +429,7 @@ class LatencyMonitor:
                 return None
             self.wp_req.dtm.dtm_disable()              # Stop any more captures
         else:
+            # We're in "open" mode, e.g. where CPU SPE is setting tags
             req = None
         self.n_captured += 1
         cf = CapturedData(req)
@@ -412,7 +437,7 @@ class LatencyMonitor:
         # collecting any tagged flits
         for wp_rsp in self.wp_rsps:
             rsp = wp_rsp.get_fg()
-            if rsp is not None or opts.verbose:
+            if rsp is not None or self.verbose:
                 cf.rsp.append((wp_rsp, rsp))
         return cf
 
@@ -503,7 +528,7 @@ class LatencyMonitor:
             self.program_pending()
         t_end = time.time() + timeout
         while time.time() < t_end:
-            time.sleep(opts.poll_time)
+            time.sleep(self.poll_time)
             cf = self.get_capture()
             if cf is not None:
                 self.need_reinit_and_program = True
@@ -617,10 +642,10 @@ def port_channels(Cs, spec, default_pc):
             up = True
         elif comp == "DOWN":
             up = False
-        elif comp.startswith("CMN") and len(comp) == 4:
+        elif (comp.startswith("CMN") and len(comp) == 4) or (comp.startswith("M") and len(comp) == 2):
             # Specify the CMN instance, for dual-socket etc.
             try:
-                cmn_instance = int(comp[3:])
+                cmn_instance = int(comp[-1:])
                 assert cmn_instance < len(Cs)
                 C = Cs[cmn_instance]
                 if o_verbose:
@@ -652,7 +677,7 @@ def port_channels(Cs, spec, default_pc):
             except KeyError:
                 print("%s: non-existent CPU#%u" % (spec, cpu_num), file=sys.stderr)
                 sys.exit(1)
-            C = Cs[cpu.port.CMN().seq]
+            C = Cs[cpu.port.CMN().cmn_seq]
             xp = C.XP(cpu.port.xp.node_id())
             dev = cpu.port.port_number
             if cpu.lpid is not None:
@@ -710,7 +735,8 @@ def list_port_channels(Cs, specs, default_pc):
             yield pc
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_decode_raw, o_verbose
     import argparse
     parser = argparse.ArgumentParser(description="Measure CMN transaction latency using TraceTag")
     cmn_devmem_find.add_cmnloc_arguments(parser)
@@ -718,13 +744,15 @@ if __name__ == "__main__":
     parser.add_argument("--wait", type=float, default=1.0, help="wait time")
     parser.add_argument("--poll-time", type=float, default=0.01, help="polling time for watchpoint FIFOs")
     parser.add_argument("-N", "--capture", type=int, default=1, help="number of transactions to capture")
+    parser.add_argument("--decode-raw", action="store_true", help="show raw packet contents")
     parser.add_argument("--format", type=int, default=4, help="CMN flit capture format")
     parser.add_argument("--diag", action="store_true")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("req", type=str, help="'request' watchpoint specification")
     parser.add_argument("wps", type=str, nargs="*", help="monitor locations")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
+    o_decode_raw = opts.decode_raw
 
     Cs = cmn.cmn_from_opts(opts)
     if opts.verbose:
@@ -782,7 +810,11 @@ if __name__ == "__main__":
             if mon.n_captured >= opts.capture:
                 break
         if mon.n_captured < opts.capture:
-            print("Timed out... %u packets captured." % mon.n_captured)
+            print("Timed out after %ss... %u packets captured." % (opts.wait, mon.n_captured))
 
     if opts.verbose:
         print("Capture session complete.")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

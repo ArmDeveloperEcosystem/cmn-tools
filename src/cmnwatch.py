@@ -922,7 +922,8 @@ def add_chi_arguments(parser):
     group.add_argument("--exclusive", action="store_true")
 
 
-if __name__ == "__main__":
+def main(argv):
+    global argparse, o_verbose
     def _hexint(s):
         return int(s, 16)
     def arg_cmn_version(s):
@@ -962,7 +963,7 @@ if __name__ == "__main__":
     parser.add_argument("--list", action="store_true", help="list possible fields")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("wps", type=str, nargs="*", help="watchpoint specifiers")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     S = None
     cpu = None
@@ -989,7 +990,7 @@ if __name__ == "__main__":
         if opts.verbose:
             print("CPU: %s" % cpu, file=sys.stderr)
         assert not opts.nodeid and not opts.dev
-        opts.cmn_instance = cpu.port.CMN().seq
+        opts.cmn_instance = cpu.port.CMN().cmn_seq
         opts.nodeid = cpu.port.xp.node_id()
         opts.dev = cpu.port.port
         opts.lpid = cpu.lpid
@@ -1052,3 +1053,7 @@ if __name__ == "__main__":
     if False:
         m = match_obj(opts, chn=opts.chn, up=opts.up, cmn_version=cmn_version)
         print("Watchpoint: %s" % (m))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

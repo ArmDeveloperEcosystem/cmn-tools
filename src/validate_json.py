@@ -45,6 +45,7 @@ class Schema:
         assert "$schema" in schema, "%s: doesn't look like a JSON schema" % fn
         self.schema = schema
         self.validator = jsonschema.Draft4Validator(schema)
+        self.fix_trailing_comma = fix_trailing_comma
 
     def name(self):
         return self.schema["title"]
@@ -68,7 +69,7 @@ class Schema:
         assert fn.endswith(".json"), "bad data file name (expected .json): %s" % fn
         with open(fn) as f:
             try:
-                if not opts.fix_trailing_comma:
+                if not self.fix_trailing_comma:
                     j = json.load(f)
                 else:
                     # Hack for Linux PMU files which have trailing commas.
@@ -107,7 +108,8 @@ def validate_files(val, dir):
 # See https://github.com/json-schema/json-schema/issues/220
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_max_errors
     import argparse
     parser = argparse.ArgumentParser(description="validate JSON files against a schema")
     parser.add_argument("--schema", type=str, required=True, help="JSON schema")
@@ -115,10 +117,14 @@ if __name__ == "__main__":
     parser.add_argument("--max-errors", type=int, default=999, help="max number of errors")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("dirs", nargs="*", help="directories with JSON files to validate")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     o_max_errors = opts.max_errors
     validator = Schema(opts.schema, fix_trailing_comma=opts.fix_trailing_comma)
     for d in opts.dirs:
         validate_files(validator, d)
     sys.exit(n_failed > 0)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

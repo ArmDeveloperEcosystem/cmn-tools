@@ -7,7 +7,7 @@ Copyright (C) Arm Ltd. 2024. All rights reserved.
 SPDX-License-Identifier: Apache 2.0
 
 This module provides 'node selectors' which can be used to designate nodes
-within the CMN mesh, for various purposes e.g. setting up watchpoints.
+within the CMN mesh(es), for various purposes e.g. setting up watchpoints.
 A typical use case might be:
 
   parser.add_argument("--node", type=cmn_select.CMNSelect, action="append")
@@ -48,6 +48,7 @@ selection expressions:
     rn-f@0xa1   - select RN-F with node id 0xA1
     0xa1        - select any node with node id 0xA1
     sn-f(0,_)   - select all SN-Fs at left edge of mesh
+    m1:hn-f     - select all HN-Fs in mesh #1
 """
 
 
@@ -68,7 +69,8 @@ class CMNSelectSingle:
     """
     Selector for a group of CMN nodes, by node type, position, logical id etc.
     """
-    def __init__(self, s=None, props=None, type=None, x=None, y=None, port=None, dev=None, nodeid=None):
+    def __init__(self, s=None, props=None, type=None, x=None, y=None, port=None, dev=None, nodeid=None, cmn_seq=None):
+        self.cmn_seq = None
         self.node_props = props    # CMN_PROP_...
         self.node_type = type
         self.node_x = x
@@ -85,7 +87,15 @@ class CMNSelectSingle:
         return copy.copy(self)
 
     def update(self, s):
+        """
+        Given a selector string, update the selection object.
+        """
         s = s.upper()
+        if s.startswith("M") and s[1] in "0123456789":
+            ix = s.find(':')
+            meshs = s[1:ix] if ix >= 0 else s
+            self.cmn_seq = int(meshs)
+            s = s[ix+1:] if ix >= 0 else ""
         if '#' in s:
             # logical id e.g. "XP#3"
             hix = s.index('#')
@@ -138,6 +148,8 @@ class CMNSelectSingle:
     def __str__(self):
         s = self.match_str if self.match_str else ""
         ms = []
+        if self.cmn_seq is not None:
+            ms.append("seq=%u" % self.cmn_seq)
         if self.node_type is not None:
             ms.append("type=%s" % cmn_node_type_str(self.node_type))
         if self.logical_id is not None:
@@ -179,6 +191,14 @@ class CMNSelectSingle:
             return False
         return True
 
+    def can_match_devices_at_cmn(self, cmn):
+        """
+        Return true if the selector might match some devices in the given CMN.
+        """
+        if self.cmn_seq is not None and self.cmn_seq != cmn.cmn_seq:
+            return False
+        return True
+
     def can_match_devices_at_xp(self, node):
         """
         In some tree walks, to avoid having to recursively discover device nodes
@@ -186,6 +206,8 @@ class CMNSelectSingle:
         possibly match. Return true if the selector could match any devices under the XP.
         """
         assert node.is_XP(), "expected XP: %s" % node
+        if not self.can_match_devices_at_cmn(node.C):
+            return False
         if self.node_x is not None and self.node_x != node.XY()[0]:
             return False
         if self.node_y is not None and self.node_y != node.XY()[1]:
@@ -284,6 +306,9 @@ class CMNSelect:
         """
         return (not self.matchers) or any([m.match_node(node) for m in self.matchers])
 
+    def can_match_devices_at_cmn(self, cmn):
+        return (not self.matchers) or any([m.can_match_devices_at_cmn(cmn) for m in self.matchers])
+
     def can_match_devices_at_xp(self, node):
         return (not self.matchers) or any([m.can_match_devices_at_xp(node) for m in self.matchers])
 
@@ -307,7 +332,8 @@ def cmn_select_merge(mlist):
         return m
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_verbose
     import argparse
     parser = argparse.ArgumentParser(description="CMN node match test",
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -316,7 +342,7 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true", help="run self-tests")
     parser.add_argument("exprs", type=str, nargs="*", help="selection expressions")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     if opts.test:
         print("Tests:")
@@ -326,3 +352,7 @@ if __name__ == "__main__":
     print("Selection: %s" % (cmn_select_merge(ms)))
     if opts.select:
         print(cmn_select_merge(opts.select))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -31,9 +31,21 @@ o_verbose = 0
 
 o_include_polling = False
 
+o_decode_raw = False
+
+o_decode_verbose = 0
+
 
 def bits(x, p, n):
     return (x >> p) & ((1 << n) - 1)
+
+
+def hexstr(x):
+    s = ""
+    # be portable for Python2/3
+    for ix in range(len(x)):
+        s += ("%02x" % ord(x[ix:ix+1]))
+    return s
 
 
 # TBD: currently limited argument validation, while we're experimenting.
@@ -41,7 +53,7 @@ def inthex(s):
     return int(s,16)
 
 
-def add_trace_arguments(parser):
+def add_trace_arguments(parser, cc_default=False):
     parser.add_argument("--xp", type=inthex, action="append", help="crosspoint number(s)")
     parser.add_argument("--node", type=cmn_select.CMNSelect, action="append", help="node specifier(s)")
     parser.add_argument("--vc", "--chn", type=int, choices=[0,1,2,3], default=0, help="VC channel number: REQ, RSP, SNP, DAT")
@@ -51,7 +63,8 @@ def add_trace_arguments(parser):
     cmnwatch.add_chi_arguments(parser)
     parser.add_argument("--uploads", dest="up", action="store_true", default=None, help="capture uploaded flits only")
     parser.add_argument("--downloads", dest="up", action="store_false", default=None, help="capture downloaded flits only")
-    parser.add_argument("--cc", action="store_true", help="enable cycle counts")
+    parser.add_argument("--cc", action="store_true", default=cc_default, help="enable cycle counts")
+    parser.add_argument("--no-cc", dest="cc", action="store_false", help="disable cycle counts")
     parser.add_argument("--cross-trigger", action="store_true", help="generate cross trigger on watchpoint match")
     parser.add_argument("--debug-trigger", action="store_true", help="generate debug trigger on watchpoint match")
     parser.add_argument("--set-tracetag", action="store_true", help="set TraceTag")
@@ -87,6 +100,10 @@ def cmn_desc(cmn_direct):
     return S.cmn_at_base(cmn_direct.periphbase)
 
 
+def id_key(cmn_seq, nodeid, lpid):
+    return (cmn_seq, nodeid, lpid)
+
+
 class CMNFlitGroupX(CMNFlitGroup):
     """
     Subclass CMN flit decode to provide more annotation of CHI source and target ids.
@@ -95,18 +112,25 @@ class CMNFlitGroupX(CMNFlitGroup):
         assert VC is not None
         assert DEV is not None
         assert format is not None
-        CMNFlitGroup.__init__(self, cfg, cmn_seq=cmn_seq, nodeid=nodeid, WP=WP, DEV=DEV, VC=VC, format=format, cc=cc, debug=opts.decode_verbose)
+        assert cmn_seq is not None
+        CMNFlitGroup.__init__(self, cfg, cmn_seq=cmn_seq, nodeid=nodeid, WP=WP, DEV=DEV, VC=VC, format=format, cc=cc, debug=o_decode_verbose)
         self.vis = vis
         self.id_map = vis.id_map
 
     def id_str(self, id, lpid=0):
+        """
+        Override, to identify nodes, using our discovered node type and CPU identity
+        """
         s = CMNFlitGroup.id_str(self, id, lpid=lpid)
         ns = "????"
-        if (id, lpid) in self.id_map:
-            ns = self.id_map[(id, lpid)]
-        elif lpid != 0 and (id, 0) in self.id_map:
-            # e.g. RN-F where we haven't got CPU mappings for non-zero LPIDs
-            ns = self.id_map[(id, 0)]
+        ik = id_key(self.cmn_seq, id, lpid)
+        if ik in self.id_map:
+            ns = self.id_map[ik]
+        elif lpid != 0:
+            ik = id_key(self.cmn_seq, id, lpid=0)
+            if ik in self.id_map:
+                # e.g. RN-F where we haven't got CPU mappings for non-zero LPIDs
+                ns = self.id_map[ik]
         s += "(%-4s)" % ns[:4]
         return s
 
@@ -114,7 +138,7 @@ class CMNFlitGroupX(CMNFlitGroup):
         """
         Override default address printing, to identify CMN access itself
         """
-        if self.vis.cmn.contains_addr(addr):
+        if self.vis.cmn_by_seq[self.cmn_seq].contains_addr(addr):
             return "<CMN:%06x>" % (addr & 0xffffff)
         return CMNFlitGroup.addr_str(self, addr, NSENS)
 
@@ -155,11 +179,16 @@ def xp_node_ids(xp):
             yield (id, devices[id])
 
 
-def cmn_node_ids(cmn):
-    cmn.discover_all_devices()
-    for xp in cmn.XPs():
-        for (id, desc) in xp_node_ids(xp):
-            yield (id, desc)
+def cmn_node_ids(cmns):
+    for cmn in cmns:
+        cmn.discover_all_devices()
+        for xp in cmn.XPs():
+            for (id, desc) in xp_node_ids(xp):
+                yield (cmn.cmn_seq, id, desc)
+
+
+def trace_config_from_cmn_config(config):
+    return CMNTraceConfig(config.product_id, has_MPAM=config.mpam_enabled, cmn_product_revision=config.revision_major)
 
 
 class CMNVis:
@@ -167,53 +196,63 @@ class CMNVis:
     Print CMN trace in a human-readable form, one packet per line, minimizing clutter.
     """
     def __init__(self):
-        self.cmn = None
+        self.cmns = None
 
-    def set_cmn(self, cmn):
-        self.cmn = cmn
-        config = cmn.product_config
-        self.cfg = CMNTraceConfig(config.product_id, has_MPAM=config.mpam_enabled, cmn_product_revision=config.revision_major)
+    def set_cmns(self, cmns):
+        self.cmns = cmns
+        self.cmn_by_seq = {C.cmn_seq: C for C in cmns}
+        self.cfgs = {C.cmn_seq: trace_config_from_cmn_config(C.product_config) for C in cmns}
         self.last_xp = None
         self.build_id_map()
 
     def build_id_map(self):
-        self.id_map = {}     # (id, lpid) -> label
-        for (id, desc) in cmn_node_ids(self.cmn):
-            self.id_map[(id, 0)] = desc[:4]
-        self.cmn_desc = cmn_desc(self.cmn)
-        if self.cmn_desc is not None and self.cmn_desc.has_cpu_mappings():
-            for cpu in self.cmn_desc.cpus():
-                self.id_map[(cpu.id, cpu.lpid)] = "#%-3u" % cpu.cpu
+        self.id_map = {}     # (cmn_seq, id, lpid) -> label
+        for (cmn_seq, id, desc) in cmn_node_ids(self.cmns):
+            self.id_map[(cmn_seq, id, 0)] = desc[:4]
+        for C in self.cmns:
+            cd = cmn_desc(C)
+            if cd is not None and cd.has_cpu_mappings():
+                for cpu in cd.cpus():
+                    self.id_map[(C.cmn_seq, cpu.id, cpu.lpid)] = "#%-3u" % cpu.cpu
         if o_verbose:
             print("ID map:")
             n_on_line = 0
             for k in sorted(self.id_map.keys()):
-                (id, lpid) = k
+                (cmn_seq, id, lpid) = k
                 s = self.id_map[k]
                 if n_on_line == 8:
                     print()
                     n_on_line = 0
-                print("  %04x[%u]: %-6s" % (id, lpid, s), end="")
+                print("  M%u %04x[%u]: %-6s" % (cmn_seq, id, lpid, s), end="")
                 n_on_line += 1
             print()
 
-    def handle_flitgroup(self, xp, wp, fg):
+    def handle_flitgroup(self, xp, w, fg):
+        """
+        Flit group handler for tracing - print it out
+        """
         if xp != self.last_xp:
             print("%s:" % xp)
             self.last_xp = xp
-        print("  %s WP%u: " % ("><"[(wp >> 1) & 1], wp), end="")
+        if o_decode_raw:
+            print("%s  " % hexstr(fg.payload[::-1]), end="")
+        print("  %s WP%u: " % ("<>"[w.up], w.wp), end="")
         print(fg)
 
-    def decode_packet(self, xp, wp, w, data, cc):
-        assert 0 <= wp and wp <= 3
-        fg = CMNFlitGroupX(self.cfg, cmn_seq=self.cmn.seq, nodeid=xp.node_id(), WP=wp, DEV=w.dev, VC=w.chn, format=w.type, cc=cc, vis=self)
+    def decode_packet(self, xp, w, data, cc):
+        assert isinstance(w, cmn_devmem.DTMWatchpoint)
+        assert 0 <= w.wp and w.wp <= 3
+        cmn_seq = xp.C.cmn_seq
+        fg = CMNFlitGroupX(self.cfgs[cmn_seq], cmn_seq=cmn_seq, nodeid=xp.node_id(), WP=w.wp, DEV=w.dev, VC=w.chn, format=w.type, cc=cc, vis=self)
         fg.decode(data)
-        self.handle_flitgroup(xp, wp, fg)
+        fg.up = w.up
+        self.handle_flitgroup(xp, w, fg)
 
 
 def is_cmn_polling_req(cmn, flit):
     """
-    Detect ReadNoSnp reqs poll the XP FIFO registers
+    Try to reduce noise in flit capture by detecting flits we generated -
+    i.e. that are from this tool polling the XP FIFO registers.
     """
     if flit.group.VC == cmn_flits.REQ and flit.opcode == 0x04 and flit.group.format == 4 and cmn.contains_addr(flit.addr):
         return True
@@ -224,41 +263,55 @@ class CMNHist(CMNVis):
     """
     Histogram to accmulate packet stats
     """
-    def __init__(self):
+    def __init__(self, direction=False):
         CMNVis.__init__(self)
         self.hist = {}
         self.witness = {}     # a witness flit for each key
         self.n_total = 0
         self.n_discarded_self = 0
+        self.direction = direction
 
-    def handle_flitgroup(self, xp, wp, fg):
-        # Override, to accumulate histogram
+    def handle_flitgroup(self, xp, w, fg):
+        """
+        Override, to accumulate histogram instead of printing
+        """
         for flit in fg:
-            if (not o_include_polling) and is_cmn_polling_req(self.cmn, flit):
+            if (not o_include_polling) and is_cmn_polling_req(xp.C, flit):
                 self.n_discarded_self += 1
                 continue
-            key = self.flit_key(flit)
+            key = self.flit_key(xp, flit)
             if key not in self.hist:
                 self.hist[key] = 0
                 self.witness[key] = flit
             self.hist[key] += 1
             self.n_total += 1
 
-    def flit_key(self, flit):
-        # Construct a key to classify the flit into a sensible group.
-        # We use at least the source and target type, the channel, and the opcode.
-        if (flit.srcid, 0) not in self.id_map:
+    def id_key(self, cmn_seq=None, nodeid=None, lpid=0):
+        """
+        Construct a key to look up a node id - actually, a unique endpoint including
+        CMN mesh instance number, and possibly a device LPID.
+        """
+        return id_key(cmn_seq, nodeid, lpid)
+
+    def flit_key(self, xp, flit):
+        """
+        Construct a key to classify the flit into a sensible group.
+        We use at least the source and target type, the channel, and the opcode.
+        """
+        cmn_seq = xp.C.cmn_seq
+        skey = self.id_key(cmn_seq, flit.srcid, 0)
+        if skey not in self.id_map:
             if flit.srcid is not None:
-                self.id_map[(flit.srcid, 0)] = "?%03x" % flit.srcid
+                self.id_map[skey] = "?%03x" % flit.srcid
             else:
-                self.id_map[(None, 0)] = "-"    # e.g. format-0 tracing - transaction ids only
-        stype = self.id_map[(flit.srcid, 0)]
+                self.id_map[skey] = "-"    # e.g. format-0 tracing - transaction ids only
+        stype = self.id_map[skey]
         if stype.startswith("#"):
             stype = "RN-F"    # undo the CPU mapping!
         if flit.tgtid is not None:
-            key = (flit.tgtid, 0)
+            tkey = self.id_key(cmn_seq, flit.tgtid, 0)
             try:
-                ttype = self.id_map[(flit.tgtid, 0)]
+                ttype = self.id_map[tkey]
                 if ttype.startswith("#"):
                     ttype = "RN-F"
             except KeyError:
@@ -276,12 +329,15 @@ class CMNHist(CMNVis):
             dop = flit.DVM_opcode_str()
             if dop is not None:
                 op += "(%s)" % dop
-        key = (flit.group.VC, op, stype, ttype)
+        d = flit.group.up if self.direction else None
+        key = (flit.group.VC, op, stype, ttype, d)
         return key
 
-    def key_str(self, key):
-        (vc, op, stype, ttype) = key
+    def flit_key_str(self, flit_key):
+        (vc, op, stype, ttype, d) = flit_key
         s = "%-5s %-5s %s %-22s" % (stype, ttype, cmnwatch._chi_channels[vc], op)
+        if d is not None:
+            s = "<>"[d] + " " + s
         return s
 
     def print_histogram(self):
@@ -289,7 +345,14 @@ class CMNHist(CMNVis):
         h = sorted(self.hist.items(), key=lambda x: -x[1])
         for (key, n) in h:
             pc = (n * 100.0) / self.n_total
-            print("%8u %3.0f%%  %20s  %s" % (n, pc, self.key_str(key), self.witness[key].long_str()))
+            print("%8u %3.0f%%  %20s" % (n, pc, self.flit_key_str(key)), end="")
+            # Print the witness
+            if True:
+                witness = self.witness[key]
+                if o_decode_raw:
+                    print("  %s" % hexstr(witness.group.payload[::-1]), end="")
+                print("  %s %s" % ("<>"[witness.group.up], witness.long_str()), end="")
+            print()
         if o_verbose:
             print("(%u CMN polling packets captured and discarded)" % self.n_discarded_self)
 
@@ -397,14 +460,15 @@ class TraceSession:
     def __init__(self, opts, handler=None, atb=False, init=True):
         self.opts = opts
         self.atb = atb
-        self.C = None    # in case next line throws
-        self.C = self.cmn_from_opts(opts)
-        if (self.opts.data is not None) and not self.C.part_ge_650():
-            print("%s: this product does not support data trace" % self.C, file=sys.stderr)
-            sys.exit(1)
+        self.cmns = None    # in case next line throws
+        self.cmns = list(cmn_devmem.cmn_from_opts(opts))
+        for C in self.CMNs():
+            if (self.opts.data is not None) and not C.part_ge_650():
+                print("%s: this product does not support data trace" % C, file=sys.stderr)
+                sys.exit(1)
         self.TV = handler
         if handler is not None:
-            handler.set_cmn(self.C)        # The trace visualizer
+            handler.set_cmns(list(self.CMNs()))        # The trace visualizer
         for dtm in self.all_dtms():
             dtm.rotation = {}
             dtm.rotation[WP_UP] = WatchRotation(dtm)
@@ -427,6 +491,7 @@ class TraceSession:
         self.dtms_rotating = [dtm for dtm in self.dtms if (dtm.rotation[WP_UP].needs_rotation() or dtm.rotation[WP_DN].needs_rotation())]
         if self.check_need_rotation():
             print("Warning: %u watchpoints will need to be dynamically rotated" % len(self.dtms_rotating))
+        self.remove_unused_cmns()
         if init:
             self.init_cmn()
 
@@ -434,8 +499,9 @@ class TraceSession:
         """
         Always leave DTCs enabled, to avoid kernel PMU driver reading zeroes
         """
-        if self.C is not None:
-            self.C.dtc_enable()
+        if self.cmns is not None:
+            for C in self.CMNs():
+                C.dtc_enable()
 
     def cmn_from_opts(self, opts):
         loc = cmn_devmem.cmn_instance(opts)
@@ -450,23 +516,49 @@ class TraceSession:
             C.diag_trace |= cmn_devmem.DIAG_READS | cmn_devmem.DIAG_WRITES
         return C
 
+    def remove_unused_cmns(self):
+        """
+        If we aren't monitoring anything on a mesh, we don't need to bother with DTC enable/disable etc.
+        """
+        is_used = {C.cmn_seq: False for C in self.cmns}
+        for dtm in self.dtms:
+            is_used[dtm.C.cmn_seq] = True
+        self.cmns = [C for C in self.cmns if is_used[C.cmn_seq]]
+
+    def CMNs(self):
+        if self.cmns is not None:
+            return self.cmns
+        else:
+            return []
+
+    def DTCs(self):
+        for C in self.CMNs():
+            for dtc in C.DTCs():
+                yield dtc
+
+    def XPs(self):
+        for C in self.CMNs():
+            for xp in C.XPs():
+                yield xp
+
     def init_cmn(self):
         """
         Iniitialize CMN for tracing
         """
-        if self.opts.verbose:
-            print("cmn_capture: initializing CMN %s" % self.C)
-        # Enable all DTCs in the CMN
-        if self.C.DTC0() is None:
-            print("%s: could not discover DTC" % self.C, file=sys.stderr)
-            sys.exit(1)
-        self.C.dtc_enable(cc=self.opts.cc)   # need to enable CC in DTCs if we want timestamp in DTMs
-        self.C.restore_dtc_status_on_deletion()
-        # First disable all the non-involved XPs
-        for dtm in self.C.DTMs():
-            if self.opts.verbose >= 2:
-                print("cmn_capture: disable DTM %s" % dtm)
-            dtm.dtm_disable()
+        for C in self.CMNs():
+            if self.opts.verbose:
+                print("cmn_capture: initializing CMN %s" % C)
+            # Enable all DTCs in the CMN
+            if C.DTC0() is None:
+                print("%s: could not discover DTC" % C, file=sys.stderr)
+                sys.exit(1)
+            C.dtc_enable(cc=self.opts.cc)   # need to enable CC in DTCs if we want timestamp in DTMs
+            C.restore_dtc_status_on_deletion()
+            # First disable all the non-involved XPs
+            for dtm in C.DTMs():
+                if self.opts.verbose >= 2:
+                    print("cmn_capture: disable DTM %s" % dtm)
+                dtm.dtm_disable()
 
     def construct_watchpoints(self):
         """
@@ -509,7 +601,9 @@ class TraceSession:
                     print("Bad node selector: %s" % wnodes, file=sys.stderr)
                     sys.exit(1)
             try:
-                wps = cmnwatch.parse_short_watchpoint(wspec, self.opts, cmn_version=self.C.product_config)
+                # Watchpoint specifications are interpreted using the configuration of the first mesh.
+                # TBD: in a heterogeneous system, we might need to do better.
+                wps = cmnwatch.parse_short_watchpoint(wspec, self.opts, cmn_version=self.cmns[0].product_config)
             except cmnwatch.WatchpointError as e:
                 print("Can't do this watchpoint: %s" % e, file=sys.stderr)
                 sys.exit(1)
@@ -532,7 +626,7 @@ class TraceSession:
             sys.exit(1)
 
     def ports_matching_nodes(self, nodes):
-        xps = [xp for xp in self.C.XPs() if nodes.can_match_devices_at_xp(xp)]
+        xps = [xp for xp in self.XPs() if nodes.can_match_devices_at_xp(xp)]
         if self.opts.verbose:
             print("XPs: %s" % (','.join([str(xp) for xp in xps])))
         for xp in xps:
@@ -584,7 +678,11 @@ class TraceSession:
         return nodes
 
     def all_dtms(self):
-        for xp in self.C.XPs():
+        """
+        Yield all the DTMs in the system.
+        TraceSession.dtms is a list of the DTMs we're actually using.
+        """
+        for xp in self.XPs():
             for dtm in xp.dtms:
                 yield dtm
 
@@ -729,15 +827,15 @@ class TraceSession:
     def trace_start(self):
         if self.opts.verbose:
             print("cmn_capture: start...")
-        self.C.dtc_disable()
+        self.dtc_disable()
         if False:
             # Reset all the XP DTMs (even the ones we're not interested in) and stop
             # them generating ATB trace packets.
-            for dtm in self.C.DTMs():
+            for dtm in self.all_dtms():
                 dtm.dtm_disable()
                 dtm.dtm_set64(cmn_devmem.CMN_DTM_CONTROL_off, cmn_devmem.CMN_DTM_CONTROL_TRACE_NO_ATB)
                 dtm.dtm_clear_fifo()
-        self.C.dtc_enable()
+        self.dtc_enable()
         for dtm in self.dtms:
             # Here we are scanning just the XPs that we want to monitor.
             # The others are left disabled.
@@ -747,20 +845,20 @@ class TraceSession:
             # We've programmed the local PMUs in the DTMs, and even though we aren't
             # forwarding local counts to the DTC, the DTMs won't count until we set
             # the global PMU enable.
-            for dtc in self.C.DTCs():
+            for dtc in self.DTCs():
                 dtc.pmu_clear()
                 dtc.pmu_enable()
 
         # Start CMN generating ATB trace
         if self.opts.cg_disable:
-            for dtc in self.C.DTCs():
+            for dtc in self.DTCs():
                 dtc.set64(cmn_devmem.CMN_DTC_CTL, cmn_devmem.CMN_DTC_CTL_CG_DISABLE)    # experimental
-        self.C.dtc_enable()
+        self.dtc_enable()
         if False:
             # Generate some more alignment packets in the ATB stream
             for _ in range(0, 3):
-                self.C.dtc_disable()
-                self.C.dtc_enable()
+                self.dtc_disable()
+                self.dtc_enable()
 
     def trace_readout(self, fifocap=None, clear=True):
         """
@@ -773,6 +871,7 @@ class TraceSession:
             if dtm not in fifocap:
                 fifocap[dtm] = {}
         for dtm in self.dtms:
+            # Check the DTM's four FIFOs (two upload, two download)
             fe = dtm.dtm_fifo_ready()
             for e in range(0, 4):
                 if fe & (1 << e):
@@ -784,7 +883,7 @@ class TraceSession:
                     if o_verbose >= 3:
                         print("%s WP%u (%s) captured %s" % (dtm, e, wb, data))
                     if self.opts.immediate:
-                        self.TV.decode_packet(dtm.xp, e, w, data, cc)
+                        self.TV.decode_packet(dtm.xp, w, data, cc)
                     ee = (e - 1) if (self.opts.data is not None and (e & 1)) else e
                     if ee not in fifocap[dtm]:
                         fifocap[dtm][ee] = []
@@ -825,11 +924,19 @@ class TraceSession:
         for dtm in self.dtms:
             for e in sorted(fifocap[dtm].keys()):
                 for (w, data, cc) in fifocap[dtm][e]:
-                    self.TV.decode_packet(dtm.xp, e, w, data, cc)
+                    self.TV.decode_packet(dtm.xp, w, data, cc)
+
+    def dtc_enable(self):
+        for C in self.CMNs():
+            C.dtc_enable()
+
+    def dtc_disable(self):
+        for C in self.CMNs():
+            C.dtc_disable()
 
     def trace_stop(self):
         # Stop generating trace, and collect it
-        self.C.dtc_disable()
+        self.dtc_disable()
         for dtm in self.dtms:
             dtm.dtm_disable()
         if self.opts.verbose >= 3:
@@ -864,45 +971,52 @@ class TraceSession:
             if fe & (1 << e):
                 w = xp.dtm.dtm_wp_config(e, value=False)
                 (data, cc) = dtm.dtm_fifo_entry(e)
-                self.TV.decode_packet(dtm.xp, e, w, data, cc)
+                self.TV.decode_packet(dtm.xp, w, data, cc)
 
     def show_all_status(self):
         """
         Show all XPs and DTCs, even non-involved
         """
-        for xp in self.C.XPs():
+        for xp in self.XPs():
             xp.show()
-        for dtc in self.C.DTCs():
+        for dtc in self.DTCs():
             cmn_dtstat.print_dtc(dtc)
 
     def show_dtm(self):
         print("DTM status:")
         for dtm in self.dtms:
             cmn_dtstat.print_dtm(dtm)
-        for dtc in self.C.DTCs():
+        for dtc in self.DTCs():
             cmn_dtstat.print_dtc(dtc)
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_decode_raw, o_include_polling, o_verbose, o_decode_verbose
     import argparse
     parser = argparse.ArgumentParser(description="CMN flit capture tool")
     add_trace_arguments(parser)
     parser.add_argument("--include-polling", action="store_true", help="include CMN polling reqs from script")
     parser.add_argument("--histogram", action="store_true", help="print histogram of packet types")
+    parser.add_argument("--histogram2", action="store_true", help="histogram distinguishing direction")
     parser.add_argument("--setup", action="store_true", help="set up but don't capture")
     parser.add_argument("--inspect", action="store_true", help="inspect captured data")
     parser.add_argument("--no-clear", action="store_true", help="don't clear captured data")
-    opts = parser.parse_args()
+    parser.add_argument("--decode-raw", action="store_true", help="show raw packet contents")
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
+    o_decode_raw = opts.decode_raw
+    o_decode_verbose = opts.decode_verbose
     if opts.setup and opts.inspect:
         print("Setup and inspect mode should be used separately", file=sys.stderr)
         sys.exit(1)
+    if opts.histogram2:
+        opts.histogram = True
     if (opts.setup or opts.inspect) and opts.histogram:
         print("In setup/inspect mode, actions like --histogram are not available", file=sys.stderr)
         sys.exit(1)
     o_include_polling = opts.include_polling
     if opts.histogram:
-        vis = CMNHist()
+        vis = CMNHist(direction=opts.histogram2)
     else:
         vis = CMNVis()
     ts = TraceSession(opts, handler=vis, init=(not opts.inspect))
@@ -924,3 +1038,7 @@ if __name__ == "__main__":
         vis.print_histogram()
     del ts
     del vis
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

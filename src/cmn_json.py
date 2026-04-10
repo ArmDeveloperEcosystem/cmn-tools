@@ -188,7 +188,7 @@ def json_from_cpu(co):
     j = {
         "type": "cpu",
         "cpu": co.cpu,     # CPU number as known to Linux
-        "mseq": co.port.CMN().seq,   # mesh sequence number in the system
+        "mseq": co.port.CMN().cmn_seq,   # mesh sequence number in the system
         "id": co.id,       # CHI SRCID - includes port and device bits
         "lpid": co.lpid    # CHI LPID, generally zero or assigned by DSU
     }
@@ -483,20 +483,15 @@ def system_print_summary_info(S, opts):
             print("  %s" % node)
     if opts.nodeid is not None:
         # Look up node by CHI srcid/tgtid
-        if opts.cmn_instance is None:
-            if S.has_multiple_cmn():
-                print("Defaulting to CMN#0, use --cmn-instance to specify instance",
-                      file=sys.stderr)
-            opts.cmn_instance = 0
-        C = S.CMNs[opts.cmn_instance]
-        p = C.port_at_id(opts.nodeid)
-        if p is not None:
-            print(p)
-        else:
-            print("No port matching ID 0x%02x" % opts.nodeid)
+        for C in S.cmn_instances(instance=opts.cmn_instance):
+            p = C.port_at_id(opts.nodeid)
+            if p is not None:
+                print(p)
+            else:
+                print("No port matching ID 0x%02x" % opts.nodeid)
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="CMN mesh interconnect model")
     parser.add_argument("-i", "--input", type=str, help="input JSON")
@@ -513,7 +508,7 @@ if __name__ == "__main__":
     parser.add_argument("--cmn-instance", type=int, help="select CMN instance")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("all_inputs", type=str, nargs="*", help="input JSON")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     if opts.all_inputs:
         if opts.input is not None:
             opts.all_inputs.insert(0, opts.input)
@@ -528,3 +523,7 @@ if __name__ == "__main__":
         S = file_print_summary_info(fn, opts)
         if opts.output is not None and S is not None:
             json_dump_file_from_system(S, opts.output)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

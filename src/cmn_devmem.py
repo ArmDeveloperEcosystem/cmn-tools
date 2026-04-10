@@ -1522,7 +1522,7 @@ class CMN:
                 g_trace_fd = open(xdiag, "a")
                 atexit.register(lambda: g_trace_fd.close())
         self.secure_accessible = secure_accessible    # if None, will be found from CFG
-        self.seq = cmn_loc.seq             # instance number within the system (semi-arbitrary numbering)
+        self.cmn_seq = cmn_loc.cmn_seq             # instance number within the system (semi-arbitrary numbering)
         self.periphbase = cmn_loc.periphbase
         rootnode_offset = cmn_loc.rootnode_offset
         self.node_skiplist = cmn_loc.node_skiplist
@@ -2092,8 +2092,10 @@ class CMNDiagramPerf(CMNDiagram):
     """
     CMN diagram with PMU counter annotations
     """
-    def __init__(self, cmn, small=False):
+    def __init__(self, cmn, small=False, counter_scale=1, counter_threshold=1):
         self.pmu_config = {}
+        self.counter_scale = counter_scale
+        self.counter_threshold = counter_threshold
         cmn.discover_all_devices()
         CMNDiagram.__init__(self, cmn, small=small, update=False)
         for xp in cmn.XPs():
@@ -2131,16 +2133,16 @@ class CMNDiagramPerf(CMNDiagram):
                         # TBD: only expect to see this for non-concatenated counters,
                         # but if we did see it for concatenated, the adjustment is wrong
                         dv += 0x10000
-                    dv >>= opts.counter_scale
+                    dv >>= self.counter_scale
                     dcolor = None
-                    if dv > opts.counter_threshold:
+                    if dv > self.counter_threshold:
                         dcolor = "red!"
                     self.at(cx+tab, cy-1, "%4x" % dv, color=dcolor)
                     tab += 5
                 self.pmu[xp] = npd          # Update the snapshot
 
 
-def cmn_enable_pmu(C):
+def cmn_enable_pmu(C, e0=None, e1=None):
     """
     Set up the PMUs to count interesting events. Each XP has a DTM with four counters.
     Each counter can be programmed to count either an XP event or an imported
@@ -2153,8 +2155,8 @@ def cmn_enable_pmu(C):
     for dtm in C.DTMs():
         dtm.dtm_write64(CMN_DTM_PMU_CONFIG_off, 0)
     for hnf in C.home_nodes():
-        hnf_evt0 = opts.e0
-        hnf_evt1 = opts.e1
+        hnf_evt0 = e0
+        hnf_evt1 = e1
         hnf.write64(hnf.PMU_EVENT_SEL[0], (hnf_evt1 << 8) | (hnf_evt0))
         xp = hnf.XP()
         pc = xp.dtm.dtm_read64(CMN_DTM_PMU_CONFIG_off)
@@ -2232,7 +2234,7 @@ def cmn_from_opts(opts):
     return CS
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     def inthex(s):
         return int(s,16)
@@ -2258,7 +2260,7 @@ if __name__ == "__main__":
     parser.add_argument("--dtc", type=int, default=0, help="select DTC node/domain, default DTC#0")
     parser.add_argument("--dump", action="store_true", help="dump CMN registers")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     if opts.watch and not (opts.diagram or opts.sketch):
         opts.diagram = True
     CS = cmn_from_opts(opts)
@@ -2281,9 +2283,9 @@ if __name__ == "__main__":
     for C in CS:
         print(C)
         if opts.diagram or opts.sketch:
-            D = CMNDiagramPerf(C, small=(opts.sketch))
+            D = CMNDiagramPerf(C, small=(opts.sketch), counter_scale=opts.counter_scale, counter_threshold=opts.counter_threshold)
             if opts.watch:
-                cmn_enable_pmu(C)
+                cmn_enable_pmu(C, e0=opts.e0, e1=opts.e1)
                 D.hide_cursor()
                 while True:
                     print(D.str_color(no_color=opts.no_color, force_color=opts.force_color, for_file=sys.stdout), end="")
@@ -2300,7 +2302,7 @@ if __name__ == "__main__":
             for dtm in C.DTMs():
                 dtm.dtm_enable()
         if opts.pmu_enable:
-            cmn_enable_pmu(C)
+            cmn_enable_pmu(C, e0=opts.e0, e1=opts.e1)
             opts.pmu_stat = True
         if opts.pmu_sample:
             cmn_sample_pmu(C)
@@ -2315,3 +2317,7 @@ if __name__ == "__main__":
                 dtc.pmu_disable()
                 if not was_enabled:
                     dtc.dtc_disable()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

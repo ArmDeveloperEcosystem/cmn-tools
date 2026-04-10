@@ -298,7 +298,8 @@ hns_events = {
 }
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_verbose
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", type=str, help="input CSV file")
@@ -306,7 +307,7 @@ if __name__ == "__main__":
     parser.add_argument("--list", action="store_true", help="list all events")
     parser.add_argument("-o", "--output", type=str, help="output CSV file")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     E = Events()
     if opts.input:
@@ -321,3 +322,7 @@ if __name__ == "__main__":
         E.dump(opts.output)    # Dump to CSV file
     if opts.list:
         E.print()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

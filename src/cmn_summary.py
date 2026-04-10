@@ -256,13 +256,17 @@ def apply_render(s, render):
     return s if render is None else render(s) if callable(render) else str(s) + " " + render
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_verbose
     import argparse
     parser = argparse.ArgumentParser(description="Show major system parameters")
     parser.add_argument("-o", "--output", type=str, help="JSON output")
+    parser.add_argument("--perf-bin", type=str, help="override 'perf' command")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
+    if opts.perf_bin is not None:
+        cmn_perfstat.o_perf_bin = opts.perf_bin
     j = {}
     for (gname, group) in groups:
         gj = {}
@@ -309,3 +313,7 @@ if __name__ == "__main__":
             with open(opts.output, "w") as f:
                 json.dump(j, f, indent=4)
             app_data.change_to_real_user_if_sudo(opts.output)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

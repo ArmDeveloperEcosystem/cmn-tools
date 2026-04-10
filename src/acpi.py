@@ -538,12 +538,13 @@ def ACPI(fn, system=None):
             return ACPITable(fn, handle=f, sig=sig, system=system)
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_verbose
     import argparse
     parser = argparse.ArgumentParser(description="read ACPI tables")
     parser.add_argument("-i", "--input", type=str, default="/sys/firmware/acpi/tables", help="input file")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     if not os.path.isdir(opts.input):
         # Build a single ACPI table object from a single file
@@ -558,3 +559,7 @@ if __name__ == "__main__":
             if os.path.isfile(fn):
                 A = ACPI(fn, system=S)
                 A.show()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

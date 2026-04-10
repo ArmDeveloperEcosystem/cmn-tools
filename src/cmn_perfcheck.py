@@ -264,12 +264,13 @@ def check_cpu_pmu_events(file=None):
     return check_hw_pmu_events(file=file)
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_perf_bin, o_verbose
     import argparse
     parser = argparse.ArgumentParser(description="check if CMN PMU driver is installed")
     parser.add_argument("--perf-bin", type=str, default="perf", help="path to perf binary")
     parser.add_argument("-v", "--verbose", action="count", default=1, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_perf_bin = opts.perf_bin
     o_verbose = opts.verbose
     is_installed = is_cmn_pmu_installed()
@@ -280,3 +281,7 @@ if __name__ == "__main__":
     check_cmn_pmu_events()
     print("Checking for CPU hardware PMU events:")
     check_cpu_pmu_events()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

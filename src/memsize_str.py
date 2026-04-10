@@ -15,6 +15,7 @@ There are several ways the caller can tune the output:
 from __future__ import print_function
 
 
+import sys
 def memsize_str(n, decimal=False, legacy=False):
     """
     Given a memory size in bytes, return a descriptive string.
@@ -28,18 +29,22 @@ def memsize_str(n, decimal=False, legacy=False):
         for (i, u) in enumerate([1000000000000, 1000000000, 1000000, 1000]):
             if n >= u:
                 return "%.3g%sB" % ((float(n) / u), "TGMK"[i])
-    return str(n) + "B"
+    return ("%.3gB" % n)
 
 
 assert memsize_str(1024*1024, legacy=True) == "1MB"
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="memsize_str test")
     parser.add_argument("--decimal", action="store_true")
     parser.add_argument("--legacy", action="store_true")
     parser.add_argument("size", type=(lambda x: int(x, 0)), nargs="+", help="size in bytes")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     for sz in opts.size:
         print("%10u: %10s" % (sz, memsize_str(sz, decimal=opts.decimal, legacy=opts.legacy)))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

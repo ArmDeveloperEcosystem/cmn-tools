@@ -104,13 +104,17 @@ def print_errstatus(C):
         C.rootnode.read64(r)
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     import cmn_devmem_find
     parser = argparse.ArgumentParser(description="CMN error status")
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="incerase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     Cs = cmn_devmem.cmn_from_opts(opts)
     for C in Cs:
         print_errstatus(C)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache 2.0
 from __future__ import print_function
 
 
+import sys
 from cmn_enum import *
 
 
@@ -117,13 +118,13 @@ class Route:
         return self.n_hops + self.n_total_slices
 
 
-if __name__ == "__main__":
+def main(argv):
     import cmn_json
     import argparse
     parser = argparse.ArgumentParser(description="CMN routing calculations")
     parser.add_argument("inputs", type=str, nargs="+", help="input JSON files")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     for fn in opts.inputs:
         S = cmn_json.system_from_json_file(fn)
         C = S.CMNs[0]
@@ -132,3 +133,7 @@ if __name__ == "__main__":
             for to_node in C.nodes(CMN_PROP_CONN):
                 r = Route(from_node, to_node)
                 print(r)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

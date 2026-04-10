@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache 2.0
 from __future__ import print_function
 
 
+import sys
 # Each CMN product has a 3-digit part identifier.
 # (However, there are cases of significant functional difference
 # between revisions of the same product.)
@@ -168,13 +169,13 @@ def cmn_version(s):
     return CMNConfig(product_name=s)
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="CMN product versions and configurations")
     parser.add_argument("version", type=cmn_version, nargs="*", help="versions")
     parser.add_argument("--list", action="store_true", help="list known revisions")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     if opts.list or not opts.version:
         print("CMN revisions:")
         for id in sorted(_cmn_revisions.keys()):
@@ -184,3 +185,7 @@ if __name__ == "__main__":
                 print("   %2u: %s (%s)" % (i, s, cfg))
     for v in opts.version:
         print("%s (major %s)" % (v, v.revision_major))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

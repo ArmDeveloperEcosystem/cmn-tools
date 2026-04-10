@@ -288,6 +288,8 @@ class CMNLister:
             print(pfx + "SF: %s" % cg.sf_str())
             print(pfx + "POCQ entries: %u" % (num_poc_entries))
             pwbase = 0x1C00 if cmn.part_ge_650() else 0x1000
+            if cmn.part_ge_S3r2():
+                pwbase = 0x1900
             pwsr = n.read64(pwbase + 0x08)
             if pwsr != 0x138:
                 # We expect power to be ON FAM, with dynamic transitions enabled
@@ -386,7 +388,7 @@ class CMNLister:
                 self.show_home_node_secure_config(n)
                 self.show_home_node_sam(n)
         elif n.type() == CMN_NODE_RNSAM:
-            if cmn.secure_accessible:
+            if cmn.secure_accessible or sec:
                 self.show_rn_sam(n)
 
     def show_node_event_sel(self, n, pfx="          "):
@@ -621,7 +623,8 @@ def print_routing(CS, verbose=0):
                 print(r)
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_register_slices
     import argparse
     parser = argparse.ArgumentParser(description="CMN mesh interconnect explorer")
     cmn_devmem_find.add_cmnloc_arguments(parser)
@@ -633,7 +636,7 @@ if __name__ == "__main__":
     parser.add_argument("--node-match", type=cmn_select.CMNSelect, action="append", help="node selection")
     parser.add_argument("--register-slices", action="store_true", help="show device/mesh credited slices")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     if not (opts.list or opts.list_logical or opts.routing):
         opts.list = True
     o_register_slices = opts.register_slices
@@ -647,3 +650,7 @@ if __name__ == "__main__":
             list_logical(C, verbose=opts.verbose)
     if opts.routing:
         print_routing(CS, verbose=opts.verbose)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -49,13 +49,23 @@ def gen_debugmap(C):
                 def port_devices(po, d):
                     return po.device_nodes(d) if po is not None else []
                 def devlist_logical_id(dl):
+                    # Find the device logical id for devices with a given (port, device) combination.
+                    # Generally these are the same for all nodes in a device, so we return as soon
+                    # as we find one. The one exception to this rule is on HN-D/HN-T nodes where the
+                    # debug node (DTC) logical id is its DTC domain number, and may be different from
+                    # the logical id of the DN and HN-I device nodes in the same device.
+                    # For consistency with the Linux driver, we prefer the DN/HN-I logical id.
+                    id = None
                     for dev in dl:
                         if C.id_xy(dev.id) != dev.XP().XY():
                             # Skip devices that are wrongly located (CXLA on CMN-600)
                             continue
-                        if dev.logical_id() is not None:
-                            return dev.logical_id()
-                    return None
+                        nid = dev.logical_id()
+                        if nid is not None and not dev.has_properties(CMN_PROP_T):
+                            if id is not None and id != nid:
+                                print("%s logical id mismatch %u vs %u" % (dev, id, nid), file=sys.stderr)
+                            id = nid
+                    return id
                 def lidstr(lid):
                     return ("#%u" % lid) if lid is not None else ""
                 lids = [devlist_logical_id(port_devices(po, d)) for po in pos]
@@ -64,36 +74,49 @@ def gen_debugmap(C):
     return sl
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="generate Linux-style CMN diagram")
     parser.add_argument("-i", "--input", type=str, default=cmn_json.cmn_config_filename(), help="CMN JSON")
-    parser.add_argument("--cmn-instance", type=int, default=0, help="select CMN number")
+    parser.add_argument("--cmn-instance", type=int, help="select CMN number")
     parser.add_argument("--diff", action="store_true", help="diff our map against the kernel's map")
     parser.add_argument("--kernel-map", type=str, default=DEBUG_CMN_MAP, help="file containing kernel debug map")
     parser.add_argument("--diff-opts", type=str, default="", help="options for 'diff' command")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("inputs", type=str, nargs="*", help="additional JSON inputs")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     if not opts.inputs:
         opts.inputs = [opts.input]
     if opts.diff and len(opts.inputs) > 1:
         print("Can't use --diff with multiple inputs", file=sys.stderr)
         sys.exit(1)
+    mismatched = 0
     for fn in opts.inputs:
         if len(opts.inputs) > 1 or opts.verbose:
             print("%s:" % fn)
         S = cmn_json.system_from_json_file(fn)
-        C = S.CMNs[opts.cmn_instance]
-        m = gen_debugmap(C)
-        if not opts.diff:
-            print("\n".join(m))
-        else:
-            with open("temp.cmnmap", "w") as f:
-                f.write("\n".join(m) + "\n")
-            rc = os.system("diff %s %s %s" % (opts.diff_opts, opts.kernel_map, "temp.cmnmap"))
-            if rc == 0:
-                print("Successfully reproduced the kernel driver map")
+        for C in S.CMNs:
+            if opts.cmn_instance is not None and C.cmn_seq != opts.cmn_instance:
+                continue
+            m = gen_debugmap(C)
+            if not opts.diff:
+                print("\n".join(m))
             else:
-                print("Maps do not match")
-                sys.exit(rc)
+                suffix = "_%u" % C.cmn_seq if C.cmn_seq > 0 else ""
+                temp_fn = "temp.cmnmap" + suffix
+                kernel_map = opts.kernel_map + suffix
+                with open(temp_fn, "w") as f:
+                    f.write("\n".join(m) + "\n")
+                rc = os.system("diff %s %s %s" % (opts.diff_opts, kernel_map, temp_fn))
+                if rc == 0:
+                    print("Successfully reproduced the kernel driver map in %s" % kernel_map)
+                    os.remove(temp_fn)
+                else:
+                    print("Maps do not match: compare %s and %s" % (temp_fn, kernel_map))
+                    mismatched = rc
+    if mismatched:
+        sys.exit(mismatched)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -270,11 +270,11 @@ def hide_cursor(file=None):
     atexit.register(show_cursor, file)
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="ASCII art diagram")
     parser.add_argument("--color", type=str)
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     cs = ""
     for col in _color_map.keys():
         for suf in ["","!","*","*!"]:
@@ -292,3 +292,7 @@ if __name__ == "__main__":
     D.at(10,0,"S",color=7)
     D.at(3,3,"SW",color=8)
     print(D.str_color(for_file=sys.stdout))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

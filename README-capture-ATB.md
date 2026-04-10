@@ -9,6 +9,7 @@ running cmn_trace_setup_ds.py within an Arm Debugger connection.
 
 cmn_trace_setup_ds.py is a wrapper around cmn_capture.py. It has the
 same command line options, with the addition of a timestamp (--ts) flag.
+See "Timestamps and cycle counts" for details of timestamping.
 
 For cmn_trace_setup_ds.py to work it needs some integration with the Arm
 Debugger target config. This is outlined briefly below, for a full
@@ -42,6 +43,35 @@ the Arm DS GUI).
 The captured trace may then be dumped to local disk (using the Arm
 Debugger 'trace dump' command), and the cmn_decode_trace.py script can
 be run (using your OS's Python) to decode the dumped trace.
+
+
+Timestamps and cycle counts
+---------------------------
+There are two kinds of timing information in CMN traces.
+
+The CMN has a 16-bit cycle counter that increments at CMN cycle frequency
+(typically this is near, but not identical to, CPU frequency). The value
+of this counter can be attached to each packet. Because it rolls over
+frequently (50us might be typical) it is not suitable for long-range
+time correlation. Cycle counting in trace is on by default but can be
+turned off with "--no-cc", resulting in a very modest space saving.
+Note that in multi-mesh systems the cycle counter is not synchronized
+between meshes. In fact the meshes may be running at different frequency.
+
+Secondly, the global timestamp can be inserted into the trace stream.
+This runs at a constant frequency (a nominal 1GHz although the actual
+granularity of updates may be lower) and should be the same across all
+trace sources in the system, including across multiple sockets.
+It is used for ETE, CoreSight STM and other trace sources and may be
+used to correlate CMN trace with other events.
+
+Timestamps are not attached to every CMN packet. Instead they are
+periodically inserted into the trace stream. Current CMN implementations
+do this regardless of whether there is any data to be output. Leaving
+trace enabled can result in a trace buffer being filled up with
+timestamps. Because of this, the capture scripts only enable timestamps
+when requested, using the --ts=<period> option. The timestamp period
+should be specified as 8192, 16384, 32768 or 65536.
 
 
 Offline latency from trace files

@@ -31,6 +31,7 @@ CMN_CFG_PERIPH_01       = 0x0008
 CMN_CFG_PERIPH_23       = 0x0010
 
 CMN_any_SECURE_ACCESS   = 0x0980
+CMN_any_ROOT_ACCESS     = 0x0988
 
 
 # Port connectivity information.
@@ -119,5 +120,10 @@ CMN_DTC_PC_CLAIM      = 0xFA0    # set (lower 32 bits) or clear (upper 32 bits) 
 CMN_DTC_PC_AUTHSTATUS_DEVARCH = 0xFB8
 
 
-if __name__ == "__main__":
+def main(argv):
     pass
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])

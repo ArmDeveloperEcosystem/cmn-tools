@@ -94,16 +94,21 @@ def change_to_real_user_if_sudo(fn):
             os.chown(fn, pwd.getpwnam(user).pw_uid, grp.getgrnam(user).gr_gid)
 
 
-if __name__ == "__main__":
+def main(argv):
+    global o_dry_run, o_verbose
     import argparse
     parser = argparse.ArgumentParser(description="test app datacache")
     parser.add_argument("--create", action="store_true", help="create dirs if necessary")
     parser.add_argument("--app", default="arm", type=str, help="application/organization")
     parser.add_argument("--name", default="appdatatest", type=str)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     o_dry_run = not opts.create
     fn = app_data_cache(opts.name, app=opts.app)
     print("file: %s" % fn)
     print("directory exists: %s" % os.path.isdir(os.path.dirname(fn)))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

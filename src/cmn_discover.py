@@ -66,7 +66,7 @@ def system_description(verbose=1, opts=None, frequency=True):
     return S
 
 
-if __name__ == "__main__":
+def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="generate system description JSON")
     cmn_devmem_find.add_cmnloc_arguments(parser)
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument("--overwrite", action="store_true", help="overwrite output file")
     parser.add_argument("--no-frequency", action="store_true", help="don't estimate CMN frequency")
     parser.add_argument("-v", "--verbose", action="count", default=1, help="increase verbosity")
-    opts = parser.parse_args()
+    opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     S = system_description(verbose=opts.verbose, opts=opts, frequency=(not opts.no_frequency))
     if not S.CMNs:
@@ -99,3 +99,7 @@ if __name__ == "__main__":
             ok = False
     if not ok:
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
