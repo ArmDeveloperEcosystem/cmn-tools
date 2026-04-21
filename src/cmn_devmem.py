@@ -964,7 +964,7 @@ class DTMWatchpoint:
             config |= (dev0 << 0)
             if self.dev >= 2:
                 # dev_sel is actually the port number, not the device number
-                assert self.dev < self.xp.n_device_ports(), "%s: invalid dev_sel=%u" % (self, self.dev)
+                assert self.dev < self.dtm.xp.n_device_ports(), "%s: invalid dev_sel=%u" % (self, self.dev)
                 dev1 = self.dev >> 1
                 config |= (dev1 << 17)
         if self.grp is not None:
