@@ -39,22 +39,27 @@ CMN_PROP_HN    = (CMN_PROP_CHI | 0x0002)     # Home node e.g. HN-F, HN-I
 CMN_PROP_SN    = (CMN_PROP_CHI | 0x0004)     # Memory controller
 #CMN_PROP_D     = 0x0010     # non-coherent
 CMN_PROP_I     = (CMN_PROP_CHI | 0x0020)     # I/O coherent but not fully coherent
-CMN_PROP_F     = (CMN_PROP_CHI | 0x0040)     # Fully coherent
-CMN_PROP_CCG   = (CMN_PROP_CHI | 0x0100)     # Chip-to-chip gateway
+CMN_PROP_DVMR  = (CMN_PROP_CHI | 0x0040)     # Accepts DVM
+CMN_PROP_F     = (CMN_PROP_CHI | 0x0080)     # Fully coherent
 CMN_PROP_MPAM  = (CMN_PROP_DEV | 0x0200)     # MPAM configuration/status node
 CMN_PROP_T     = (CMN_PROP_DEV | 0x0400)     # Debug/trace features (DTC)
 CMN_PROP_SBSX  = (CMN_PROP_CHI | 0x0800)     # AXI/ACE-Lite bridge
-CMN_PROP_DN    = (CMN_PROP_CHI | 0x1000)     # DVM node (in HN-D, or later, HN-T)
+CMN_PROP_DN    = (CMN_PROP_CHI | 0x1000)     # DVM home node (in HN-D, or later, HN-T)
 CMN_PROP_SAM   = (CMN_PROP_DEV | 0x2000)     # System Address Map
+CMN_PROP_CCG   = (CMN_PROP_CHI | 0x4000)     # Chip-to-chip gateway
+CMN_PROP_HNSm  = 0x8000                      # HN-S extra features
 
 # Combination properties
-CMN_PROP_RNF   = (CMN_PROP_RN | CMN_PROP_F)   # Fully coherent requester
+CMN_PROP_RNF   = (CMN_PROP_RN | CMN_PROP_F | CMN_PROP_DVMR)   # Fully coherent requester
 CMN_PROP_RNI   = (CMN_PROP_RN | CMN_PROP_I)   # I/O coherent requester
-CMN_PROP_RND   = (CMN_PROP_RN | CMN_PROP_I)   # I/O coherent requester that accepts DVM
+CMN_PROP_RND   = (CMN_PROP_RN | CMN_PROP_I | CMN_PROP_DVMR)   # I/O coherent requester that accepts DVM
+
 CMN_PROP_HNF   = (CMN_PROP_HN | CMN_PROP_F)
+CMN_PROP_HNS   = (CMN_PROP_HNF | CMN_PROP_HNSm)
 CMN_PROP_HNI   = (CMN_PROP_HN | CMN_PROP_I)
 CMN_PROP_HNT   = (CMN_PROP_HN | CMN_PROP_I | CMN_PROP_T | CMN_PROP_DN)    # DN only in later CMN
 CMN_PROP_HND   = (CMN_PROP_HN | CMN_PROP_I | CMN_PROP_T | CMN_PROP_DN | CMN_PROP_CFG)
+
 CMN_PROP_SNF   = (CMN_PROP_SN | CMN_PROP_F)
 
 
@@ -73,7 +78,7 @@ CMN_NODE_SBSX    = 7      # CHI to ACE5-Lite bridge
 CMN_NODE_MPAM_S  = 8      # new in CMN-650
 CMN_NODE_MPAM_NS = 9      # new in CMN-650
 CMN_NODE_RNI     = 10     # I/O-coherent Request Node bridge
-CMN_NODE_RND     = 13
+CMN_NODE_RND     = 13     # RN-I that accepts DVM
 CMN_NODE_RNSAM   = 15
 CMN_NODE_MTSX    = 16
 CMN_NODE_HNP     = 17     # HN-I optimized for peer-to-peer traffic
@@ -116,7 +121,7 @@ cmn_node_properties = {
     CMN_NODE_CCG_HA      : (CMN_PROP_HN | CMN_PROP_CCG),
     CMN_NODE_CCLA        : CMN_PROP_DEV,    # CHI access via RA/HA
     CMN_NODE_CCLA_RNI    : CMN_PROP_CHI,
-    CMN_NODE_HNS         : CMN_PROP_HNF,
+    CMN_NODE_HNS         : CMN_PROP_HNS,
     CMN_NODE_HNS_MPAM_S  : CMN_PROP_MPAM,
     CMN_NODE_HNS_MPAM_NS : CMN_PROP_MPAM,
     CMN_NODE_APB         : CMN_PROP_DEV,    # TBD
@@ -192,7 +197,7 @@ cmn_port_device_type_strings = {
     0x17: "RN-F_C_E",
     0x18: "RN-F_E",
     0x19: "RN-F_E_E",
-    0x1a: "HN-S",
+    0x1a: "HN-S",            # "Super" home node: HN-F with additional features
     0x1b: "LCN",
     0x1c: "MTSX",
     0x1d: "HN-V",
@@ -316,7 +321,7 @@ _prop_strs = {
     "RN-D": CMN_PROP_RND,
     "HN": CMN_PROP_HN,
     "HN-F": CMN_PROP_HNF,
-    "HN-S": CMN_PROP_HNF,
+    "HN-S": CMN_PROP_HNS,
     "SLC": CMN_PROP_HNF,
     "HN-I": CMN_PROP_HNI,
     "HN-D": CMN_PROP_HND,

@@ -36,11 +36,15 @@ def hexstr(x):
     return s
 
 
+def cmn_label(C):
+    return "CMN#%u" % C.cmn_seq
+
+
 def print_dtc(dtc, pfx="", detail=0):
     """
     Print summary information about a DTC.
     """
-    print("%sDTC%u %24s:" % (pfx, dtc.dtc_domain(), dtc), end="")
+    print("%s%s DTC%u %24s:" % (pfx, cmn_label(dtc.C), dtc.dtc_domain(), dtc), end="")
     ctl = dtc.read64(CMN_DTC_CTL)
     pmcr = dtc.read64(dtc.PM_BASE + CMN_DTC_PMCR_off)
     print(("    " if (ctl & CMN_DTC_CTL_DT_EN) else " dis"), end="")
@@ -202,8 +206,8 @@ def print_dtm_pmu(dtm, pfx="    "):
     print_dtm_pmu_config(dtm, pfx=pfx)
     printed_header = False
     # DTM may be counting events from connected devices.
-    for p in range(0, dtm.xp.n_device_ports()):
-        for n in dtm.xp.port_nodes(p):
+    for port in dtm.xp.ports():
+        for n in port.nodes():
             # A device may have zero, one or several PMUs that can export events to the DTM
             for soff in n.PMU_EVENT_SEL:
                 pmu_sel = n.read64(soff)

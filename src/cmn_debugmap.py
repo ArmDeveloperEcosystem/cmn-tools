@@ -15,6 +15,7 @@ from __future__ import print_function
 import os
 import sys
 
+import cmn_base
 import cmn_json
 from cmn_enum import *
 
@@ -32,6 +33,11 @@ def gen_debugmap(C):
     sl.append("     X" + ''.join([("  %3u    " % i) for i in range(0, C.dimX)]))
     sl.append("Y P D+" + (C.dimX * "--------+"))
     max_ports = max([xp.n_device_ports() for xp in C.XPs()])
+    max_devices = 0
+    for port in C.ports():
+        dns = port.device_numbers()
+        if dns:
+            max_devices = max(max_devices, max(dns) + 1)
     for y in range(C.dimY-1, -1, -1):
         s = "%-5u|" % y
         xps = [C.XP_at(x, y) for x in range(0, C.dimX)]
@@ -41,13 +47,16 @@ def gen_debugmap(C):
         sl.append("     |" + ''.join([(" DTC %-2s |" % (xp.dtc_domain() if xp.dtc_domain() is not None else "??")) for xp in xps]))
         sl.append("     |" + (C.dimX * "........|"))
         for p in range(0, max_ports):
-            pos = [xp.port_object(p) for xp in xps]      # P<n> for all XPs in this mesh row. None if port not in use on this XP.
+            pos = [xp.port(p) for xp in xps]      # P<n> for all XPs in this mesh row. None if port not in use on this XP.
             def port_type_str(po):
                 return cmn_port_device_type_str(po.connected_type) if po is not None else ""
             sl.append((" %2u  |" % p) + ''.join(["%s|" % port_type_str(po).center(WIDTH) for po in pos]))
-            for d in range(0, 2):
+            for d in range(0, max_devices):
                 def port_devices(po, d):
-                    return po.device_nodes(d) if po is not None else []
+                    if po is None or not po.is_valid_id(cmn_base.port_device_id(po, d)):
+                        return []
+                    pdo = po.device(d)
+                    return pdo.device_nodes if pdo is not None else []
                 def devlist_logical_id(dl):
                     # Find the device logical id for devices with a given (port, device) combination.
                     # Generally these are the same for all nodes in a device, so we return as soon

@@ -16,6 +16,7 @@ from __future__ import print_function
 import sys
 import time
 
+import cmn_base
 import cmn_devmem
 import cmn_devmem_find
 import cmn_json
@@ -23,7 +24,7 @@ from cmn_enum import *
 import cmnwatch
 import cmn_select
 import cmn_flits
-from cmn_flits import CMNTraceConfig, CMNFlitGroup
+from cmn_flits import CMNTraceConfig, CMNFlitGroup, CMNFlitGroupDeduper
 import cmn_dtstat
 
 
@@ -154,29 +155,15 @@ def xp_node_ids(xp):
      - CAL-less multiple-device nodes, e.g. CCG where device 1 is an RN-I
      - devices with multiple nodes with the same device id
     """
-    n_ports = xp.n_device_ports()
     for port in xp.ports():
-        base_id = port.base_id()
-        devices = {}
         port_desc = cmn_port_device_type_str(port.device_type())
-        # Look at actual device nodes and have them take priority -
-        # this copes with HCALs and with multiple devices where there isn't a CAL
-        for n in port.nodes():
-            if not cmn_node_type_has_properties(n.type(), CMN_PROP_CHI):
-                continue
-            id = n.node_id()
-            if id not in devices:
-                devices[id] = cmn_node_type_str(n.type())
-        # By default use CAL multiplicity to populate the device ids with
-        # the "port connected device" descriptor string
-        cal = port.has_cal()
-        for device_id in range(cal or 1):
-            id = base_id + device_id
-            if id not in devices:
-                devices[id] = port_desc
-        # Finally return the device ids and their descriptions
-        for id in sorted(devices.keys()):
-            yield (id, devices[id])
+        for dev in cmn_base.port_devices(port, create=True):
+            desc = port_desc
+            for n in dev.device_nodes:
+                if cmn_node_type_has_properties(n.type(), CMN_PROP_CHI):
+                    desc = cmn_node_type_str(n.type())
+                    break
+            yield (dev.node_id(), desc)
 
 
 def cmn_node_ids(cmns):
@@ -197,6 +184,7 @@ class CMNVis:
     """
     def __init__(self):
         self.cmns = None
+        self.deduper = CMNFlitGroupDeduper()
 
     def set_cmns(self, cmns):
         self.cmns = cmns
@@ -245,6 +233,8 @@ class CMNVis:
         cmn_seq = xp.C.cmn_seq
         fg = CMNFlitGroupX(self.cfgs[cmn_seq], cmn_seq=cmn_seq, nodeid=xp.node_id(), WP=w.wp, DEV=w.dev, VC=w.chn, format=w.type, cc=cc, vis=self)
         fg.decode(data)
+        if self.deduper.is_duplicate(fg):
+            return
         fg.up = w.up
         self.handle_flitgroup(xp, w, fg)
 
@@ -638,6 +628,27 @@ class TraceSession:
                 if can_match:
                     yield port
 
+    def legacy_xp_selectors(self):
+        """
+        Translate legacy --xp arguments into mesh-qualified XP selectors.
+
+        XP node ids are only unique within a mesh, so in a multi-mesh trace
+        session an --xp value can match multiple XPs. Represent the result as
+        selectors restricted by mesh sequence number and XP coordinates, so the
+        normal device-matching fast paths can prune correctly.
+        """
+        sels = []
+        for xp_id in self.opts.xp:
+            matched = False
+            for xp in self.XPs():
+                if xp.node_id() == xp_id:
+                    sels.append(cmn_select.CMNSelectSingle(cmn_seq=xp.C.cmn_seq, x=xp.x, y=xp.y))
+                    matched = True
+            if not matched:
+                print("XP node id not found: 0x%x" % xp_id, file=sys.stderr)
+                sys.exit(1)
+        return sels
+
     def get_nodes(self):
         """
         Apply global restrictions to filter XPs and ports
@@ -656,19 +667,18 @@ class TraceSession:
             if self.opts.xp == [-1]:
                 pass
             else:
-                xps = [self.C.XP(x) for x in self.opts.xp]
-                for xp in xps:
-                    sel = cmn_select.CMNSelectSingle(x=xp.x, y=xp.y)
+                for sel in self.legacy_xp_selectors():
                     nodes.append(sel)
         else:
             # Both were specified: apply the cross-product
-            xps = [self.C.XP(x) for x in self.opts.xp]
+            xp_sels = self.legacy_xp_selectors()
             nsel = []
             for s in nodes.matchers:
-                for xp in xps:
+                for xp_sel in xp_sels:
                     ns = s.copy()
-                    ns.node_x = xp.x
-                    ns.node_y = xp.y
+                    ns.cmn_seq = xp_sel.cmn_seq
+                    ns.node_x = xp_sel.node_x
+                    ns.node_y = xp_sel.node_y
                     nsel.append(ns)
             nodes.matchers = nsel
         # At this point, if we've used either --xp or --nodes, the 'nodes' selector should

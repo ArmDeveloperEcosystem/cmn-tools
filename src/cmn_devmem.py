@@ -399,7 +399,7 @@ class CMNNodeBase:
             self.children.append(child_node)
             if self.is_XP():
                 # The XP will have CMNPort objects for all its ports. The device nodes should point back to the port.
-                child_node.port = self.port_object(child_node.device_port())
+                child_node.port = self.port(child_node.port_number)
         # Check that the other child pointers are zero.
         # TBD: this shouldn't really be controlled by 'verbose'.
         if self.C.verbose >= 4:
@@ -464,6 +464,9 @@ class CMNNodeBase:
 
     def has_properties(self, props):
         return cmn_node_type_has_properties(self.type(), props)
+
+    def properties(self):
+        return cmn_node_properties.get(self.type(), CMN_PROP_none)
 
     def is_home_node(self):
         return self.has_properties(CMN_PROP_HNF)    # HN-F and HN-S
@@ -530,15 +533,28 @@ class CMNNodeBase:
         (P, D) = self.PD()
         return (X, Y, P, D)
 
-    def device_port(self):
+    @property
+    def port_number(self):
         assert not self.is_XP()
         (P, D) = self.PD()
         return P
 
+    @property
     def device_number(self):
         assert not self.is_XP()
         (P, D) = self.PD()
         return D
+
+    @property
+    def device_object(self):
+        """
+        Return the CMNDevice corresponding to this node.
+        For non-device nodes, return None so the API is safe to use across
+        both the base-model and live-discovery object models.
+        """
+        if self.is_rootnode() or self.is_XP():
+            return None
+        return self.CMN().device_at_id(self.node_id(), create=True)
 
     def show(self):
         # Node-specific subclass can override
@@ -552,12 +568,14 @@ class CMNNodeBase:
         return self.node_base_addr < node.node_base_addr
 
     def __str__(self):
+        cmn_s = "CMN#%u" % self.C.cmn_seq
         lid = self.logical_id()
         s = "%s" % cmn_node_type_str(self.type())
         if lid is not None:
             s += "#%u" % lid
         if self.is_external:
             s += "(ext)"
+        s = "%s:%s" % (cmn_s, s)
         if self.C.verbose > 0:
             s = "@0x%x:%s" % (self.node_base_addr, s)
         if not self.is_rootnode():
@@ -571,6 +589,44 @@ class CMNNodeBase:
         if self.C.verbose >= 2:
             s += ":info=0x%x" % self.node_info
         return s
+
+
+class CMNDevice:
+    """
+    Lightweight view of a CHI-addressable device slot on a port.
+    This mirrors the topology concept used in cmn_base without changing
+    cmn_devmem's live-discovery model.
+    """
+    def __init__(self, port, device_number):
+        self.port = port
+        self.device_number = device_number
+
+    def node_id(self):
+        return self.port.base_id() + self.device_number
+
+    def CMN(self):
+        return self.port.CMN()
+
+    def XP(self):
+        return self.port.XP()
+
+    def has_properties(self, props):
+        if props in [None, CMN_PROP_none]:
+            return True
+        if self.port.has_properties(props):
+            return True
+        return any([n.has_properties(props) for n in self.device_nodes])
+
+    @property
+    def device_nodes(self):
+        return list(self.XP().port_device_nodes(self.port.port_number, self.device_number))
+
+    @property
+    def device_credited_slices(self):
+        return self.port.device_credited_slices(self.device_number)
+
+    def __str__(self):
+        return "%s.D%u" % (self.port, self.device_number)
 
 
 class CMNPort:
@@ -587,6 +643,7 @@ class CMNPort:
         self.connect_info = connect_info
         self.connected_type = self.xp.connect_info_type(self.connect_info)
         self._port_info = {}    # Cache for the port_info register(s)
+        self._devices = {}
 
     @property
     def connected_type_s(self):
@@ -594,6 +651,15 @@ class CMNPort:
 
     def device_type(self):
         return self.connected_type
+
+    def XP(self):
+        return self.xp
+
+    def CMN(self):
+        return self.xp.C
+
+    def properties(self):
+        return cmn_port_properties[self.connected_type]
 
     def has_properties(self, props):
         return cmn_port_device_type_has_properties(self.device_type(), props)
@@ -650,23 +716,46 @@ class CMNPort:
     def max_devices(self):
         return 1 << self.xp.n_device_bits()
 
+    def ids(self):
+        for d in self.device_numbers():
+            yield self.base_id() + d
+
+    def create_device(self, device_number):
+        assert 0 <= device_number and device_number < self.max_devices(), "unexpected device number: %s" % device_number
+        if device_number not in self._devices:
+            self._devices[device_number] = CMNDevice(self, device_number)
+        return self._devices[device_number]
+
+    def device(self, device_number, create=False):
+        if create:
+            return self.create_device(device_number)
+        return self._devices.get(device_number, None)
+
+    def device_at_id(self, id, create=False):
+        assert self.is_valid_id(id), "%s: invalid device id 0x%x" % (self, id)
+        return self.device(id - self.base_id(), create=create)
+
     def device_numbers(self):
         """
         Return the sorted list of device numbers (based at 0) in use at this port
         """
         dmap = {}
+        cal = self.cal
+        if cal:
+            for d in range(cal):
+                dmap[d] = True
+        else:
+            dmap[0] = True
         for n in self.nodes():
-            dmap[n.device_number()] = True
+            dmap[n.device_number] = True
         return sorted(dmap.keys())
 
-    def device_nodes(self, d):
-        """
-        Yield a port's device nodes for a given device number.
-        The order of device nodes is not significant.
-        """
-        for n in self.xp.port_nodes(self.rp):
-            if n.device_number() == d:
-                yield n
+    def device_has_explicit_description(self, d):
+        return bool(self.XP().port_device_nodes(self.port_number, d)) or (self.device_credited_slices(d) != 0)
+
+    def is_valid_id(self, id):
+        dev = id - self.base_id()
+        return dev in self.device_numbers()
 
     def base_id(self):
         return self.xp.port_base_id(self.port_number)
@@ -732,7 +821,7 @@ class CMNNodeXP(CMNNodeBase):
         mcs = BITS(link, 0, 4)
         return mcs
 
-    def port_object(self, port_number):
+    def port(self, port_number):
         """
         Return the CMNPort object for a given port.
         Return None if port does not exist or is not connected.
@@ -781,19 +870,12 @@ class CMNNodeXP(CMNNodeBase):
         else:
             return 2
 
-    def port_info(self, rP, n=0):
-        """
-        Get the port info (por_mxp_p<n>_info).
-        This includes the number of devices connected to the port.
-        """
-        return self.port_object(rP).port_info(n)
-
     def port_device_type(self, rP):
         """
         Return a "connected device type" value indicating the type of device(s)
         attached to this port. This is not the same as the node type.
         """
-        p = self.port_object(rP)
+        p = self.port(rP)
         return p.device_type() if p is not None else None
 
     def port_device_type_str(self, rP):
@@ -806,7 +888,7 @@ class CMNNodeXP(CMNNodeBase):
         else:
             return "?"
 
-    def ports(self, props=CMN_PROP_none):
+    def ports(self, properties=CMN_PROP_none):
         """
         Yield port objects of any ports with the given properties,
         based on testing the XP's "port connected device" info.
@@ -815,23 +897,14 @@ class CMNNodeXP(CMNNodeBase):
         """
         for p in range(0, 4):
             pt = self.port_device_type(p)
-            if pt is not None and cmn_port_device_type_has_properties(pt, props):
-                yield self.port_object(p)
+            if pt is not None and cmn_port_device_type_has_properties(pt, properties):
+                yield self.port(p)
 
     def has_any_ports(self, props):
         """
         Return True if this XP has any ports with the given properties.
         """
-        return bool(list(self.ports(props)))
-
-    def port_has_cal(self, rP):
-        """
-        If a port has a CAL allowing multiple devices to be connected,
-        report the number of devices.
-        In earlier CMNs a CAL would connect two identical devices.
-        In later CMNs, CALs can connect up to four devices, or two different RN types.
-        """
-        return self.port_object(rP).has_cal()
+        return bool(list(self.ports(properties=props)))
 
     def n_device_bits(self):
         """
@@ -964,7 +1037,7 @@ class DTMWatchpoint:
             config |= (dev0 << 0)
             if self.dev >= 2:
                 # dev_sel is actually the port number, not the device number
-                assert self.dev < self.xp.n_device_ports(), "%s: invalid dev_sel=%u" % (self, self.dev)
+                assert self.dev < self.dtm.xp.n_device_ports(), "%s: invalid dev_sel=%u" % (self, self.dev)
                 dev1 = self.dev >> 1
                 config |= (dev1 << 17)
         if self.grp is not None:
@@ -1537,6 +1610,7 @@ class CMN:
         # CMNProductConfig object will be created when we read CMN_CFG_PERIPH_01
         # from the root node
         self.product_config = None
+        self.frequency = None
         self.D = devmem.DevMem(write=False, check=check_writes, space=cmn_loc.mem_space)
         self.D.cmn_mesh_name = cmn_loc.name
         self.is_local = self.D.is_local    # False when accessing via remote debugger etc.
@@ -1637,7 +1711,7 @@ class CMN:
         #
         # We've discovered the XPs but we generally don't yet know their X,Y coordinates,
         # since we don't know coord_bits.
-        self.n_XPs = len(list(self.XPs()))
+        self.n_XPs = len(self.logical_id_XP)
         # For some XPs, the coordinates are independent of coord_bits. These include (0,0) and (0,1).
         # Using the conventional logical_id assignment, (0,1) will have logical_id == dimX.
         any_extra_ports_seen = False
@@ -1699,6 +1773,9 @@ class CMN:
             self.validate_skiplist()
         if self.verbose:
             self.log("Mesh discovery complete%s" % (" (device discovery is lazy)" if self.defer_device_discovery else ""), level=1)
+
+    def has_cpu_mappings(self):
+        return False
 
     def validate_skiplist(self):
         """
@@ -1950,12 +2027,66 @@ class CMN:
         (port, dev) = xp.id_port_device(id)
         return (xp, port, dev)
 
-    def nodes(self, props=None):
+    def port_at_id(self, id):
+        (xp, port, dev) = self.XP_port_device(id)
+        po = xp.port(port)
+        if po is None:
+            return None
+        if not (po.base_id() <= id < (po.base_id() + po.max_devices())):
+            return None
+        return po
+
+    def device_at_id(self, id, create=False):
+        """
+        Get the CMNDevice object represented by a given id.
+        """
+        po = self.port_at_id(id)
+        if po is None:
+            return None
+        return po.device_at_id(id, create=create)
+
+    def ports(self, properties=CMN_PROP_none):
+        for xp in self.XPs():
+            for port in xp.ports(properties=properties):
+                yield port
+
+    def topology_nodes(self, include_root=False, include_xps=True, include_devices=True):
+        """
+        Iterate over discovered topology objects in a stable traversal order.
+        """
+        if include_root:
+            yield self.rootnode
+        for xp in self.XPs():
+            if include_xps:
+                yield xp
+            if include_devices:
+                for port in xp.ports():
+                    for node in port.nodes():
+                        yield node
+
+    def nodes(self, properties=CMN_PROP_none, props=None):
         # DEPRECATED - not deferred-discovery friendly
+        if props is not None:
+            properties = props
         self.discover_all_devices()
         for node in sorted(self.offset_node.values()):
-            if props is None or node.has_properties(props):
+            if properties in [None, CMN_PROP_none] or node.has_properties(properties):
                 yield node
+
+    def devices(self, properties=CMN_PROP_none, props=None):
+        """
+        Yield device slots matching properties. Unlike nodes(), this includes
+        external attachments such as RN-F and SN-F.
+        """
+        if props is not None:
+            properties = props
+        self.discover_all_devices(properties)
+        for xp in self.XPs():
+            for port in xp.ports():
+                for id in port.ids():
+                    dev = port.device_at_id(id, create=True)
+                    if dev.has_properties(properties):
+                        yield dev
 
     def nodes_of_type(self, type):
         # DEPRECATED
@@ -1978,11 +2109,11 @@ class CMN:
 
     def XPs(self):
         """
-        Iterate over all XPs, in logical id order.
+        Iterate over all XPs, ordered by coordinates.
         It's assumed that all XPs have been discovered, but not necessarily all devices.
         """
-        for xpid in sorted(self.logical_id_XP.keys()):
-            yield self.logical_id_XP[xpid]
+        for xp in sorted(self.logical_id_XP.values(), key=lambda xp: xp.node_id()):
+            yield xp
 
     def DTMs(self):
         for xp in self.XPs():
@@ -2164,15 +2295,15 @@ def cmn_enable_pmu(C, e0=None, e1=None):
         def xp_pmu_event(p,d,e):
             return ((p+1) << 4) | (d << 2) | e
         # Construct event selectors for HN-F events
-        evt0 = xp_pmu_event(hnf.device_port(), hnf.device_number(), 0)
-        evt1 = xp_pmu_event(hnf.device_port(), hnf.device_number(), 1)
+        evt0 = xp_pmu_event(hnf.port_number, hnf.device_number, 0)
+        evt1 = xp_pmu_event(hnf.port_number, hnf.device_number, 1)
         o_wide = True
         if not o_wide:
             # each XP can count up to four events - and we have two from each SLC
             if BITS(pc,32,16) == 0:
                 # not yet used this XP's counters 0 and 1
                 # make counters 2 and 3 count the SLC's event 2 (no-event) - avoid XP counting anything else
-                evd = xp_pmu_event(hnf.device_port(), hnf.device_number(), 2)
+                evd = xp_pmu_event(hnf.port_number, hnf.device_number, 2)
                 pc |= (evd << 56) | (evd << 48) | (evt1 << 40) | (evt0 << 32)
             else:
                 pc = (evt1 << 56) | (evt0 << 48) | (pc & 0x0000ffffffffffff)

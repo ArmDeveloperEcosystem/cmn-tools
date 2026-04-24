@@ -99,6 +99,15 @@ cap matches with (default is 5000 cycles):
 
     ./cmn_trace_latency.py --cmn-version=0x43e --input trace.bin --end-to-end --max-latency=5000
 
+Packets in a trace file are emitted in formatter order, not necessarily in exact
+capture-time order. If small inversions in cycle count are causing poor readability
+or request/response matching, both `cmn_decode_trace.py` and `cmn_trace_latency.py`
+support `--reorder-cc-window=<cycles>`. This uses packet start position in the
+formatted trace to fix cross-stream skew, and uses the cycle counter only for
+small same-stream inversions within the given window. Values around `64` may now
+be sufficient. This remains heuristic: the CMN cycle counter is only 16 bits and
+is not synchronized across meshes.
+
 In other cases it may be possible to use filtering on the original tag-setting
 watchpoint, as in the first example where --tgtid was used to filter requests
 to a single HN-F rather than requests to all HN-Fs. This will reduce the number of

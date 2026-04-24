@@ -34,6 +34,7 @@ selection expressions:
   [<type>][<coordinates>]
   <type>@0x<node-id>
   <type>[#<logical-id>]
+  cpu#<number>
 
   Types:
     Node types e.g. XP, SN-F
@@ -49,10 +50,11 @@ selection expressions:
     0xa1        - select any node with node id 0xA1
     sn-f(0,_)   - select all SN-Fs at left edge of mesh
     m1:hn-f     - select all HN-Fs in mesh #1
+    cpu#7       - select the device slot and device nodes for CPU #7
 """
 
 
-_tests = ["xp#1", "rn-f@0xa1", "0xa1", "sn-f(0,_)"]
+_tests = ["xp#1", "rn-f@0xa1", "0xa1", "sn-f(0,_)", "cpu#0"]
 
 
 # Make this a ValueError so argument parsing handles it nicely
@@ -69,16 +71,17 @@ class CMNSelectSingle:
     """
     Selector for a group of CMN nodes, by node type, position, logical id etc.
     """
-    def __init__(self, s=None, props=None, type=None, x=None, y=None, port=None, dev=None, nodeid=None, cmn_seq=None):
-        self.cmn_seq = None
+    def __init__(self, s=None, props=None, type=None, x=None, y=None, port=None, dev=None, nodeid=None, cmn_seq=None, cpu_number=None, logical_id=None):
+        self.cmn_seq = cmn_seq
         self.node_props = props    # CMN_PROP_...
         self.node_type = type
+        self.cpu_number = cpu_number
         self.node_x = x
         self.node_y = y
         self.node_port = port
         self.node_device = dev
         self.node_id = nodeid      # Note that a node id that is 0 mod 8, will match an XP as well as P0.D0 devices
-        self.logical_id = None
+        self.logical_id = logical_id
         self.match_str = s         # Save the original string, for diagnostics etc.
         if s:
             self.update(s)
@@ -90,26 +93,41 @@ class CMNSelectSingle:
         """
         Given a selector string, update the selection object.
         """
+        expr = s
         s = s.upper()
-        if s.startswith("M") and s[1] in "0123456789":
+        if len(s) > 1 and s.startswith("M") and s[1] in "0123456789":
             ix = s.find(':')
             meshs = s[1:ix] if ix >= 0 else s
-            self.cmn_seq = int(meshs)
+            try:
+                self.cmn_seq = int(meshs)
+            except ValueError:
+                raise CMNSelectBad(expr, "bad mesh selector")
             s = s[ix+1:] if ix >= 0 else ""
-        if '#' in s:
+        if s.startswith("CPU#"):
+            try:
+                self.cpu_number = int(s[4:])
+            except ValueError:
+                raise CMNSelectBad(expr, "bad CPU number")
+        elif '#' in s:
             # logical id e.g. "XP#3"
             hix = s.index('#')
-            self.logical_id = int(s[hix+1:])
+            try:
+                self.logical_id = int(s[hix+1:])
+            except ValueError:
+                raise CMNSelectBad(expr, "bad logical id")
             nts = s[:hix]
             self.update_node_type(s[:hix])
         elif '(' in s and s.endswith(")") and ',' in s:
             # mesh coordinates
             def coord(s):
-                return int(s) if s not in ["", "_"] else None
+                try:
+                    return int(s) if s not in ["", "_"] else None
+                except ValueError:
+                    raise CMNSelectBad(expr, "bad coordinate")
             bix = s.index('(')
             cos = s[bix+1:-1].split(',')
             if len(cos) not in [2, 3, 4]:
-                raise CMNSelectBad(s, "expected coordinates (x, y, [port], [device])")
+                raise CMNSelectBad(expr, "expected coordinates (x, y, [port], [device])")
             self.node_x = coord(cos[0])
             self.node_y = coord(cos[1])
             self.node_port = coord(cos[2]) if len(cos) >= 3 else None
@@ -118,11 +136,17 @@ class CMNSelectSingle:
                 self.update_node_type(s[:bix])
         elif '@' in s:
             aix = s.index('@')
-            self.node_id = int(s[aix+1:], 16)
+            try:
+                self.node_id = int(s[aix+1:], 16)
+            except ValueError:
+                raise CMNSelectBad(expr, "bad node id")
             if aix > 0:
                 self.update_node_type(s[:aix])
         elif s.startswith("0X"):
-            self.node_id = int(s, 16)
+            try:
+                self.node_id = int(s, 16)
+            except ValueError:
+                raise CMNSelectBad(expr, "bad node id")
         else:
             self.update_node_type(s)
         if o_verbose:
@@ -150,6 +174,8 @@ class CMNSelectSingle:
         ms = []
         if self.cmn_seq is not None:
             ms.append("seq=%u" % self.cmn_seq)
+        if self.cpu_number is not None:
+            ms.append("cpu=%u" % self.cpu_number)
         if self.node_type is not None:
             ms.append("type=%s" % cmn_node_type_str(self.node_type))
         if self.logical_id is not None:
@@ -169,10 +195,35 @@ class CMNSelectSingle:
         s += "{%s}" % ','.join(ms)
         return s
 
+    def _cmn_cpu(self, cmn):
+        if self.cpu_number is None:
+            return None
+        if not cmn.has_cpu_mappings():
+            return None
+        try:
+            return cmn.owner.cpu(self.cpu_number)
+        except Exception:
+            return None
+
+    def _device_matches_cpu(self, dev):
+        if self.cpu_number is None:
+            return True
+        if not dev.port.has_properties(CMN_PROP_RNF):
+            return False
+        return any([cpu.cpu == self.cpu_number for cpu in getattr(dev, "cpus", [])])
+
     def match_node(self, node):
         """
         Return true if the selector matches a node (device, XP or CFG)
         """
+        if self.cmn_seq is not None and self.cmn_seq != node.CMN().cmn_seq:
+            return False
+        if self.cpu_number is not None:
+            if node.is_rootnode() or node.is_XP():
+                return False
+            dev = node.device_object
+            if not self._device_matches_cpu(dev):
+                return False
         if self.node_x is not None and (node.is_rootnode() or self.node_x != node.XY()[0]):
             return False
         if self.node_y is not None and (node.is_rootnode() or self.node_y != node.XY()[1]):
@@ -191,12 +242,54 @@ class CMNSelectSingle:
             return False
         return True
 
+    def match_device(self, dev):
+        """
+        Return true if the selector matches a device slot.
+        This is primarily driven by any device nodes within the slot, but for
+        external attachments such as RN-F/SN-F, which have no device nodes,
+        we fall back to the port's connected-device properties.
+        """
+        xy = dev.XP().XY()
+        if self.cmn_seq is not None and self.cmn_seq != dev.CMN().cmn_seq:
+            return False
+        if not self._device_matches_cpu(dev):
+            return False
+        if self.node_x is not None and self.node_x != xy[0]:
+            return False
+        if self.node_y is not None and self.node_y != xy[1]:
+            return False
+        if self.node_port is not None and self.node_port != dev.port.port_number:
+            return False
+        if self.node_device is not None and self.node_device != dev.device_number:
+            return False
+        if self.node_id is not None and self.node_id != dev.node_id():
+            return False
+        dnodes = list(dev.device_nodes)
+        if self.node_type is not None:
+            if self.node_type in [CMN_NODE_CFG, CMN_NODE_XP]:
+                return False
+            if not any([n.type() == self.node_type for n in dnodes]):
+                return False
+        if self.logical_id is not None:
+            if not any([n.logical_id() == self.logical_id for n in dnodes]):
+                return False
+        if self.node_props is not None:
+            if any([n.has_properties(self.node_props) for n in dnodes]):
+                return True
+            if dev.port.has_properties(self.node_props):
+                return True
+            return False
+        return True
+
     def can_match_devices_at_cmn(self, cmn):
         """
         Return true if the selector might match some devices in the given CMN.
         """
         if self.cmn_seq is not None and self.cmn_seq != cmn.cmn_seq:
             return False
+        if self.cpu_number is not None:
+            cpu = self._cmn_cpu(cmn)
+            return cpu is not None and cpu.CMN() == cmn
         return True
 
     def can_match_devices_at_xp(self, node):
@@ -206,15 +299,15 @@ class CMNSelectSingle:
         possibly match. Return true if the selector could match any devices under the XP.
         """
         assert node.is_XP(), "expected XP: %s" % node
-        if not self.can_match_devices_at_cmn(node.C):
+        if not self.can_match_devices_at_cmn(node.CMN()):
+            return False
+        if self.cpu_number is not None and not node.has_any_ports(CMN_PROP_RNF):
             return False
         if self.node_x is not None and self.node_x != node.XY()[0]:
             return False
         if self.node_y is not None and self.node_y != node.XY()[1]:
             return False
         if self.node_type is not None and self.node_type in [CMN_NODE_CFG, CMN_NODE_XP]:
-            return False
-        if self.node_id is not None and (self.node_id & ~7) != node.node_id():
             return False
         if self.node_props is not None and not cmn_has_property(self.node_props, CMN_PROP_DEV):
             # Maybe the selector is matching XPs/CFG only.
@@ -224,22 +317,14 @@ class CMNSelectSingle:
     def can_match_devices_at_port(self, port):
         """
         Check if the selector can match some devices under a CMNPort object.
-        This may check the port properties (although watch out for CALs!),
-        and possible node ids at the port.
+        This may check the port properties (although watch out for CALs!).
         """
-        if not self.can_match_devices_at_xp(port.xp):
+        if not self.can_match_devices_at_xp(port.XP()):
+            return False
+        if self.cpu_number is not None and not port.has_properties(CMN_PROP_RNF):
             return False
         if self.node_port is not None and self.node_port != port.port_number:
             return False
-        if self.node_props is not None and not port.has_properties(self.node_props):
-            return False
-        if self.node_id is not None:
-            # See if the specified node might be at this port. We need to mask off the
-            # device bit(s), and the mask will depend on the number of ports at this XP.
-            nb = port.xp.n_device_bits()
-            id = self.node_id & ~((1 << nb) - 1)
-            if id != port.base_id():
-                return False
         return True
 
 
@@ -306,6 +391,12 @@ class CMNSelect:
         """
         return (not self.matchers) or any([m.match_node(node) for m in self.matchers])
 
+    def match_device(self, dev):
+        """
+        Return true if any match-expression matches a device slot.
+        """
+        return (not self.matchers) or any([m.match_device(dev) for m in self.matchers])
+
     def can_match_devices_at_cmn(self, cmn):
         return (not self.matchers) or any([m.can_match_devices_at_cmn(cmn) for m in self.matchers])
 
@@ -317,6 +408,99 @@ class CMNSelect:
 
     def __str__(self):
         return ", ".join([str(m) for m in self.matchers]) if self.matchers else "{}"
+
+
+def iter_xp_nodes(xp, selector=None, include_xp=True, include_devices=True):
+    """
+    Yield the selected topology nodes for an XP, in lexicographic coordinate
+    order: XP first, then port/device order underneath it.
+    """
+    if selector is None:
+        if include_xp:
+            yield xp
+        if include_devices:
+            for port in xp.ports():
+                for node in port.nodes():
+                    yield node
+        return
+    if include_xp and selector.match_node(xp):
+        yield xp
+    if not include_devices or not selector.can_match_devices_at_xp(xp):
+        return
+    for port in xp.ports():
+        if not selector.can_match_devices_at_port(port):
+            continue
+        for node in port.nodes():
+            if selector.match_node(node):
+                yield node
+
+
+def iter_port_devices(port, selector=None):
+    """
+    Yield the selected device slots for a port, in device-number order.
+    """
+    if selector is not None and not selector.can_match_devices_at_port(port):
+        return
+    for id in port.ids():
+        dev = port.device_at_id(id, create=True)
+        if selector is None or selector.match_device(dev):
+            yield dev
+
+
+def iter_xp_devices(xp, selector=None):
+    """
+    Yield the selected device slots for an XP, in port/device order.
+    """
+    if selector is not None and not selector.can_match_devices_at_xp(xp):
+        return
+    for port in xp.ports():
+        for dev in iter_port_devices(port, selector=selector):
+            yield dev
+
+
+def iter_cmn_nodes(cmn, selector=None, include_root=False, include_xps=True, include_devices=True):
+    """
+    Yield the selected topology nodes for a CMN, ordered by XP coordinates.
+    """
+    rootnode = getattr(cmn, "rootnode", None)
+    if include_root and rootnode is not None and (selector is None or selector.match_node(rootnode)):
+        yield rootnode
+    if selector is not None and not selector.can_match_devices_at_cmn(cmn):
+        return
+    if not include_xps and not include_devices:
+        return
+    for xp in cmn.XPs():
+        for node in iter_xp_nodes(xp, selector=selector, include_xp=include_xps, include_devices=include_devices):
+            yield node
+
+
+def iter_cmn_devices(cmn, selector=None):
+    """
+    Yield the selected device slots for a CMN, ordered by XP coordinates.
+    """
+    if selector is not None and not selector.can_match_devices_at_cmn(cmn):
+        return
+    for xp in cmn.XPs():
+        for dev in iter_xp_devices(xp, selector=selector):
+            yield dev
+
+
+def iter_system_nodes(system, selector=None, include_root=False, include_xps=True, include_devices=True):
+    """
+    Yield the selected topology nodes for a system.
+    """
+    for cmn in sorted(system.CMNs, key=lambda cmn: cmn.cmn_seq):
+        for node in iter_cmn_nodes(cmn, selector=selector, include_root=include_root, include_xps=include_xps, include_devices=include_devices):
+            yield node
+
+
+def iter_system_devices(system, selector=None):
+    """
+    Yield the selected device slots for a system.
+    """
+    for cmn in sorted(system.CMNs, key=lambda cmn: cmn.cmn_seq):
+        for dev in iter_cmn_devices(cmn, selector=selector):
+            yield dev
 
 
 def cmn_select_merge(mlist):

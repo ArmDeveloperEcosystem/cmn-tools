@@ -331,6 +331,68 @@ class SRATStruct:
         return s
 
 
+class GAS:
+    """
+    Generic Address Specifier
+    """
+    def __init__(self, raw):
+        assert len(raw) == 12
+        self.raw = raw
+        (self.SpaceId, self.BitWidth, self.BitOffset, self.AccessSize, self.Address) = struct.unpack("<BBBBQ", raw)
+
+    def __str__(self):
+        #return hexstr(self.raw)
+        s = "%u:0x%x-w%u-sz%u" % (self.SpaceId, self.Address, self.BitWidth, self.AccessSize)
+        if self.BitOffset != 0:
+            s += "-off%u" % self.BitOffset
+        return s
+
+
+class PCCSpace:
+    def __init__(self, raw):
+        self.raw = raw
+        self.type = struct.unpack("B", raw[0:1])[0]
+
+    def __str__(self):
+        s = "type %u" % self.type
+        if False:
+            s += " " + hexstr(self.raw)
+        if self.type in [3, 4]:
+            s += " 0x%x size 0x%x latency %uus max %u min-tr %u" % (self.base, self.mlen, self.latency, self.max_rate, self.min_time)
+            s += " doorbell %s cmd-check %s cmd-update %s" % (self.doorbell, self.cmd_complete_check, self.cmd_complete_update)
+        return s
+
+
+class PCCT(ACPITable):
+    """
+    PCCT: Platform Communications Channel
+    """
+    def __init__(self, fn=None, handle=None, sig=b"PCCT", system=None):
+        ACPITable.__init__(self, fn, handle=handle, sig=sig, system=system)
+        self.flags = struct.unpack("I", self.f.read(4))[0]
+        self.pcc_spaces = []
+        self.f.read(8)
+        while True:
+            hdr = self.f.read(2)
+            if not hdr:
+                break
+            (tp, len) = struct.unpack("BB", hdr)
+            data = hdr + self.f.read(len - 2)
+            sp = PCCSpace(data)
+            if sp.type in [3, 4]:
+                (sp.base, sp.mlen) = struct.unpack("<QI", data[8:20])
+                (sp.latency, sp.max_rate, sp.min_time) = struct.unpack("<III", data[48:60])
+                sp.doorbell = GAS(data[20:32])
+                sp.cmd_complete_check = GAS(data[96:108])
+                sp.cmd_complete_update = GAS(data[116:128])
+            self.pcc_spaces.append(sp)
+
+    def show_subclass(self):
+        for sp in self.pcc_spaces:
+            print(sp)
+
+
+
 class SRAT(ACPITable):
     """
     SRAT: System resources affinity
@@ -531,6 +593,8 @@ def ACPI(fn, system=None):
             return SLIT(fn, handle=f, sig=sig, system=system)
         elif sig == b"SRAT":
             return SRAT(fn, handle=f, sig=sig, system=system)
+        elif sig == b"PCCT":
+            return PCCT(fn, handle=f, sig=sig, system=system)
         elif sig == b"MPAM":
             return MPAM(fn, handle=f, sig=sig, system=system)
         else:

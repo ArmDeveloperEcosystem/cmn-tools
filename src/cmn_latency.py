@@ -678,7 +678,7 @@ def port_channels(Cs, spec, default_pc):
                 print("%s: non-existent CPU#%u" % (spec, cpu_num), file=sys.stderr)
                 sys.exit(1)
             C = Cs[cpu.port.CMN().cmn_seq]
-            xp = C.XP(cpu.port.xp.node_id())
+            xp = C.XP(cpu.port.XP().node_id())
             dev = cpu.port.port_number
             if cpu.lpid is not None:
                 lpid = cpu.lpid

@@ -165,9 +165,12 @@ class CMNLister:
         we group them by their device port.
         """
         for port in xp.ports():
-            if port.has_properties(self.port_props):
-                self.show_port_itself(port, pfx=pfx)
-                self.show_port_nodes(port, pfx=(pfx+"  "))
+            if not port.has_properties(self.port_props):
+                continue
+            if self.node_match is not None and not self.node_match.can_match_devices_at_port(port):
+                continue
+            self.show_port_itself(port, pfx=pfx)
+            self.show_port_nodes(port, pfx=(pfx+"  "))
 
     def show_port_itself(self, port, pfx="      "):
         p = port.port_number
@@ -247,7 +250,7 @@ class CMNLister:
                 if self.verbose:
                     print(pfx + "%s: skipped as does not match %s" % (n, self.node_match))
                 continue
-            dn = n.device_number()
+            dn = n.device_number
             if dn != last_device:
                 print(pfx + "D%u at 0x%x" % (dn, port.base_id() + dn))
                 last_device = dn
@@ -551,63 +554,32 @@ def list_logical(c, verbose=0):
             print("   %3u: %s" % (lid, nodes[t][lid]))
 
 
-class Statistics:
-    def __init__(self):
-        self.n = 0
-        self.total = 0
-        self.v_min = None
-        self.v_max = None
-
-    def mean(self):
-        return float(self.total) / self.n
-
-    def add(self, v):
-        self.n += 1
-        self.total += v
-        if self.v_min is None or v < self.v_min:
-            self.v_min = v
-        if self.v_max is None or v > self.v_max:
-            self.v_max = v
-
-    def __str__(self):
-        s = "mean %.2f min %.2f max %.2f" % (self.mean(), self.v_min, self.v_max)
-        return s
-
-
 def print_routing(CS, verbose=0):
     """
     Print a summary of routing-related latencies
     """
     for C in CS:
         print("Routing information for %s:" % C)
+        rnfs = list(C.devices(CMN_PROP_RNF))
+        homes = list(C.devices(CMN_PROP_HNF))
         rnf_mean_home = {}
         rnf_mean_rnf = {}
-        s_all_rnf_to_home = Statistics()
-        s_all_rnf_via_home = Statistics()
-        for node_from in C.nodes(CMN_PROP_XP):
-            if not node_from.has_any_ports(CMN_PROP_RNF):
-                continue
+        s_all_rnf_to_home = cmn_routing.RouteStatistics()
+        s_all_rnf_via_home = cmn_routing.RouteStatistics()
+        for node_from in rnfs:
             if verbose >= 2:
                 print("  %s:" % node_from)
-            s_rnf_to_home = Statistics()
-            for node_to in C.nodes(CMN_PROP_HNF):
-                r = cmn_routing.Route(node_from, node_to)
-                s_rnf_to_home.add(r.cost())
-                if verbose >= 2:
-                    print("    %s" % r)
+            s_rnf_to_home = cmn_routing.route_statistics([node_from], homes)
+            if verbose >= 2:
+                for node_to in homes:
+                    print("    %s" % cmn_routing.Route(node_from, node_to))
             rnf_mean_home[node_from] = s_rnf_to_home.mean()
             s_all_rnf_to_home.add(s_rnf_to_home.mean())
-        for node_from in C.nodes(CMN_PROP_XP):
-            if not node_from.has_any_ports(CMN_PROP_RNF):
-                continue
-            s_rnf_to_rnf = Statistics()
-            s_rnf_via_home = Statistics()
-            for node_to in C.nodes(CMN_PROP_XP):
-                if not node_to.has_any_ports(CMN_PROP_RNF):
-                    continue
+        for node_from in rnfs:
+            s_rnf_to_rnf = cmn_routing.route_statistics([node_from], rnfs)
+            s_rnf_via_home = cmn_routing.RouteStatistics()
+            for node_to in rnfs:
                 s_rnf_via_home.add(rnf_mean_home[node_from] + rnf_mean_home[node_to])
-                r = cmn_routing.Route(node_from, node_to)
-                s_rnf_to_rnf.add(r.cost())
             m_rnf = s_rnf_to_rnf.mean()
             m_rnf_via_home = s_rnf_via_home.mean()
             s_all_rnf_via_home.add(m_rnf_via_home)

@@ -439,7 +439,7 @@ class CMNFlit:
                 s += ".%u" % self.dataid
             s += (" %x" % self.qos) if self.qos else "  "
             s += " %02x:%-20s" % (self.opcode, CHI_op_str(self.group.VC, self.opcode))
-            if self.group.VC == 0:
+            if self.group.VC == REQ:
                 # REQ
                 s += " lpid=%02x" % self.lpid
                 s += " ret=%03x:" % self.returnnid
@@ -488,7 +488,7 @@ class CMNFlit:
                     # PrefetchTgt
                     if self.allowretry:
                         s += " allowretry?"
-            elif self.group.VC == 1:
+            elif self.group.VC == RSP:
                 # RSP
                 s += " resp=%u/%u dbid=0x%02x" % (self.resp, self.resperr, self.dbid)
                 if self.opcode in [3, 7]:
@@ -500,7 +500,7 @@ class CMNFlit:
                     s += " cbusy=0x%x" % (self.cbusy)
                 if self.devevent != 0:
                     s += " %s" % devevent_str(self.devevent)
-            elif self.group.VC == 2:
+            elif self.group.VC == SNP:
                 # SNP
                 s += " fwdnid=0x%03x %18s" % (self.fwdnid, self.addr_str())
                 if self.mpam is not None and self.mpam != 0x01:
@@ -551,6 +551,10 @@ class CMNFlit:
                     s += " cbusy=0x%x" % (self.cbusy)
                 if self.devevent != 0:
                     s += " %s" % devevent_str(self.devevent)
+                if self.tagop is not None:
+                    if self.tagop != 0:
+                        s += " tagop=0x%x" % self.tagop
+                        s += " tag=0x%x" % self.tag
                 if self.poison != 0:
                     s += " poison=0x%x" % (self.poison)
             else:
@@ -697,7 +701,7 @@ class CMNFlitGroup:
     But they will need to be specified by the time we call decode() to
     decode a payload from CMN trace stream, watchpoint FIFO etc.
     """
-    def __init__(self, cfg, format=None, VC=None, payload=None, WP=None, DEV=None, cmn_seq=None, nodeid=None, lossy=False, cc=None, debug=False):
+    def __init__(self, cfg, format=None, VC=None, payload=None, WP=None, DEV=None, cmn_seq=None, nodeid=None, lossy=False, cc=None, debug=False, packet_start_pos=None, trace_stream_id=None):
         self.cfg = cfg
         self.txnid_bits = [8, 10, 12, 12][self.cfg._cmn_base_type]
         self.txnid_fmt = "%02x" if self.txnid_bits <= 8 else "%03x"
@@ -712,6 +716,8 @@ class CMNFlitGroup:
         self.cc = cc            # Cycle count, or None if not recorded
         self.lossy = lossy      # Trace indicated that packets were lost (ATB only)
         self.debug = debug
+        self.packet_start_pos = packet_start_pos   # byte position in formatted trace where this packet started
+        self.trace_stream_id = trace_stream_id     # CoreSight trace stream id
         if payload is not None:
             self.decode(payload)
 
@@ -1074,7 +1080,8 @@ class CMNFlitGroup:
                     assert False
             elif self.VC == 3:
                 # DAT
-                # n.b. DataSource is not available
+                f.tagop = None
+                f.tag = None
                 if self.cfg.cmn_product_id == PART_CMN600:
                     f.homenid = BITS(x,34,11)
                     f.resperr = BITS(x,48,2)
@@ -1144,6 +1151,36 @@ class CMNFlitGroup:
                         f.datasource = None
             else:
                 assert False, "unreachable (bad channel %s)" % self.VC
+
+
+class CMNFlitGroupDeduper:
+    """
+    Suppress the common case where the same packet is captured by two
+    watchpoints on the same XP at the same time.
+
+    This is intentionally narrow: only adjacent captures with identical
+    location, timing and payload are treated as duplicates, and only when
+    they came from different watchpoints.
+    """
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.prev_key = None
+        self.prev_wp = None
+
+    def duplicate_key(self, fg):
+        return (fg.cmn_seq, fg.nodeid, fg.cc, fg.VC, fg.format, fg.payload)
+
+    def is_duplicate(self, fg):
+        key = self.duplicate_key(fg)
+        is_dup = (self.prev_key == key and
+                  self.prev_wp is not None and
+                  fg.WP is not None and
+                  self.prev_wp != fg.WP)
+        self.prev_key = key
+        self.prev_wp = fg.WP
+        return is_dup
 
 
 def main(argv):

@@ -270,7 +270,7 @@ def events_dir():
     """
     Events definitions are in the 'events' directory of this module's parent directory.
     """
-    edir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "events")
+    edir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data/events")
     assert os.path.isdir(edir)
     return edir
 

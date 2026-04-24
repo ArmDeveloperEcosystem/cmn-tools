@@ -270,9 +270,17 @@ def _decode_memory_device(d):
         d.mfr = d.string(mfr)
         d.part = d.string(part)
         d.mem_type_str = DMI_memory_types.get(d.mem_type, "?")
+    if d.p_speed_mts == 0:
+        d.p_speed_mts = None    # unknown
+    elif d.p_speed_mts == 0xffff:
+        d.p_speed_mts = struct.unpack("<I", d.raw[0x54:0x58])[0]
+    if d.c_speed_mts == 0:
+        d.c_speed_mts = None    # unknown
+    elif d.c_speed_mts == 0xffff:
+        d.c_speed_mts = struct.unpack("<I", d.raw[0x58:0x5c])[0]
     d.h_array = d.h_array if d.h_array else None
     # Configured memory speed cannot be more than maximum capable speed
-    if d.c_speed_mts > d.p_speed_mts:
+    if d.c_speed_mts is not None and d.p_speed_mts is not None and d.c_speed_mts > d.p_speed_mts:
         print("Memory configured speed %u MT/s is greater than capable speed %u MT/s" % (d.c_speed_mts, d.p_speed_mts), file=sys.stderr)
     # Device might have an owning array, but some systems don't have arrays
     d.p_array = None            # not linked yet
@@ -681,9 +689,10 @@ def print_DMI_memory(D):
             if dm.depth is not None:
                 print("  depth %u" % dm.depth, end="")
         #print()
-        bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
-        print(" speed=%u/%u MT/s" % (d.p_speed_mts, d.c_speed_mts), end="")
-        print(" - b/w=%u Mbits/s, %u MB/s" % (bw//1000000, bw//1000000//8), end="")
+        if d.c_speed_mts is not None:
+            bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
+            print(" speed=%s/%u MT/s" % ((d.p_speed_mts or "?"), d.c_speed_mts), end="")
+            print(" - b/w=%u Mbits/s, %u MB/s" % (bw//1000000, bw//1000000//8), end="")
         print("  %s %s" % (d.mfr, d.part))
 
     print("Memory:")
@@ -704,18 +713,25 @@ def print_DMI_memory(D):
     for d in D.structures(type=DMI_MEMORY_DEVICE):
         if d.h_array is None:
             print_memory_device(d)    # not seen this one already
-        bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
         total_size += d.size
-        total_bw += bw
+        if d.c_speed_mts is not None:
+            bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
+            if total_bw is not None:
+                total_bw += bw
+        else:
+            total_bw = None
         n_memory += 1
-    total_bw_Mb = total_bw // 0x100000
     n_sockets = len(list(D.processors()))
     print("  Total memory: %s, %u mcs" % (memsize_str(total_size), n_memory))
-    print("  Bandwidth:    %u Mbits/s = %s/s = %s/s" % (total_bw_Mb, memsize_str(total_bw//8), memsize_str(total_bw//8, decimal=True)))
-    if n_sockets > 1:
-        bwps = total_bw // n_sockets
-        bwps_Mb = total_bw_Mb // n_sockets
-        print("    per socket: %u Mbits/s = %s/s = %s/s" % (bwps_Mb, memsize_str(bwps//8), memsize_str(bwps//8, decimal=True)))
+    if total_bw is not None:
+        total_bw_Mb = total_bw // 0x100000
+        print("  Bandwidth:    %u Mbits/s = %s/s = %s/s" % (total_bw_Mb, memsize_str(total_bw//8), memsize_str(total_bw//8, decimal=True)))
+        if n_sockets > 1:
+            bwps = total_bw // n_sockets
+            bwps_Mb = total_bw_Mb // n_sockets
+            print("    per socket: %u Mbits/s = %s/s = %s/s" % (bwps_Mb, memsize_str(bwps//8), memsize_str(bwps//8, decimal=True)))
+    else:
+        print("  Bandwidth: unknown")
     print("Processor caches:")
     def print_cache(c):
         #print("    0x%04x" % c.handle, end="")

@@ -97,7 +97,7 @@ def get_regdefs_dir(d=None):
     Check the regdefs directory, defaulting it if not supplied.
     """
     if d is None:
-        d = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "regdefs")
+        d = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data/regdefs")
     if not os.path.isdir(d):
         print("%s: can't find register definitions directory" % d, file=sys.stderr)
         sys.exit(1)
@@ -212,12 +212,8 @@ class CMNRegDumper(CMNRegMapper, Style):
 
     def cmn_nodes_iter(self, C):
         self.set_regmaps_from_cmn_product(C.product_config)
-        yield C.rootnode
-        for xp in C.XPs():
-            yield xp
-            for i in range(0, 4):
-                for node in xp.port_nodes(i):
-                    yield node
+        for node in cmn_select.iter_cmn_nodes(C, selector=self.o_match_nodes, include_root=True):
+            yield node
 
     def cmn_nodes(self, C):
         for node in self.cmn_nodes_iter(C):

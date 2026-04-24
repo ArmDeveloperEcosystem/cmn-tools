@@ -135,6 +135,7 @@ class CMNLocator:
     We get it from /proc/iomem, ACPI tables, user override etc.
     """
     def __init__(self, periphbase=None, rootnode_offset=None, product_id=None, cmn_seq=None, where_found=None, name=None, mem_space=None):
+        assert cmn_seq is not None
         self.cmn_seq = cmn_seq
         self.periphbase = periphbase
         self.rootnode_offset = rootnode_offset
@@ -145,7 +146,7 @@ class CMNLocator:
         self.mem_space = mem_space
 
     def __str__(self):
-        s = cmn_config.product_id_str(self.product_id)
+        s = "CMN#%u: %s" % (self.cmn_seq, cmn_config.product_id_str(self.product_id))
         s += " at 0x%x" % self.periphbase
         if self.rootnode_offset:
             s += " (root +0x%x)" % self.rootnode_offset
@@ -333,8 +334,8 @@ def cmn_locators(opts=None, single_instance=False):
     locs = []
     # Check if CMN(s) were specified explicitly on the command line
     if opts is not None and opts.cmn_base is not None:
-        for base in opts.cmn_base:
-            loc = CMNLocator(base, opts.cmn_root_offset, where_found="command line options")
+        for (seq, base) in enumerate(opts.cmn_base):
+            loc = CMNLocator(base, opts.cmn_root_offset, cmn_seq=seq, where_found="command-line options")
             locs.append(loc)
     # Check if a CMN locator JSON file is explicitly provided
     if not locs and opts is not None and opts.cmn_locations is not None:

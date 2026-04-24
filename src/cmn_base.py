@@ -33,6 +33,27 @@ def BITS(x, p, n):
     return (x >> p) & ((1 << n) - 1)
 
 
+def port_device_id(port, device_number):
+    """
+    Get the CHI node id for a device slot on a port-like object.
+    """
+    return port.base_id() + device_number
+
+
+def port_devices(port, create=False):
+    """
+    Yield device-slot objects for all slots represented by a port-like object.
+    """
+    if create and hasattr(port, "ids"):
+        dns = [id - port.base_id() for id in port.ids()]
+    else:
+        dns = port.device_numbers()
+    for dn in dns:
+        dev = port.device(dn, create=create)
+        if dev is not None:
+            yield dev
+
+
 class CMNException(Exception):
     pass
 
@@ -60,7 +81,8 @@ class System(NodeGroup):
     def __init__(self, filename=None, timestamp=None):
         self.filename = filename  # Name of the descriptor file, if known
         self.version = SYSTEM_DESC_VERSION
-        self.timestamp = timestamp    # discovery time of system info
+        self.timestamp = timestamp    # topology discovery time
+        self.cpu_timestamp = None     # CPU location discovery time
         self.system_type = None  # SoC type, e.g. "Arm N1SDP"
         self.system_uuid = None  # System UUID, if known - should be Python uuid.UUID object
         self.processor_type = None  # Processor (CPU) type
@@ -128,15 +150,21 @@ class System(NodeGroup):
             yield self.cpu_node[cn]
 
     def discard_cpu_mappings(self):
-        for cpu in self.cpu_node.values():
-            cpu.port.cpus = []
+        for port in self.ports():
+            for dn in port.device_numbers():
+                port.device(dn).cpus = []
         self.cpu_node = {}
+        self.cpu_timestamp = None
         assert not self.has_cpu_mappings()
 
     def set_cpu(self, cpu, port, id, lpid=0):
         assert cpu not in self.cpu_node
         assert isinstance(port, CMNPort)
-        co = CPU(cpu, port, id, lpid)
+        if id is None:
+            device = port.device(0, create=True)
+        else:
+            device = port.device_at_id(id, create=True)
+        co = CPU(cpu, device, lpid=lpid)
         self.cpu_node[cpu] = co
         port.add_cpu(co)
 
@@ -146,7 +174,7 @@ class System(NodeGroup):
                 yield port
 
     def XPs(self):
-        for c in self.CMNs:
+        for c in sorted(self.CMNs, key=lambda c: c.cmn_seq):
             for xp in c.XPs():
                 yield xp
 
@@ -172,24 +200,35 @@ class System(NodeGroup):
         return s
 
 
-class CPU:
+class Requester:
+    """
+    A requester behind a CMN device slot, identified by CHI id and LPID.
+    """
+    def __init__(self, device, lpid=0):
+        assert isinstance(device, CMNDevice)
+        self.device = device
+        self.lpid = lpid
+
+    @property
+    def port(self):
+        return self.device.port
+
+    @property
+    def id(self):
+        return self.device.node_id()
+
+    def CMN(self):
+        return self.port.CMN()
+
+
+class CPU(Requester):
     """
     A CPU associated with an RN-F port. Multiple CPUs can be on the
     same port (e.g. with a DSU) but should be distinguished by LPID.
     """
-    def __init__(self, cpu, port, id, lpid=0):
-        assert isinstance(port, CMNPort)
-        if id is not None:
-            assert port.is_valid_id(id)
-        else:
-            id = port.base_id()
+    def __init__(self, cpu, device, lpid=0):
         self.cpu = cpu      # unique CPU number as known to OS
-        self.port = port
-        self.id = id        # CHI SRCID/TGTID - includes port and device bits
-        self.lpid = lpid
-
-    def CMN(self):
-        return self.port.CMN()
+        Requester.__init__(self, device, lpid=lpid)
 
     def __str__(self):
         s = "CPU#%u at %s SRCID=0x%x LPID=%u" % (self.cpu, self.port, self.id, self.lpid)
@@ -293,6 +332,15 @@ class CMN(NodeGroup):
                 return p
         return None
 
+    def device_at_id(self, id, create=False):
+        """
+        Get the CMNDevice object represented by a given id.
+        """
+        p = self.port_at_id(id)
+        if p is None:
+            return None
+        return p.device_at_id(id, create=create)
+
     def xp_ports(self):
         """
         Yield (xp, n) pairs
@@ -309,6 +357,19 @@ class CMN(NodeGroup):
             for node in xp.port_nodes(p):
                 if node.has_properties(properties):
                     yield node
+
+    def devices(self, properties=0, props=None):
+        """
+        Yield CMN device slots matching properties. Unlike nodes(), this includes
+        external attachments such as RN-F and SN-F.
+        """
+        if props is not None:
+            properties = props
+        for p in self.ports():
+            for id in p.ids():
+                dev = p.device_at_id(id, create=True)
+                if dev.has_properties(properties):
+                    yield dev
 
     def ids(self, properties=0):
         """
@@ -372,9 +433,9 @@ class CMN(NodeGroup):
         """
         assert type != CMN_NODE_XP        # use create_xp to create XP node
         assert type != CMN_NODE_CFG       # config node not explicit in data structure
-        pd = xp.port[port_number]
+        pd = xp.port(port_number)
         n = CMNNodeDev(type=type, type_s=type_s, owner=pd, id=id, logical_id=logical_id)
-        pd.devices.append(n)
+        pd.device_nodes.append(n)
         if n.id not in self.id_nodes:
             self.id_nodes[n.id] = {}
         self.id_nodes[n.id][type] = n
@@ -388,7 +449,8 @@ class CMN(NodeGroup):
 
     def __str__(self):
         s = "CMN#%u" % self.cmn_seq
-        s += " (%s)" % self.product_config.product_name()
+        if False:
+            s += " (%s)" % self.product_config.product_name()
         if False and self.periphbase is not None:
             # Show where the CMN lives in device space - experts only
             s += " @0x%x" % self.periphbase
@@ -397,9 +459,9 @@ class CMN(NodeGroup):
 
 class CMNDevice:
     """
-    A 'device' corresponding to a single device number or node id.
-    This may comprise several device nodes.
-    Belongs to a CMNPort object.
+    A CHI-addressable device slot on a port, identified by a device number
+    and corresponding node id. This may comprise several internal device nodes,
+    or no explicit CMN nodes at all for external attachments such as RN-Fs.
     """
     def __init__(self, port=None, device_number=None):
         self.port = port
@@ -407,12 +469,26 @@ class CMNDevice:
         self.device_number = device_number
         self.device_credited_slices = None
         self.device_nodes = []       # Order of device nodes is not significant
+        self.cpus = []
 
     def node_id(self):
         return self.port.base_id() + self.device_number
 
+    def CMN(self):
+        return self.port.CMN()
+
+    def XP(self):
+        return self.port.XP()
+
+    def has_properties(self, props):
+        if props in [None, CMN_PROP_none]:
+            return True
+        if self.port.has_properties(props):
+            return True
+        return any([n.has_properties(props) for n in self.device_nodes])
+
     def __str__(self):
-        return "%s.D%u" % (self.port, self.device_number)
+        return "%s.d%u" % (self.port.path_str(), self.device_number)
 
 
 class CMNPort:
@@ -431,9 +507,8 @@ class CMNPort:
         self.connected_type_s = type_s
         self.cal = cal
         self.cal_credited_slices = None
-        self.devices = []     # will be populated with connected CMNNodeDevs
+        self.device_nodes = []     # will be populated with connected CMNNodeDevs
         self.pdevices = {}    # CMNDevice objects, indexed by device number
-        self.cpus = []        # for RN-Fs, will be populated with CPU objects
 
     @property
     def port(self):
@@ -473,6 +548,22 @@ class CMNPort:
     def max_devices(self):
         return 1 << self.xp.id_device_bits()
 
+    def create_device(self, device_number):
+        assert device_number < self.max_devices(), "unexpected device number: %s" % device_number
+        if device_number not in self.pdevices:
+            self.pdevices[device_number] = CMNDevice(self, device_number=device_number)
+        return self.pdevices[device_number]
+
+    def device(self, device_number, create=False):
+        if create:
+            return self.create_device(device_number)
+        return self.pdevices.get(device_number, None)
+
+    def device_at_id(self, id, create=False):
+        assert self.is_valid_id(id), "unexpected id 0x%x on %s" % (id, self)
+        dn = id - self.base_id()
+        return self.device(dn, create=create)
+
     def device_numbers(self):
         return sorted(self.pdevices.keys())
 
@@ -480,17 +571,39 @@ class CMNPort:
         dn = self.pdevices.get(d, None)
         return dn.device_credited_slices if dn is not None else None
 
-    def device_nodes(self, d):
-        return self.pdevices[d].device_nodes if d in self.pdevices else []
+    def device_has_explicit_description(self, d):
+        dev = self.device(d)
+        if dev is None:
+            return False
+        return bool(dev.device_nodes) or (dev.device_credited_slices is not None)
 
     def nodes(self):
         for d in self.device_numbers():
-            for n in self.device_nodes(d):
+            dev = self.device(d)
+            if dev is None:
+                continue
+            for n in dev.device_nodes:
                 yield n
+
+    @property
+    def cpus(self):
+        """
+        Aggregate CPUs attached to device slots on this port, preserving device order.
+        """
+        cpus = []
+        for d in self.device_numbers():
+            dev = self.device(d)
+            if dev is None:
+                continue
+            for cpu in dev.cpus:
+                if cpu not in cpus:
+                    cpus.append(cpu)
+        return cpus
 
     def add_cpu(self, co):
         self.CMN().id_lpid_cpu[(co.id, co.lpid)] = co
-        self.cpus.append(co)
+        if co not in co.device.cpus:
+            co.device.cpus.append(co)
 
     def XP(self):
         return self.xp
@@ -504,12 +617,15 @@ class CMNPort:
     def has_properties(self, props):
         return (self.properties() & props) == props
 
+    def path_str(self):
+        return "%s.p%u" % (self.XP().path_str(), self.port_number)
+
     def __str__(self):
         """
         String method identifies the port uniquely in the whole system
         """
         #s = "CMN#%u P%u: %s" % (self.CMN().cmn_seq, self.port, self.connected_type_s)
-        s = "%s P%u: %s" % (self.XP(), self.port, self.connected_type_s)
+        s = "%s(%s)" % (self.path_str(), self.connected_type_s)
         if self.cal:
             s += " CAL"
         return s
@@ -558,6 +674,9 @@ class CMNNodeBase:
     def is_XP(self):
         return self._type == CMN_NODE_XP
 
+    def is_rootnode(self):
+        return False
+
     def XY(self):
         xp = self.XP()
         return (xp.x, xp.y)
@@ -571,7 +690,7 @@ class CMNNodeBase:
             return (self.x, self.y, 0, 0)
         else:
             (x, y) = (self.owner.xp.x, self.owner.xp.y)
-            return (x, y, self.owner.port, self.device)
+            return (x, y, self.owner.port, self.device_number)
 
     def dtc_domain(self):
         return self.XP().dtc
@@ -583,14 +702,12 @@ class CMNNodeBase:
         """
         String method should identify the node uniquely in the entire system.
         """
-        (x, y, p, d) = self.coords()
         if self.is_XP():
-            s = "%s: XP 0x%x(%u,%u)" % (self.owning_cmn(), self.id, x, y)
+            s = "%s(0x%x)" % (self.path_str(), self.id)
         else:
-            s = "%s: P%u D%u %s" % (self.XP(), p, d, self.type_s)
+            s = "%s.%s" % (self.device_object, self.type_s)
         if self._logical_id is not None:
-            # The logical id is generally unique within a given device class
-            s += " #%u" % self._logical_id
+            s += "#%u" % self._logical_id
         return s
 
 
@@ -613,11 +730,9 @@ class CMNNodeDev(CMNNodeBase):
                 assert False, "unexpected node id 0x%03x on %s" % (id, owner)
         CMNNodeBase.__init__(self, type=type, type_s=type_s, owner=owner, id=id, logical_id=logical_id)
         dn = id & device_mask
-        if dn not in self.owner.pdevices:
-            self.owner.pdevices[dn] = CMNDevice(self.owner, device_number=dn)
-        self.device_object = self.owner.pdevices[dn]
+        self.device_object = self.owner.create_device(dn)
         self.device_object.device_nodes.append(self)
-        self.device = dn
+        self.device_number = dn
         if False:
             ep = self.properties() & ~owner.properties() & ~(CMN_PROP_SAM | CMN_PROP_MPAM)
             if ep:
@@ -626,9 +741,6 @@ class CMNNodeDev(CMNNodeBase):
     @property
     def port(self):
         return self.owner
-
-    def device_number(self):
-        return self.device
 
     def XP(self):
         return self.owner.xp
@@ -667,7 +779,7 @@ class CMNNodeXP(CMNNodeBase):
         else:
             id = calc_id
         CMNNodeBase.__init__(self, type=CMN_NODE_XP, type_s="XP", owner=owner, id=id, logical_id=logical_id)
-        self.port = {}
+        self._port = {}
         self.x = x
         self.y = y
         max_ports = _links_max_ports[self.n_links()]
@@ -713,26 +825,32 @@ class CMNNodeXP(CMNNodeBase):
 
     def create_port(self, port_number, type=None, type_s=None, cal=None):
         p = CMNPort(self, port_number, type=type, type_s=type_s, cal=cal)
-        self.port[port_number] = p
+        self._port[port_number] = p
         return p
 
-    def port_object(self, pn):
-        return self.port.get(pn, None)
+    def port(self, pn):
+        return self._port.get(pn, None)
 
     def ports(self):
-        for pn in sorted(self.port.keys()):
-            yield self.port[pn]
+        for pn in sorted(self._port.keys()):
+            yield self._port[pn]
+
+    def has_any_ports(self, props):
+        """
+        Return True if this XP has any ports with the given properties.
+        """
+        return any([port.has_properties(props) for port in self.ports()])
 
     def n_device_ports(self):
         return self.n_ports
 
     @property
     def n_children(self):
-        return sum([len(p.devices) for p in self.ports()])
+        return sum([len(p.device_nodes) for p in self.ports()])
 
     @property
     def children(self):
-        return [d for p in self.ports() for d in p.devices]
+        return [d for p in self.ports() for d in p.device_nodes]
 
     def id_device_bits(self):
         """
@@ -750,13 +868,13 @@ class CMNNodeXP(CMNNodeBase):
         return 1 if extra_ports else 2
 
     def port_is_used(self, p):
-        return (p in self.port)
+        return (p in self._port)
 
     def port_device_type(self, p):
-        return self.port[p].connected_type if self.port_is_used(p) else None
+        return self._port[p].connected_type if self.port_is_used(p) else None
 
     def port_device_type_str(self, p):
-        return self.port[p].connected_type_s
+        return self._port[p].connected_type_s
 
     def port_nodes(self, p):
         """
@@ -764,21 +882,11 @@ class CMNNodeXP(CMNNodeBase):
         are not the "device number" - the list may include several CMN nodes
         for a given device number.
         """
-        return self.port[p].devices
+        return self._port[p].device_nodes
 
-    def port_nodes_by_device(self, p, d):
-        """
-        All device nodes with a given device number.
-        """
-        for dev in self.port[p].devices:
-            if dev.device == d:
-                yield dev
-
-    def port_has_cal(self, p):
-        return self.port[p].cal
-
-    def port_base_id(self, p):
-        return self.port[p].base_id()
+    def path_str(self):
+        (x, y, p, d) = self.coords()
+        return "%s.mxp(%u,%u)" % (self.owning_cmn(), x, y)
 
 
 class CacheGeometry:

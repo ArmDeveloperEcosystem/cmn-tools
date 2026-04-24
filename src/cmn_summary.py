@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 
 """
 Summarize system configuration, as described in
@@ -31,10 +31,6 @@ if sys.version_info[0] == 2:
 
 
 o_verbose = 0
-
-
-S = cmn_json.system_from_json_file()
-C = S.CMNs[0] if S.CMNs else None
 
 
 def cpu_prop(s, cpu=0):
@@ -105,11 +101,19 @@ def cpu_frequency():
     return (cmn_perfstat.cpu_frequency(), "measured")
 
 
-def cmn_frequency():
-    if hasattr(C, "frequency") and C.frequency is not None:
+def cmn_frequency(C):
+    if C.frequency is not None:
         return (C.frequency, "cached")
     else:
-        return (cmn_perfstat.cmn_frequency(), "measured")
+        return (cmn_perfstat.cmn_frequency(instance=C.cmn_seq), "measured")
+
+
+def cmn_label(C):
+    return "CMN#%u" % C.cmn_seq
+
+
+def per_mesh_name(name, n_meshes):
+    return (name + " per mesh") if n_meshes > 1 else name
 
 
 class MemoryProperties:
@@ -200,45 +204,53 @@ def freq_str(fp):
     return s
 
 
-group_CMN = [
-    ("CMN version",           None,         lambda: S.cmn_version().product_name(revision=True)),
-    ("CHI",                   None,         lambda: S.cmn_version().chi_version_str()),
-    ("CMN frequency",         freq_str,     cmn_frequency),
-    ("Mesh X/Y config",       None,         lambda: ("%u x %u" % (C.dimX, C.dimY))),
-    ("HN-F/S count",          None,         lambda: len(list(C.home_nodes()))),
-    ("SN count",              None,         lambda: len(list(C.sn_ids()))),
-    ("SLC capacity per HN",   memsize_str,  lambda: ((slc_size() // len(list(C.home_nodes()))))),
-    ("CCG count",             None,         lambda: len(list(C.nodes(CMN_PROP_CCG)))),
-]
+def summary_groups(S):
+    groups = []
+    C = S.CMNs[0] if S is not None and S.CMNs else None
 
+    if C is not None:
+        n_meshes = len(S.CMNs)
+        group_CMN = [
+            ("CMN meshes in system",   None,         lambda: len(S.CMNs)),
+            ("CMN version",           None,         lambda: S.cmn_version().product_name(revision=True)),
+            ("CHI",                   None,         lambda: S.cmn_version().chi_version_str()),
+            (per_mesh_name("Mesh X/Y config", n_meshes),       None,         lambda: ("%u x %u" % (C.dimX, C.dimY))),
+            (per_mesh_name("HN-F/S count", n_meshes),          None,         lambda: len(list(C.home_nodes()))),
+            (per_mesh_name("SN count", n_meshes),              None,         lambda: len(list(C.sn_ids()))),
+            (per_mesh_name("SLC capacity per HN", n_meshes),   memsize_str,  lambda: ((slc_size() // len(list(C.home_nodes()))))),
+            (per_mesh_name("CCG count", n_meshes),             None,         lambda: len(list(C.nodes(CMN_PROP_CCG)))),
+        ]
+        if n_meshes == 1:
+            group_CMN.append(("CMN frequency", freq_str, lambda: cmn_frequency(C)))
+        else:
+            for mesh in S.CMNs:
+                group_CMN.append(("%s frequency" % cmn_label(mesh), freq_str, lambda mesh=mesh: cmn_frequency(mesh)))
+        groups.append(("CMN", group_CMN))
 
-group_Memory = [
-    ("Size",                  memsize_str,  mem_size),
-    ("Memory channels",       None,         mem_channels),
-    ("DDR width",             "bits",       mem_width),
-    ("DDR speed",             "MT/s",       mem_speed),
-    ("Total DDR bandwidth",   None,         lambda: ("%s / s" % memsize_str(mem_bandwidth()))),
-]
+    group_Memory = [
+        ("Size",                  memsize_str,  mem_size),
+        ("Memory channels",       None,         mem_channels),
+        ("DDR width",             "bits",       mem_width),
+        ("DDR speed",             "MT/s",       mem_speed),
+        ("Total DDR bandwidth",   None,         lambda: ("%s / s" % memsize_str(mem_bandwidth()))),
+    ]
 
+    group_CPU = [
+        ("CPU core version",      None,         lambda: ("0x%08x" % cpu_identification())),
+        ("CPU frequency",         freq_str,     cpu_frequency),
+        ("CPU sockets in system", None,         n_sockets),
+        ("CPU cores in system",   None,         n_cpus),
+    ]
 
-group_CPU = [
-    ("CPU core version",      None,         lambda: ("0x%08x" % cpu_identification())),
-    ("CPU frequency",         freq_str,     cpu_frequency),
-    ("CPU sockets in system", None,         n_sockets),
-    ("CPU cores in system",   None,         n_cpus),
-]
+    group_IO = [
+    ]
 
-
-group_IO = [
-]
-
-
-groups = [
-    ("CMN",    group_CMN),
-    ("Memory", group_Memory),
-    ("CPU",    group_CPU),
-    ("IO",     group_IO),
-]
+    groups.extend([
+        ("Memory", group_Memory),
+        ("CPU",    group_CPU),
+        ("IO",     group_IO),
+    ])
+    return groups
 
 
 def json_chr(c):
@@ -267,6 +279,10 @@ def main(argv):
     o_verbose = opts.verbose
     if opts.perf_bin is not None:
         cmn_perfstat.o_perf_bin = opts.perf_bin
+    S = cmn_json.system_from_json_file(exit_if_not_found=False)
+    if S is None and o_verbose:
+        print("CMN descriptor not available: showing local system information only", file=sys.stderr)
+    groups = summary_groups(S)
     j = {}
     for (gname, group) in groups:
         gj = {}

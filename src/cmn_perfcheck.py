@@ -243,7 +243,7 @@ def check_cmn_pmu_events(file=None, check_rsp_dat=True):
     if not check_hw_pmu_events(file=file):
         return False
     if not check_cmn_perf():
-        print("**  perf cannot access CMN events", file=file)
+        print("** perf cannot access CMN events", file=file)
         return False
     else:
         if o_verbose:

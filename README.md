@@ -7,16 +7,20 @@ systems based on Arm&reg;'s CoreLink&trade; CMN family interconnects
 
 The tools are aimed at developers of complex multithreaded
 applications and middleware, and at system administrators and
-others who need to understand whole-node performance.
+others who need to understand whole-node performance. Some tools
+give deeper insights into CMN configuration and activity, and are
+aimed at system bringup and debugging, including in pre-silicon
+(emulation and FPGA) environments through the use of JTAG debug.
 
-The tools generally assume root privilege, and direct access
-to a server or a "metal" instance.
+When run self-hosted, the tools generally assume root privilege,
+and direct access to a server or a "metal" instance.
 
 Tools are provided to:
 
  - discover the CMN mesh topology and record it in a JSON file
 
- - discover the mapping of Linux CPUs to mesh nodes
+ - discover the mapping of Linux CPUs to mesh nodes, correctly
+   handling CALs, clusters and chip-to-chip variation
 
  - visualize the mesh topology as a 2-D diagram
 
@@ -26,10 +30,16 @@ Tools are provided to:
  - collect histograms and metrics to understand system traffic
    behaviors associated with common scenarios
 
-The tools are mostly written in Python. Any recent version of
+ - dump and interpret CMN configuration registers
+
+ - trace requests, responses and snoops, using either on-chip FIFOs
+   or an external trace unit
+
+The tools are written in Python. Any recent version of
 Python3 should be sufficient. Some tools may work with Python2.
 
-All scripts are in the "src" subdirectory.
+All scripts are in the "src" subdirectory. No package installation
+step is required and there are no third-party dependencies.
 
 
 System discovery and setup

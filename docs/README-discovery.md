@@ -97,3 +97,18 @@ outcomes, which impact on later analysis:
 
 In the last case, CPU-centric analysis may be more approximate,
 as traffic can only be associated with a group of CPUs.
+
+CPU location detection first attempts to identify CPUs through the
+use of atypical atomic operations that do not normally occur in
+software. If this fails (perhaps because interconnect-level atomics
+are disabled in the system) it falls back to a cruder method based
+on measuring traffic volumes. This method can struggle on busy systems.
+
+Sometimes it may be necessary to re-run CPU detection. This might
+occur if the system is rebooted with a changed firmware or OS
+configuration that results in a different CPU layout, or if a
+"metal" instance is relaunched on a different physical silicon.
+
+In these cases the script can be run with the --update option.
+It will use any previous mappings as starting guesses. This will
+considerably accelerate discovery of the new mappings.

@@ -218,8 +218,8 @@ class LatencyDecoder(cs_decode_cmn.CMNDecoder):
     """
     CMN trace decoder that forwards decoded flit groups to the matcher.
     """
-    def __init__(self, cfg, matcher, verbose=0):
-        super(LatencyDecoder, self).__init__(cfg, verbose=verbose)
+    def __init__(self, cfg, matcher, verbose=0, reorderer=None):
+        super(LatencyDecoder, self).__init__(cfg, verbose=verbose, reorderer=reorderer)
         self.matcher = matcher
 
     def output_flits(self, g):
@@ -253,6 +253,7 @@ def add_trace_args(parser):
     parser.add_argument("--no-sync", action="store_true", help="don't look for sync sequence")
     parser.add_argument("--ignore", type=str, action="append", help="ignore trace stream(s)")
     parser.add_argument("--unformatted", action="store_true", help="trace file has no CoreSight framing")
+    parser.add_argument("--reorder-cc-window", type=int, default=0, help="allow small same-stream CC reorder within this window; cross-stream order uses packet start position")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("inputs", type=str, nargs="*", help="input trace binaries")
 
@@ -288,11 +289,11 @@ def run_for_file(fn, opts, out):
     )
     stats = LatencyStats()
     matcher = TransactionMatcher(opts, stats, out)
+    reorderer = cs_decode_cmn.CMNTraceCCReorderer(opts.reorder_cc_window) if opts.reorder_cc_window > 0 else None
 
     def new_decoder(id=None):
-        decoder = LatencyDecoder(cfg, matcher, verbose=opts.verbose)
-        decoder_fn = decoder.decode(sync=(not opts.no_sync))
-        return decoder_fn
+        decoder = LatencyDecoder(cfg, matcher, verbose=opts.verbose, reorderer=reorderer)
+        return cs_decode_cmn.CMNDecoderPump(decoder, sync=(not opts.no_sync))
 
     if opts.unformatted:
         decode_map = {"unformatted": new_decoder()}
@@ -306,6 +307,8 @@ def run_for_file(fn, opts, out):
     with open(fn, "rb") as f:
         try:
             cs_decode.stream_decode(f, decode_map, verbose=opts.verbose)
+            if reorderer is not None:
+                reorderer.flush()
         except cs_decode.TraceCorrupt as e:
             print("%s: trace error: %s" % (fn, str(e)), file=sys.stderr)
 

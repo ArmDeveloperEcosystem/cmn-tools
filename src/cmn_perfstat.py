@@ -13,6 +13,7 @@ into the kernel, and also generally need
 
 from __future__ import print_function
 
+import re
 import sys
 import subprocess
 import time as modtime
@@ -151,6 +152,84 @@ def perf_raw(events, time=None, command=None, system_wide=True):
     return counts
 
 
+def _node_index(node_name):
+    m = re.search(r'([0-9]+)$', node_name)
+    if m is None:
+        raise PerfNotAvailable(node_name)
+    return int(m.group(1))
+
+
+def perf_raw_per_node(events, time=None, command=None):
+    """
+    Given a list of CPU PMU event specifiers, return per-node Reading objects.
+    The return value is a list indexed by NUMA node, with each node containing
+    one Reading per input event.
+    """
+    if time is None and command is None:
+        time = o_time
+    sep = '|'
+    cmd = [o_perf_bin, "stat", "--per-node", "-x"+sep, "-a"]
+    for event in events:
+        cmd += ["-e", event]
+    cmd += ["--"]
+    if command is None:
+        cmd += ["sleep", str(time)]
+    else:
+        cmd += command.split()
+    if o_verbose:
+        print(">> %s" % (' '.join(cmd)))
+    t0 = modtime.time()
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (out, err) = p.communicate()
+    if command is not None:
+        time = modtime.time() - t0
+        if o_verbose:
+            print("measured time %.2f" % time)
+    rc = p.returncode
+    if rc != 0 or o_verbose >= 2:
+        if out:
+            print("== out: %s" % out)
+        print("== err:\n%s" % err.decode())
+    if rc != 0:
+        raise PerfNotAvailable
+    node_counts = {}
+    for ln in err.decode().split('\n'):
+        if not ln:
+            continue
+        toks = ln.split(sep)
+        if len(toks) < 7:
+            raise PerfNotAvailable(ln)
+        node_ix = _node_index(toks[0])
+        count_tok = toks[2]
+        event_name = toks[4]
+        if count_tok == "<not supported>":
+            if o_verbose:
+                print("not supported: %s" % event_name)
+            raise PerfNotAvailable(event_name)
+        elif count_tok == "<not counted>":
+            reading = None
+        else:
+            reading = Reading(
+                scaled_value=float(count_tok),
+                time_running_ns=toks[5],
+                fraction_running=float(toks[6]) / 100.0,
+                event=event_name,
+                time=time
+            )
+        if node_ix not in node_counts:
+            node_counts[node_ix] = []
+        node_counts[node_ix].append(reading)
+    if not node_counts:
+        return []
+    max_node = max(node_counts.keys())
+    counts = []
+    for node_ix in range(0, max_node + 1):
+        node_readings = node_counts.get(node_ix, [])
+        assert len(node_readings) == len(events), "unexpected: node %u has %u events but %u expected" % (node_ix, len(node_readings), len(events))
+        counts.append(node_readings)
+    return counts
+
+
 def perf_raw_chunked(events, time=None, chunk_size=-2):
     """
     Given a list of PMU event specifiers, return a list of Reading objects.
@@ -187,6 +266,44 @@ def perf_raw_chunked(events, time=None, chunk_size=-2):
     return counts
 
 
+def perf_raw_per_node_chunked(events, time=None, chunk_size=-2):
+    """
+    Given a list of CPU PMU event specifiers, return per-node Reading objects.
+    The list can optionally be broken into chunks.
+    """
+    if time is None:
+        time = o_time
+    n_events = len(events)
+    if n_events == 0:
+        return []
+    if chunk_size == -2:
+        chunk_size = o_chunk_size
+    if chunk_size is None:
+        return perf_raw_per_node(events, time=time)
+    n_chunks = (n_events + chunk_size - 1) // chunk_size
+    assert n_chunks >= 1
+    time = time / n_chunks
+    if n_chunks > 1 and o_verbose:
+        print("split %u events into %u chunks" % (n_events, n_chunks))
+    counts = None
+    for i in range(n_chunks):
+        chunk = events[(i*chunk_size):((i+1)*chunk_size)]
+        chunk_counts = perf_raw_per_node(chunk, time=time)
+        if counts is None:
+            counts = [[] for node_readings in chunk_counts]
+        assert len(counts) == len(chunk_counts), "unexpected: %u nodes but %u expected" % (len(chunk_counts), len(counts))
+        for (node_readings, chunk_node_readings) in zip(counts, chunk_counts):
+            node_readings.extend(chunk_node_readings)
+    if counts is None:
+        counts = []
+    for node_readings in counts:
+        assert len(node_readings) == len(events), "unexpected: %u events but %u counts" % (len(events), len(node_readings))
+        for reading in node_readings:
+            if reading is not None:
+                reading.value *= n_chunks
+    return counts
+
+
 def perf_stat(events, time=None):
     readings = perf_raw_chunked(events, time=time)
     return [(r.value if r is not None else None) for r in readings]
@@ -195,6 +312,11 @@ def perf_stat(events, time=None):
 def perf_rate(events, time=None):
     readings = perf_raw_chunked(events, time=time)
     return [(r.rate if r is not None else None) for r in readings]
+
+
+def perf_rate_per_node(events, time=None):
+    readings = perf_raw_per_node_chunked(events, time=time)
+    return [[(r.rate if r is not None else None) for r in node_readings] for node_readings in readings]
 
 
 def _perf_rate1(event, time=None, system_wide=True, command=None):

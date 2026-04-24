@@ -364,6 +364,8 @@ def stream_unformatted_decode(stream, decoder, trace=False):
         b = ord(b)
         if trace:
             print("0x%06x  0x%02x" % (count, b))
+        if hasattr(decoder, "set_input_pos"):
+            decoder.set_input_pos(count)
         decoder.send(b)
         count += 1
     return count
@@ -376,6 +378,8 @@ def string_decode(s, decoder):
     decoder.send(None)
     count = 0
     for c in s:
+        if hasattr(decoder, "set_input_pos"):
+            decoder.set_input_pos(count)
         decoder.send(c)
         count += 1
     return count
@@ -467,6 +471,8 @@ def stream_decode(stream, decoders, verbose=0, name=None):
                 print(" %6u | %02x | %s | %02x |" % (nb, id, bin(b), b))
             try:
                 assert b is not None
+                if hasattr(decoder, "set_input_pos"):
+                    decoder.set_input_pos(nb)
                 decoder.send(b)
             except Finished:
                 print("** %strace [%u] consumer finished" % (sname, id))

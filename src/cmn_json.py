@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 
 """
 JSON serialization for CMN interconnect descriptions
@@ -12,6 +12,8 @@ from __future__ import print_function
 import sys
 import os
 import time
+import calendar
+import datetime
 import json
 import uuid
 
@@ -19,6 +21,11 @@ try:
     FileNotFoundError
 except NameError:
     FileNotFoundError = IOError      # Python2
+
+try:
+    basestring
+except NameError:
+    basestring = str
 
 import app_data
 import cmn_base
@@ -45,6 +52,27 @@ def boot_time():
     """
     t = time.time() - float(open("/proc/uptime").read().split()[0])
     return t
+
+
+def json_timestamp(t=None):
+    if t is None:
+        t = time.time()
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(float(t)))
+
+
+def timestamp_from_json(v):
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, basestring):
+        for fmt in ["%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S.%fZ"]:
+            try:
+                dt = datetime.datetime.strptime(v, fmt)
+                return calendar.timegm(dt.utctimetuple()) + (float(dt.microsecond) / 1000000.0)
+            except ValueError:
+                pass
+    raise ValueError("bad JSON timestamp: %r" % (v,))
 
 
 def cmn_from_json(j, S):
@@ -101,9 +129,9 @@ def cmn_from_json(j, S):
             if "pdevices" in jp:
                 for jd in jp["pdevices"]:
                     dn = jd["device_number"]
-                    if dn in po.pdevices:
-                        if "dcs" in jd:
-                            po.pdevices[dn].device_credited_slices = jd["dcs"]
+                    pdo = po.device(dn, create=True)
+                    if "dcs" in jd:
+                        pdo.device_credited_slices = jd["dcs"]
             if "attached" in jp:
                 for ja in jp["attached"]:
                     if ja["type"] == "cpu":
@@ -153,10 +181,13 @@ def system_from_json(j, filename=None):
             print("  This system:    '%s'" % os_type, file=sys.stderr)
             print("  System in file: '%s'" % S.system_type, file=sys.stderr)
     if "date" in j and j["date"] is not None:
-        # Currently a float as per time.time()
-        S.timestamp = float(j["date"])
-    elif filename is not None:
+        S.timestamp = timestamp_from_json(j["date"])
+    if "topology_discovery_time" in j and j["topology_discovery_time"] is not None:
+        S.timestamp = timestamp_from_json(j["topology_discovery_time"])
+    if S.timestamp is None and filename is not None:
         S.timestamp = os.path.getmtime(filename)
+    if "cpu_discovery_time" in j and j["cpu_discovery_time"] is not None:
+        S.cpu_timestamp = timestamp_from_json(j["cpu_discovery_time"])
     for e in j["elements"]:
         if e["type"] == "interconnect" and e["product"] == "CMN":
             cmn_from_json(e, S)   # this will add it to the System object
@@ -195,6 +226,10 @@ def json_from_cpu(co):
     return j
 
 
+def cmn_label(C):
+    return "CMN#%u" % C.cmn_seq
+
+
 def json_from_device_node(d):
     jd = {
         "id": d.node_id(),
@@ -218,6 +253,11 @@ def json_from_port(p):
             jp["ccs"] = p.cal_credited_slices
     jp["pdevices"] = []
     for dn in p.device_numbers():
+        pdo = p.device(dn, create=True)
+        if pdo is None:
+            raise TypeError("%s reports device number %u but did not materialize a device object" % (p, dn))
+        if not p.device_has_explicit_description(dn):
+            continue
         jd = {
             "device_number": dn,
             "id": p.base_id() + dn,
@@ -250,17 +290,15 @@ def json_from_xp(xp):
     nmcs = xp.mesh_credited_slices(1)
     if nmcs:
         j["mcs_north"] = nmcs
-    for i in range(xp.n_device_ports()):
-        p = xp.port_object(i)
-        if p is None:
-            continue
+    for p in xp.ports():
         jp = json_from_port(p)
-        if list(xp.port_nodes(i)):
-            jp["devices"] = [json_from_device_node(d) for d in xp.port_nodes(i)]
+        pnodes = list(p.nodes())
+        if pnodes:
+            jp["devices"] = [json_from_device_node(d) for d in pnodes]
             assert jp["devices"]
         try:
-            if xp.port[i].cpus:
-                jp["attached"] = [json_from_cpu(co) for co in xp.port[i].cpus]
+            if p.cpus:
+                jp["attached"] = [json_from_cpu(co) for co in p.cpus]
         except AttributeError:
             # this won't work for the CMN objects built from /dev/mem discovery
             pass
@@ -285,10 +323,11 @@ def json_from_cmn(C):
     }
     if C.periphbase is not None:
         j["config"]["base"] = "0x%x" % C.periphbase
-        j["config"]["rootnode_offset"] = "0x%x" % C.rootnode_offset
+        if getattr(C, "rootnode_offset", None) is not None:
+            j["config"]["rootnode_offset"] = "0x%x" % C.rootnode_offset
     if C.node_skiplist is not None:
         j["skiplist"] = [("0x%x" % se) for se in C.node_skiplist]
-    if hasattr(C, "frequency") and C.frequency is not None:
+    if C.frequency is not None:
         j["frequency"] = C.frequency
     return j
 
@@ -297,9 +336,12 @@ def json_from_system(S):
     j = {
         "version": S.version,
         "generator": os.path.basename(__file__),
-        "date": S.timestamp,     # currently a float
         "elements": []
     }
+    if S.timestamp is not None:
+        j["topology_discovery_time"] = json_timestamp(S.timestamp)
+    if S.has_cpu_mappings() and S.cpu_timestamp is not None:
+        j["cpu_discovery_time"] = json_timestamp(S.cpu_timestamp)
     if S.system_type is not None:
         j["system_type"] = S.system_type
     if S.system_uuid is not None:
@@ -416,7 +458,7 @@ def system_print_summary_info(S, opts):
                     if p.cal:
                         print(" (CAL)", end="")
                     print()
-                    for d in p.devices:
+                    for d in p.device_nodes:
                         print("        %s" % d)
                     for co in p.cpus:
                         print("        %s" % co)
@@ -465,7 +507,7 @@ def system_print_summary_info(S, opts):
         for port in S.ports(properties=cmn_enum.CMN_PROP_RNF):
             nd = port.cal if port.cal else 1
             for d in range(nd):
-                print("  RN-F 0x%x" % (port.base_id() + d))
+                print("  %s RN-F 0x%x" % (cmn_label(port.CMN()), (port.base_id() + d)))
     if opts.home_nodes:
         print("Home node ports:")
         for port in S.ports():
@@ -488,7 +530,7 @@ def system_print_summary_info(S, opts):
             if p is not None:
                 print(p)
             else:
-                print("No port matching ID 0x%02x" % opts.nodeid)
+                print("%s: no port matching ID 0x%02x" % (cmn_label(C), opts.nodeid))
 
 
 def main(argv):

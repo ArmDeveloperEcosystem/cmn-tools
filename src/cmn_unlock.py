@@ -37,15 +37,8 @@ def select_nodes(c, sel):
     """
     Yield all selected nodes in a CMN instance
     """
-    if sel.can_match_devices_at_cmn(c):
-        for xp in c.XPs():
-            if sel.match_node(xp):
-                yield xp
-            if sel.can_match_devices_at_xp(xp):
-                for p in range(0, 4):
-                    for node in xp.port_nodes(p):
-                        if sel.match_node(node):
-                            yield node
+    for node in cmn_select.iter_cmn_nodes(c, selector=sel, include_root=True):
+        yield node
 
 
 def iter_nodes(opts):
