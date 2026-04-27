@@ -928,6 +928,9 @@ class CMNNodeXP(CMNNodeBase):
         port = BITS(id, ndb, 3-ndb)
         return (port, dev)
 
+    def is_valid_id(self, id):
+        return (id & ~7) == self.node_id()
+
     def dtc_domain(self):
         """
         Return the DTC domain number of this XP, if known.

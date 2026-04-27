@@ -844,6 +844,9 @@ class CMNNodeXP(CMNNodeBase):
     def n_device_ports(self):
         return self.n_ports
 
+    def is_valid_id(self, id):
+        return (id & ~7) == self.id
+
     @property
     def n_children(self):
         return sum([len(p.device_nodes) for p in self.ports()])

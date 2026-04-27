@@ -307,6 +307,8 @@ class CMNSelectSingle:
             return False
         if self.node_y is not None and self.node_y != node.XY()[1]:
             return False
+        if self.node_id is not None and not node.is_valid_id(self.node_id):
+            return False
         if self.node_type is not None and self.node_type in [CMN_NODE_CFG, CMN_NODE_XP]:
             return False
         if self.node_props is not None and not cmn_has_property(self.node_props, CMN_PROP_DEV):
@@ -324,6 +326,8 @@ class CMNSelectSingle:
         if self.cpu_number is not None and not port.has_properties(CMN_PROP_RNF):
             return False
         if self.node_port is not None and self.node_port != port.port_number:
+            return False
+        if self.node_props is not None and not port.has_properties(self.node_props):
             return False
         return True
 

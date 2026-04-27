@@ -440,7 +440,7 @@ class WatchRotation:
 WP_UP = 0
 WP_DN = 1
 
-dir_str = ["UP", "DN"]
+dir_str = ["Up", "Down"]
 
 
 class TraceSession:
@@ -599,7 +599,7 @@ class TraceSession:
                 sys.exit(1)
             wps.finalize()
             if self.opts.verbose:
-                print("Watchpoint (groups %s)" % str(wps.grps()))
+                print("Watchpoint (groups %s) at %s" % (str(wps.grps()), nodes))
                 print("  %s" % wps)
             if self.opts.data is not None and wps.is_multigrp():
                 print("Can't do DAT header+data with multi-group matching", file=sys.stderr)
@@ -617,7 +617,7 @@ class TraceSession:
 
     def ports_matching_nodes(self, nodes):
         xps = [xp for xp in self.XPs() if nodes.can_match_devices_at_xp(xp)]
-        if self.opts.verbose:
+        if self.opts.verbose >= 2:
             print("XPs: %s" % (','.join([str(xp) for xp in xps])))
         for xp in xps:
             for port in xp.ports():
@@ -911,6 +911,8 @@ class TraceSession:
         self.trace_start()
         # Prepare to capture FIFO packets
         fifocap = {}
+        for dtm in self.dtms:
+            fifocap[dtm] = {}
         for i in range(self.opts.samples):
             # Wait for a while
             time.sleep(self.opts.sleep)
