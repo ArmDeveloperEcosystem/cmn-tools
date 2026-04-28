@@ -419,6 +419,8 @@ def iter_xp_nodes(xp, selector=None, include_xp=True, include_devices=True):
     Yield the selected topology nodes for an XP, in lexicographic coordinate
     order: XP first, then port/device order underneath it.
     """
+    if o_verbose >= 2:
+        print("%s:     XP %s" % (selector, xp))
     if selector is None:
         if include_xp:
             yield xp
@@ -433,6 +435,8 @@ def iter_xp_nodes(xp, selector=None, include_xp=True, include_devices=True):
         return
     for port in xp.ports():
         if not selector.can_match_devices_at_port(port):
+            if o_verbose >= 2:
+                print("      skipping %s, can't match" % port)
             continue
         for node in port.nodes():
             if selector.match_node(node):
@@ -466,6 +470,8 @@ def iter_cmn_nodes(cmn, selector=None, include_root=False, include_xps=True, inc
     """
     Yield the selected topology nodes for a CMN, ordered by XP coordinates.
     """
+    if o_verbose >= 2:
+        print("%s: %s" % (selector, cmn))
     rootnode = getattr(cmn, "rootnode", None)
     if include_root and rootnode is not None and (selector is None or selector.match_node(rootnode)):
         yield rootnode

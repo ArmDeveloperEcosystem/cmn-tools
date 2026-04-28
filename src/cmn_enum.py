@@ -276,7 +276,7 @@ cmn_port_properties = {
     CMN_PORT_DEVTYPE_RNF_CHIC_ESAM    : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_RNF_CHIE         : CMN_PROP_RNF,
     CMN_PORT_DEVTYPE_RNF_CHIE_ESAM    : CMN_PROP_RNF,
-    CMN_PORT_DEVTYPE_HNS              : CMN_PROP_HNF,
+    CMN_PORT_DEVTYPE_HNS              : CMN_PROP_HNS,
     CMN_PORT_DEVTYPE_LCN              : CMN_PROP_none,
     CMN_PORT_DEVTYPE_MTSX             : CMN_PROP_none,
     CMN_PORT_DEVTYPE_HNV              : CMN_PROP_HNI,
