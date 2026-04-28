@@ -724,12 +724,10 @@ def print_DMI_memory(D):
     n_sockets = len(list(D.processors()))
     print("  Total memory: %s, %u mcs" % (memsize_str(total_size), n_memory))
     if total_bw is not None:
-        total_bw_Mb = total_bw // 0x100000
-        print("  Bandwidth:    %u Mbits/s = %s/s = %s/s" % (total_bw_Mb, memsize_str(total_bw//8), memsize_str(total_bw//8, decimal=True)))
+        print("  Bandwidth:    %s/s = %s/s = %s/s" % (memsize_str(total_bw, unit="bit", decimal=True), memsize_str(total_bw//8), memsize_str(total_bw//8, decimal=True)))
         if n_sockets > 1:
             bwps = total_bw // n_sockets
-            bwps_Mb = total_bw_Mb // n_sockets
-            print("    per socket: %u Mbits/s = %s/s = %s/s" % (bwps_Mb, memsize_str(bwps//8), memsize_str(bwps//8, decimal=True)))
+            print("    per socket: %s/s = %s/s = %s/s" % (memsize_str(bwps, unit="bit", decimal=True), memsize_str(bwps//8), memsize_str(bwps//8, decimal=True)))
     else:
         print("  Bandwidth: unknown")
     print("Processor caches:")

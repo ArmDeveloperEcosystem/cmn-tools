@@ -178,10 +178,11 @@ class CMNRegDumper(CMNRegMapper, Style):
     """
     Dump CMN configuration registers
     """
-    def __init__(self, regdefs_dir=None, regmaps=None, descriptions=True, description_limit=100, fields=True, include_read_only=False, skip_zeroes=True, match_reg_names=None, match_nodes=None, flat=False, address=False):
+    def __init__(self, regdefs_dir=None, regmaps=None, descriptions=True, description_limit=100, fields=True, include_read_only=False, exclude_volatile=False, skip_zeroes=True, match_reg_names=None, match_nodes=None, flat=False, address=False):
         CMNRegMapper.__init__(self, regdefs_dir=regdefs_dir, regmaps=regmaps)
         Style.__init__(self, descriptions=descriptions, description_limit=description_limit, fields=fields, flat=flat, address=address)
         self.o_include_read_only = include_read_only
+        self.o_exclude_volatile = exclude_volatile
         self.o_match_reg_names = match_reg_names
         self.o_match_nodes = match_nodes
         self.o_skip_zeroes = skip_zeroes
@@ -320,6 +321,10 @@ class CMNRegDumper(CMNRegMapper, Style):
             if reg.access == "RO" and not self.o_include_read_only:
                 if o_verbose >= 2:
                     print("%s: excluded as read-only" % reg)
+                continue
+            if reg.is_volatile and self.o_exclude_volatile:
+                if o_verbose >= 2:
+                    print("%s: excluded as volatile" % reg)
                 continue
             if reg.is_secure and not n.C.secure_accessible:
                 if o_verbose >= 2:
@@ -465,6 +470,7 @@ def main(argv):
     parser = argparse.ArgumentParser(description="CMN register dump")
     parser.add_argument("--include-read-only", action="store_true", default=True, help="include read-only registers")
     parser.add_argument("-w", "--exclude-read-only", dest="include_read_only", action="store_false", help="exclude read-only registers")
+    parser.add_argument("--exclude-volatile", action="store_true", help="exclude volatile registers")
     parser.add_argument("-z", "--include-zero", action="store_true", help="include registers with value 0")
     parser.add_argument("-f", "--fields", action="store_true", help="show register fields")
     parser.add_argument("--no-fields", dest="fields", action="store_false", help="don't show register fields")
@@ -501,6 +507,7 @@ def main(argv):
         sys.exit()
     D = CMNRegDumper(descriptions=opts.descriptions, description_limit=opts.max_desc, fields=opts.fields,
                      include_read_only=opts.include_read_only, skip_zeroes=(not opts.include_zero),
+                     exclude_volatile=opts.exclude_volatile,
                      match_reg_names=opts.reg,
                      match_nodes=cmn_select.cmn_select_merge(opts.node),
                      address=opts.address,

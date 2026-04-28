@@ -115,10 +115,11 @@ def perf_raw(events, time=None, command=None, system_wide=True):
         if o_verbose:
             print("measured time %.2f" % time)
     rc = p.returncode
-    if rc != 0 or o_verbose >= 2:
+    if (rc != 0 and o_verbose >= 1) or o_verbose >= 2:
         if out:
             print("== out: %s" % out)
-        print("== err:\n%s" % err.decode())
+        if err:
+            print("== err:\n%s" % err.decode())
     if rc != 0:
         raise PerfNotAvailable
     counts = []

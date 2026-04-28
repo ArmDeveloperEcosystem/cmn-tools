@@ -232,7 +232,7 @@ def summary_groups(S):
         ("Memory channels",       None,         mem_channels),
         ("DDR width",             "bits",       mem_width),
         ("DDR speed",             "MT/s",       mem_speed),
-        ("Total DDR bandwidth",   None,         lambda: ("%s / s" % memsize_str(mem_bandwidth()))),
+        ("Total DDR bandwidth",   None,         lambda: ("%s / s" % memsize_str(mem_bandwidth(), decimal=True))),
     ]
 
     group_CPU = [

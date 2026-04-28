@@ -16,7 +16,7 @@ from __future__ import print_function
 
 
 import sys
-def memsize_str(n, decimal=False, legacy=False):
+def memsize_str(n, decimal=False, legacy=False, unit="B"):
     """
     Given a memory size in bytes, return a descriptive string.
     """
@@ -24,12 +24,12 @@ def memsize_str(n, decimal=False, legacy=False):
         suf = ("" if legacy else "i")
         for u in range(4, 0, -1):
             if n >= (1 << (u*10)):
-                return "%.3g%s%sB" % ((float(n) / (1 << (u*10))), "BKMGT"[u], suf)
+                return "%.3g%s%s%s" % ((float(n) / (1 << (u*10))), "BKMGT"[u], suf, unit)
     else:
         for (i, u) in enumerate([1000000000000, 1000000000, 1000000, 1000]):
             if n >= u:
-                return "%.3g%sB" % ((float(n) / u), "TGMK"[i])
-    return ("%.3gB" % n)
+                return "%.3g%s%s" % ((float(n) / u), "TGMK"[i], unit)
+    return ("%.3g%s" % (n, unit))
 
 
 assert memsize_str(1024*1024, legacy=True) == "1MB"

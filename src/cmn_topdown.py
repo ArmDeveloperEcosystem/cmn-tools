@@ -737,7 +737,8 @@ def select_builtin_recipes(levels):
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description="Top-down performance analysis for CMN interconnect")
+    parser = argparse.ArgumentParser(description="Top-down performance analysis for CMN interconnect",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--level", type=str, action="append", default=[], help="run specified top-down level")
     parser.add_argument("--all", action="store_true", help="run all top-down levels")
     parser.add_argument("--time", type=float, default=None, help="measurement time for top-down")
