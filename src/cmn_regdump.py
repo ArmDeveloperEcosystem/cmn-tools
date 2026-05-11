@@ -19,6 +19,7 @@ from cmn_devmem import cmn_from_opts
 from cmn_enum import *
 import cmn_base
 import cmn_devmem_find
+import devmem_base
 import cmn_select
 import regview
 
@@ -173,12 +174,16 @@ class Style:
         self.o_reset = reset
         self.o_address = address
 
+    def __str__(self):
+        s = "Style(desc=%s(%u),fields=%s,flat=%s,reset=%s,address=%s)" % (self.o_descriptions, self.description_limit, self.o_fields, self.o_flat, self.o_reset, self.o_address)
+        return s
+
 
 class CMNRegDumper(CMNRegMapper, Style):
     """
     Dump CMN configuration registers
     """
-    def __init__(self, regdefs_dir=None, regmaps=None, descriptions=True, description_limit=100, fields=True, include_read_only=False, exclude_volatile=False, skip_zeroes=True, match_reg_names=None, match_nodes=None, flat=False, address=False):
+    def __init__(self, regdefs_dir=None, regmaps=None, descriptions=True, description_limit=100, fields=True, include_read_only=False, exclude_volatile=False, skip_zeroes=True, match_reg_names=None, match_nodes=None, flat=False, address=False, node_order="topology", no_common=False):
         CMNRegMapper.__init__(self, regdefs_dir=regdefs_dir, regmaps=regmaps)
         Style.__init__(self, descriptions=descriptions, description_limit=description_limit, fields=fields, flat=flat, address=address)
         self.o_include_read_only = include_read_only
@@ -186,6 +191,10 @@ class CMNRegDumper(CMNRegMapper, Style):
         self.o_match_reg_names = match_reg_names
         self.o_match_nodes = match_nodes
         self.o_skip_zeroes = skip_zeroes
+        self.o_no_common = no_common
+        if node_order not in ["topology", "type"]:
+            raise ValueError("bad node order: %s" % node_order)
+        self.o_node_order = node_order
         self.n_selected = 0    # Selected as matching name, regex etc.
         self.n_selected_2 = 0  # Selected after other filtering criteria (RO, zero etc.)
         self.n_regs_reserved_bits_set = 0
@@ -213,7 +222,11 @@ class CMNRegDumper(CMNRegMapper, Style):
 
     def cmn_nodes_iter(self, C):
         self.set_regmaps_from_cmn_product(C.product_config)
-        for node in cmn_select.iter_cmn_nodes(C, selector=self.o_match_nodes, include_root=True):
+        if self.o_node_order == "type":
+            nodes = cmn_select.iter_cmn_nodes_by_type(C, selector=self.o_match_nodes, include_root=True)
+        else:
+            nodes = cmn_select.iter_cmn_nodes(C, selector=self.o_match_nodes, include_root=True)
+        for node in nodes:
             yield node
 
     def cmn_nodes(self, C):
@@ -222,9 +235,32 @@ class CMNRegDumper(CMNRegMapper, Style):
                 continue
             yield node
 
+    def cmns_nodes_iter(self, CS):
+        if self.o_node_order == "type":
+            nodes = cmn_select.iter_cmns_nodes_by_type(CS, selector=self.o_match_nodes, include_root=True)
+        else:
+            nodes = cmn_select.iter_cmns_nodes(CS, selector=self.o_match_nodes, include_root=True)
+        for node in nodes:
+            self.set_regmaps_from_cmn_product(node.C.product_config)
+            yield node
+
+    def cmns_nodes(self, CS):
+        for node in self.cmns_nodes_iter(CS):
+            if self.o_match_nodes and not self.o_match_nodes.match_node(node):
+                continue
+            yield node
+
     def cmn_dump_regs(self, C):
         for node in self.cmn_nodes(C):
             self.node_dump_regs(node)
+
+    def cmns_dump_regs(self, CS):
+        for node in self.cmns_nodes(CS):
+            self.node_dump_regs(node)
+
+    def cmns_dump_regs_aggregate(self, CS):
+        for (node_type, nodes) in cmn_select.iter_cmns_node_type_groups(CS, selector=self.o_match_nodes, include_root=True):
+            self.node_type_dump_regs_aggregate(node_type, nodes)
 
     def cmn_iter_reg(self, C, reg_name):
         """
@@ -308,7 +344,27 @@ class CMNRegDumper(CMNRegMapper, Style):
             return True
         return any([e.search(name) for e in self.o_match_reg_names])
 
+    def reg_is_readable(self, n, reg):
+        if reg.access == "RO" and not self.o_include_read_only:
+            if o_verbose >= 2:
+                print("%s: excluded as read-only" % reg)
+            return False
+        if reg.is_volatile and self.o_exclude_volatile:
+            if o_verbose >= 2:
+                print("%s: excluded as volatile" % reg)
+            return False
+        if reg.is_secure and not n.C.secure_accessible:
+            if o_verbose >= 2:
+                print("%s: excluded as Secure" % reg)
+            return False
+        if reg.n_bits != 64:
+            if o_verbose >= 2:
+                print("%s: excluded because can't handle %u-bit register" % (reg, reg.n_bits))
+            return False
+        return True
+
     def node_dump_regs(self, n):
+        self.set_regmaps_from_cmn_product(n.C.product_config)
         rm = self.node_regmap(n)
         if rm is None:
             return
@@ -318,25 +374,23 @@ class CMNRegDumper(CMNRegMapper, Style):
             if not self.reg_selected(reg.name):
                 continue
             self.n_selected += 1
-            if reg.access == "RO" and not self.o_include_read_only:
-                if o_verbose >= 2:
-                    print("%s: excluded as read-only" % reg)
+            if not self.reg_is_readable(n, reg):
                 continue
-            if reg.is_volatile and self.o_exclude_volatile:
-                if o_verbose >= 2:
-                    print("%s: excluded as volatile" % reg)
-                continue
-            if reg.is_secure and not n.C.secure_accessible:
-                if o_verbose >= 2:
-                    print("%s: excluded as Secure" % reg)
-                # this would read as zero if we tried
-                continue
-            if reg.n_bits == 64:
-                x = n.read64(reg.addr)
-            else:
-                if o_verbose >= 2:
-                    print("%s: excluded because can't handle %u-bit register" % (reg, reg.n_bits))
-                continue
+            x = n.read64(reg.addr)
+            if reg.is_secure:
+                try:
+                    old_sec = n.set_secure_access("S")
+                    xs = n.read64(reg.addr)
+                    n.set_secure_access(old_sec)
+                    if xs != x:
+                        if x != 0:
+                            print("%s: NS read 0x%x, S read 0x%x" % (reg, x, xs))
+                        else:
+                            #print("%s: security protected" % (reg))
+                            pass
+                    x = xs
+                except devmem_base.DevMemNoSecure:
+                    pass
             if x == 0 and self.o_skip_zeroes:
                 if o_verbose >= 2:
                     print("%s: excluded because zero" % reg)
@@ -355,6 +409,136 @@ class CMNRegDumper(CMNRegMapper, Style):
                     print("    %s %s reserved bits are set: 0x%x" % (n, reg, extra_bits))
                     self.n_regs_reserved_bits_set += 1
 
+    def node_type_dump_regs_aggregate(self, node_type, nodes):
+        if not nodes:
+            return
+        if len(nodes) == 1:
+            if not self.o_no_common:
+                self.node_dump_regs(nodes[0])
+            return
+        printed_node_type = False
+        rm_regs = []
+        for n in nodes:
+            self.set_regmaps_from_cmn_product(n.C.product_config)
+            rm = self.node_regmap(n)
+            if rm is not None:
+                rm_regs = list(rm.regs())
+                break
+        if not rm_regs:
+            return
+        for reg in rm_regs:
+            if not self.reg_selected(reg.name):
+                continue
+            vals = []
+            for n in nodes:
+                self.set_regmaps_from_cmn_product(n.C.product_config)
+                rm = self.node_regmap(n)
+                if rm is None:
+                    continue
+                nreg = rm.regs_by_name.get(reg.name, None)
+                if nreg is None:
+                    continue
+                self.n_selected += 1
+                if not self.reg_is_readable(n, nreg):
+                    continue
+                vals.append((n, nreg, n.read64(nreg.addr)))
+            if not vals:
+                continue
+            different = any([x != vals[0][2] for (n, nreg, x) in vals[1:]])
+            if not different:
+                x = vals[0][2]
+                if x == 0 and self.o_skip_zeroes:
+                    if o_verbose >= 2:
+                        print("%s: excluded because zero" % reg)
+                    continue
+                self.n_selected_2 += len(vals)
+                if self.o_no_common:
+                    continue
+            else:
+                self.n_selected_2 += len(vals)
+            if not printed_node_type:
+                print()
+                print("Node type: %s (%u nodes)" % (cmn_node_type_str(node_type), len(nodes)))
+                printed_node_type = True
+            if different:
+                self.reg_dump_aggregate_different(vals)
+            else:
+                self.reg_dump_aggregate_common(vals[0][1], vals[0][2], len(nodes))
+            for (n, nreg, x) in vals:
+                if nreg.has_fields:
+                    extra_bits = x & nreg.reserved_mask
+                    if extra_bits != 0:
+                        print("    %s %s reserved bits are set: 0x%x" % (n, nreg, extra_bits))
+                        self.n_regs_reserved_bits_set += 1
+
+    def reg_dump_common_suffix(self, reg, x, show_reset=True):
+        if reg.access:
+            print(" (%s)" % reg.access, end="")
+        if reg.is_secure:
+            print(" (%s)" % reg.security, end="")
+        if show_reset and reg.reset is not None and x == reg.reset[0]:
+            print(" (reset value)", end="")
+        if self.o_descriptions and reg.desc:
+            print("  %s" % self.descstr(reg.desc), end="")
+
+    def reg_dump_aggregate_common(self, reg, x, n_nodes):
+        if self.o_fields and not self.o_flat:
+            print()
+        if self.o_flat:
+            print("%s.%s = 0x%x" % (reg.regmap.name, reg.name, x))
+        else:
+            print("  %04x  %016x  %s (common across %u nodes)" % (reg.addr, x, reg.name, n_nodes), end="")
+            self.reg_dump_common_suffix(reg, x)
+            print()
+        if self.o_fields and not self.o_flat:
+            self.reg_dump_fields(reg, x)
+
+    def reg_dump_aggregate_different(self, vals):
+        reg = vals[0][1]
+        if self.o_flat:
+            for (n, nreg, x) in vals:
+                print("%s.%s = 0x%x" % (self.locator_str(n), nreg.name, x))
+            if self.o_fields:
+                self.reg_dump_aggregate_fields(vals)
+            return
+        print("  %04x  %s (differs)" % (reg.addr, reg.name), end="")
+        self.reg_dump_common_suffix(reg, vals[0][2], show_reset=False)
+        print()
+        for (n, nreg, x) in vals:
+            print("    %-42s  %016x" % (self.locator_str(n), x))
+        if self.o_fields:
+            self.reg_dump_aggregate_fields(vals)
+
+    def reg_dump_aggregate_fields(self, vals):
+        reg = vals[0][1]
+        for fld in reg.fields:
+            fvals = [(n, nreg, fld.extract(x)) for (n, nreg, x) in vals]
+            different = any([v != fvals[0][2] for (n, nreg, v) in fvals[1:]])
+            if not different:
+                v = fvals[0][2]
+                if self.o_no_common:
+                    continue
+                if v == 0 and self.o_skip_zeroes:
+                    continue
+                if self.o_flat:
+                    print("%s.%s.%s = %s" % (reg.regmap.name, reg.name, fld.name, self.valstr(v, width=fld.width)))
+                    continue
+                print("    %-7s %28s = %-10s (common)" % (fld.range_str(), fld.name, self.valstr(v, width=fld.width)), end="")
+                if self.o_descriptions and fld.desc:
+                    print("  %s" % self.descstr(fld.desc), end="")
+                print()
+                continue
+            if self.o_flat:
+                for (n, nreg, v) in fvals:
+                    print("%s.%s.%s = %s" % (self.locator_str(n), nreg.name, fld.name, self.valstr(v, width=fld.width)))
+                continue
+            print("    %-7s %28s (differs)" % (fld.range_str(), fld.name), end="")
+            if self.o_descriptions and fld.desc:
+                print("  %s" % self.descstr(fld.desc), end="")
+            print()
+            for (n, nreg, v) in fvals:
+                print("      %-40s  %s" % (self.locator_str(n), self.valstr(v, width=fld.width)))
+
     def reg_dump(self, reg, x):
         """
         Dump a register value (x) with reference to register definitions.
@@ -366,12 +550,7 @@ class CMNRegDumper(CMNRegMapper, Style):
             print("%s.%s = 0x%x" % (self.node_loc_str, reg.name, x))
         else:
             print("  %04x  %016x  %s" % (reg.addr, x, reg.name), end="")
-            if reg.access:
-                print(" (%s)" % reg.access, end="")
-            if reg.reset is not None and x == reg.reset[0]:
-                print(" (reset value)", end="")    # i.e. register still has its reset value
-            if self.o_descriptions and reg.desc:
-                print("  %s" % self.descstr(reg.desc), end="")
+            self.reg_dump_common_suffix(reg, x)
             print()
         if self.o_fields:
             self.reg_dump_fields(reg, x)
@@ -474,9 +653,12 @@ def main(argv):
     parser.add_argument("-z", "--include-zero", action="store_true", help="include registers with value 0")
     parser.add_argument("-f", "--fields", action="store_true", help="show register fields")
     parser.add_argument("--no-fields", dest="fields", action="store_false", help="don't show register fields")
-    parser.add_argument("-d", "--descriptions", action="store_true", help="show register and field descriptions")
+    parser.add_argument("-d", "--descriptions", action="store_true", default=None, help="show register and field descriptions")
     parser.add_argument("--no-descriptions", dest="descriptions", action="store_false", help="don't show descriptions")
     parser.add_argument("--address", action="store_true", help="show address of each register")
+    parser.add_argument("--node-order", choices=["topology", "type"], default="topology", help="node traversal order for register dumps")
+    parser.add_argument("--aggregate", action="store_true", help="aggregate register values by node type")
+    parser.add_argument("--no-common", action="store_true", help="in aggregate mode, suppress registers common to all nodes of a type")
     parser.add_argument("--reset", action="store_true", default=True, help="show reset values")
     parser.add_argument("--no-reset", dest="reset", action="store_false", help="don't show reset values")
     parser.add_argument("-n", "--node", type=cmn_select.CMNSelect, action="append", help="match nodes or node types")
@@ -490,9 +672,10 @@ def main(argv):
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args(argv)
     o_verbose = opts.verbose
-    if opts.search:
+    if opts.descriptions is None and opts.search:
         opts.descriptions = True
     if opts.search_all:
+        # Search across all products (CMN-600, CMN-700 etc.) regardless of current system
         if not opts.reg and not opts.regs:
             print("must specify register(s) to search for", file=sys.stderr)
             sys.exit(1)
@@ -511,12 +694,14 @@ def main(argv):
                      match_reg_names=opts.reg,
                      match_nodes=cmn_select.cmn_select_merge(opts.node),
                      address=opts.address,
+                     node_order=opts.node_order,
+                     no_common=opts.no_common,
                      flat=opts.flat)
     CS = cmn_from_opts(opts)
     if opts.search:
         D.set_regmaps_from_cmn_product(CS[0].product_config)
         opts.regs = [regex(r) for r in opts.regs]
-        style = Style(description=True, fields=True, flat=opts.flat, reset=opts.reset, address=opts.address)
+        style = Style(descriptions=opts.descriptions, fields=opts.fields, flat=opts.flat, reset=opts.reset, address=opts.address)
         for reg_ex in opts.regs:
             n = search_all_in_regdefs(reg_ex, D.regmaps, style)
             if n == 0:
@@ -541,7 +726,10 @@ def main(argv):
         if not C.secure_accessible and not printed_sec_warning:
             print("** Showing Non-Secure registers only", file=sys.stderr)
             printed_sec_warning = True
-        D.cmn_dump_regs(C)
+    if opts.aggregate:
+        D.cmns_dump_regs_aggregate(CS)
+    else:
+        D.cmns_dump_regs(CS)
     if D.n_selected == 0:
         print("** No registers matched expressions", file=sys.stderr)
     elif D.n_selected_2 == 0:

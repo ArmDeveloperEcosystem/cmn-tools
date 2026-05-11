@@ -17,6 +17,13 @@ import iommap as mmap
 from devmem_base import DevMapFactory, DevMap, DevMemNoSecure
 
 
+try:
+    import pyarmctl
+    pyarmctl_enabled = False
+except Exception:
+    pyarmctl_enabled = False
+
+
 class DevMemFactory(DevMapFactory):
     """
     Access to the physical address space generally,
@@ -92,8 +99,7 @@ class DevMemDevMap(DevMap):
     """
     def __init__(self, pa, size, name=None, owner=None, write=False, verbose=0):
         assert isinstance(owner, DevMapFactory)
-        DevMap.__init__(self, pa, size, name=name, owner=owner, write=write)
-        self.verbose_level = verbose
+        DevMap.__init__(self, pa, size, name=name, owner=owner, write=write, verbose=verbose)
         self.m = None
         aligned_pa = align_down(pa, owner.page_size)
         aligned_size = align_up(size, owner.page_size)
@@ -101,20 +107,20 @@ class DevMemDevMap(DevMap):
         self.m = owner.mmap(aligned_pa, aligned_size, write=self.writing)
         assert self.m is not None
 
-    def verbose(self):
-        return self.verbose_level
-
     def _ensure_writeable(self):
         self.m.mprotect(mmap.PROT_READ | mmap.PROT_WRITE)
 
     def _set_secure_access(self, secure):
-        if secure != "NS":
+        if (not pyarmctl_enabled) and secure != "NS":
             raise DevMemNoSecure(self, secure)
 
     def adjust_offset(self, off):
         return off + self.offset_in_page
 
     def _read(self, off, n, fmt=None):
+        if self.secure != "NS":
+            pa = self.pa + off
+            return pyarmctl.cpu[1].psread64(pa)
         off = self.adjust_offset(off)
         if fmt is None:
             fmt = {1:"B", 2:"H", 4:"I", 8:"Q"}[n]

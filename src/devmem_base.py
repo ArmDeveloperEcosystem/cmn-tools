@@ -106,7 +106,7 @@ class DevMap:
     """
     Abstract base class for a mapping object that maps a specific area of memory.
     """
-    def __init__(self, pa, size, owner=None, name=None, write=False, check=None, secure="NS"):
+    def __init__(self, pa, size, owner=None, name=None, write=False, check=None, secure="NS", verbose=0):
         assert isinstance(owner, DevMapFactory)
         self.owner = owner
         if name is None:
@@ -116,12 +116,16 @@ class DevMap:
         self.size = size
         self.writing = write
         self.checking = check
+        self.verbose_level = verbose
         self.secure = None
         self.set_secure_access(secure)
         # self.already_read = {}
 
     def __str__(self):
         return self.name
+
+    def verbose(self):
+        return self.verbose_level
 
     def ensure_writeable(self):
         """
@@ -153,6 +157,7 @@ class DevMap:
 
     def _set_secure_access(self, secure):
         """
+        This is really a check on whether the required security state is achieveable.
         Default implementation is to do nothing. Subclass might add a check.
         """
         pass

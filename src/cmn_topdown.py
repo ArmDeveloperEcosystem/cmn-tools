@@ -2,6 +2,9 @@
 
 """
 Top-down performance analysis methodology for CMN interconnect.
+
+Copyright (C) Arm Ltd. 2025. All rights reserved.
+SPDX-License-Identifier: Apache 2.0
 """
 
 from __future__ import print_function
@@ -613,7 +616,7 @@ def format_analysis(analysis, rate_bandwidth, options):
         else:
             value += " %6.3f" % analysis.proportion(category)
         value += dominance_marker(category == dom)
-        lines.append("  %-15s%s" % (category_name, value))
+        lines.append("  %-18s%s" % (category_name, value))
     if dom is not None:
         lines.append("Dominant category: %s" % dom)
     elif options.verbose:
@@ -682,7 +685,7 @@ def format_mesh_analyses(analyses, rate_bandwidth, options):
         row_values[category] = vals
         for (value, marker) in vals:
             value_width = max(value_width, len(value))
-    label_width = 15
+    label_width = 18
     lines.append("  %-*s %s" % (label_width, "", " ".join([(header.rjust(value_width) + (" " * marker_width)) for header in headers])))
     for category in catlist:
         if category not in row_values:
@@ -802,9 +805,18 @@ def start_workload(command):
     return process
 
 
+def list_recipes():
+    print("Built-in levels:")
+    for (rname, rdef) in cmn_topdown_recipes.BUILTIN_LEVELS.items():
+        print("  %-14s  %s" % (rname, rdef["name"]))
+
+
 def main(argv):
     opts = parse_args(argv)
     options = options_from_args(opts)
+    if opts.level == ["list"]:
+        list_recipes()
+        return 0
     recipes = load_selected_recipes(opts, options)
     if options.print_recipe:
         for recipe in recipes:

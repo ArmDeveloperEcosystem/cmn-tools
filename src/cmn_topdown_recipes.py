@@ -2,6 +2,9 @@
 
 """
 Built-in top-down analysis recipes for CMN interconnects.
+
+Copyright (C) Arm Ltd. 2025. All rights reserved.
+SPDX-License-Identifier: Apache 2.0
 """
 
 import cmnwatch
@@ -66,19 +69,39 @@ RECIPE_BANDWIDTH_CPU = {
 }
 
 
+def filter_retries(ms, wp):
+    """
+    Apply "allowretry = 1" to REQ watchpoints. The rationale is that actual bandwidth is consumed by:
+     - initial REQs with allowretry = 1 that don't get a retry response
+     - retried REQs with allowretry = 0, which are guaranteed to be serviced
+    Assuming that it's rare for the source to return a credit without retrying, we can estimate
+    bandwidth usage by filtering on allowretry = 1.
+    """
+    def filter_retries_m(m, wp):
+        m[wp]["allowretry"] = 1
+        return m
+    return [filter_retries_m(m, wp) for m in ms]
+
+
+def rnf_opcodes(ports, wp, prefix=""):
+    ms = [
+        {"measure": prefix + "read", "ports": ports, wp: {"opcode": "ReadNotSharedDirty"}},
+        {"measure": prefix + "read", "ports": ports, wp: {"opcode": "ReadUnique"}},
+        {"measure": prefix + "write clean", "ports": ports, wp: {"opcode": "WriteEvictFull"}},
+        {"measure": prefix + "write clean", "ports": ports, wp: {"opcode": "WriteEvictOrEvict"}},
+        {"measure": prefix + "write dirty", "ports": ports, wp: {"opcode": "WriteBackFull"}},
+        {"measure": prefix + "write dirty", "ports": ports, wp: {"opcode": "WriteCleanFull"}},
+        {"measure": prefix + "write dirty", "ports": ports, wp: {"opcode": "WriteUniqueFull"}},
+    ]
+    ms = filter_retries(ms, wp)
+    return ms
+
+
 RECIPE_BANDWIDTH_RNF = {
     "name": "CPU/SLC bandwidth at CPU",
     "categories": ["read", "write clean", "write dirty"],
     "rate_bandwidth": 64,
-    "measure": [
-        {"measure": "read", "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "ReadNotSharedDirty"}},
-        {"measure": "read", "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "ReadUnique"}},
-        {"measure": "write clean", "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "WriteEvictFull"}},
-        {"measure": "write clean", "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "WriteEvictOrEvict"}},
-        {"measure": "write dirty", "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "WriteBackFull"}},
-        {"measure": "write dirty", "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "WriteCleanFull"}},
-        {"measure": "write dirty", "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "WriteUniqueFull"}},
-    ],
+    "measure": rnf_opcodes(CMN_PROP_RNF, "watchpoint_up"),
 }
 
 
@@ -86,15 +109,7 @@ RECIPE_BANDWIDTH_HNF = {
     "name": "CPU/SLC bandwidth at SLC",
     "categories": ["read", "write clean", "write dirty"],
     "rate_bandwidth": 64,
-    "measure": [
-        {"measure": "read", "ports": CMN_PROP_HNF, "watchpoint_down": {"opcode": "ReadNotSharedDirty"}},
-        {"measure": "read", "ports": CMN_PROP_HNF, "watchpoint_down": {"opcode": "ReadUnique"}},
-        {"measure": "write clean", "ports": CMN_PROP_HNF, "watchpoint_down": {"opcode": "WriteEvictFull"}},
-        {"measure": "write clean", "ports": CMN_PROP_HNF, "watchpoint_down": {"opcode": "WriteEvictOrEvict"}},
-        {"measure": "write dirty", "ports": CMN_PROP_HNF, "watchpoint_down": {"opcode": "WriteBackFull"}},
-        {"measure": "write dirty", "ports": CMN_PROP_HNF, "watchpoint_down": {"opcode": "WriteCleanFull"}},
-        {"measure": "write dirty", "ports": CMN_PROP_HNF, "watchpoint_down": {"opcode": "WriteUniqueFull"}},
-    ],
+    "measure": rnf_opcodes(CMN_PROP_HNF, "watchpoint_down"),
 }
 
 
@@ -104,16 +119,47 @@ RECIPE_BANDWIDTH_DRAM = {
     "categories": ["read", "write"],
     "rate_bandwidth": 64,
     "measure": [
-        {"measure": "read", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnp"}},
-        {"measure": "read", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnpSep"}},
-        {"measure": "write", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "WriteNoSnpFull"}},
+        {"measure": "read", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnp", "allowretry": 1}},
+        {"measure": "read", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnpSep", "allowretry": 1}},
+        {"measure": "write", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "WriteNoSnpFull", "allowretry": 1}},
     ],
+}
+
+
+RECIPE_BANDWIDTH_DRAM_DAT = {
+    "name": "DRAM bandwidth at controller (DAT)",
+    "categories": ["read", "write"],
+    "rate_bandwidth": 64,
+    "measure": [
+        {"measure": "read", "ports": CMN_PROP_SNF, "watchpoint_up": {"chn": cmnwatch.DAT, "dataid": 0 }},
+        {"measure": "write", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.DAT, "dataid": 0 }},
+    ],
+}
+
+
+# Measure requests going into and out of the C2C link
+RECIPE_BANDWIDTH_C2C = {
+    "name": "Bandwidth at C2C",
+    "rate_bandwidth": 64,
+    "measure": rnf_opcodes(CMN_PROP_CCG, "watchpoint_up", prefix="from: ") + rnf_opcodes(CMN_PROP_CCG, "watchpoint_down", prefix="to: "),
+}
+
+
+# N.b. bandwidth is scaled assuming each DAT with dataid=0 is part of a 64-byte transfer.
+# Significant numbers of device reads across C2C interface may skew this.
+RECIPE_BANDWIDTH_C2C_DAT = {
+    "name": "Bandwidth at C2C (DAT)",
+    "rate_bandwidth": 64,
+    "measure": [
+        {"measure": "from", "ports": CMN_PROP_CCG, "watchpoint_up": {"chn": cmnwatch.DAT, "dataid": 0 }},
+        {"measure": "to", "ports": CMN_PROP_CCG, "watchpoint_down": {"chn": cmnwatch.DAT, "dataid": 0 }},
+    ]
 }
 
 
 RECIPE_BANDWIDTH = {
     "name": "Bandwidth",
-    "subrecipes": [RECIPE_BANDWIDTH_CPU, RECIPE_BANDWIDTH_RNF, RECIPE_BANDWIDTH_HNF, RECIPE_BANDWIDTH_DRAM],
+    "subrecipes": [RECIPE_BANDWIDTH_CPU, RECIPE_BANDWIDTH_RNF, RECIPE_BANDWIDTH_HNF, RECIPE_BANDWIDTH_DRAM, RECIPE_BANDWIDTH_C2C],
 }
 
 
@@ -186,8 +232,16 @@ BUILTIN_LEVELS = {
     "3": RECIPE_LEVEL3_RNF,
     "prefetch": RECIPE_PREFETCH,
     "bandwidth": RECIPE_BANDWIDTH,
+    "dram": RECIPE_BANDWIDTH_DRAM,
+    "dram-data": RECIPE_BANDWIDTH_DRAM_DAT,
+    "c2c-bandwidth": RECIPE_BANDWIDTH_C2C,
+    "c2c-data": RECIPE_BANDWIDTH_C2C_DAT,
     "retries": RECIPE_RETRIES,
+    "retries-home": RECIPE_RETRIES_HNF,
+    "retries-dram": RECIPE_RETRIES_SNF,
     "cbusy": RECIPE_CBUSY,
+    "cbusy-home": RECIPE_CBUSY_HNF,
+    "cbusy-dram": RECIPE_CBUSY_SNF,
     "ccg": RECIPE_C2C,
     "c2c": RECIPE_C2C,
 }

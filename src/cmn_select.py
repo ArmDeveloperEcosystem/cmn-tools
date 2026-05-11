@@ -484,6 +484,47 @@ def iter_cmn_nodes(cmn, selector=None, include_root=False, include_xps=True, inc
             yield node
 
 
+def _node_type_group_order(types):
+    """
+    Return node types in a stable order for type-grouped traversals.
+    """
+    ordered = []
+    for nt in [CMN_NODE_CFG, CMN_NODE_XP]:
+        if nt in types:
+            ordered.append(nt)
+    known = [nt for nt in types if nt not in ordered and nt in cmn_node_type_strings]
+    ordered += sorted(known)
+    ordered += sorted([nt for nt in types if nt not in ordered])
+    return ordered
+
+
+def iter_cmn_node_type_groups(cmn, selector=None, include_root=False, include_xps=True, include_devices=True):
+    """
+    Yield (node_type, nodes) groups for a CMN.
+
+    Groups are yielded as CFG first, then XP, then device node types in
+    numeric node-type order. Nodes within each group retain the normal
+    topology traversal order.
+    """
+    groups = {}
+    for node in iter_cmn_nodes(cmn, selector=selector, include_root=include_root, include_xps=include_xps, include_devices=include_devices):
+        nt = node.type()
+        if nt not in groups:
+            groups[nt] = []
+        groups[nt].append(node)
+    for nt in _node_type_group_order(groups):
+        yield (nt, groups[nt])
+
+
+def iter_cmn_nodes_by_type(cmn, selector=None, include_root=False, include_xps=True, include_devices=True):
+    """
+    Yield selected topology nodes for a CMN, grouped by node type.
+    """
+    for (nt, nodes) in iter_cmn_node_type_groups(cmn, selector=selector, include_root=include_root, include_xps=include_xps, include_devices=include_devices):
+        for node in nodes:
+            yield node
+
+
 def iter_cmn_devices(cmn, selector=None):
     """
     Yield the selected device slots for a CMN, ordered by XP coordinates.
@@ -495,22 +536,81 @@ def iter_cmn_devices(cmn, selector=None):
             yield dev
 
 
+def iter_cmns_nodes(cmns, selector=None, include_root=False, include_xps=True, include_devices=True):
+    """
+    Yield selected topology nodes for a list of CMNs.
+    """
+    for cmn in sorted(cmns, key=lambda cmn: cmn.cmn_seq):
+        for node in iter_cmn_nodes(cmn, selector=selector, include_root=include_root, include_xps=include_xps, include_devices=include_devices):
+            yield node
+
+
+def iter_cmns_node_type_groups(cmns, selector=None, include_root=False, include_xps=True, include_devices=True):
+    """
+    Yield (node_type, nodes) groups for a list of CMNs.
+
+    Groups are yielded as CFG first, then XP, then device node types in
+    numeric node-type order. Nodes within each group retain the normal
+    topology traversal order across CMNs.
+    """
+    groups = {}
+    for node in iter_cmns_nodes(cmns, selector=selector, include_root=include_root, include_xps=include_xps, include_devices=include_devices):
+        nt = node.type()
+        if nt not in groups:
+            groups[nt] = []
+        groups[nt].append(node)
+    for nt in _node_type_group_order(groups):
+        yield (nt, groups[nt])
+
+
+def iter_cmns_nodes_by_type(cmns, selector=None, include_root=False, include_xps=True, include_devices=True):
+    """
+    Yield selected topology nodes for a list of CMNs, grouped by node type.
+    """
+    for (nt, nodes) in iter_cmns_node_type_groups(cmns, selector=selector, include_root=include_root, include_xps=include_xps, include_devices=include_devices):
+        for node in nodes:
+            yield node
+
+
+def iter_cmns_devices(cmns, selector=None):
+    """
+    Yield the selected device slots for a list of CMNs.
+    """
+    for cmn in sorted(cmns, key=lambda cmn: cmn.cmn_seq):
+        for dev in iter_cmn_devices(cmn, selector=selector):
+            yield dev
+
+
 def iter_system_nodes(system, selector=None, include_root=False, include_xps=True, include_devices=True):
     """
     Yield the selected topology nodes for a system.
     """
-    for cmn in sorted(system.CMNs, key=lambda cmn: cmn.cmn_seq):
-        for node in iter_cmn_nodes(cmn, selector=selector, include_root=include_root, include_xps=include_xps, include_devices=include_devices):
-            yield node
+    for node in iter_cmns_nodes(system.CMNs, selector=selector, include_root=include_root, include_xps=include_xps, include_devices=include_devices):
+        yield node
+
+
+def iter_system_node_type_groups(system, selector=None, include_root=False, include_xps=True, include_devices=True):
+    """
+    Yield (node_type, nodes) groups for a system.
+    """
+    for group in iter_cmns_node_type_groups(system.CMNs, selector=selector, include_root=include_root, include_xps=include_xps, include_devices=include_devices):
+        yield group
+
+
+def iter_system_nodes_by_type(system, selector=None, include_root=False, include_xps=True, include_devices=True):
+    """
+    Yield selected topology nodes for a system, grouped by node type.
+    """
+    for node in iter_cmns_nodes_by_type(system.CMNs, selector=selector, include_root=include_root, include_xps=include_xps, include_devices=include_devices):
+        yield node
 
 
 def iter_system_devices(system, selector=None):
     """
     Yield the selected device slots for a system.
     """
-    for cmn in sorted(system.CMNs, key=lambda cmn: cmn.cmn_seq):
-        for dev in iter_cmn_devices(cmn, selector=selector):
-            yield dev
+    for dev in iter_cmns_devices(system.CMNs, selector=selector):
+        yield dev
 
 
 def cmn_select_merge(mlist):
