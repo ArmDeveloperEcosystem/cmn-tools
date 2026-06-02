@@ -689,6 +689,9 @@ class CMNTraceConfig:
 
 
 def trace_size_bits(cfg):
+    """
+    Trace payload size for different versions of CMN. This assumes no trailing-zero compression.
+    """
     return [144, 160, 176, 196][cfg._cmn_base_type]
 
 
@@ -788,9 +791,12 @@ class CMNFlitGroup:
                     s += "TXNID: "
                 s += sep.join([f.long_str() for f in self.flits])
             elif self.format in [5, 6]:
+                # Data payload, either low or high 16 bytes of a DAT packet
                 # Should be 16 bytes: spec suggests trailing zeroes will be stripped,
                 # but in fact we see 22 bytes
                 data = self.payload[:16]
+                if len(data) < 16:
+                    data += (b"\x00" * (16 - len(data)))
                 s += "DATA(%s):  %32s  |%s|" % (["lo", "hi"][self.format-5], bytes_hex(reversed(data)), bytes_chars(data))
             else:
                 s += "raw: %s (format=%s)" % (bytes_hex(self.payload), self.format)
@@ -1199,13 +1205,12 @@ def main(argv):
     for i in range(opts.tests):
         g = CMNFlitGroup(cfg)
         g.VC = opts.vc if opts.vc is not None else random.randrange(4)
-        g.format = opts.format if opts.format is not None else [0, 1, 2, 4][random.randrange(4)]
-        wbytes = trace_size_bits(cfg) // 8
+        g.format = opts.format if opts.format is not None else random.choice([0, 1, 2, 4, 5, 6])
+        wbytes = (trace_size_bits(cfg) // 8) - 6
+        if g.format in [5, 6]:
+            wbytes -= random.randrange(4)
         def randbytes(n):
-            x = 0
-            for _ in range(n // 2):
-                x = (x << 16) | random.randrange(0xffff)
-            return x.to_bytes(n, 'big')
+            return bytes(bytearray(random.randrange(0x100) for _ in range(n)))
         g.decode(randbytes(wbytes))
         print(g)
 

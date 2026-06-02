@@ -15,13 +15,7 @@ import struct
 
 import iommap as mmap
 from devmem_base import DevMapFactory, DevMap, DevMemNoSecure
-
-
-try:
-    import pyarmctl
-    pyarmctl_enabled = False
-except Exception:
-    pyarmctl_enabled = False
+import devmem_phys
 
 
 class DevMemFactory(DevMapFactory):
@@ -38,6 +32,9 @@ class DevMemFactory(DevMapFactory):
         except PermissionError:
             print("cannot open /dev/mem: try running as sudo", file=sys.stderr)
             sys.exit(1)
+        self.memif = None
+        if devmem_phys.memory_interface_available():
+            self.memif = devmem_phys.MemoryInterface()
 
     def __str__(self):
         return "native"
@@ -111,7 +108,7 @@ class DevMemDevMap(DevMap):
         self.m.mprotect(mmap.PROT_READ | mmap.PROT_WRITE)
 
     def _set_secure_access(self, secure):
-        if (not pyarmctl_enabled) and secure != "NS":
+        if (self.owner.memif is None) and secure != "NS":
             raise DevMemNoSecure(self, secure)
 
     def adjust_offset(self, off):
@@ -120,7 +117,7 @@ class DevMemDevMap(DevMap):
     def _read(self, off, n, fmt=None):
         if self.secure != "NS":
             pa = self.pa + off
-            return pyarmctl.cpu[1].psread64(pa)
+            return self.owner.memif.read(pa, n)
         off = self.adjust_offset(off)
         if fmt is None:
             fmt = {1:"B", 2:"H", 4:"I", 8:"Q"}[n]
@@ -134,6 +131,9 @@ class DevMemDevMap(DevMap):
         return x
 
     def _write(self, off, n, data, fmt=None, check=None):
+        if self.secure != "NS":
+            pa = self.pa + off
+            return self.owner.memif.write(pa, n, data)
         off = self.adjust_offset(off)
         if fmt is None:
             fmt = {1:"B", 2:"H", 4:"I", 8:"Q"}[n]

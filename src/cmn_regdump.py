@@ -137,6 +137,7 @@ class CMNRegMapper:
             sys.exit(1)
         self.set_regmaps_from_file(regfn)
         self.regmaps_product = cfg
+        self.global_override_available = cfg.product_id not in [cmn_base.PART_CMN_S3]
 
     def set_regmaps_from_file(self, regfn):
         if o_verbose:
@@ -285,7 +286,7 @@ class CMNRegDumper(CMNRegMapper, Style):
             rname = self.locator_str(n) + "." + reg_name
             if self.o_address:
                 rname = ("0x%x:" % (n.node_base_addr + reg.addr)) + rname
-            if reg.is_secure and not n.C.secure_accessible:
+            if False and reg.is_secure and not n.C.secure_accessible:
                 print("** %s is secure (%s) and not accessible" % (rname, reg.security))
                 continue
             if fld_name is not None:
@@ -295,7 +296,7 @@ class CMNRegDumper(CMNRegMapper, Style):
                     sys.exit(1)
             else:
                 fld = None
-            old_val = n.read64(reg.addr)
+            old_val = self.reg_read(n, reg)
             if fld_name is not None:
                 rname += "." + fld_name
             if fld is None:
@@ -304,8 +305,8 @@ class CMNRegDumper(CMNRegMapper, Style):
                     if fields:
                         self.reg_dump_fields(reg, old_val)
                 else:
-                    n.write64(reg.addr, val)
-                    rb_val = n.read64(reg.addr)
+                    self.reg_write(n, reg, val)
+                    rb_val = self.reg_read(n, reg)
                     print("%s = 0x%x -> 0x%x" % (rname, old_val, rb_val), end="")
                     if rb_val != val:
                         print(" (wrote 0x%x)" % val, end="")
@@ -315,8 +316,8 @@ class CMNRegDumper(CMNRegMapper, Style):
                     print("%s = 0x%x" % (rname, fld.extract(old_val)))
                 else:
                     new_val = fld.insert(old_val, val)
-                    n.write64(reg.addr, new_val)
-                    rb_val = n.read64(reg.addr)
+                    self.reg_write(n, reg, new_val)
+                    rb_val = self.reg_read(n, reg)
                     rb_field = fld.extract(rb_val)
                     print("%s = 0x%x -> 0x%x" % (rname, fld.extract(old_val), rb_field), end="")
                     if rb_field != val:
@@ -355,13 +356,59 @@ class CMNRegDumper(CMNRegMapper, Style):
             return False
         if reg.is_secure and not n.C.secure_accessible:
             if o_verbose >= 2:
-                print("%s: excluded as Secure" % reg)
+                print("%s: excluded as secure (%s)" % reg.security)
             return False
         if reg.n_bits != 64:
             if o_verbose >= 2:
                 print("%s: excluded because can't handle %u-bit register" % (reg, reg.n_bits))
             return False
         return True
+
+    def reg_accessible_ns(self, n, reg):
+        if not reg.is_secure:
+            return True
+        if n.C.secure_accessible and (self.global_override_available or reg.is_overrideable):
+            return True
+        return False
+
+    def reg_read(self, n, reg):
+        """
+        Read a register. Our strategy should be:
+         - if NS, then read it
+         - for CMN-700 and earlier, if secure and all overrides set, then read it
+         - for CMN S3 onwards, if register is overrideable and all overrides set, then read it
+         - otherwise try a secure access
+        """
+        if self.reg_accessible_ns(n, reg):
+            return n.read64(reg.addr)
+        x = n.read64(reg.addr)
+        try:
+            old_sec = n.set_secure_access(reg.security)
+            xs = n.read64(reg.addr)
+            n.set_secure_access(old_sec)
+            if xs != x:
+                if x != 0:
+                    print("%s: NS read 0x%x, S read 0x%x" % (reg, x, xs))
+                else:
+                    #print("%s: security protected" % (reg))
+                    pass
+                x = xs
+        except devmem_base.DevMemNoSecure:
+            print("%s: can't read secure register" % reg, file=sys.stderr)
+            pass
+        return x
+
+    def reg_write(self, n, reg, value):
+        if self.reg_accessible_ns(n, reg):
+            n.write64(reg.addr, value)
+            return
+        try:
+            old_sec = n.set_secure_access(reg.security)
+            n.write64(reg.addr, value)
+            n.set_secure_access(old_sec)
+        except devmem_base.DevMemNoSecure:
+            print("%s: cannot write secure register" % reg, file=sys.stderr)
+            sys.exit(1)
 
     def node_dump_regs(self, n):
         self.set_regmaps_from_cmn_product(n.C.product_config)
@@ -376,21 +423,7 @@ class CMNRegDumper(CMNRegMapper, Style):
             self.n_selected += 1
             if not self.reg_is_readable(n, reg):
                 continue
-            x = n.read64(reg.addr)
-            if reg.is_secure:
-                try:
-                    old_sec = n.set_secure_access("S")
-                    xs = n.read64(reg.addr)
-                    n.set_secure_access(old_sec)
-                    if xs != x:
-                        if x != 0:
-                            print("%s: NS read 0x%x, S read 0x%x" % (reg, x, xs))
-                        else:
-                            #print("%s: security protected" % (reg))
-                            pass
-                    x = xs
-                except devmem_base.DevMemNoSecure:
-                    pass
+            x = self.reg_read(n, reg)
             if x == 0 and self.o_skip_zeroes:
                 if o_verbose >= 2:
                     print("%s: excluded because zero" % reg)
@@ -441,7 +474,7 @@ class CMNRegDumper(CMNRegMapper, Style):
                 self.n_selected += 1
                 if not self.reg_is_readable(n, nreg):
                     continue
-                vals.append((n, nreg, n.read64(nreg.addr)))
+                vals.append((n, nreg, self.reg_read(n, nreg)))
             if not vals:
                 continue
             different = any([x != vals[0][2] for (n, nreg, x) in vals[1:]])

@@ -247,6 +247,7 @@ def main(argv):
     parser.add_argument("--dtm-reset", action="store_true", help="reset DTM programming to match nothing")
     parser.add_argument("--dtm-clear-fifo", action="store_true", help="clear DTM FIFO")
     parser.add_argument("--dtm-enable", action="store_true", help="enable DTM")
+    parser.add_argument("--if-tag", action="store_true", help="select DTMs that set TraceTag")
     parser.add_argument("--xp", type=(lambda x:int(x, 16)), action="append", help="select XP (default all XPs/DTMs)")
     parser.add_argument("-d", "--detail", action="count", default=0, help="increase detail")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
@@ -274,7 +275,7 @@ def main(argv):
                 print_dtc(dtc, detail=opts.detail)
         if opts.dtms or opts.xp or opts.dtm_reset or opts.dtm_enable or opts.dtm_clear_fifo:
             for dtm in C.DTMs():
-                if opts.xp is None or dtm.xp.node_id() in opts.xp:
+                if (opts.xp is None or dtm.xp.node_id() in opts.xp) and (not opts.if_tag or dtm.dtm_sets_tracetag()):
                     print_dtm(dtm, detail=opts.detail)
                     if opts.dtm_reset:
                         dtm.dtm_reset_wps()

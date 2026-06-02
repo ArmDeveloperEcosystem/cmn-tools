@@ -311,9 +311,6 @@ class CMNSelectSingle:
             return False
         if self.node_type is not None and self.node_type in [CMN_NODE_CFG, CMN_NODE_XP]:
             return False
-        if self.node_props is not None and not cmn_has_property(self.node_props, CMN_PROP_DEV):
-            # Maybe the selector is matching XPs/CFG only.
-            return False
         return True
 
     def can_match_devices_at_port(self, port):
@@ -431,12 +428,16 @@ def iter_xp_nodes(xp, selector=None, include_xp=True, include_devices=True):
         return
     if include_xp and selector.match_node(xp):
         yield xp
-    if not include_devices or not selector.can_match_devices_at_xp(xp):
+    if not include_devices:
+        return
+    if not selector.can_match_devices_at_xp(xp):
+        if o_verbose >= 2:
+            print("    skipping all ports, can't match")
         return
     for port in xp.ports():
         if not selector.can_match_devices_at_port(port):
             if o_verbose >= 2:
-                print("      skipping %s, can't match" % port)
+                print("      skipping port %s, can't match" % port)
             continue
         for node in port.nodes():
             if selector.match_node(node):

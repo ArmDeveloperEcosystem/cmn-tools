@@ -58,6 +58,10 @@ Note that the capture format only affects the selection of fields
 captured from the CHI header. Matches against CHI fields happen
 regardless of capture format.
 
+On CMN versions from CMN-650 onwards, data payloads can also be
+traced, although there are some limitations. See "Data capture"
+later in this document.
+
 
 Flit sampling and histograms
 ----------------------------
@@ -126,9 +130,24 @@ Locations can be specified in several ways:
     @ node
     (x, y)
     (x, y, port)
+    device_type # logical-id
+    CPU # n
 
 "Device type" is one of the devices supported by CMN, e.g. RN-F,
 HN-F, SN-F, HN-I etc. "HN-F" will match both HN-F and HN-S devices.
+
+The logical-id is assigned at synthesis time and is unique for a
+given node type within a mesh, e.g. there is an XP#1, a HN-S#1 and
+so on.
+
+CPU numbers require CPU mappings in the cached JSON.
+
+Where there are multiple meshes, the "M<n>:" prefix can be used
+to specify the mesh number. Node ids, coordinates and logical ids
+are relative to a mesh. (CPU numbers will be globally unique.)
+
+When executing commands in the DS debugger, arguments containing
+the character '#' will need to be quoted. See `README-arm-ds.md`.
 
 
 Examples
@@ -221,6 +240,22 @@ I/O devices.
 Watchpoint rotation cannot be used with setup/inspect mode.
 
 
+Watchpoint actions
+------------------
+Actions can be specified on watchpoints. This modifies behavior
+when a watchpoint matches. Actions are specified as:
+
+    watchpoint#<action>,<action>...
+
+| Action | wp type | what it does |
+|---|---:|---:|
+| data=&lt;format&gt; | DAT | data capture (see below) |
+| tracetag | up | set TraceTag |
+| format=&lt;n&gt; | any | set capture format (default 4) |
+| format2=&lt;n&gt; | any | use an additional watchpoint (format 5 or 6) |
+| debug-trigger | any | generate debug trigger (ATB) |
+
+
 Data capture
 ------------
 In addition to showing header details from REQ, RSP, SNP and DAT
@@ -244,18 +279,41 @@ carried in two DAT packets, distinguished by the DataId field
 being 0 or 2. So a single REQ for a 64-byte transfer, will be
 associated with two DAT packets, distinguished by DataId.
 
-In cmn_capture.py, the --data option specifies which data fragment
-to capture:
+In cmn_capture.py, data capture can be enabled using the "data"
+modifier on DAT watchpoints, for instance:
 
-    0: dataid=0, header + low 16 bytes
-    1: dataid=0, header + high 16 bytes
-    2: dataid=2, header + low 16 bytes
-    3: dataid=2, header + high 16 bytes
+    cmn_capture.py sn-f/up:dat#data=&lt;format&gt;
 
-In each case, the DAT packet header (with source, destination and
-opcode etc.) is also captured.
+Several different formats are available. Some formats require
+two watchpoints to capture a DAT header and a 16-byte chunk of
+payload data, or two 16-byte chunks. As a maximum of two
+watchpoints are available, it is not possible to capture the
+header and the full 32-byte payload comprising two chunks.
 
-This feature is not supported in CMN-600.
+Avilable formats include:
+
+| Mnemonic | dataid | format 1 | format 2 |
+|---|---:|---:|---:|---:|
+| HDR |  | 4 |  | all DAT headers |
+| H01 | 0 | 4 |  | DAT header for first packet |
+| H23 | 2 | 4 |  | DAT header for second packet |
+| D0 | 0 | 5 |  | payload bits 127:0 |
+| D1 | 0 | 6 |  | payload bits 255:128 |
+| D2 | 2 | 5 |  | payload bits 383:256 |
+| D3 | 2 | 6 |  | payload bits 511:384 |
+| HD0 | 0 | 4 | 5 | header + payload bits 127:0 |
+| HD1 | 0 | 4 | 6 | header + payload bits 255:128 |
+| HD2 | 2 | 4 | 5 | header + payload bits 383:256 |
+| HD3 | 2 | 4 | 6 | header + payload bits 511:384 |
+| DALL |  | 5 | 6 | all payloads |
+| D01 | 0 | 5 | 6 | payload bits 255:0 |
+| D23 | 0 | 5 | 6 | payload bits 511:256 |
+
+Note that the "DALL" format will capture all data payloads,
+but the captured data does not indicate whether it is bits
+255:0 or bits 511:256.
+
+Data capture is not supported in CMN-600.
 
 
 Flit capture and security

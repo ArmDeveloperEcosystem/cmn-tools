@@ -1163,6 +1163,9 @@ class CMNDTM:
             self._dtm_is_enabled = e
         return e
 
+    def dtm_sets_tracetag(self):
+        return self.dtm_test64(CMN_DTM_CONTROL_off, CMN_DTM_CONTROL_TRACE_TAG_ENABLE)
+
     def dtm_clear_fifo(self):
         """
         Ensure the FIFO is empty, after reading its contents.
@@ -1265,7 +1268,7 @@ class CMNDTM:
         """
         Reset a watchpoint to match nothing and do nothing
         """
-        w = DTMWatchpoint(dtm=self, pkt_gen=False, value=0xcccccccccccccccc, mask=0)
+        w = DTMWatchpoint(dtm=self, pkt_gen=False, value=0xcccccccccccccccc, mask=0, type=4)
         self.dtm_wp_set(wp, w)
 
     def dtm_reset_wps(self):

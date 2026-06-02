@@ -82,6 +82,14 @@ class DSMemDevMap(DevMap):
         dsa = self.dsaddr(off)
         return self.owner.dbg.readMemoryValue(dsa, size=64, memParams=self.memParams())
 
+    def _read32(self, off):
+        dsa = self.dsaddr(off)
+        return self.owner.dbg.readMemoryValue(dsa, size=32, memParams=self.memParams())
+
     def _write64(self, off, val):
         dsa = self.dsaddr(off)
         self.owner.dbg.writeMemoryValue(dsa, val, size=64, memParams=self.memParams())
+
+    def _write32(self, off, val):
+        dsa = self.dsaddr(off)
+        self.owner.dbg.writeMemoryValue(dsa, val, size=32, memParams=self.memParams())

@@ -57,6 +57,8 @@ cmn_latency.py        - use trace tagging to capture related flits
 
 cmn_unlock.py         - set/unset security override bit(s)
 
+cmn_regdump.py        - register access by name and field
+
 
 Scripts that will not work with DS
 ----------------------------------
@@ -120,6 +122,15 @@ or the hardware architecture), will be to the machine locally running DS.
 There is no built-in method of communicating with any OS running on the
 target. It is also not possible to directly read ACPI/SMBIOS tables on
 the target - indeed they may not yet have been created.
+
+Note: DS will treat '#' as a comment character in commands such as:
+
+    source cmn_capture.py cpu#0/up:req
+
+All characters after '#' will be ignored. To avoid this, enclose
+command-line arguments in quotes where necessary, e.g.
+
+    source cmn_capture.py 'cpu#0/up:req'
 
 
 CMN trace capture over CoreSight ATB using DS

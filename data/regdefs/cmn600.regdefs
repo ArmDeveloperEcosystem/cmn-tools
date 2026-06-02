@@ -346,6 +346,7 @@ F 8 2 rxcxscontrolreplication
 PAR CXLA_CXS_REPLICATION_RX_PARAM
 R 0xc30 64 - S por_cxla_agentid_to_linkid_reg0
 RESET 0x0 0x303030303030303
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent0_linkid
 F 8 2 agent1_linkid
 F 16 2 agent2_linkid
@@ -356,6 +357,7 @@ F 48 2 agent6_linkid
 F 56 2 agent7_linkid
 R 0xc38 64 - S por_cxla_agentid_to_linkid_reg1
 RESET 0x0 0x303030303030303
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent8_linkid
 F 8 2 agent9_linkid
 F 16 2 agent10_linkid
@@ -366,6 +368,7 @@ F 48 2 agent14_linkid
 F 56 2 agent15_linkid
 R 0xc40 64 - S por_cxla_agentid_to_linkid_reg2
 RESET 0x0 0x303030303030303
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent16_linkid
 F 8 2 agent17_linkid
 F 16 2 agent18_linkid
@@ -376,6 +379,7 @@ F 48 2 agent22_linkid
 F 56 2 agent23_linkid
 R 0xc48 64 - S por_cxla_agentid_to_linkid_reg3
 RESET 0x0 0x303030303030303
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent24_linkid
 F 8 2 agent25_linkid
 F 16 2 agent26_linkid
@@ -386,6 +390,7 @@ F 48 2 agent30_linkid
 F 56 2 agent31_linkid
 R 0xc50 64 - S por_cxla_agentid_to_linkid_reg4
 RESET 0x0 0x303030303030303
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent32_linkid
 F 8 2 agent33_linkid
 F 16 2 agent34_linkid
@@ -396,6 +401,7 @@ F 48 2 agent38_linkid
 F 56 2 agent39_linkid
 R 0xc58 64 - S por_cxla_agentid_to_linkid_reg5
 RESET 0x0 0x303030303030303
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent40_linkid
 F 8 2 agent41_linkid
 F 16 2 agent42_linkid
@@ -406,6 +412,7 @@ F 48 2 agent46_linkid
 F 56 2 agent47_linkid
 R 0xc60 64 - S por_cxla_agentid_to_linkid_reg6
 RESET 0x0 0x303030303030303
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent48_linkid
 F 8 2 agent49_linkid
 F 16 2 agent50_linkid
@@ -416,6 +423,7 @@ F 48 2 agent54_linkid
 F 56 2 agent55_linkid
 R 0xc68 64 - S por_cxla_agentid_to_linkid_reg7
 RESET 0x0 0x303030303030303
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent56_linkid
 F 8 2 agent57_linkid
 F 16 2 agent58_linkid
@@ -426,6 +434,7 @@ F 48 2 agent62_linkid
 F 56 2 agent63_linkid
 R 0xc70 64 - S por_cxla_agentid_to_linkid_val
 RESET 0x0 0xffffffffffffffff
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 64 valid
 R 0xc78 64 - S por_cxla_linkid_to_pcie_bus_num
 RESET 0x0 0xffffffffffff
@@ -537,6 +546,7 @@ F 1 1 port_ctrl
 F 2 1 qos_ctrl
 R 0xa00 64 - S por_rnd_cfg_ctl
 RESET 0x200201401 0x3ff3ff777f
+SGO por_rnd_secure_register_groups_override.cfg_ctl
 F 0 1 qpc_en
 F 1 1 wfc
 F 2 1 dis_wr_stream
@@ -563,15 +573,19 @@ F 5 1 sameid_wrstash_stream_en
 PAR POR_R2_ENABLE_PARAM
 R 0xa10 64 - S por_rnd_s0_port_control
 RESET 0x0 0x7ff
+SGO por_rnd_secure_register_groups_override.port_ctrl
 F 0 11 s0_lpid_mask
 R 0xa18 64 - S por_rnd_s1_port_control
 RESET 0x0 0x7ff
+SGO por_rnd_secure_register_groups_override.port_ctrl
 F 0 11 s1_lpid_mask
 R 0xa20 64 - S por_rnd_s2_port_control
 RESET 0x0 0x7ff
+SGO por_rnd_secure_register_groups_override.port_ctrl
 F 0 11 s2_lpid_mask
 R 0xa80 64 - S por_rnd_s0_qos_control
 RESET 0x0 0xff00ff
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 1 s0_aw_lat_en
 F 1 1 s0_ar_lat_en
 F 2 1 s0_aw_qos_override_en
@@ -584,20 +598,24 @@ F 16 4 s0_aw_qos_override
 F 20 4 s0_ar_qos_override
 R 0xa88 64 - S por_rnd_s0_qos_lat_tgt
 RESET 0x0 0xfff0fff
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 12 s0_aw_lat_tgt
 F 16 12 s0_ar_lat_tgt
 R 0xa90 64 - S por_rnd_s0_qos_lat_scale
 RESET 0x0 0x707
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 3 s0_aw_lat_scale
 F 8 3 s0_ar_lat_scale
 R 0xa98 64 - S por_rnd_s0_qos_lat_range
 RESET 0x0 0xf0f0f0f
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 4 s0_aw_lat_min_qos
 F 8 4 s0_aw_lat_max_qos
 F 16 4 s0_ar_lat_min_qos
 F 24 4 s0_ar_lat_max_qos
 R 0xaa0 64 - S por_rnd_s1_qos_control
 RESET 0x0 0xff00ff
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 1 s1_aw_lat_en
 F 1 1 s1_ar_lat_en
 F 2 1 s1_aw_qos_override_en
@@ -610,20 +628,24 @@ F 16 4 s1_aw_qos_override
 F 20 4 s1_ar_qos_override
 R 0xaa8 64 - S por_rnd_s1_qos_lat_tgt
 RESET 0x0 0xfff0fff
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 12 s1_aw_lat_tgt
 F 16 12 s1_ar_lat_tgt
 R 0xab0 64 - S por_rnd_s1_qos_lat_scale
 RESET 0x0 0x707
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 3 s1_aw_lat_scale
 F 8 3 s1_ar_lat_scale
 R 0xab8 64 - S por_rnd_s1_qos_lat_range
 RESET 0x0 0xf0f0f0f
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 4 s1_aw_lat_min_qos
 F 8 4 s1_aw_lat_max_qos
 F 16 4 s1_ar_lat_min_qos
 F 24 4 s1_ar_lat_max_qos
 R 0xac0 64 - S por_rnd_s2_qos_control
 RESET 0x0 0xff00ff
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 1 s2_aw_lat_en
 F 1 1 s2_ar_lat_en
 F 2 1 s2_aw_qos_override_en
@@ -636,14 +658,17 @@ F 16 4 s2_aw_qos_override
 F 20 4 s2_ar_qos_override
 R 0xac8 64 - S por_rnd_s2_qos_lat_tgt
 RESET 0x0 0xfff0fff
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 12 s2_aw_lat_tgt
 F 16 12 s2_ar_lat_tgt
 R 0xad0 64 - S por_rnd_s2_qos_lat_scale
 RESET 0x0 0x707
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 3 s2_aw_lat_scale
 F 8 3 s2_ar_lat_scale
 R 0xad8 64 - S por_rnd_s2_qos_lat_range
 RESET 0x0 0xf0f0f0f
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 4 s2_aw_lat_min_qos
 F 8 4 s2_aw_lat_max_qos
 F 16 4 s2_ar_lat_min_qos
@@ -697,6 +722,7 @@ F 4 1 sam_control
 F 5 1 slcsf_dbgrd
 R 0xa00 64 - S por_hnf_cfg_ctl
 RESET 0x0 0xf55
+SGO por_hnf_secure_register_groups_override.cfg_ctl
 F 0 1 ecc_disable
 F 2 1 pois_dis
 F 4 1 slc_tag_ecc_scrub_disable
@@ -752,6 +778,7 @@ F 1 1 hnf_pcmo_terminate_en
 F 2 1 hnf_force_flush_ewa0_en
 R 0xa80 64 RO S por_hnf_qos_band
 RESET 0xffecb870 0xffffffff
+SGO por_hnf_secure_register_groups_override.qos
 F 0 4 low_min_qos_val
 F 4 4 low_max_qos_val
 F 8 4 med_min_qos_val
@@ -762,6 +789,7 @@ F 24 4 highhigh_min_qos_val
 F 28 4 highhigh_max_qos_val
 R 0xa88 64 - S por_hnf_qos_reservation
 RESET 0x11f1e0f05 0x3f3f3f3f3f
+SGO por_hnf_secure_register_groups_override.qos
 F 0 6 low_qos_max_cnt
 PAR LOW_QOS_MAX_CNT_PARAM
 F 8 6 med_qos_max_cnt
@@ -773,6 +801,7 @@ PAR HHIGH_QOS_MAX_CNT_PARAM
 F 32 6 seq_qos_max_cnt
 R 0xa90 64 - S por_hnf_rn_starvation
 RESET 0x1f3f1f3f3f1f 0x1f3f1f7f3f1f
+SGO por_hnf_secure_register_groups_override.qos
 F 0 5 rn_low_over_med_max_cnt
 F 8 6 rn_low_over_high_max_cnt
 F 16 7 rn_low_over_highhigh_max_cnt
@@ -781,112 +810,145 @@ F 32 6 rn_med_over_highhigh_max_cnt
 F 40 5 rn_high_over_high_high_max_cnt
 R 0xb80 64 WO S por_hnf_cfg_slcsf_dbgrd
 RESET 0x0 0x37f1fff
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 13 slc_access_set
 F 16 4 slc_access_way
 F 20 3 slc_access_dw
 F 24 2 slc_access_component
 R 0xb88 64 RO S por_hnf_slc_cache_access_slc_tag
 RESET 0x0 0xffffffffffff
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 48 slc_cache_access_slc_tag
 R 0xb90 64 RO S por_hnf_slc_cache_access_slc_data
 RESET 0x0 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 64 slc_cache_access_slc_data
 R 0xb98 64 RO S por_hnf_slc_cache_access_sf_tag
 RESET 0x0 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 64 slc_cache_access_sf_tag
 R 0xba0 64 RO S por_hnf_slc_cache_access_sf_tag1
 RESET 0x0 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 64 slc_cache_access_sf_tag1
 R 0xba8 64 RO S por_hnf_slc_cache_access_sf_tag2
 RESET 0x0 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 64 slc_cache_access_sf_tag2
 R 0xc00 64 - S por_hnf_slc_lock_ways
 RESET 0x800 0x7f0f
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 4 ways
 F 8 7 num_hnf
 PAR POR_NUM_HNF_PARAM
 R 0xc08 64 - S por_hnf_slc_lock_base0
 RESET 0x0 0x8000ffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 48 base0
 F 63 1 base0_vld
 R 0xc10 64 - S por_hnf_slc_lock_base1
 RESET 0x0 0x8000ffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 48 base1
 F 63 1 base1_vld
 R 0xc18 64 - S por_hnf_slc_lock_base2
 RESET 0x0 0x8000ffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 48 base2
 F 63 1 base2_vld
 R 0xc20 64 - S por_hnf_slc_lock_base3
 RESET 0x0 0x8000ffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 48 base3
 F 63 1 base3_vld
 R 0xc28 64 - S por_hnf_rnf_region_vec1
 RESET 0x0 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_region_vec1
 R 0xc30 64 - S por_hnf_rni_region_vec
 RESET 0x0 0xffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rni_region_vec
 R 0xc38 64 - S por_hnf_rnf_region_vec
 RESET 0x0 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_region_vec
 R 0xc40 64 - S por_hnf_rnd_region_vec
 RESET 0x0 0xffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rnd_region_vec
 R 0xc48 64 - S por_hnf_slcway_partition0_rnf_vec
 RESET 0xffffffffffffffff 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec0
 R 0xc50 64 - S por_hnf_slcway_partition1_rnf_vec
 RESET 0xffffffffffffffff 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec1
 R 0xc58 64 - S por_hnf_slcway_partition2_rnf_vec
 RESET 0xffffffffffffffff 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec2
 R 0xc60 64 - S por_hnf_slcway_partition3_rnf_vec
 RESET 0xffffffffffffffff 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec3
 R 0xc68 64 - S por_hnf_slcway_partition0_rni_vec
 RESET 0xffffffff 0xffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rni_vec0
 R 0xc70 64 - S por_hnf_slcway_partition1_rni_vec
 RESET 0xffffffff 0xffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rni_vec1
 R 0xc78 64 - S por_hnf_slcway_partition2_rni_vec
 RESET 0xffffffff 0xffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rni_vec2
 R 0xc80 64 - S por_hnf_slcway_partition3_rni_vec
 RESET 0xffffffff 0xffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rni_vec3
 R 0xc88 64 - S por_hnf_slcway_partition0_rnd_vec
 RESET 0xffffffff 0xffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rnd_vec0
 R 0xc90 64 - S por_hnf_slcway_partition1_rnd_vec
 RESET 0xffffffff 0xffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rnd_vec1
 R 0xc98 64 - S por_hnf_slcway_partition2_rnd_vec
 RESET 0xffffffff 0xffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rnd_vec2
 R 0xca0 64 - S por_hnf_slcway_partition3_rnd_vec
 RESET 0xffffffff 0xffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rnd_vec3
 R 0xca8 64 - S por_hnf_rn_region_lock
 RESET 0x0 0x3
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 1 rn_region_lock_en
 F 1 1 rn_pick_locked_ways_only
 R 0xcb0 64 - S por_hnf_slcway_partition0_rnf_vec1
 RESET 0xffffffffffffffff 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec4
 R 0xcb8 64 - S por_hnf_slcway_partition1_rnf_vec1
 RESET 0xffffffffffffffff 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec5
 R 0xcc0 64 - S por_hnf_slcway_partition2_rnf_vec1
 RESET 0xffffffffffffffff 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec6
 R 0xcc8 64 - S por_hnf_slcway_partition3_rnf_vec1
 RESET 0xffffffffffffffff 0xffffffffffffffff
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec7
 R 0xd00 64 - S por_hnf_sam_control
 RESET 0x0 0xbf3f3f37ff7ff7ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 hn_cfg_sn0_nodeid
 F 12 11 hn_cfg_sn1_nodeid
 F 24 11 hn_cfg_sn2_nodeid
@@ -898,18 +960,21 @@ F 56 6 hn_cfg_sam_top_address_bit2
 F 63 1 hn_cfg_sam_inv_top_address_bit
 R 0xd08 64 - S por_hnf_sam_memregion0
 RESET 0x0 0x8000fffffc01f7ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 63 1 valid
 F 26 22 base_addr
 F 12 5 size
 F 0 11 range0_nodeid
 R 0xd10 64 - S por_hnf_sam_memregion1
 RESET 0x0 0x8000fffffc01f7ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 63 1 valid
 F 26 22 base_addr
 F 12 5 size
 F 0 11 range1_nodeid
 R 0xd18 64 - S por_hnf_sam_sn_properties
 RESET 0x0 0x1c71c71c71c7
+SGO por_hnf_secure_register_groups_override.sam_control
 F 44 1 range1_sn_pcmo_prop_dis
 F 43 1 range1_sn_cmo_prop_en
 F 42 1 range1_sn_128b
@@ -936,11 +1001,13 @@ F 1 1 sn0_cmo_prop_en
 F 0 1 sn0_128b
 R 0xd20 64 - S por_hnf_sam_6sn_nodeid
 RESET 0x0 0x7ff7ff7ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 hn_cfg_sn3_nodeid
 F 12 11 hn_cfg_sn4_nodeid
 F 24 11 hn_cfg_sn5_nodeid
 R 0xd28 64 - S por_hnf_rn_phys_id0
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra0
 F 16 1 remote_ra0
 F 17 2 cpa_grp_ra0
@@ -953,6 +1020,7 @@ F 62 1 cpa_en_ra1
 F 63 1 valid_ra1
 R 0xd30 64 - S por_hnf_rn_phys_id1
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra2
 F 16 1 remote_ra2
 F 17 2 cpa_grp_ra2
@@ -965,6 +1033,7 @@ F 62 1 cpa_en_ra3
 F 63 1 valid_ra3
 R 0xd38 64 - S por_hnf_rn_phys_id2
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra4
 F 16 1 remote_ra4
 F 17 2 cpa_grp_ra4
@@ -977,6 +1046,7 @@ F 62 1 cpa_en_ra5
 F 63 1 valid_ra5
 R 0xd40 64 - S por_hnf_rn_phys_id3
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra6
 F 16 1 remote_ra6
 F 17 2 cpa_grp_ra6
@@ -989,6 +1059,7 @@ F 62 1 cpa_en_ra7
 F 63 1 valid_ra7
 R 0xd48 64 - S por_hnf_rn_phys_id4
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra8
 F 16 1 remote_ra8
 F 17 2 cpa_grp_ra8
@@ -1001,6 +1072,7 @@ F 62 1 cpa_en_ra9
 F 63 1 valid_ra9
 R 0xd50 64 - S por_hnf_rn_phys_id5
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra10
 F 16 1 remote_ra10
 F 17 2 cpa_grp_ra10
@@ -1013,6 +1085,7 @@ F 62 1 cpa_en_ra11
 F 63 1 valid_ra11
 R 0xd58 64 - S por_hnf_rn_phys_id6
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra12
 F 16 1 remote_ra12
 F 17 2 cpa_grp_ra12
@@ -1025,6 +1098,7 @@ F 62 1 cpa_en_ra13
 F 63 1 valid_ra13
 R 0xd60 64 - S por_hnf_rn_phys_id7
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra14
 F 16 1 remote_ra14
 F 17 2 cpa_grp_ra14
@@ -1037,6 +1111,7 @@ F 62 1 cpa_en_ra15
 F 63 1 valid_ra15
 R 0xd68 64 - S por_hnf_rn_phys_id8
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra16
 F 16 1 remote_ra16
 F 17 2 cpa_grp_ra16
@@ -1049,6 +1124,7 @@ F 62 1 cpa_en_ra17
 F 63 1 valid_ra17
 R 0xd70 64 - S por_hnf_rn_phys_id9
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra18
 F 16 1 remote_ra18
 F 17 2 cpa_grp_ra18
@@ -1061,6 +1137,7 @@ F 62 1 cpa_en_ra19
 F 63 1 valid_ra19
 R 0xd78 64 - S por_hnf_rn_phys_id10
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra20
 F 16 1 remote_ra20
 F 17 2 cpa_grp_ra20
@@ -1073,6 +1150,7 @@ F 62 1 cpa_en_ra21
 F 63 1 valid_ra21
 R 0xd80 64 - S por_hnf_rn_phys_id11
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra22
 F 16 1 remote_ra22
 F 17 2 cpa_grp_ra22
@@ -1085,6 +1163,7 @@ F 62 1 cpa_en_ra23
 F 63 1 valid_ra23
 R 0xd88 64 - S por_hnf_rn_phys_id12
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra24
 F 16 1 remote_ra24
 F 17 2 cpa_grp_ra24
@@ -1097,6 +1176,7 @@ F 62 1 cpa_en_ra25
 F 63 1 valid_ra25
 R 0xd90 64 - S por_hnf_rn_phys_id13
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra26
 F 16 1 remote_ra26
 F 17 2 cpa_grp_ra26
@@ -1109,6 +1189,7 @@ F 62 1 cpa_en_ra27
 F 63 1 valid_ra27
 R 0xd98 64 - S por_hnf_rn_phys_id14
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra28
 F 16 1 remote_ra28
 F 17 2 cpa_grp_ra28
@@ -1121,6 +1202,7 @@ F 62 1 cpa_en_ra29
 F 63 1 valid_ra29
 R 0xda0 64 - S por_hnf_rn_phys_id15
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra30
 F 16 1 remote_ra30
 F 17 2 cpa_grp_ra30
@@ -1133,6 +1215,7 @@ F 62 1 cpa_en_ra31
 F 63 1 valid_ra31
 R 0xda8 64 - S por_hnf_rn_phys_id16
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra32
 F 16 1 remote_ra32
 F 17 2 cpa_grp_ra32
@@ -1145,6 +1228,7 @@ F 62 1 cpa_en_ra33
 F 63 1 valid_ra33
 R 0xdb0 64 - S por_hnf_rn_phys_id17
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra34
 F 16 1 remote_ra34
 F 17 2 cpa_grp_ra34
@@ -1157,6 +1241,7 @@ F 62 1 cpa_en_ra35
 F 63 1 valid_ra35
 R 0xdb8 64 - S por_hnf_rn_phys_id18
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra36
 F 16 1 remote_ra36
 F 17 2 cpa_grp_ra36
@@ -1169,6 +1254,7 @@ F 62 1 cpa_en_ra37
 F 63 1 valid_ra37
 R 0xdc0 64 - S por_hnf_rn_phys_id19
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra38
 F 16 1 remote_ra38
 F 17 2 cpa_grp_ra38
@@ -1181,6 +1267,7 @@ F 62 1 cpa_en_ra39
 F 63 1 valid_ra39
 R 0xdc8 64 - S por_hnf_rn_phys_id20
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra40
 F 16 1 remote_ra40
 F 17 2 cpa_grp_ra40
@@ -1193,6 +1280,7 @@ F 62 1 cpa_en_ra41
 F 63 1 valid_ra41
 R 0xdd0 64 - S por_hnf_rn_phys_id21
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra42
 F 16 1 remote_ra42
 F 17 2 cpa_grp_ra42
@@ -1205,6 +1293,7 @@ F 62 1 cpa_en_ra43
 F 63 1 valid_ra43
 R 0xdd8 64 - S por_hnf_rn_phys_id22
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra44
 F 16 1 remote_ra44
 F 17 2 cpa_grp_ra44
@@ -1217,6 +1306,7 @@ F 62 1 cpa_en_ra45
 F 63 1 valid_ra45
 R 0xde0 64 - S por_hnf_rn_phys_id23
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra46
 F 16 1 remote_ra46
 F 17 2 cpa_grp_ra46
@@ -1229,6 +1319,7 @@ F 62 1 cpa_en_ra47
 F 63 1 valid_ra47
 R 0xde8 64 - S por_hnf_rn_phys_id24
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra48
 F 16 1 remote_ra48
 F 17 2 cpa_grp_ra48
@@ -1241,6 +1332,7 @@ F 62 1 cpa_en_ra49
 F 63 1 valid_ra49
 R 0xdf0 64 - S por_hnf_rn_phys_id25
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra50
 F 16 1 remote_ra50
 F 17 2 cpa_grp_ra50
@@ -1253,6 +1345,7 @@ F 62 1 cpa_en_ra51
 F 63 1 valid_ra51
 R 0xdf8 64 - S por_hnf_rn_phys_id26
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra52
 F 16 1 remote_ra52
 F 17 2 cpa_grp_ra52
@@ -1265,6 +1358,7 @@ F 62 1 cpa_en_ra53
 F 63 1 valid_ra53
 R 0xe00 64 - S por_hnf_rn_phys_id27
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra54
 F 16 1 remote_ra54
 F 17 2 cpa_grp_ra54
@@ -1277,6 +1371,7 @@ F 62 1 cpa_en_ra55
 F 63 1 valid_ra55
 R 0xe08 64 - S por_hnf_rn_phys_id28
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra56
 F 16 1 remote_ra56
 F 17 2 cpa_grp_ra56
@@ -1289,6 +1384,7 @@ F 62 1 cpa_en_ra57
 F 63 1 valid_ra57
 R 0xe10 64 - S por_hnf_rn_phys_id29
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra58
 F 16 1 remote_ra58
 F 17 2 cpa_grp_ra58
@@ -1301,6 +1397,7 @@ F 62 1 cpa_en_ra59
 F 63 1 valid_ra59
 R 0xe18 64 - S por_hnf_rn_phys_id30
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra60
 F 16 1 remote_ra60
 F 17 2 cpa_grp_ra60
@@ -1313,6 +1410,7 @@ F 62 1 cpa_en_ra61
 F 63 1 valid_ra61
 R 0xe20 64 - S por_hnf_rn_phys_id31
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra62
 F 16 1 remote_ra62
 F 17 2 cpa_grp_ra62
@@ -1325,6 +1423,7 @@ F 62 1 cpa_en_ra63
 F 63 1 valid_ra63
 R 0xe28 64 - S por_hnf_rn_phys_id32
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra64
 F 16 1 remote_ra64
 F 17 2 cpa_grp_ra64
@@ -1337,6 +1436,7 @@ F 62 1 cpa_en_ra65
 F 63 1 valid_ra65
 R 0xe30 64 - S por_hnf_rn_phys_id33
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra66
 F 16 1 remote_ra66
 F 17 2 cpa_grp_ra66
@@ -1349,6 +1449,7 @@ F 62 1 cpa_en_ra67
 F 63 1 valid_ra67
 R 0xe38 64 - S por_hnf_rn_phys_id34
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra68
 F 16 1 remote_ra68
 F 17 2 cpa_grp_ra68
@@ -1361,6 +1462,7 @@ F 62 1 cpa_en_ra69
 F 63 1 valid_ra69
 R 0xe40 64 - S por_hnf_rn_phys_id35
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra70
 F 16 1 remote_ra70
 F 17 2 cpa_grp_ra70
@@ -1373,6 +1475,7 @@ F 62 1 cpa_en_ra71
 F 63 1 valid_ra71
 R 0xe48 64 - S por_hnf_rn_phys_id36
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra72
 F 16 1 remote_ra72
 F 17 2 cpa_grp_ra72
@@ -1385,6 +1488,7 @@ F 62 1 cpa_en_ra73
 F 63 1 valid_ra73
 R 0xe50 64 - S por_hnf_rn_phys_id37
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra74
 F 16 1 remote_ra74
 F 17 2 cpa_grp_ra74
@@ -1397,6 +1501,7 @@ F 62 1 cpa_en_ra75
 F 63 1 valid_ra75
 R 0xe58 64 - S por_hnf_rn_phys_id38
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra76
 F 16 1 remote_ra76
 F 17 2 cpa_grp_ra76
@@ -1409,6 +1514,7 @@ F 62 1 cpa_en_ra77
 F 63 1 valid_ra77
 R 0xe60 64 - S por_hnf_rn_phys_id39
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra78
 F 16 1 remote_ra78
 F 17 2 cpa_grp_ra78
@@ -1421,6 +1527,7 @@ F 62 1 cpa_en_ra79
 F 63 1 valid_ra79
 R 0xe68 64 - S por_hnf_rn_phys_id40
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra80
 F 16 1 remote_ra80
 F 17 2 cpa_grp_ra80
@@ -1433,6 +1540,7 @@ F 62 1 cpa_en_ra81
 F 63 1 valid_ra81
 R 0xe70 64 - S por_hnf_rn_phys_id41
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra82
 F 16 1 remote_ra82
 F 17 2 cpa_grp_ra82
@@ -1445,6 +1553,7 @@ F 62 1 cpa_en_ra83
 F 63 1 valid_ra83
 R 0xe78 64 - S por_hnf_rn_phys_id42
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra84
 F 16 1 remote_ra84
 F 17 2 cpa_grp_ra84
@@ -1457,6 +1566,7 @@ F 62 1 cpa_en_ra85
 F 63 1 valid_ra85
 R 0xe80 64 - S por_hnf_rn_phys_id43
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra86
 F 16 1 remote_ra86
 F 17 2 cpa_grp_ra86
@@ -1469,6 +1579,7 @@ F 62 1 cpa_en_ra87
 F 63 1 valid_ra87
 R 0xe88 64 - S por_hnf_rn_phys_id44
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra88
 F 16 1 remote_ra88
 F 17 2 cpa_grp_ra88
@@ -1481,6 +1592,7 @@ F 62 1 cpa_en_ra89
 F 63 1 valid_ra89
 R 0xe90 64 - S por_hnf_rn_phys_id45
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra90
 F 16 1 remote_ra90
 F 17 2 cpa_grp_ra90
@@ -1493,6 +1605,7 @@ F 62 1 cpa_en_ra91
 F 63 1 valid_ra91
 R 0xe98 64 - S por_hnf_rn_phys_id46
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra92
 F 16 1 remote_ra92
 F 17 2 cpa_grp_ra92
@@ -1505,6 +1618,7 @@ F 62 1 cpa_en_ra93
 F 63 1 valid_ra93
 R 0xea0 64 - S por_hnf_rn_phys_id47
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra94
 F 16 1 remote_ra94
 F 17 2 cpa_grp_ra94
@@ -1517,6 +1631,7 @@ F 62 1 cpa_en_ra95
 F 63 1 valid_ra95
 R 0xea8 64 - S por_hnf_rn_phys_id48
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra96
 F 16 1 remote_ra96
 F 17 2 cpa_grp_ra96
@@ -1529,6 +1644,7 @@ F 62 1 cpa_en_ra97
 F 63 1 valid_ra97
 R 0xeb0 64 - S por_hnf_rn_phys_id49
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra98
 F 16 1 remote_ra98
 F 17 2 cpa_grp_ra98
@@ -1541,6 +1657,7 @@ F 62 1 cpa_en_ra99
 F 63 1 valid_ra99
 R 0xeb8 64 - S por_hnf_rn_phys_id50
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra100
 F 16 1 remote_ra100
 F 17 2 cpa_grp_ra100
@@ -1553,6 +1670,7 @@ F 62 1 cpa_en_ra101
 F 63 1 valid_ra101
 R 0xec0 64 - S por_hnf_rn_phys_id51
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra102
 F 16 1 remote_ra102
 F 17 2 cpa_grp_ra102
@@ -1565,6 +1683,7 @@ F 62 1 cpa_en_ra103
 F 63 1 valid_ra103
 R 0xec8 64 - S por_hnf_rn_phys_id52
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra104
 F 16 1 remote_ra104
 F 17 2 cpa_grp_ra104
@@ -1577,6 +1696,7 @@ F 62 1 cpa_en_ra105
 F 63 1 valid_ra105
 R 0xed0 64 - S por_hnf_rn_phys_id53
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra106
 F 16 1 remote_ra106
 F 17 2 cpa_grp_ra106
@@ -1589,6 +1709,7 @@ F 62 1 cpa_en_ra107
 F 63 1 valid_ra107
 R 0xed8 64 - S por_hnf_rn_phys_id54
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra108
 F 16 1 remote_ra108
 F 17 2 cpa_grp_ra108
@@ -1601,6 +1722,7 @@ F 62 1 cpa_en_ra109
 F 63 1 valid_ra109
 R 0xee0 64 - S por_hnf_rn_phys_id55
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra110
 F 16 1 remote_ra110
 F 17 2 cpa_grp_ra110
@@ -1613,6 +1735,7 @@ F 62 1 cpa_en_ra111
 F 63 1 valid_ra111
 R 0xee8 64 - S por_hnf_rn_phys_id56
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra112
 F 16 1 remote_ra112
 F 17 2 cpa_grp_ra112
@@ -1625,6 +1748,7 @@ F 62 1 cpa_en_ra113
 F 63 1 valid_ra113
 R 0xef0 64 - S por_hnf_rn_phys_id57
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra114
 F 16 1 remote_ra114
 F 17 2 cpa_grp_ra114
@@ -1637,6 +1761,7 @@ F 62 1 cpa_en_ra115
 F 63 1 valid_ra115
 R 0xef8 64 - S por_hnf_rn_phys_id58
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra116
 F 16 1 remote_ra116
 F 17 2 cpa_grp_ra116
@@ -1649,15 +1774,19 @@ F 62 1 cpa_en_ra117
 F 63 1 valid_ra117
 R 0xf00 64 - S por_hnf_sf_cxg_blocked_ways
 RESET 0x0 0x3
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 2 sf_blocked_ways
 R 0xf10 64 - S por_hnf_cml_port_aggr_grp0_add_mask
 RESET 0x40 0xffffffffffc0
+SGO por_hnf_secure_register_groups_override.sam_control
 F 6 42 addr_mask
 R 0xf18 64 - S por_hnf_cml_port_aggr_grp1_add_mask
 RESET 0x40 0xffffffffffc0
+SGO por_hnf_secure_register_groups_override.sam_control
 F 6 42 addr_mask
 R 0xf28 64 - S por_hnf_cml_port_aggr_grp0_reg
 RESET 0x0 0x37ff7ff7ff7ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 48 2 num_cxg_pag0
 F 36 11 pag0_tgtid3
 F 24 11 pag0_tgtid2
@@ -1665,6 +1794,7 @@ F 12 11 pag0_tgtid1
 F 0 11 pag0_tgtid0
 R 0xf30 64 - S por_hnf_cml_port_aggr_grp1_reg
 RESET 0x0 0x37ff7ff7ff7ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 48 2 num_cxg_pag1
 F 36 11 pag1_tgtid3
 F 24 11 pag1_tgtid2
@@ -1678,12 +1808,15 @@ RESET 0xfffffc000000 0xfffffc000000
 F 26 22 addr_mask
 R 0xf50 64 - S por_hnf_abf_lo_addr
 RESET 0x0 0xffffffffffff
+SGO por_hnf_secure_register_groups_override.ppu
 F 0 48 abf_lo_addr
 R 0xf58 64 - S por_hnf_abf_hi_addr
 RESET 0x0 0xffffffffffff
+SGO por_hnf_secure_register_groups_override.ppu
 F 0 48 abf_hi_addr
 R 0xf60 64 - S por_hnf_abf_pr
 RESET 0x0 0x7
+SGO por_hnf_secure_register_groups_override.ppu
 F 0 1 abf_enable
 F 1 2 abf_mode
 R 0xf68 64 RO - por_hnf_abf_sr
@@ -1694,6 +1827,7 @@ F 2 1 abf_sf_pm_transition_abort
 F 3 1 abf_sf_disable_abort
 R 0xf70 64 - S por_hnf_rn_phys_id59
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra118
 F 16 1 remote_ra118
 F 17 2 cpa_grp_ra118
@@ -1706,6 +1840,7 @@ F 62 1 cpa_en_ra119
 F 63 1 valid_ra119
 R 0xf78 64 - S por_hnf_rn_phys_id60
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra120
 F 16 1 remote_ra120
 F 17 2 cpa_grp_ra120
@@ -1718,6 +1853,7 @@ F 62 1 cpa_en_ra121
 F 63 1 valid_ra121
 R 0xf80 64 - S por_hnf_rn_phys_id61
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra122
 F 16 1 remote_ra122
 F 17 2 cpa_grp_ra122
@@ -1730,6 +1866,7 @@ F 62 1 cpa_en_ra123
 F 63 1 valid_ra123
 R 0xf88 64 - S por_hnf_rn_phys_id62
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra124
 F 16 1 remote_ra124
 F 17 2 cpa_grp_ra124
@@ -1742,6 +1879,7 @@ F 62 1 cpa_en_ra125
 F 63 1 valid_ra125
 R 0xf90 64 - S por_hnf_rn_phys_id63
 RESET 0x0 0xc00707ffc00707ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra126
 F 16 1 remote_ra126
 F 17 2 cpa_grp_ra126
@@ -1754,6 +1892,7 @@ F 62 1 cpa_en_ra127
 F 63 1 valid_ra127
 R 0xf98 64 - S por_hnf_ldid_map_table_reg0
 RESET 0x0 0x807f07ff807f07ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 srcid_cxha0
 F 16 7 starting_ldid_cxha0
 F 31 1 valid_cxha0
@@ -1762,6 +1901,7 @@ F 48 7 starting_ldid_cxha1
 F 63 1 valid_cxha1
 R 0xfa0 64 - S por_hnf_ldid_map_table_reg1
 RESET 0x0 0x807f07ff807f07ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 srcid_cxha2
 F 16 7 starting_ldid_cxha2
 F 31 1 valid_cxha2
@@ -1770,6 +1910,7 @@ F 48 7 starting_ldid_cxha3
 F 63 1 valid_cxha3
 R 0xfa8 64 - S por_hnf_ldid_map_table_reg2
 RESET 0x0 0x807f07ff807f07ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 srcid_cxha4
 F 16 7 starting_ldid_cxha4
 F 31 1 valid_cxha4
@@ -1778,6 +1919,7 @@ F 48 7 starting_ldid_cxha5
 F 63 1 valid_cxha5
 R 0xfb0 64 - S por_hnf_ldid_map_table_reg3
 RESET 0x0 0x807f07ff807f07ff
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 srcid_cxha6
 F 16 7 starting_ldid_cxha6
 F 31 1 valid_cxha6
@@ -1786,6 +1928,7 @@ F 48 7 starting_ldid_cxha7
 F 63 1 valid_cxha7
 R 0x1000 32 - S por_hnf_ppu_pwpr
 RESET 0x0 0x1ff
+SGO por_hnf_secure_register_groups_override.ppu
 F 0 4 policy
 F 4 4 op_mode
 F 8 1 dyn_en
@@ -1799,6 +1942,7 @@ RESET 0x0 0x1
 F 0 1 pcsmaccept_status
 R 0x1100 64 - S por_hnf_ppu_dyn_ret_threshold
 RESET 0x0 0xfff
+SGO por_hnf_secure_register_groups_override.ppu
 F 0 12 dyn_ret_threshold
 R 0x1fb0 32 RO - por_hnf_ppu_idr0
 RESET 0x801a540 0x3ff7ffff
@@ -1959,227 +2103,291 @@ F 2 1 enable_rnd_icache_ops
 PAR POR_R2_ENABLE_PARAM
 R 0xc00 64 - S por_dn_vmf0_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xc08 64 - S por_dn_vmf0_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xc10 64 - S por_dn_vmf0_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xc18 64 - S por_dn_vmf0_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xc20 64 - S por_dn_vmf1_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xc28 64 - S por_dn_vmf1_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xc30 64 - S por_dn_vmf1_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xc38 64 - S por_dn_vmf1_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xc40 64 - S por_dn_vmf2_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xc48 64 - S por_dn_vmf2_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xc50 64 - S por_dn_vmf2_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xc58 64 - S por_dn_vmf2_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xc60 64 - S por_dn_vmf3_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xc68 64 - S por_dn_vmf3_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xc70 64 - S por_dn_vmf3_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xc78 64 - S por_dn_vmf3_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xc80 64 - S por_dn_vmf4_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xc88 64 - S por_dn_vmf4_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xc90 64 - S por_dn_vmf4_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xc98 64 - S por_dn_vmf4_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xca0 64 - S por_dn_vmf5_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xca8 64 - S por_dn_vmf5_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xcb0 64 - S por_dn_vmf5_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xcb8 64 - S por_dn_vmf5_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xcc0 64 - S por_dn_vmf6_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xcc8 64 - S por_dn_vmf6_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xcd0 64 - S por_dn_vmf6_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xcd8 64 - S por_dn_vmf6_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xce0 64 - S por_dn_vmf7_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xce8 64 - S por_dn_vmf7_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xcf0 64 - S por_dn_vmf7_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xcf8 64 - S por_dn_vmf7_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xd00 64 - S por_dn_vmf8_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xd08 64 - S por_dn_vmf8_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xd10 64 - S por_dn_vmf8_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xd18 64 - S por_dn_vmf8_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xd20 64 - S por_dn_vmf9_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xd28 64 - S por_dn_vmf9_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xd30 64 - S por_dn_vmf9_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xd38 64 - S por_dn_vmf9_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xd40 64 - S por_dn_vmf10_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xd48 64 - S por_dn_vmf10_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xd50 64 - S por_dn_vmf10_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xd58 64 - S por_dn_vmf10_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xd60 64 - S por_dn_vmf11_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xd68 64 - S por_dn_vmf11_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xd70 64 - S por_dn_vmf11_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xd78 64 - S por_dn_vmf11_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xd80 64 - S por_dn_vmf12_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xd88 64 - S por_dn_vmf12_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xd90 64 - S por_dn_vmf12_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xd98 64 - S por_dn_vmf12_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xda0 64 - S por_dn_vmf13_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xda8 64 - S por_dn_vmf13_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xdb0 64 - S por_dn_vmf13_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xdb8 64 - S por_dn_vmf13_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xdc0 64 - S por_dn_vmf14_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xdc8 64 - S por_dn_vmf14_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xdd0 64 - S por_dn_vmf14_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xdd8 64 - S por_dn_vmf14_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xde0 64 - S por_dn_vmf15_ctrl
 RESET 0xffff00000000 0xffff0001ffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 F 1 16 vmid
 F 32 16 mask
 R 0xde8 64 - S por_dn_vmf15_rnf0
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 R 0xdf0 64 - S por_dn_vmf15_rnd
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0xdf8 64 - S por_dn_vmf15_cxra
 RESET 0x0 0xffffffffffffffff
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 R 0x2000 64 - - por_dn_pmu_event_sel
 RESET 0x0 0xf3f3f3f3f
@@ -2236,6 +2444,7 @@ F 16 1 smp_mode_en
 PAR CXG_SMP_MODE_EN_PARAM
 R 0xc00 64 - S por_cxg_ha_rnf_raid_to_ldid_reg0
 RESET 0x0 0xbfbfbfbfbfbfbfbf
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid0
 F 7 1 ldid0_rnf
 F 8 6 ldid1
@@ -2254,6 +2463,7 @@ F 56 6 ldid7
 F 63 1 ldid7_rnf
 R 0xc08 64 - S por_cxg_ha_rnf_raid_to_ldid_reg1
 RESET 0x0 0xbfbfbfbfbfbfbfbf
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid8
 F 7 1 ldid8_rnf
 F 8 6 ldid9
@@ -2272,6 +2482,7 @@ F 56 6 ldid15
 F 63 1 ldid15_rnf
 R 0xc10 64 - S por_cxg_ha_rnf_raid_to_ldid_reg2
 RESET 0x0 0xbfbfbfbfbfbfbfbf
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid16
 F 7 1 ldid16_rnf
 F 8 6 ldid17
@@ -2290,6 +2501,7 @@ F 56 6 ldid23
 F 63 1 ldid23_rnf
 R 0xc18 64 - S por_cxg_ha_rnf_raid_to_ldid_reg3
 RESET 0x0 0xbfbfbfbfbfbfbfbf
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid24
 F 7 1 ldid24_rnf
 F 8 6 ldid25
@@ -2308,6 +2520,7 @@ F 56 6 ldid31
 F 63 1 ldid31_rnf
 R 0xc20 64 - S por_cxg_ha_rnf_raid_to_ldid_reg4
 RESET 0x0 0xbfbfbfbfbfbfbfbf
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid32
 F 7 1 ldid32_rnf
 F 8 6 ldid33
@@ -2326,6 +2539,7 @@ F 56 6 ldid39
 F 63 1 ldid39_rnf
 R 0xc28 64 - S por_cxg_ha_rnf_raid_to_ldid_reg5
 RESET 0x0 0xbfbfbfbfbfbfbfbf
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid40
 F 7 1 ldid40_rnf
 F 8 6 ldid41
@@ -2344,6 +2558,7 @@ F 56 6 ldid47
 F 63 1 ldid47_rnf
 R 0xc30 64 - S por_cxg_ha_rnf_raid_to_ldid_reg6
 RESET 0x0 0xbfbfbfbfbfbfbfbf
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid48
 F 7 1 ldid48_rnf
 F 8 6 ldid49
@@ -2362,6 +2577,7 @@ F 56 6 ldid55
 F 63 1 ldid55_rnf
 R 0xc38 64 - S por_cxg_ha_rnf_raid_to_ldid_reg7
 RESET 0x0 0xbfbfbfbfbfbfbfbf
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid56
 F 7 1 ldid56_rnf
 F 8 6 ldid57
@@ -2380,6 +2596,7 @@ F 56 6 ldid63
 F 63 1 ldid63_rnf
 R 0xc40 64 - S por_cxg_ha_agentid_to_linkid_reg0
 RESET 0x0 0x303030303030303
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent0_linkid
 F 8 2 agent1_linkid
 F 16 2 agent2_linkid
@@ -2390,6 +2607,7 @@ F 48 2 agent6_linkid
 F 56 2 agent7_linkid
 R 0xc48 64 - S por_cxg_ha_agentid_to_linkid_reg1
 RESET 0x0 0x303030303030303
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent8_linkid
 F 8 2 agent9_linkid
 F 16 2 agent10_linkid
@@ -2400,6 +2618,7 @@ F 48 2 agent14_linkid
 F 56 2 agent15_linkid
 R 0xc50 64 - S por_cxg_ha_agentid_to_linkid_reg2
 RESET 0x0 0x303030303030303
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent16_linkid
 F 8 2 agent17_linkid
 F 16 2 agent18_linkid
@@ -2410,6 +2629,7 @@ F 48 2 agent22_linkid
 F 56 2 agent23_linkid
 R 0xc58 64 - S por_cxg_ha_agentid_to_linkid_reg3
 RESET 0x0 0x303030303030303
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent24_linkid
 F 8 2 agent25_linkid
 F 16 2 agent26_linkid
@@ -2420,6 +2640,7 @@ F 48 2 agent30_linkid
 F 56 2 agent31_linkid
 R 0xc60 64 - S por_cxg_ha_agentid_to_linkid_reg4
 RESET 0x0 0x303030303030303
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent32_linkid
 F 8 2 agent33_linkid
 F 16 2 agent34_linkid
@@ -2430,6 +2651,7 @@ F 48 2 agent38_linkid
 F 56 2 agent39_linkid
 R 0xc68 64 - S por_cxg_ha_agentid_to_linkid_reg5
 RESET 0x0 0x303030303030303
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent40_linkid
 F 8 2 agent41_linkid
 F 16 2 agent42_linkid
@@ -2440,6 +2662,7 @@ F 48 2 agent46_linkid
 F 56 2 agent47_linkid
 R 0xc70 64 - S por_cxg_ha_agentid_to_linkid_reg6
 RESET 0x0 0x303030303030303
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent48_linkid
 F 8 2 agent49_linkid
 F 16 2 agent50_linkid
@@ -2450,6 +2673,7 @@ F 48 2 agent54_linkid
 F 56 2 agent55_linkid
 R 0xc78 64 - S por_cxg_ha_agentid_to_linkid_reg7
 RESET 0x0 0x303030303030303
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent56_linkid
 F 8 2 agent57_linkid
 F 16 2 agent58_linkid
@@ -2460,9 +2684,11 @@ F 48 2 agent62_linkid
 F 56 2 agent63_linkid
 R 0xd00 64 - S por_cxg_ha_agentid_to_linkid_val
 RESET 0x0 0xffffffffffffffff
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 64 valid
 R 0xd08 64 - S por_cxg_ha_rnf_raid_to_ldid_val
 RESET 0x0 0xffffffffffffffff
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 64 valid
 R 0x1000 64 V S por_cxg_ha_cxprtcl_link0_ctl
 RESET 0x0 0xfff
@@ -2615,6 +2841,7 @@ F 2 1 linkid_ctl
 F 3 1 ldid_ctl
 R 0xa00 64 - S por_cxg_ra_cfg_ctl
 RESET 0x2 0x307
+SGO por_cxg_ra_secure_register_groups_override.cfg_ctl
 F 0 1 pcie_qos15_entry_rsv_en
 PAR CXG_SMP_MODE_EN_PARAM
 F 1 1 qos15_entry_rsv_en
@@ -2639,78 +2866,95 @@ F 16 1 smp_mode_en
 PAR CXG_SMP_MODE_EN_PARAM
 R 0xda8 64 - S por_cxg_ra_sam_addr_region_reg0
 RESET 0x0 0x83f0ffffffff003f
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg0_valid
 F 52 6 reg0_ha_tgtid
 F 16 32 reg0_base_addr
 F 0 6 reg0_size
 R 0xdb0 64 - S por_cxg_ra_sam_addr_region_reg1
 RESET 0x0 0x83f0ffffffff003f
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg1_valid
 F 52 6 reg1_ha_tgtid
 F 16 32 reg1_base_addr
 F 0 6 reg1_size
 R 0xdb8 64 - S por_cxg_ra_sam_addr_region_reg2
 RESET 0x0 0x83f0ffffffff003f
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg2_valid
 F 52 6 reg2_ha_tgtid
 F 16 32 reg2_base_addr
 F 0 6 reg2_size
 R 0xdc0 64 - S por_cxg_ra_sam_addr_region_reg3
 RESET 0x0 0x83f0ffffffff003f
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg3_valid
 F 52 6 reg3_ha_tgtid
 F 16 32 reg3_base_addr
 F 0 6 reg3_size
 R 0xdc8 64 - S por_cxg_ra_sam_addr_region_reg4
 RESET 0x0 0x83f0ffffffff003f
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg4_valid
 F 52 6 reg4_ha_tgtid
 F 16 32 reg4_base_addr
 F 0 6 reg4_size
 R 0xdd0 64 - S por_cxg_ra_sam_addr_region_reg5
 RESET 0x0 0x83f0ffffffff003f
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg5_valid
 F 52 6 reg5_ha_tgtid
 F 16 32 reg5_base_addr
 F 0 6 reg5_size
 R 0xdd8 64 - S por_cxg_ra_sam_addr_region_reg6
 RESET 0x0 0x83f0ffffffff003f
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg6_valid
 F 52 6 reg6_ha_tgtid
 F 16 32 reg6_base_addr
 F 0 6 reg6_size
 R 0xde0 64 - S por_cxg_ra_sam_addr_region_reg7
 RESET 0x0 0x83f0ffffffff003f
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg7_valid
 F 52 6 reg7_ha_tgtid
 F 16 32 reg7_base_addr
 F 0 6 reg7_size
 R 0xe00 64 - S por_cxg_ra_sam_mem_region0_limit_reg
 RESET 0x0 0xffffffff0000
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg0_limit_addr
 R 0xe08 64 - S por_cxg_ra_sam_mem_region1_limit_reg
 RESET 0x0 0xffffffff0000
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg1_limit_addr
 R 0xe10 64 - S por_cxg_ra_sam_mem_region2_limit_reg
 RESET 0x0 0xffffffff0000
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg2_limit_addr
 R 0xe18 64 - S por_cxg_ra_sam_mem_region3_limit_reg
 RESET 0x0 0xffffffff0000
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg3_limit_addr
 R 0xe20 64 - S por_cxg_ra_sam_mem_region4_limit_reg
 RESET 0x0 0xffffffff0000
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg4_limit_addr
 R 0xe28 64 - S por_cxg_ra_sam_mem_region5_limit_reg
 RESET 0x0 0xffffffff0000
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg5_limit_addr
 R 0xe30 64 - S por_cxg_ra_sam_mem_region6_limit_reg
 RESET 0x0 0xffffffff0000
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg6_limit_addr
 R 0xe38 64 - S por_cxg_ra_sam_mem_region7_limit_reg
 RESET 0x0 0xffffffff0000
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg7_limit_addr
 R 0xe60 64 - S por_cxg_ra_agentid_to_linkid_reg0
 RESET 0x0 0x303030303030303
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent0_linkid
 F 8 2 agent1_linkid
 F 16 2 agent2_linkid
@@ -2721,6 +2965,7 @@ F 48 2 agent6_linkid
 F 56 2 agent7_linkid
 R 0xe68 64 - S por_cxg_ra_agentid_to_linkid_reg1
 RESET 0x0 0x303030303030303
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent8_linkid
 F 8 2 agent9_linkid
 F 16 2 agent10_linkid
@@ -2731,6 +2976,7 @@ F 48 2 agent14_linkid
 F 56 2 agent15_linkid
 R 0xe70 64 - S por_cxg_ra_agentid_to_linkid_reg2
 RESET 0x0 0x303030303030303
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent16_linkid
 F 8 2 agent17_linkid
 F 16 2 agent18_linkid
@@ -2741,6 +2987,7 @@ F 48 2 agent22_linkid
 F 56 2 agent23_linkid
 R 0xe78 64 - S por_cxg_ra_agentid_to_linkid_reg3
 RESET 0x0 0x303030303030303
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent24_linkid
 F 8 2 agent25_linkid
 F 16 2 agent26_linkid
@@ -2751,6 +2998,7 @@ F 48 2 agent30_linkid
 F 56 2 agent31_linkid
 R 0xe80 64 - S por_cxg_ra_agentid_to_linkid_reg4
 RESET 0x0 0x303030303030303
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent32_linkid
 F 8 2 agent33_linkid
 F 16 2 agent34_linkid
@@ -2761,6 +3009,7 @@ F 48 2 agent38_linkid
 F 56 2 agent39_linkid
 R 0xe88 64 - S por_cxg_ra_agentid_to_linkid_reg5
 RESET 0x0 0x303030303030303
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent40_linkid
 F 8 2 agent41_linkid
 F 16 2 agent42_linkid
@@ -2771,6 +3020,7 @@ F 48 2 agent46_linkid
 F 56 2 agent47_linkid
 R 0xe90 64 - S por_cxg_ra_agentid_to_linkid_reg6
 RESET 0x0 0x303030303030303
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent48_linkid
 F 8 2 agent49_linkid
 F 16 2 agent50_linkid
@@ -2781,6 +3031,7 @@ F 48 2 agent54_linkid
 F 56 2 agent55_linkid
 R 0xe98 64 - S por_cxg_ra_agentid_to_linkid_reg7
 RESET 0x0 0x303030303030303
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent56_linkid
 F 8 2 agent57_linkid
 F 16 2 agent58_linkid
@@ -2791,6 +3042,7 @@ F 48 2 agent62_linkid
 F 56 2 agent63_linkid
 R 0xea0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg0
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid0_raid
 F 8 6 ldid1_raid
 F 16 6 ldid2_raid
@@ -2801,6 +3053,7 @@ F 48 6 ldid6_raid
 F 56 6 ldid7_raid
 R 0xea8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg1
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid8_raid
 F 8 6 ldid9_raid
 F 16 6 ldid10_raid
@@ -2811,6 +3064,7 @@ F 48 6 ldid14_raid
 F 56 6 ldid15_raid
 R 0xeb0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg2
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid16_raid
 F 8 6 ldid17_raid
 F 16 6 ldid18_raid
@@ -2821,6 +3075,7 @@ F 48 6 ldid22_raid
 F 56 6 ldid23_raid
 R 0xeb8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg3
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid24_raid
 F 8 6 ldid25_raid
 F 16 6 ldid26_raid
@@ -2831,6 +3086,7 @@ F 48 6 ldid30_raid
 F 56 6 ldid31_raid
 R 0xec0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg4
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid32_raid
 F 8 6 ldid33_raid
 F 16 6 ldid34_raid
@@ -2841,6 +3097,7 @@ F 48 6 ldid38_raid
 F 56 6 ldid39_raid
 R 0xec8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg5
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid40_raid
 F 8 6 ldid41_raid
 F 16 6 ldid42_raid
@@ -2851,6 +3108,7 @@ F 48 6 ldid46_raid
 F 56 6 ldid47_raid
 R 0xed0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg6
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid48_raid
 F 8 6 ldid49_raid
 F 16 6 ldid50_raid
@@ -2861,6 +3119,7 @@ F 48 6 ldid54_raid
 F 56 6 ldid55_raid
 R 0xed8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg7
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid56_raid
 F 8 6 ldid57_raid
 F 16 6 ldid58_raid
@@ -2871,6 +3130,7 @@ F 48 6 ldid62_raid
 F 56 6 ldid63_raid
 R 0xee0 64 - S por_cxg_ra_rni_ldid_to_raid_reg0
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid0_raid
 F 8 6 ldid1_raid
 F 16 6 ldid2_raid
@@ -2881,6 +3141,7 @@ F 48 6 ldid6_raid
 F 56 6 ldid7_raid
 R 0xee8 64 - S por_cxg_ra_rni_ldid_to_raid_reg1
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid8_raid
 F 8 6 ldid9_raid
 F 16 6 ldid10_raid
@@ -2891,6 +3152,7 @@ F 48 6 ldid14_raid
 F 56 6 ldid15_raid
 R 0xef0 64 - S por_cxg_ra_rni_ldid_to_raid_reg2
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid16_raid
 F 8 6 ldid17_raid
 F 16 6 ldid18_raid
@@ -2901,6 +3163,7 @@ F 48 6 ldid22_raid
 F 56 6 ldid23_raid
 R 0xef8 64 - S por_cxg_ra_rni_ldid_to_raid_reg3
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid24_raid
 F 8 6 ldid25_raid
 F 16 6 ldid26_raid
@@ -2911,6 +3174,7 @@ F 48 6 ldid30_raid
 F 56 6 ldid31_raid
 R 0xf00 64 - S por_cxg_ra_rnd_ldid_to_raid_reg0
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid0_raid
 F 8 6 ldid1_raid
 F 16 6 ldid2_raid
@@ -2921,6 +3185,7 @@ F 48 6 ldid6_raid
 F 56 6 ldid7_raid
 R 0xf08 64 - S por_cxg_ra_rnd_ldid_to_raid_reg1
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid8_raid
 F 8 6 ldid9_raid
 F 16 6 ldid10_raid
@@ -2931,6 +3196,7 @@ F 48 6 ldid14_raid
 F 56 6 ldid15_raid
 R 0xf10 64 - S por_cxg_ra_rnd_ldid_to_raid_reg2
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid16_raid
 F 8 6 ldid17_raid
 F 16 6 ldid18_raid
@@ -2941,6 +3207,7 @@ F 48 6 ldid22_raid
 F 56 6 ldid23_raid
 R 0xf18 64 - S por_cxg_ra_rnd_ldid_to_raid_reg3
 RESET 0x0 0x3f3f3f3f3f3f3f3f
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid24_raid
 F 8 6 ldid25_raid
 F 16 6 ldid26_raid
@@ -2951,15 +3218,19 @@ F 48 6 ldid30_raid
 F 56 6 ldid31_raid
 R 0xf20 64 - S por_cxg_ra_agentid_to_linkid_val
 RESET 0x0 0xffffffffffffffff
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 64 valid
 R 0xf28 64 - S por_cxg_ra_rnf_ldid_to_raid_val
 RESET 0x0 0xffffffffffffffff
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 64 valid
 R 0xf30 64 - S por_cxg_ra_rni_ldid_to_raid_val
 RESET 0x0 0xffffffff
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 32 valid
 R 0xf38 64 - S por_cxg_ra_rnd_ldid_to_raid_val
 RESET 0x0 0xffffffff
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 32 valid
 R 0x1000 64 V S por_cxg_ra_cxprtcl_link0_ctl
 RESET 0x0 0x1ff
@@ -3048,6 +3319,7 @@ F 1 1 port_ctrl
 F 2 1 qos_ctrl
 R 0xa00 64 - S por_rni_cfg_ctl
 RESET 0x200201401 0x3ff3ff777f
+SGO por_rni_secure_register_groups_override.cfg_ctl
 F 0 1 qpc_en
 F 1 1 wfc
 F 2 1 dis_wr_stream
@@ -3074,15 +3346,19 @@ F 5 1 sameid_wrstash_stream_en
 PAR POR_R2_ENABLE_PARAM
 R 0xa10 64 - S por_rni_s0_port_control
 RESET 0x0 0x7ff
+SGO por_rni_secure_register_groups_override.port_ctrl
 F 0 11 s0_lpid_mask
 R 0xa18 64 - S por_rni_s1_port_control
 RESET 0x0 0x7ff
+SGO por_rni_secure_register_groups_override.port_ctrl
 F 0 11 s1_lpid_mask
 R 0xa20 64 - S por_rni_s2_port_control
 RESET 0x0 0x7ff
+SGO por_rni_secure_register_groups_override.port_ctrl
 F 0 11 s2_lpid_mask
 R 0xa80 64 - S por_rni_s0_qos_control
 RESET 0x0 0xff00ff
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 1 s0_aw_lat_en
 F 1 1 s0_ar_lat_en
 F 2 1 s0_aw_qos_override_en
@@ -3095,20 +3371,24 @@ F 16 4 s0_aw_qos_override
 F 20 4 s0_ar_qos_override
 R 0xa88 64 - S por_rni_s0_qos_lat_tgt
 RESET 0x0 0xfff0fff
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 12 s0_aw_lat_tgt
 F 16 12 s0_ar_lat_tgt
 R 0xa90 64 - S por_rni_s0_qos_lat_scale
 RESET 0x0 0x707
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 3 s0_aw_lat_scale
 F 8 3 s0_ar_lat_scale
 R 0xa98 64 - S por_rni_s0_qos_lat_range
 RESET 0x0 0xf0f0f0f
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 4 s0_aw_lat_min_qos
 F 8 4 s0_aw_lat_max_qos
 F 16 4 s0_ar_lat_min_qos
 F 24 4 s0_ar_lat_max_qos
 R 0xaa0 64 - S por_rni_s1_qos_control
 RESET 0x0 0xff00ff
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 1 s1_aw_lat_en
 F 1 1 s1_ar_lat_en
 F 2 1 s1_aw_qos_override_en
@@ -3121,20 +3401,24 @@ F 16 4 s1_aw_qos_override
 F 20 4 s1_ar_qos_override
 R 0xaa8 64 - S por_rni_s1_qos_lat_tgt
 RESET 0x0 0xfff0fff
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 12 s1_aw_lat_tgt
 F 16 12 s1_ar_lat_tgt
 R 0xab0 64 - S por_rni_s1_qos_lat_scale
 RESET 0x0 0x707
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 3 s1_aw_lat_scale
 F 8 3 s1_ar_lat_scale
 R 0xab8 64 - S por_rni_s1_qos_lat_range
 RESET 0x0 0xf0f0f0f
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 4 s1_aw_lat_min_qos
 F 8 4 s1_aw_lat_max_qos
 F 16 4 s1_ar_lat_min_qos
 F 24 4 s1_ar_lat_max_qos
 R 0xac0 64 - S por_rni_s2_qos_control
 RESET 0x0 0xff00ff
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 1 s2_aw_lat_en
 F 1 1 s2_ar_lat_en
 F 2 1 s2_aw_qos_override_en
@@ -3147,14 +3431,17 @@ F 16 4 s2_aw_qos_override
 F 20 4 s2_ar_qos_override
 R 0xac8 64 - S por_rni_s2_qos_lat_tgt
 RESET 0x0 0xfff0fff
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 12 s2_aw_lat_tgt
 F 16 12 s2_ar_lat_tgt
 R 0xad0 64 - S por_rni_s2_qos_lat_scale
 RESET 0x0 0x707
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 3 s2_aw_lat_scale
 F 8 3 s2_ar_lat_scale
 R 0xad8 64 - S por_rni_s2_qos_lat_range
 RESET 0x0 0xf0f0f0f
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 4 s2_aw_lat_min_qos
 F 8 4 s2_aw_lat_max_qos
 F 16 4 s2_ar_lat_min_qos
@@ -4553,6 +4840,7 @@ F 0 1 use_default_node
 F 1 1 nstall_req
 R 0xc08 64 - S non_hash_mem_region_reg0
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region1_base_addr
 F 36 5 region1_size
 F 34 2 region1_target_type
@@ -4563,6 +4851,7 @@ F 2 2 region0_target_type
 F 0 1 region0_valid
 R 0xc10 64 - S non_hash_mem_region_reg1
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region3_base_addr
 F 36 5 region3_size
 F 34 2 region3_target_type
@@ -4573,6 +4862,7 @@ F 2 2 region2_target_type
 F 0 1 region2_valid
 R 0xc18 64 - S non_hash_mem_region_reg2
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region5_base_addr
 F 36 5 region5_size
 F 34 2 region5_target_type
@@ -4583,6 +4873,7 @@ F 2 2 region4_target_type
 F 0 1 region4_valid
 R 0xc20 64 - S non_hash_mem_region_reg3
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region7_base_addr
 F 36 5 region7_size
 F 34 2 region7_target_type
@@ -4593,6 +4884,7 @@ F 2 2 region6_target_type
 F 0 1 region6_valid
 R 0xc28 64 - S non_hash_mem_region_reg4
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region9_base_addr
 F 36 5 region9_size
 F 34 2 region9_target_type
@@ -4621,6 +4913,7 @@ F 24 11 nodeid_10
 F 36 11 nodeid_11
 R 0xc48 64 - S sys_cache_grp_region0
 RESET 0x0 0x7fffffff7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region1_base_addr
 F 36 5 region1_size
 F 34 2 region1_target_type
@@ -4632,6 +4925,7 @@ F 2 2 region0_target_type
 F 0 1 region0_valid
 R 0xc50 64 - S sys_cache_grp_region1
 RESET 0x0 0x7fffffff7fffffff
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region3_base_addr
 F 36 5 region3_size
 F 34 2 region3_target_type
@@ -4697,6 +4991,7 @@ F 12 11 scg2_nodeid
 F 24 11 scg3_nodeid
 R 0xca0 64 - S non_hash_mem_region_reg5
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region11_base_addr
 F 36 5 region11_size
 F 34 2 region11_target_type
@@ -4707,6 +5002,7 @@ F 2 2 region10_target_type
 F 0 1 region10_valid
 R 0xca8 64 - S non_hash_mem_region_reg6
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region13_base_addr
 F 36 5 region13_size
 F 34 2 region13_target_type
@@ -4717,6 +5013,7 @@ F 2 2 region12_target_type
 F 0 1 region12_valid
 R 0xcb0 64 - S non_hash_mem_region_reg7
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region15_base_addr
 F 36 5 region15_size
 F 34 2 region15_target_type
@@ -4727,6 +5024,7 @@ F 2 2 region14_target_type
 F 0 1 region14_valid
 R 0xcb8 64 - S non_hash_mem_region_reg8
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region17_base_addr
 F 36 5 region17_size
 F 34 2 region17_target_type
@@ -4737,6 +5035,7 @@ F 2 2 region16_target_type
 F 0 1 region16_valid
 R 0xcc0 64 - S non_hash_mem_region_reg9
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region19_base_addr
 F 36 5 region19_size
 F 34 2 region19_target_type
@@ -4829,6 +5128,7 @@ F 32 6 scg3_top_address_bit1
 F 40 6 scg3_top_address_bit2
 R 0xd58 64 - S gic_mem_region_reg
 RESET 0x0 0x7ff0ffffffff007d
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 52 11 gic_region_nodeid
 F 16 32 gic_region_base_addr
 F 4 3 gic_region_size
@@ -4919,6 +5219,7 @@ F 12 11 pag1_tgtid1
 F 0 11 pag1_tgtid0
 R 0xf00 64 - S sys_cache_grp_secondary_reg0
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region1_scndry_base_addr
 F 36 5 region1_scndry_size
 F 34 2 region1_scndry_target_type
@@ -4929,6 +5230,7 @@ F 2 2 region0_scndry_target_type
 F 0 1 region0_scndry_valid
 R 0xf08 64 - S sys_cache_grp_secondary_reg1
 RESET 0x0 0x7ffffffd7ffffffd
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region3_scndry_base_addr
 F 36 5 region3_scndry_size
 F 34 2 region3_scndry_target_type
@@ -4939,6 +5241,7 @@ F 2 2 region2_scndry_target_type
 F 0 1 region2_scndry_valid
 R 0xf10 64 - S sys_cache_grp_cal_mode_reg
 RESET 0x0 0x1000100010001
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 48 1 scg3_hnf_cal_mode_en
 F 32 1 scg2_hnf_cal_mode_en
 F 16 1 scg1_hnf_cal_mode_en
@@ -5078,6 +5381,7 @@ F 0 1 cfg_ctl
 F 1 1 sam
 R 0xa00 64 - S por_hni_cfg_ctl
 RESET 0x1 0x1
+SGO por_hni_secure_register_groups_override.cfg_ctl
 F 0 1 reqerr_cohreq_en
 R 0xa08 64 - S por_hni_aux_ctl
 RESET 0x0 0x11
@@ -5085,6 +5389,7 @@ F 0 1 cg_disable
 F 4 1 side_reader_for_phymem_present
 R 0xc00 64 - S por_hni_sam_addrregion0_cfg
 RESET 0x600000000000003f 0x7c0000000000003f
+SGO por_hni_secure_register_groups_override.sam
 F 0 6 order_region_size
 F 58 1 physical_mem_en
 F 59 1 ser_all_wr
@@ -5093,6 +5398,7 @@ F 61 1 pos_early_rdack_en
 F 62 1 pos_early_wr_comp_en
 R 0xc08 64 - S por_hni_sam_addrregion1_cfg
 RESET 0x6000000000000000 0xfcfffffffff0fc3f
+SGO por_hni_secure_register_groups_override.sam
 F 0 6 order_region_size
 F 10 6 addr_region_size
 F 20 36 base_addr
@@ -5104,6 +5410,7 @@ F 62 1 pos_early_wr_comp_en
 F 63 1 valid
 R 0xc10 64 - S por_hni_sam_addrregion2_cfg
 RESET 0x6000000000000000 0xfcfffffffff0fc3f
+SGO por_hni_secure_register_groups_override.sam
 F 0 6 order_region_size
 F 10 6 addr_region_size
 F 20 36 base_addr
@@ -5115,6 +5422,7 @@ F 62 1 pos_early_wr_comp_en
 F 63 1 valid
 R 0xc18 64 - S por_hni_sam_addrregion3_cfg
 RESET 0x6000000000000000 0xfcfffffffff0fc3f
+SGO por_hni_secure_register_groups_override.sam
 F 0 6 order_region_size
 F 10 6 addr_region_size
 F 20 36 base_addr

@@ -172,6 +172,12 @@ class DevMap:
         # self.already_read[off] = True
         return self._read64(off)
 
+    def read32(self, off):
+        self.owner.n_read += 1
+        if off >= self.size:
+            raise DevMemOutOfBounds(self, off)
+        return self._read32(off)
+
     def write64(self, off, val, check=None):
         """
         Write a 64-bit value to memory, with optional checking

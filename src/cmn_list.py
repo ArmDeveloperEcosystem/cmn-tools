@@ -554,6 +554,25 @@ def list_logical(c, verbose=0):
             print("   %3u: %s" % (lid, nodes[t][lid]))
 
 
+def list_by_address(C):
+    print("%s devices by memory address" % C)
+    C.discover_all_devices()
+    for addr in sorted(C.offset_node.keys()):
+        node = C.offset_node[addr]
+        print("  %12x  %s" % (addr, node), end="")
+        if not node.is_rootnode():
+            (x, y, p, d) = node.coords()
+            if x != BITS(addr, 26, 4):
+                print(" x-mismatch", end="")
+            if y != BITS(addr, 22, 4):
+                print(" y-mismatch", end="")
+            #if p != BITS(addr, 16, 1):
+            #    print(" port-mismatch", end="")
+            #if d != BITS(addr, 18, 1):
+            #    print(" device-mismatch", end="")
+        print()
+
+
 def print_routing(CS, verbose=0):
     """
     Print a summary of routing-related latencies
@@ -606,10 +625,11 @@ def main(argv):
     parser.add_argument("--node-type", type=cmn_properties, default=CMN_PROP_none, help="node properties")
     parser.add_argument("--port-type", type=cmn_properties, default=CMN_PROP_none, help="port properties")
     parser.add_argument("--node-match", type=cmn_select.CMNSelect, action="append", help="node selection")
+    parser.add_argument("--list-by-address", action="store_true", help="list nodes by memory address")
     parser.add_argument("--register-slices", action="store_true", help="show device/mesh credited slices")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args(argv)
-    if not (opts.list or opts.list_logical or opts.routing):
+    if not (opts.list or opts.list_logical or opts.routing or opts.list_by_address):
         opts.list = True
     o_register_slices = opts.register_slices
     match = cmn_select.cmn_select_merge(opts.node_match)
@@ -620,6 +640,8 @@ def main(argv):
             L.show_cmn(C)
         if opts.list_logical:
             list_logical(C, verbose=opts.verbose)
+        if opts.list_by_address:
+            list_by_address(C)
     if opts.routing:
         print_routing(CS, verbose=opts.verbose)
 

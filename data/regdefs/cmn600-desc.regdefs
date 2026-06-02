@@ -594,6 +594,7 @@ PAR CXLA_CXS_REPLICATION_RX_PARAM
 R 0xc30 64 - S por_cxla_agentid_to_linkid_reg0
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 0 to 7.
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent0_linkid
 DESC Specifies the Link ID for Agent ID 0
 F 8 2 agent1_linkid
@@ -613,6 +614,7 @@ DESC Specifies the Link ID for Agent ID 7
 R 0xc38 64 - S por_cxla_agentid_to_linkid_reg1
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 8 to 15.
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent8_linkid
 DESC Specifies the Link ID for Agent ID 8
 F 8 2 agent9_linkid
@@ -632,6 +634,7 @@ DESC Specifies the Link ID for Agent ID 15
 R 0xc40 64 - S por_cxla_agentid_to_linkid_reg2
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 16 to 23.
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent16_linkid
 DESC Specifies the Link ID for Agent ID 16
 F 8 2 agent17_linkid
@@ -651,6 +654,7 @@ DESC Specifies the Link ID for Agent ID 23
 R 0xc48 64 - S por_cxla_agentid_to_linkid_reg3
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 24 to 31.
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent24_linkid
 DESC Specifies the Link ID for Agent ID 24
 F 8 2 agent25_linkid
@@ -670,6 +674,7 @@ DESC Specifies the Link ID for Agent ID 31
 R 0xc50 64 - S por_cxla_agentid_to_linkid_reg4
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 32 to 39.
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent32_linkid
 DESC Specifies the Link ID for Agent ID 32
 F 8 2 agent33_linkid
@@ -689,6 +694,7 @@ DESC Specifies the Link ID for Agent ID 39
 R 0xc58 64 - S por_cxla_agentid_to_linkid_reg5
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 40 to 47.
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent40_linkid
 DESC Specifies the Link ID for Agent ID 40
 F 8 2 agent41_linkid
@@ -708,6 +714,7 @@ DESC Specifies the Link ID for Agent ID 47
 R 0xc60 64 - S por_cxla_agentid_to_linkid_reg6
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 48 to 55.
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent48_linkid
 DESC Specifies the Link ID for Agent ID 48
 F 8 2 agent49_linkid
@@ -727,6 +734,7 @@ DESC Specifies the Link ID for Agent ID 55
 R 0xc68 64 - S por_cxla_agentid_to_linkid_reg7
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 56 to 63.
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 2 agent56_linkid
 DESC Specifies the Link ID for Agent ID 56
 F 8 2 agent57_linkid
@@ -746,6 +754,7 @@ DESC Specifies the Link ID for Agent ID 63
 R 0xc70 64 - S por_cxla_agentid_to_linkid_val
 RESET 0x0 0xffffffffffffffff
 DESC Specifies which Agent ID to Link ID mappings are valid.
+SGO por_cxla_secure_register_groups_override.linkid_ctl
 F 0 64 valid
 DESC Specifies whether the Link ID is valid; bit number corresponds to logical Agent ID number (from 0 to 63)
 R 0xc78 64 - S por_cxla_linkid_to_pcie_bus_num
@@ -939,6 +948,7 @@ DESC Allows non-secure access to secure QoS control registers
 R 0xa00 64 - S por_rnd_cfg_ctl
 RESET 0x200201401 0x3ff3ff777f
 DESC Functions as the configuration control register. Specifies the current mode.
+SGO por_rnd_secure_register_groups_override.cfg_ctl
 F 0 1 qpc_en
 DESC When set, enables QPC-based scheduling using two QoS priority classes (QoS15 and non-QoS15)
 F 1 1 wfc
@@ -984,21 +994,25 @@ PAR POR_R2_ENABLE_PARAM
 R 0xa10 64 - S por_rnd_s0_port_control
 RESET 0x0 0x7ff
 DESC Controls port S0 AXI/ACE slave interface settings.
+SGO por_rnd_secure_register_groups_override.port_ctrl
 F 0 11 s0_lpid_mask
 DESC Port S0 LPID mask LPID[0]: Equal to the result of UnaryOR of BitwiseAND of LPID mask and AXID (LPID[0] = |(AXID & mask)); specifies which AXID bit is reflected in the LSB of LPID LPID[2:1]: Equal to port ID[1:0]; the MSB of LPID contains port ID
 R 0xa18 64 - S por_rnd_s1_port_control
 RESET 0x0 0x7ff
 DESC Controls port S1 AXI/ACE slave interface settings.
+SGO por_rnd_secure_register_groups_override.port_ctrl
 F 0 11 s1_lpid_mask
 DESC Port S1 LPID mask LPID[0]: Equal to the result of UnaryOR of BitwiseAND of LPID mask and AXID (LPID[0] = |(AXID & mask)); specifies which AXID bit is reflected in the LSB of LPID LPID[2:1]: Equal to port ID[1:0]; the MSB of LPID contains port ID
 R 0xa20 64 - S por_rnd_s2_port_control
 RESET 0x0 0x7ff
 DESC Controls port S2 AXI/ACE slave interface settings.
+SGO por_rnd_secure_register_groups_override.port_ctrl
 F 0 11 s2_lpid_mask
 DESC Port S2 LPID mask LPID[0]: Equal to the result of UnaryOR of BitwiseAND of LPID mask and AXID (LPID[0] = |(AXID & mask)); specifies which AXID bit is reflected in the LSB of LPID LPID[2:1]: Equal to port ID[1:0]; the MSB of LPID contains port ID
 R 0xa80 64 - S por_rnd_s0_qos_control
 RESET 0x0 0xff00ff
 DESC Controls QoS settings for port S0 AXI/ACE slave interface.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 1 s0_aw_lat_en
 DESC Enables port S0 AW QoS regulation when set
 F 1 1 s0_ar_lat_en
@@ -1022,6 +1036,7 @@ DESC AR QoS override value for port S0
 R 0xa88 64 - S por_rnd_s0_qos_lat_tgt
 RESET 0x0 0xfff0fff
 DESC Controls QoS target latency (in cycles) for regulations of port S0 read and write transactions.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 12 s0_aw_lat_tgt
 DESC Port S0 AW channel target latency; a value of 0 corresponds to no regulation
 F 16 12 s0_ar_lat_tgt
@@ -1029,6 +1044,7 @@ DESC Port S0 AR channel target latency; a value of 0 corresponds to no regulatio
 R 0xa90 64 - S por_rnd_s0_qos_lat_scale
 RESET 0x0 0x707
 DESC Controls the QoS target latency scale factor for port S0 read and write transactions. This register represents powers of two from the range 2^(-5) to 2^(-12); it is used to match a 16-bit integrator.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 3 s0_aw_lat_scale
 DESC Port S0 AW QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'b011: 2^(-8) 3'b100: 2^(-9) 3'b101: 2^(-10) 3'b110: 2^(-11) 3'b111: 2^(-12)
 F 8 3 s0_ar_lat_scale
@@ -1036,6 +1052,7 @@ DESC Port S0 AR QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'
 R 0xa98 64 - S por_rnd_s0_qos_lat_range
 RESET 0x0 0xf0f0f0f
 DESC Controls the minimum and maximum QoS values generated by the QoS latency regulator for port S0 read and write transactions.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 4 s0_aw_lat_min_qos
 DESC Port S0 AW QoS minimum value
 F 8 4 s0_aw_lat_max_qos
@@ -1047,6 +1064,7 @@ DESC Port S0 AR QoS maximum value
 R 0xaa0 64 - S por_rnd_s1_qos_control
 RESET 0x0 0xff00ff
 DESC Controls QoS settings for port S1 AXI/ACE slave interface.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 1 s1_aw_lat_en
 DESC Enables port S1 AW QoS regulation when set
 F 1 1 s1_ar_lat_en
@@ -1070,6 +1088,7 @@ DESC AR QoS override value for port S1
 R 0xaa8 64 - S por_rnd_s1_qos_lat_tgt
 RESET 0x0 0xfff0fff
 DESC Controls QoS target latency (in cycles) for regulation of port S1 read and write transactions.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 12 s1_aw_lat_tgt
 DESC Port S1 AW channel target latency; a value of 0 corresponds to no regulation
 F 16 12 s1_ar_lat_tgt
@@ -1077,6 +1096,7 @@ DESC Port S1 AR channel target latency; a value of 0 corresponds to no regulatio
 R 0xab0 64 - S por_rnd_s1_qos_lat_scale
 RESET 0x0 0x707
 DESC Controls the QoS target latency scale factor for port S1 read and write transactions. This register represents powers of two from the range 2^(-5) to 2^(-12); it is used to match a 16-bit integrator.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 3 s1_aw_lat_scale
 DESC Port S1 AW QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'b011: 2^(-8) 3'b100: 2^(-9) 3'b101: 2^(-10) 3'b110: 2^(-11) 3'b111: 2^(-12)
 F 8 3 s1_ar_lat_scale
@@ -1084,6 +1104,7 @@ DESC Port S1 AR QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'
 R 0xab8 64 - S por_rnd_s1_qos_lat_range
 RESET 0x0 0xf0f0f0f
 DESC Controls the minimum and maximum QoS values generated by the QoS latency regulator for port S1 read and write transactions.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 4 s1_aw_lat_min_qos
 DESC Port S1 AW QoS minimum value
 F 8 4 s1_aw_lat_max_qos
@@ -1095,6 +1116,7 @@ DESC Port S1 AR QoS maximum value
 R 0xac0 64 - S por_rnd_s2_qos_control
 RESET 0x0 0xff00ff
 DESC Controls QoS settings for port S2 AXI/ACE slave interface.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 1 s2_aw_lat_en
 DESC Enables port S2 AW QoS regulation when set
 F 1 1 s2_ar_lat_en
@@ -1118,6 +1140,7 @@ DESC AR QoS override value for port S2
 R 0xac8 64 - S por_rnd_s2_qos_lat_tgt
 RESET 0x0 0xfff0fff
 DESC Controls QoS target latency (in cycles) for regulation of port S2 read and write transactions.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 12 s2_aw_lat_tgt
 DESC Port S2 AW channel target latency; a value of 0 corresponds to no regulation
 F 16 12 s2_ar_lat_tgt
@@ -1125,6 +1148,7 @@ DESC Port S2 AR channel target latency; a value of 0 corresponds to no regulatio
 R 0xad0 64 - S por_rnd_s2_qos_lat_scale
 RESET 0x0 0x707
 DESC Controls the QoS target latency scale factor for port S2 read and write transactions. This register represents powers of two from the range 2^(-5) to 2^(-12); it is used to match a 16-bit integrator.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 3 s2_aw_lat_scale
 DESC Port S2 AW QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'b011: 2^(-8) 3'b100: 2^(-9) 3'b101: 2^(-10) 3'b110: 2^(-11) 3'b111: 2^(-12)
 F 8 3 s2_ar_lat_scale
@@ -1132,6 +1156,7 @@ DESC Port S2 AR QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'
 R 0xad8 64 - S por_rnd_s2_qos_lat_range
 RESET 0x0 0xf0f0f0f
 DESC Controls the minimum and maximum QoS values generated by the QoS latency regulator for port S2 read and write transactions.
+SGO por_rnd_secure_register_groups_override.qos_ctrl
 F 0 4 s2_aw_lat_min_qos
 DESC Port S2 AW QoS minimum value
 F 8 4 s2_aw_lat_max_qos
@@ -1225,6 +1250,7 @@ DESC Allows non-secure access to secure SLC/SF debug read registers
 R 0xa00 64 - S por_hnf_cfg_ctl
 RESET 0x0 0xf55
 DESC Functions as the configuration control register for HN-F.
+SGO por_hnf_secure_register_groups_override.cfg_ctl
 F 0 1 ecc_disable
 DESC Disables SLC and SF ECC generation/detection when set
 F 2 1 pois_dis
@@ -1324,6 +1350,7 @@ DESC Force SLC and SF flush to use EWA 0 for SN writes
 R 0xa80 64 RO S por_hnf_qos_band
 RESET 0xffecb870 0xffffffff
 DESC Provides QoS classifications based on the QoS value ranges.
+SGO por_hnf_secure_register_groups_override.qos
 F 0 4 low_min_qos_val
 DESC Minimum value for Low QoS class
 F 4 4 low_max_qos_val
@@ -1343,6 +1370,7 @@ DESC Maximum value for HighHigh QoS class
 R 0xa88 64 - S por_hnf_qos_reservation
 RESET 0x11f1e0f05 0x3f3f3f3f3f
 DESC Controls POCQ maximum occupancy counts for each QoS class (HighHigh, High, Medium, and Low).
+SGO por_hnf_secure_register_groups_override.qos
 F 0 6 low_qos_max_cnt
 DESC Maximum number of Low QoS class occupancy. CONSTRAINT: Minimum is 2 entries
 PAR LOW_QOS_MAX_CNT_PARAM
@@ -1360,6 +1388,7 @@ DESC Number of entries reserved for SF evictions in POCQ CONSTRAINT: Maximum num
 R 0xa90 64 - S por_hnf_rn_starvation
 RESET 0x1f3f1f3f3f1f 0x1f3f1f7f3f1f
 DESC Controls starvation counts for each QoS class. Determines static credit grantee selection.
+SGO por_hnf_secure_register_groups_override.qos
 F 0 5 rn_low_over_med_max_cnt
 DESC Maximum number of consecutive instances where Medium QoS class wins priority over Low QoS class
 F 8 6 rn_low_over_high_max_cnt
@@ -1375,6 +1404,7 @@ DESC Maximum number of consecutive instances where HighHigh QoS class wins prior
 R 0xb80 64 WO S por_hnf_cfg_slcsf_dbgrd
 RESET 0x0 0x37f1fff
 DESC Controls access modes for SLC tasg, SLC data, and SF tag debug read.
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 13 slc_access_set
 DESC Set address for SLC/SF debug read access
 F 16 4 slc_access_way
@@ -1386,31 +1416,37 @@ DESC Specifies SLC/SF array debug read 2'b01: SLC data read 2'b10: SLC tag read 
 R 0xb88 64 RO S por_hnf_slc_cache_access_slc_tag
 RESET 0x0 0xffffffffffff
 DESC Contains SLC tag debug read data.
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 48 slc_cache_access_slc_tag
 DESC SLC tag debug read data
 R 0xb90 64 RO S por_hnf_slc_cache_access_slc_data
 RESET 0x0 0xffffffffffffffff
 DESC Contains SLC data RAM debug read data.
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 64 slc_cache_access_slc_data
 DESC SLC data RAM debug read data
 R 0xb98 64 RO S por_hnf_slc_cache_access_sf_tag
 RESET 0x0 0xffffffffffffffff
 DESC Contains SF tag debug read data. Bits[63:0]
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 64 slc_cache_access_sf_tag
 DESC SF tag debug read data
 R 0xba0 64 RO S por_hnf_slc_cache_access_sf_tag1
 RESET 0x0 0xffffffffffffffff
 DESC Contains SF tag debug read data bits [127:64], when present in SF Tag
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 64 slc_cache_access_sf_tag1
 DESC SF tag debug read data
 R 0xba8 64 RO S por_hnf_slc_cache_access_sf_tag2
 RESET 0x0 0xffffffffffffffff
 DESC Contains SF tag debug read data bits [128:191], when present in SF Tag
+SGO por_hnf_secure_register_groups_override.slcsf_dbgrd
 F 0 64 slc_cache_access_sf_tag2
 DESC SF tag debug read data
 R 0xc00 64 - S por_hnf_slc_lock_ways
 RESET 0x800 0x7f0f
 DESC Controls SLC way lock settings.
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 4 ways
 DESC Number of SLC ways locked (1, 2, 4, 8, 12)
 F 8 7 num_hnf
@@ -1419,6 +1455,7 @@ PAR POR_NUM_HNF_PARAM
 R 0xc08 64 - S por_hnf_slc_lock_base0
 RESET 0x0 0x8000ffffffffffff
 DESC Functions as the base register for lock region 0 [47:0].
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 48 base0
 DESC Lock region 0 base address
 F 63 1 base0_vld
@@ -1426,6 +1463,7 @@ DESC Lock region 0 base valid
 R 0xc10 64 - S por_hnf_slc_lock_base1
 RESET 0x0 0x8000ffffffffffff
 DESC Functions as the base register for lock region 1 [47:0]. 
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 48 base1
 DESC Lock region 1 base address
 F 63 1 base1_vld
@@ -1433,6 +1471,7 @@ DESC Lock region 1 base valid
 R 0xc18 64 - S por_hnf_slc_lock_base2
 RESET 0x0 0x8000ffffffffffff
 DESC Functions as the base register for lock region 2 [47:0]. 
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 48 base2
 DESC Lock region 2 base address
 F 63 1 base2_vld
@@ -1440,6 +1479,7 @@ DESC Lock region 2 base valid
 R 0xc20 64 - S por_hnf_slc_lock_base3
 RESET 0x0 0x8000ffffffffffff
 DESC Functions as the base register for lock region 3 [47:0]. 
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 48 base3
 DESC Lock region 3 base address
 F 63 1 base3_vld
@@ -1447,86 +1487,103 @@ DESC Lock region 3 base valid
 R 0xc28 64 - S por_hnf_rnf_region_vec1
 RESET 0x0 0xffffffffffffffff
 DESC Functions as the control register for RN-F source SLC way allocation for logical IDs 64 through 127.
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_region_vec1
 DESC Bit vector mask; identifies which logical IDs of the RN-Fs to allocate to the locked region NOTE: Must be 64'b0 if range-based region locking or OCM is enabled.
 R 0xc30 64 - S por_hnf_rni_region_vec
 RESET 0x0 0xffffffff
 DESC Functions as the control register for RN-I source SLC way allocation.
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rni_region_vec
 DESC Bit vector mask; identifies which logical IDs of the RN-Is to allocate to the locked region NOTE: Must be set to 32'b0 if range-based region locking or OCM is enabled.
 R 0xc38 64 - S por_hnf_rnf_region_vec
 RESET 0x0 0xffffffffffffffff
 DESC Functions as the control register for RN-F source SLC way allocation.
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_region_vec
 DESC Bit vector mask; identifies which logical IDs of the RN-Fs to allocate to the locked region NOTE: Must be 64'b0 if range-based region locking or OCM is enabled.
 R 0xc40 64 - S por_hnf_rnd_region_vec
 RESET 0x0 0xffffffff
 DESC Functions as the control register for RN-D source SLC way allocation.
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rnd_region_vec
 DESC Bit vector mask; identifies which logical IDs of the RN-Ds to allocate to the locked region NOTE: Must be set to 32'b0 if range-based region locking or OCM is enabled.
 R 0xc48 64 - S por_hnf_slcway_partition0_rnf_vec
 RESET 0xffffffffffffffff 0xffffffffffffffff
 DESC Functions as the control register for RN-Fs that can allocate to partition 0 (ways 0, 1, 2, and 3).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec0
 DESC Bit vector mask; identifies which logical IDs of the RN-F can allocate
 R 0xc50 64 - S por_hnf_slcway_partition1_rnf_vec
 RESET 0xffffffffffffffff 0xffffffffffffffff
 DESC Functions as the control register for RN-Fs that can allocate to partition 1 (ways 4, 5, 6, and 7).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec1
 DESC Bit vector mask; identifies which logical IDs of the RN-F can allocate
 R 0xc58 64 - S por_hnf_slcway_partition2_rnf_vec
 RESET 0xffffffffffffffff 0xffffffffffffffff
 DESC Functions as the control register for RN-Fs that can allocate to partition 2 (ways 8, 9, 10, and 11).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec2
 DESC Bit vector mask; identifies which logical IDs of the RN-F can allocate
 R 0xc60 64 - S por_hnf_slcway_partition3_rnf_vec
 RESET 0xffffffffffffffff 0xffffffffffffffff
 DESC Functions as the control register for RN-Fs that can allocate to partition 3 (ways 12, 13, 14, and 15).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec3
 DESC Bit vector mask; identifies which logical IDs of the RN-F can allocate
 R 0xc68 64 - S por_hnf_slcway_partition0_rni_vec
 RESET 0xffffffff 0xffffffff
 DESC Functions as the control register for RN-Is that can allocate to partition 0 (ways 0, 1, 2, and 3).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rni_vec0
 DESC Bit vector mask; identifies which logical IDs of the RN-I/RN-D can allocate
 R 0xc70 64 - S por_hnf_slcway_partition1_rni_vec
 RESET 0xffffffff 0xffffffff
 DESC Functions as the control register for RN-Is that can allocate to partition 1 (ways 4, 5, 6, and 7).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rni_vec1
 DESC Bit vector mask; identifies which logical IDs of the RN-I/RN-D can allocate
 R 0xc78 64 - S por_hnf_slcway_partition2_rni_vec
 RESET 0xffffffff 0xffffffff
 DESC Functions as the control register for RN-Is that can allocate to partition 2 (ways 8, 9, 10, and 11).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rni_vec2
 DESC Bit vector mask; identifies which logical IDs of the RN-I/RN-D can allocate
 R 0xc80 64 - S por_hnf_slcway_partition3_rni_vec
 RESET 0xffffffff 0xffffffff
 DESC Functions as the control register for RN-Is that can allocate to partition 3 (ways 12, 13, 14, and 15).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rni_vec3
 DESC Bit vector mask; identifies which logical IDs of the RN-I/RN-D can allocate
 R 0xc88 64 - S por_hnf_slcway_partition0_rnd_vec
 RESET 0xffffffff 0xffffffff
 DESC Functions as the control register for RN-Ds that can allocate to partition 0 (ways 0, 1, 2, and 3).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rnd_vec0
 DESC Bit vector mask; identifies which logical IDs of the RN-I/RN-D can allocate
 R 0xc90 64 - S por_hnf_slcway_partition1_rnd_vec
 RESET 0xffffffff 0xffffffff
 DESC Functions as the control register for RN-Ds that can allocate to partition 1 (ways 4, 5, 6, and 7).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rnd_vec1
 DESC Bit vector mask; identifies which logical IDs of the RN-I/RN-D can allocate
 R 0xc98 64 - S por_hnf_slcway_partition2_rnd_vec
 RESET 0xffffffff 0xffffffff
 DESC Functions as the control register for RN-Ds that can allocate to partition 2 (ways 8, 9, 10, and 11).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rnd_vec2
 DESC Bit vector mask; identifies which logical IDs of the RN-I/RN-D can allocate
 R 0xca0 64 - S por_hnf_slcway_partition3_rnd_vec
 RESET 0xffffffff 0xffffffff
 DESC Functions as the control register for RN-Ds that can allocate to partition 3 (ways 12, 13, 14, and 15).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 32 rnd_vec3
 DESC Bit vector mask; identifies which logical IDs of the RN-I/RN-D can allocate
 R 0xca8 64 - S por_hnf_rn_region_lock
 RESET 0x0 0x3
 DESC Functions as the enable register for source-based SLC way allocation.
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 1 rn_region_lock_en
 DESC Enables SRC-based region locking 1'b0: SRC based way locking is disabled 1'b1: SRC based way locking is enabled
 F 1 1 rn_pick_locked_ways_only
@@ -1534,26 +1591,31 @@ DESC Specifies which ways the programmed RNs can allocate new cache lines to 1'b
 R 0xcb0 64 - S por_hnf_slcway_partition0_rnf_vec1
 RESET 0xffffffffffffffff 0xffffffffffffffff
 DESC Functions as the control register for RN-Fs that can allocate to partition 0 (ways 0, 1, 2, and 3).
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec4
 DESC Bit vector mask; identifies which logical IDs of the RN-F can allocate
 R 0xcb8 64 - S por_hnf_slcway_partition1_rnf_vec1
 RESET 0xffffffffffffffff 0xffffffffffffffff
 DESC Functions as the control register for RN-Fs that can allocate to partition 1 (ways 4, 5, 6, and 7) for Logical RNF IDs 64 to 127.
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec5
 DESC Bit vector mask; identifies which logical IDs of the RN-F can allocate
 R 0xcc0 64 - S por_hnf_slcway_partition2_rnf_vec1
 RESET 0xffffffffffffffff 0xffffffffffffffff
 DESC Functions as the control register for RN-Fs that can allocate to partition 2 (ways 8, 9, 10, and 11) for Logical RNF IDs 64 to 127.
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec6
 DESC Bit vector mask; identifies which logical IDs of the RN-F can allocate
 R 0xcc8 64 - S por_hnf_slcway_partition3_rnf_vec1
 RESET 0xffffffffffffffff 0xffffffffffffffff
 DESC Functions as the control register for RN-Fs that can allocate to partition 3 (ways 12, 13, 14, and 15) for Logical RNF IDs 64 to 127.
+SGO por_hnf_secure_register_groups_override.slc_lock_ways
 F 0 64 rnf_vec7
 DESC Bit vector mask; identifies which logical IDs of the RN-F can allocate
 R 0xd00 64 - S por_hnf_sam_control
 RESET 0x0 0xbf3f3f37ff7ff7ff
 DESC Configures HN-F SAM. All top_address_bit fields must be between bits 47 and 28 of the address. top_address_bit2 > top_address_bit1 > top_address_bit0. Must be configured to match corresponding por_rnsam_sys_cache_grp_sn_sam_cfgN register in the RN SAM.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 hn_cfg_sn0_nodeid
 DESC SN 0 node ID
 F 12 11 hn_cfg_sn1_nodeid
@@ -1575,6 +1637,7 @@ DESC Inverts the top address bit (hn_cfg_sam_top_address_bit1 if 3-SN, hn_cfg_sa
 R 0xd08 64 - S por_hnf_sam_memregion0
 RESET 0x0 0x8000fffffc01f7ff
 DESC Configures range-based memory region 0 in HN-F SAM.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 63 1 valid
 DESC Memory region 0 valid 1'b0: Not valid 1'b1: Valid for memory region comparison
 F 26 22 base_addr
@@ -1586,6 +1649,7 @@ DESC Memory region 0 target node ID
 R 0xd10 64 - S por_hnf_sam_memregion1
 RESET 0x0 0x8000fffffc01f7ff
 DESC Configures range-based memory region 1 in HN-F SAM.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 63 1 valid
 DESC Memory region 1 valid 1'b0: Not valid 1'b1: Valid for memory region comparison
 F 26 22 base_addr
@@ -1597,6 +1661,7 @@ DESC Memory region 1 target node ID
 R 0xd18 64 - S por_hnf_sam_sn_properties
 RESET 0x0 0x1c71c71c71c7
 DESC Configures properties for all six SN targets and two range-based SN targets.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 44 1 range1_sn_pcmo_prop_dis
 DESC Disables PCMO (persistent CMO) propagation for range 1 SN when set
 F 43 1 range1_sn_cmo_prop_en
@@ -1648,6 +1713,7 @@ DESC Data width of SN 0 1'b1: 128 bits 1'b0: 256 bits
 R 0xd20 64 - S por_hnf_sam_6sn_nodeid
 RESET 0x0 0x7ff7ff7ff
 DESC Configures node IDs for slave nodes 3 to 5 in 6-SN configuration mode.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 hn_cfg_sn3_nodeid
 DESC SN 3 node ID
 F 12 11 hn_cfg_sn4_nodeid
@@ -1657,6 +1723,7 @@ DESC SN 5 node ID
 R 0xd28 64 - S por_hnf_rn_phys_id0
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra0
 DESC Specifies the node ID
 F 16 1 remote_ra0
@@ -1680,6 +1747,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd30 64 - S por_hnf_rn_phys_id1
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra2
 DESC Specifies the node ID
 F 16 1 remote_ra2
@@ -1703,6 +1771,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd38 64 - S por_hnf_rn_phys_id2
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra4
 DESC Specifies the node ID
 F 16 1 remote_ra4
@@ -1726,6 +1795,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd40 64 - S por_hnf_rn_phys_id3
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra6
 DESC Specifies the node ID
 F 16 1 remote_ra6
@@ -1749,6 +1819,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd48 64 - S por_hnf_rn_phys_id4
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra8
 DESC Specifies the node ID
 F 16 1 remote_ra8
@@ -1772,6 +1843,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd50 64 - S por_hnf_rn_phys_id5
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra10
 DESC Specifies the node ID
 F 16 1 remote_ra10
@@ -1795,6 +1867,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd58 64 - S por_hnf_rn_phys_id6
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra12
 DESC Specifies the node ID
 F 16 1 remote_ra12
@@ -1818,6 +1891,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd60 64 - S por_hnf_rn_phys_id7
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra14
 DESC Specifies the node ID
 F 16 1 remote_ra14
@@ -1841,6 +1915,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd68 64 - S por_hnf_rn_phys_id8
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra16
 DESC Specifies the node ID
 F 16 1 remote_ra16
@@ -1864,6 +1939,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd70 64 - S por_hnf_rn_phys_id9
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra18
 DESC Specifies the node ID
 F 16 1 remote_ra18
@@ -1887,6 +1963,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd78 64 - S por_hnf_rn_phys_id10
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra20
 DESC Specifies the node ID
 F 16 1 remote_ra20
@@ -1910,6 +1987,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd80 64 - S por_hnf_rn_phys_id11
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra22
 DESC Specifies the node ID
 F 16 1 remote_ra22
@@ -1933,6 +2011,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd88 64 - S por_hnf_rn_phys_id12
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra24
 DESC Specifies the node ID
 F 16 1 remote_ra24
@@ -1956,6 +2035,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd90 64 - S por_hnf_rn_phys_id13
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra26
 DESC Specifies the node ID
 F 16 1 remote_ra26
@@ -1979,6 +2059,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xd98 64 - S por_hnf_rn_phys_id14
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra28
 DESC Specifies the node ID
 F 16 1 remote_ra28
@@ -2002,6 +2083,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xda0 64 - S por_hnf_rn_phys_id15
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra30
 DESC Specifies the node ID
 F 16 1 remote_ra30
@@ -2025,6 +2107,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xda8 64 - S por_hnf_rn_phys_id16
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra32
 DESC Specifies the node ID
 F 16 1 remote_ra32
@@ -2048,6 +2131,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xdb0 64 - S por_hnf_rn_phys_id17
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra34
 DESC Specifies the node ID
 F 16 1 remote_ra34
@@ -2071,6 +2155,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xdb8 64 - S por_hnf_rn_phys_id18
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra36
 DESC Specifies the node ID
 F 16 1 remote_ra36
@@ -2094,6 +2179,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xdc0 64 - S por_hnf_rn_phys_id19
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra38
 DESC Specifies the node ID
 F 16 1 remote_ra38
@@ -2117,6 +2203,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xdc8 64 - S por_hnf_rn_phys_id20
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra40
 DESC Specifies the node ID
 F 16 1 remote_ra40
@@ -2140,6 +2227,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xdd0 64 - S por_hnf_rn_phys_id21
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra42
 DESC Specifies the node ID
 F 16 1 remote_ra42
@@ -2163,6 +2251,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xdd8 64 - S por_hnf_rn_phys_id22
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra44
 DESC Specifies the node ID
 F 16 1 remote_ra44
@@ -2186,6 +2275,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xde0 64 - S por_hnf_rn_phys_id23
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra46
 DESC Specifies the node ID
 F 16 1 remote_ra46
@@ -2209,6 +2299,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xde8 64 - S por_hnf_rn_phys_id24
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra48
 DESC Specifies the node ID
 F 16 1 remote_ra48
@@ -2232,6 +2323,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xdf0 64 - S por_hnf_rn_phys_id25
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra50
 DESC Specifies the node ID
 F 16 1 remote_ra50
@@ -2255,6 +2347,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xdf8 64 - S por_hnf_rn_phys_id26
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra52
 DESC Specifies the node ID
 F 16 1 remote_ra52
@@ -2278,6 +2371,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe00 64 - S por_hnf_rn_phys_id27
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra54
 DESC Specifies the node ID
 F 16 1 remote_ra54
@@ -2301,6 +2395,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe08 64 - S por_hnf_rn_phys_id28
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra56
 DESC Specifies the node ID
 F 16 1 remote_ra56
@@ -2324,6 +2419,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe10 64 - S por_hnf_rn_phys_id29
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra58
 DESC Specifies the node ID
 F 16 1 remote_ra58
@@ -2347,6 +2443,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe18 64 - S por_hnf_rn_phys_id30
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra60
 DESC Specifies the node ID
 F 16 1 remote_ra60
@@ -2370,6 +2467,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe20 64 - S por_hnf_rn_phys_id31
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra62
 DESC Specifies the node ID
 F 16 1 remote_ra62
@@ -2393,6 +2491,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe28 64 - S por_hnf_rn_phys_id32
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra64
 DESC Specifies the node ID
 F 16 1 remote_ra64
@@ -2416,6 +2515,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe30 64 - S por_hnf_rn_phys_id33
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra66
 DESC Specifies the node ID
 F 16 1 remote_ra66
@@ -2439,6 +2539,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe38 64 - S por_hnf_rn_phys_id34
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra68
 DESC Specifies the node ID
 F 16 1 remote_ra68
@@ -2462,6 +2563,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe40 64 - S por_hnf_rn_phys_id35
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra70
 DESC Specifies the node ID
 F 16 1 remote_ra70
@@ -2485,6 +2587,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe48 64 - S por_hnf_rn_phys_id36
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra72
 DESC Specifies the node ID
 F 16 1 remote_ra72
@@ -2508,6 +2611,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe50 64 - S por_hnf_rn_phys_id37
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra74
 DESC Specifies the node ID
 F 16 1 remote_ra74
@@ -2531,6 +2635,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe58 64 - S por_hnf_rn_phys_id38
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra76
 DESC Specifies the node ID
 F 16 1 remote_ra76
@@ -2554,6 +2659,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe60 64 - S por_hnf_rn_phys_id39
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra78
 DESC Specifies the node ID
 F 16 1 remote_ra78
@@ -2577,6 +2683,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe68 64 - S por_hnf_rn_phys_id40
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra80
 DESC Specifies the node ID
 F 16 1 remote_ra80
@@ -2600,6 +2707,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe70 64 - S por_hnf_rn_phys_id41
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra82
 DESC Specifies the node ID
 F 16 1 remote_ra82
@@ -2623,6 +2731,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe78 64 - S por_hnf_rn_phys_id42
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra84
 DESC Specifies the node ID
 F 16 1 remote_ra84
@@ -2646,6 +2755,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe80 64 - S por_hnf_rn_phys_id43
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra86
 DESC Specifies the node ID
 F 16 1 remote_ra86
@@ -2669,6 +2779,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe88 64 - S por_hnf_rn_phys_id44
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra88
 DESC Specifies the node ID
 F 16 1 remote_ra88
@@ -2692,6 +2803,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe90 64 - S por_hnf_rn_phys_id45
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra90
 DESC Specifies the node ID
 F 16 1 remote_ra90
@@ -2715,6 +2827,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xe98 64 - S por_hnf_rn_phys_id46
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra92
 DESC Specifies the node ID
 F 16 1 remote_ra92
@@ -2738,6 +2851,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xea0 64 - S por_hnf_rn_phys_id47
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra94
 DESC Specifies the node ID
 F 16 1 remote_ra94
@@ -2761,6 +2875,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xea8 64 - S por_hnf_rn_phys_id48
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra96
 DESC Specifies the node ID
 F 16 1 remote_ra96
@@ -2784,6 +2899,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xeb0 64 - S por_hnf_rn_phys_id49
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra98
 DESC Specifies the node ID
 F 16 1 remote_ra98
@@ -2807,6 +2923,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xeb8 64 - S por_hnf_rn_phys_id50
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra100
 DESC Specifies the node ID
 F 16 1 remote_ra100
@@ -2830,6 +2947,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xec0 64 - S por_hnf_rn_phys_id51
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra102
 DESC Specifies the node ID
 F 16 1 remote_ra102
@@ -2853,6 +2971,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xec8 64 - S por_hnf_rn_phys_id52
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra104
 DESC Specifies the node ID
 F 16 1 remote_ra104
@@ -2876,6 +2995,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xed0 64 - S por_hnf_rn_phys_id53
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra106
 DESC Specifies the node ID
 F 16 1 remote_ra106
@@ -2899,6 +3019,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xed8 64 - S por_hnf_rn_phys_id54
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra108
 DESC Specifies the node ID
 F 16 1 remote_ra108
@@ -2922,6 +3043,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xee0 64 - S por_hnf_rn_phys_id55
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra110
 DESC Specifies the node ID
 F 16 1 remote_ra110
@@ -2945,6 +3067,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xee8 64 - S por_hnf_rn_phys_id56
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra112
 DESC Specifies the node ID
 F 16 1 remote_ra112
@@ -2968,6 +3091,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xef0 64 - S por_hnf_rn_phys_id57
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra114
 DESC Specifies the node ID
 F 16 1 remote_ra114
@@ -2991,6 +3115,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xef8 64 - S por_hnf_rn_phys_id58
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra116
 DESC Specifies the node ID
 F 16 1 remote_ra116
@@ -3014,21 +3139,25 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xf00 64 - S por_hnf_sf_cxg_blocked_ways
 RESET 0x0 0x3
 DESC Specifies the SF ways that are blocked for remote chip to use in CML mode.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 2 sf_blocked_ways
 DESC Number of SF ways blocked for remote chips to use in CML mode (0, 4, 8, or 12) 2'b00: No ways are blocked; all 16 SF ways could be used by local or remote RN-Fs 2'b01: Lower 4 ways are blocked from remote RN-Fs; ways 3:0 for local RN-Fs only; ways 15:4 for local and remote RN-Fs 2'b10: Lower 8 ways are blocked from remote RN-Fs; ways 7:0 for local RN-Fs only; ways 15:8 for local and remote RN-Fs 2'b11: Lower 12 ways are blocked from remote RN-Fs; ways 11:0 for local RN-Fs only; ways 15:12 for local and remote RN-Fs
 R 0xf10 64 - S por_hnf_cml_port_aggr_grp0_add_mask
 RESET 0x40 0xffffffffffc0
 DESC Configures the CCIX port aggregation address mask for group 0.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 6 42 addr_mask
 DESC Address mask to be applied before hashing
 R 0xf18 64 - S por_hnf_cml_port_aggr_grp1_add_mask
 RESET 0x40 0xffffffffffc0
 DESC Configures the CCIX port aggregation address mask for group 1.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 6 42 addr_mask
 DESC Address mask to be applied before hashing
 R 0xf28 64 - S por_hnf_cml_port_aggr_grp0_reg
 RESET 0x0 0x37ff7ff7ff7ff
 DESC Configures the CCIX port aggregation port IDs for group 0.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 48 2 num_cxg_pag0
 DESC Specifies the number of CXRAs in CPAG 2'b00: 1 port used 2'b01: 2 ports used 2'b10: 4 ports used 2'b11: Reserved
 F 36 11 pag0_tgtid3
@@ -3042,6 +3171,7 @@ DESC Specifies the target ID for CPAG
 R 0xf30 64 - S por_hnf_cml_port_aggr_grp1_reg
 RESET 0x0 0x37ff7ff7ff7ff
 DESC Configures the CCIX port aggregation port IDs for group 1.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 48 2 num_cxg_pag1
 DESC Specifies the number of CXRAs in CPAG
 F 36 11 pag1_tgtid3
@@ -3065,16 +3195,19 @@ DESC Address mask applied before memory region compare
 R 0xf50 64 - S por_hnf_abf_lo_addr
 RESET 0x0 0xffffffffffff
 DESC Lower address range for Address Based Flush (ABF) [47:0].
+SGO por_hnf_secure_register_groups_override.ppu
 F 0 48 abf_lo_addr
 DESC Lower address range for ABF
 R 0xf58 64 - S por_hnf_abf_hi_addr
 RESET 0x0 0xffffffffffff
 DESC Upper address range for Address Based Flush (ABF) [47:0].
+SGO por_hnf_secure_register_groups_override.ppu
 F 0 48 abf_hi_addr
 DESC Upper address range for ABF
 R 0xf60 64 - S por_hnf_abf_pr
 RESET 0x0 0x7
 DESC Functions as the Address Based Flush (ABF) policy register.
+SGO por_hnf_secure_register_groups_override.ppu
 F 0 1 abf_enable
 DESC Start Address Based Flushing based on high and low address ranges
 F 1 2 abf_mode
@@ -3093,6 +3226,7 @@ DESC ABF aborted due to SF not being enabled, either by configuration or double-
 R 0xf70 64 - S por_hnf_rn_phys_id59
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra118
 DESC Specifies the node ID
 F 16 1 remote_ra118
@@ -3116,6 +3250,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xf78 64 - S por_hnf_rn_phys_id60
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra120
 DESC Specifies the node ID
 F 16 1 remote_ra120
@@ -3139,6 +3274,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xf80 64 - S por_hnf_rn_phys_id61
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra122
 DESC Specifies the node ID
 F 16 1 remote_ra122
@@ -3162,6 +3298,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xf88 64 - S por_hnf_rn_phys_id62
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra124
 DESC Specifies the node ID
 F 16 1 remote_ra124
@@ -3185,6 +3322,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xf90 64 - S por_hnf_rn_phys_id63
 RESET 0x0 0xc00707ffc00707ff
 DESC Configures node IDs for RNs in the system corresponding to each RN ID.
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 nodeid_ra126
 DESC Specifies the node ID
 F 16 1 remote_ra126
@@ -3208,6 +3346,7 @@ DESC Specifies whether the RN is valid 1'b0: RN ID is not valid 1'b1: RN ID is p
 R 0xf98 64 - S por_hnf_ldid_map_table_reg0
 RESET 0x0 0x807f07ff807f07ff
 DESC Configures LDID start pointer for remote RN-F's behind each CXG
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 srcid_cxha0
 DESC Specifies the node ID for CXHA 0
 F 16 7 starting_ldid_cxha0
@@ -3223,6 +3362,7 @@ DESC Specifies CXHA 1 programming is valid
 R 0xfa0 64 - S por_hnf_ldid_map_table_reg1
 RESET 0x0 0x807f07ff807f07ff
 DESC Configures LDID start pointer for remote RN-F's behind each CXG
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 srcid_cxha2
 DESC Specifies the node ID for CXHA 2
 F 16 7 starting_ldid_cxha2
@@ -3238,6 +3378,7 @@ DESC Specifies CXHA 3 programming is valid
 R 0xfa8 64 - S por_hnf_ldid_map_table_reg2
 RESET 0x0 0x807f07ff807f07ff
 DESC Configures LDID start pointer for remote RN-F's behind each CXG
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 srcid_cxha4
 DESC Specifies the node ID for CXHA 4
 F 16 7 starting_ldid_cxha4
@@ -3253,6 +3394,7 @@ DESC Specifies CXHA 5 programming is valid
 R 0xfb0 64 - S por_hnf_ldid_map_table_reg3
 RESET 0x0 0x807f07ff807f07ff
 DESC Configures LDID start pointer for remote RN-F's behind each CXG
+SGO por_hnf_secure_register_groups_override.sam_control
 F 0 11 srcid_cxha6
 DESC Specifies the node ID for CXHA 6
 F 16 7 starting_ldid_cxha6
@@ -3268,6 +3410,7 @@ DESC Specifies CXHA 7 programming is valid
 R 0x1000 32 - S por_hnf_ppu_pwpr
 RESET 0x0 0x1ff
 DESC Functions as the power policy register for HN-F.
+SGO por_hnf_secure_register_groups_override.ppu
 F 0 4 policy
 DESC HN-F power mode policy 4'b1000: ON 4'b0111: FUNC_RET 4'b0010: MEM_RET 4'b0000: OFF
 F 4 4 op_mode
@@ -3291,6 +3434,7 @@ DESC HN-F RAM PCSMACCEPT status
 R 0x1100 64 - S por_hnf_ppu_dyn_ret_threshold
 RESET 0x0 0xfff
 DESC Configures the dynamic retention threshold for SLC and SF RAM.
+SGO por_hnf_secure_register_groups_override.ppu
 F 0 12 dyn_ret_threshold
 DESC HN-F RAM idle cycle count threshold
 R 0x1fb0 32 RO - por_hnf_ppu_idr0
@@ -3581,6 +3725,7 @@ PAR POR_R2_ENABLE_PARAM
 R 0xc00 64 - S por_dn_vmf0_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3590,21 +3735,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xc08 64 - S por_dn_vmf0_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf0_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf0_ctrl.vmid
 R 0xc10 64 - S por_dn_vmf0_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf0_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf0_ctrl.vmid
 R 0xc18 64 - S por_dn_vmf0_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf0_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf0_ctrl.vmid
 R 0xc20 64 - S por_dn_vmf1_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3614,21 +3763,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xc28 64 - S por_dn_vmf1_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf1_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf1_ctrl.vmid
 R 0xc30 64 - S por_dn_vmf1_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf1_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf1_ctrl.vmid
 R 0xc38 64 - S por_dn_vmf1_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf1_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf1_ctrl.vmid
 R 0xc40 64 - S por_dn_vmf2_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3638,21 +3791,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xc48 64 - S por_dn_vmf2_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf2_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf2_ctrl.vmid
 R 0xc50 64 - S por_dn_vmf2_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf2_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf2_ctrl.vmid
 R 0xc58 64 - S por_dn_vmf2_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf2_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf2_ctrl.vmid
 R 0xc60 64 - S por_dn_vmf3_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3662,21 +3819,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xc68 64 - S por_dn_vmf3_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf3_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf3_ctrl.vmid
 R 0xc70 64 - S por_dn_vmf3_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf3_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf3_ctrl.vmid
 R 0xc78 64 - S por_dn_vmf3_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf3_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf3_ctrl.vmid
 R 0xc80 64 - S por_dn_vmf4_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3686,21 +3847,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xc88 64 - S por_dn_vmf4_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf4_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf4_ctrl.vmid
 R 0xc90 64 - S por_dn_vmf4_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf4_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf4_ctrl.vmid
 R 0xc98 64 - S por_dn_vmf4_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf4_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf4_ctrl.vmid
 R 0xca0 64 - S por_dn_vmf5_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3710,21 +3875,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xca8 64 - S por_dn_vmf5_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf5_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf5_ctrl.vmid
 R 0xcb0 64 - S por_dn_vmf5_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf5_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf5_ctrl.vmid
 R 0xcb8 64 - S por_dn_vmf5_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf5_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf5_ctrl.vmid
 R 0xcc0 64 - S por_dn_vmf6_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3734,21 +3903,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xcc8 64 - S por_dn_vmf6_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf6_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf6_ctrl.vmid
 R 0xcd0 64 - S por_dn_vmf6_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf6_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf6_ctrl.vmid
 R 0xcd8 64 - S por_dn_vmf6_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf6_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf6_ctrl.vmid
 R 0xce0 64 - S por_dn_vmf7_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3758,21 +3931,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xce8 64 - S por_dn_vmf7_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf7_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf7_ctrl.vmid
 R 0xcf0 64 - S por_dn_vmf7_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf7_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf7_ctrl.vmid
 R 0xcf8 64 - S por_dn_vmf7_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf7_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf7_ctrl.vmid
 R 0xd00 64 - S por_dn_vmf8_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3782,21 +3959,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xd08 64 - S por_dn_vmf8_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf8_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf8_ctrl.vmid
 R 0xd10 64 - S por_dn_vmf8_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf8_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf8_ctrl.vmid
 R 0xd18 64 - S por_dn_vmf8_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf8_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf8_ctrl.vmid
 R 0xd20 64 - S por_dn_vmf9_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3806,21 +3987,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xd28 64 - S por_dn_vmf9_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf9_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf9_ctrl.vmid
 R 0xd30 64 - S por_dn_vmf9_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf9_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf9_ctrl.vmid
 R 0xd38 64 - S por_dn_vmf9_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf9_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf9_ctrl.vmid
 R 0xd40 64 - S por_dn_vmf10_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3830,21 +4015,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xd48 64 - S por_dn_vmf10_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf10_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf10_ctrl.vmid
 R 0xd50 64 - S por_dn_vmf10_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf10_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf10_ctrl.vmid
 R 0xd58 64 - S por_dn_vmf10_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf10_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf10_ctrl.vmid
 R 0xd60 64 - S por_dn_vmf11_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3854,21 +4043,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xd68 64 - S por_dn_vmf11_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf11_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf11_ctrl.vmid
 R 0xd70 64 - S por_dn_vmf11_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf11_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf11_ctrl.vmid
 R 0xd78 64 - S por_dn_vmf11_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf11_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf11_ctrl.vmid
 R 0xd80 64 - S por_dn_vmf12_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3878,21 +4071,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xd88 64 - S por_dn_vmf12_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf12_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf12_ctrl.vmid
 R 0xd90 64 - S por_dn_vmf12_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf12_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf12_ctrl.vmid
 R 0xd98 64 - S por_dn_vmf12_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf12_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf12_ctrl.vmid
 R 0xda0 64 - S por_dn_vmf13_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3902,21 +4099,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xda8 64 - S por_dn_vmf13_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf13_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf13_ctrl.vmid
 R 0xdb0 64 - S por_dn_vmf13_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf13_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf13_ctrl.vmid
 R 0xdb8 64 - S por_dn_vmf13_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf13_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf13_ctrl.vmid
 R 0xdc0 64 - S por_dn_vmf14_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3926,21 +4127,25 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xdc8 64 - S por_dn_vmf14_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf14_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf14_ctrl.vmid
 R 0xdd0 64 - S por_dn_vmf14_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf14_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf14_ctrl.vmid
 R 0xdd8 64 - S por_dn_vmf14_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf14_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf14_ctrl.vmid
 R 0xde0 64 - S por_dn_vmf15_ctrl
 RESET 0xffff00000000 0xffff0001ffff
 DESC Functions as the control register for VMID-based DVM snoop filtering. NOTE: This register has no effect when por_dn_aux_ctl.disable_vmf is set to 1.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 1 valid
 DESC Register valid 1'b1: Register is enabled 1'b0: Register is not enabled
 F 1 16 vmid
@@ -3950,16 +4155,19 @@ DESC VMID mask; enables mapping of multiple VMID values to a single register NOT
 R 0xde8 64 - S por_dn_vmf15_rnf0
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-F bit vector 63:0 corresponding to por_dn_vmf15_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec0
 DESC RN-F bit vector 63:0 corresponding to por_dn_vmf15_ctrl.vmid
 R 0xdf0 64 - S por_dn_vmf15_rnd
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical RN-D bit vector 63:0 corresponding to por_dn_vmf15_ctrl.vmid. Used for VMID-based DVM snoop filtering.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC RN-D bit vector 63:0 corresponding to por_dn_vmf15_ctrl.vmid
 R 0xdf8 64 - S por_dn_vmf15_cxra
 RESET 0x0 0xffffffffffffffff
 DESC Contains the logical CXRA bit vector 63:0 corresponding to por_dn_vmf15_ctrl.vmid. Used for VMID-based DVM snoop filtering. NOTE: Not applicable in a single-chip CMN-600 system. Does not have any effect.
+SGO por_dn_secure_register_groups_override.vmf
 F 0 64 snp_destvec
 DESC CXRA bit vector 63:0 corresponding to por_dn_vmf15_ctrl.vmid
 R 0x2000 64 - - por_dn_pmu_event_sel
@@ -4052,6 +4260,7 @@ PAR CXG_SMP_MODE_EN_PARAM
 R 0xc00 64 - S por_cxg_ha_rnf_raid_to_ldid_reg0
 RESET 0x0 0xbfbfbfbfbfbfbfbf
 DESC Specifies the mapping of RAID to RN-F LDID for RAIDs 0 to 7.
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid0
 DESC Specifies the LDID for RAID 0
 F 7 1 ldid0_rnf
@@ -4087,6 +4296,7 @@ DESC Specifies if RAID 7 is RN-F
 R 0xc08 64 - S por_cxg_ha_rnf_raid_to_ldid_reg1
 RESET 0x0 0xbfbfbfbfbfbfbfbf
 DESC Specifies the mapping of RAID to RN-F LDID for RAIDs 8 to 15.
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid8
 DESC Specifies the LDID for RAID 8
 F 7 1 ldid8_rnf
@@ -4122,6 +4332,7 @@ DESC Specifies if RAID 15 is RN-F
 R 0xc10 64 - S por_cxg_ha_rnf_raid_to_ldid_reg2
 RESET 0x0 0xbfbfbfbfbfbfbfbf
 DESC Specifies the mapping of RAID to RN-F LDID for RAIDs 16 to 23.
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid16
 DESC Specifies the LDID for RAID 16
 F 7 1 ldid16_rnf
@@ -4157,6 +4368,7 @@ DESC Specifies if RAID 23 is RN-F
 R 0xc18 64 - S por_cxg_ha_rnf_raid_to_ldid_reg3
 RESET 0x0 0xbfbfbfbfbfbfbfbf
 DESC Specifies the mapping of RAID to RN-F LDID for RAIDs 24 to 31.
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid24
 DESC Specifies the LDID for RAID 24
 F 7 1 ldid24_rnf
@@ -4192,6 +4404,7 @@ DESC Specifies if RAID 31 is RN-F
 R 0xc20 64 - S por_cxg_ha_rnf_raid_to_ldid_reg4
 RESET 0x0 0xbfbfbfbfbfbfbfbf
 DESC Specifies the mapping of RAID to RN-F LDID for RAIDs 32 to 39.
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid32
 DESC Specifies the LDID for RAID 32
 F 7 1 ldid32_rnf
@@ -4227,6 +4440,7 @@ DESC Specifies if RAID 39 is RN-F
 R 0xc28 64 - S por_cxg_ha_rnf_raid_to_ldid_reg5
 RESET 0x0 0xbfbfbfbfbfbfbfbf
 DESC Specifies the mapping of RAID to RN-F LDID for RAIDs 40 to 47.
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid40
 DESC Specifies the LDID for RAID 40
 F 7 1 ldid40_rnf
@@ -4262,6 +4476,7 @@ DESC Specifies if RAID 47 is RN-F
 R 0xc30 64 - S por_cxg_ha_rnf_raid_to_ldid_reg6
 RESET 0x0 0xbfbfbfbfbfbfbfbf
 DESC Specifies the mapping of RAID to RN-F LDID for RAIDs 48 to 55.
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid48
 DESC Specifies the LDID for RAID 48
 F 7 1 ldid48_rnf
@@ -4297,6 +4512,7 @@ DESC Specifies if RAID 55 is RN-F
 R 0xc38 64 - S por_cxg_ha_rnf_raid_to_ldid_reg7
 RESET 0x0 0xbfbfbfbfbfbfbfbf
 DESC Specifies the mapping of RAID to RN-F LDID for RAIDs 56 to 63.
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 6 ldid56
 DESC Specifies the LDID for RAID 56
 F 7 1 ldid56_rnf
@@ -4332,6 +4548,7 @@ DESC Specifies if RAID 63 is RN-F
 R 0xc40 64 - S por_cxg_ha_agentid_to_linkid_reg0
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 0 to 7.
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent0_linkid
 DESC Specifies Link ID 0
 F 8 2 agent1_linkid
@@ -4351,6 +4568,7 @@ DESC Specifies Link ID 7
 R 0xc48 64 - S por_cxg_ha_agentid_to_linkid_reg1
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 8 to 15.
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent8_linkid
 DESC Specifies Link ID 8
 F 8 2 agent9_linkid
@@ -4370,6 +4588,7 @@ DESC Specifies Link ID 15
 R 0xc50 64 - S por_cxg_ha_agentid_to_linkid_reg2
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 16 to 23.
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent16_linkid
 DESC Specifies Link ID 16
 F 8 2 agent17_linkid
@@ -4389,6 +4608,7 @@ DESC Specifies Link ID 23
 R 0xc58 64 - S por_cxg_ha_agentid_to_linkid_reg3
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 24 to 31.
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent24_linkid
 DESC Specifies Link ID 24
 F 8 2 agent25_linkid
@@ -4408,6 +4628,7 @@ DESC Specifies Link ID 31
 R 0xc60 64 - S por_cxg_ha_agentid_to_linkid_reg4
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 32 to 39.
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent32_linkid
 DESC Specifies Link ID 32
 F 8 2 agent33_linkid
@@ -4427,6 +4648,7 @@ DESC Specifies Link ID 39
 R 0xc68 64 - S por_cxg_ha_agentid_to_linkid_reg5
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 40 to 47.
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent40_linkid
 DESC Specifies Link ID 40
 F 8 2 agent41_linkid
@@ -4446,6 +4668,7 @@ DESC Specifies Link ID 47
 R 0xc70 64 - S por_cxg_ha_agentid_to_linkid_reg6
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 48 to 55.
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent48_linkid
 DESC Specifies Link ID 48
 F 8 2 agent49_linkid
@@ -4465,6 +4688,7 @@ DESC Specifies Link ID 55
 R 0xc78 64 - S por_cxg_ha_agentid_to_linkid_reg7
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 56 to 63.
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 2 agent56_linkid
 DESC Specifies Link ID 56
 F 8 2 agent57_linkid
@@ -4484,11 +4708,13 @@ DESC Specifies Link ID 63
 R 0xd00 64 - S por_cxg_ha_agentid_to_linkid_val
 RESET 0x0 0xffffffffffffffff
 DESC Specifies which Agent ID to Link ID mappings are valid.
+SGO por_cxg_ha_secure_register_groups_override.linkid_ctl
 F 0 64 valid
 DESC Specifies whether the Link ID is valid; bit number corresponds to logical Agent ID number (from 0 to 63)
 R 0xd08 64 - S por_cxg_ha_rnf_raid_to_ldid_val
 RESET 0x0 0xffffffffffffffff
 DESC Specifies which RAID to RN-F LDID mappings are valid.
+SGO por_cxg_ha_secure_register_groups_override.ldid_ctl
 F 0 64 valid
 DESC Specifies whether the LDID is valid; bit number corresponds to logical RN-F LDID number (from 0 to 63)
 R 0x1000 64 V S por_cxg_ha_cxprtcl_link0_ctl
@@ -4759,6 +4985,7 @@ DESC Allows non-secure access to secure RA LDID registers
 R 0xa00 64 - S por_cxg_ra_cfg_ctl
 RESET 0x2 0x307
 DESC Functions as the configuration control register. Specifies the current mode.
+SGO por_cxg_ra_secure_register_groups_override.cfg_ctl
 F 0 1 pcie_qos15_entry_rsv_en
 DESC Enables entry reservation for QoS15 traffic from PCIe RN-I/RN-D 1'b1: Reserves tracker entry for QoS15 requests from PCIe RN-I/RN-D 1'b0: Does not reserve tracker entry for QoS15 requests from PCIe RN-I/RN-D
 PAR CXG_SMP_MODE_EN_PARAM
@@ -4802,6 +5029,7 @@ PAR CXG_SMP_MODE_EN_PARAM
 R 0xda8 64 - S por_cxg_ra_sam_addr_region_reg0
 RESET 0x0 0x83f0ffffffff003f
 DESC Configures Address Region 0 for RA SAM.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg0_valid
 DESC Specifies if the memory region is valid
 F 52 6 reg0_ha_tgtid
@@ -4813,6 +5041,7 @@ DESC Specifies the size of the memory region
 R 0xdb0 64 - S por_cxg_ra_sam_addr_region_reg1
 RESET 0x0 0x83f0ffffffff003f
 DESC Configures Address Region 1 for RA SAM.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg1_valid
 DESC Specifies if the memory region is valid
 F 52 6 reg1_ha_tgtid
@@ -4824,6 +5053,7 @@ DESC Specifies the size of the memory region
 R 0xdb8 64 - S por_cxg_ra_sam_addr_region_reg2
 RESET 0x0 0x83f0ffffffff003f
 DESC Configures Address Region 2 for RA SAM.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg2_valid
 DESC Specifies if the memory region is valid
 F 52 6 reg2_ha_tgtid
@@ -4835,6 +5065,7 @@ DESC Specifies the size of the memory region
 R 0xdc0 64 - S por_cxg_ra_sam_addr_region_reg3
 RESET 0x0 0x83f0ffffffff003f
 DESC Configures Address Region 3 for RA SAM.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg3_valid
 DESC Specifies if the memory region is valid
 F 52 6 reg3_ha_tgtid
@@ -4846,6 +5077,7 @@ DESC Specifies the size of the memory region
 R 0xdc8 64 - S por_cxg_ra_sam_addr_region_reg4
 RESET 0x0 0x83f0ffffffff003f
 DESC Configures Address Region 4 for RA SAM.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg4_valid
 DESC Specifies if the memory region is valid
 F 52 6 reg4_ha_tgtid
@@ -4857,6 +5089,7 @@ DESC Specifies the size of the memory region
 R 0xdd0 64 - S por_cxg_ra_sam_addr_region_reg5
 RESET 0x0 0x83f0ffffffff003f
 DESC Configures Address Region 5 for RA SAM.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg5_valid
 DESC Specifies if the memory region is valid
 F 52 6 reg5_ha_tgtid
@@ -4868,6 +5101,7 @@ DESC Specifies the size of the memory region
 R 0xdd8 64 - S por_cxg_ra_sam_addr_region_reg6
 RESET 0x0 0x83f0ffffffff003f
 DESC Configures Address Region 6 for RA SAM.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg6_valid
 DESC Specifies if the memory region is valid
 F 52 6 reg6_ha_tgtid
@@ -4879,6 +5113,7 @@ DESC Specifies the size of the memory region
 R 0xde0 64 - S por_cxg_ra_sam_addr_region_reg7
 RESET 0x0 0x83f0ffffffff003f
 DESC Configures Address Region 7 for RA SAM.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 63 1 reg7_valid
 DESC Specifies if the memory region is valid
 F 52 6 reg7_ha_tgtid
@@ -4890,46 +5125,55 @@ DESC Specifies the size of the memory region
 R 0xe00 64 - S por_cxg_ra_sam_mem_region0_limit_reg
 RESET 0x0 0xffffffff0000
 DESC Specifies the memory region 0 limit address.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg0_limit_addr
 DESC Memory region 0 limit address
 R 0xe08 64 - S por_cxg_ra_sam_mem_region1_limit_reg
 RESET 0x0 0xffffffff0000
 DESC Specifies the memory region 1 limit address.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg1_limit_addr
 DESC Memory region 1 limit address
 R 0xe10 64 - S por_cxg_ra_sam_mem_region2_limit_reg
 RESET 0x0 0xffffffff0000
 DESC Specifies the memory region 2 limit address.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg2_limit_addr
 DESC Memory region 2 limit address
 R 0xe18 64 - S por_cxg_ra_sam_mem_region3_limit_reg
 RESET 0x0 0xffffffff0000
 DESC Specifies the memory region 3 limit address.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg3_limit_addr
 DESC Memory region 3 limit address
 R 0xe20 64 - S por_cxg_ra_sam_mem_region4_limit_reg
 RESET 0x0 0xffffffff0000
 DESC Specifies the memory region 4 limit address.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg4_limit_addr
 DESC Memory region 4 limit address
 R 0xe28 64 - S por_cxg_ra_sam_mem_region5_limit_reg
 RESET 0x0 0xffffffff0000
 DESC Specifies the memory region 5 limit address.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg5_limit_addr
 DESC Memory region 5 limit address
 R 0xe30 64 - S por_cxg_ra_sam_mem_region6_limit_reg
 RESET 0x0 0xffffffff0000
 DESC Specifies the memory region 6 limit address.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg6_limit_addr
 DESC Memory region 6 limit address
 R 0xe38 64 - S por_cxg_ra_sam_mem_region7_limit_reg
 RESET 0x0 0xffffffff0000
 DESC Specifies the memory region 7 limit address.
+SGO por_cxg_ra_secure_register_groups_override.rasam_ctl
 F 16 32 reg7_limit_addr
 DESC Memory region 7 limit address
 R 0xe60 64 - S por_cxg_ra_agentid_to_linkid_reg0
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 0 to 7.
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent0_linkid
 DESC Specifies the Link ID for Agent ID 0
 F 8 2 agent1_linkid
@@ -4949,6 +5193,7 @@ DESC Specifies the Link ID for Agent ID 7
 R 0xe68 64 - S por_cxg_ra_agentid_to_linkid_reg1
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 8 to 15.
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent8_linkid
 DESC Specifies the Link ID for Agent ID 8
 F 8 2 agent9_linkid
@@ -4968,6 +5213,7 @@ DESC Specifies the Link ID for Agent ID 15
 R 0xe70 64 - S por_cxg_ra_agentid_to_linkid_reg2
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 16 to 23.
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent16_linkid
 DESC Specifies the Link ID for Agent ID 16
 F 8 2 agent17_linkid
@@ -4987,6 +5233,7 @@ DESC Specifies the Link ID for Agent ID 23
 R 0xe78 64 - S por_cxg_ra_agentid_to_linkid_reg3
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 24 to 31.
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent24_linkid
 DESC Specifies the Link ID for Agent ID 24
 F 8 2 agent25_linkid
@@ -5006,6 +5253,7 @@ DESC Specifies the Link ID for Agent ID 31
 R 0xe80 64 - S por_cxg_ra_agentid_to_linkid_reg4
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 32 to 39.
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent32_linkid
 DESC Specifies the Link ID for Agent ID 32
 F 8 2 agent33_linkid
@@ -5025,6 +5273,7 @@ DESC Specifies the Link ID for Agent ID 39
 R 0xe88 64 - S por_cxg_ra_agentid_to_linkid_reg5
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 40 to 47.
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent40_linkid
 DESC Specifies the Link ID for Agent ID 40
 F 8 2 agent41_linkid
@@ -5044,6 +5293,7 @@ DESC Specifies the Link ID for Agent ID 47
 R 0xe90 64 - S por_cxg_ra_agentid_to_linkid_reg6
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 48 to 55.
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent48_linkid
 DESC Specifies the Link ID for Agent ID 48
 F 8 2 agent49_linkid
@@ -5063,6 +5313,7 @@ DESC Specifies the Link ID for Agent ID 55
 R 0xe98 64 - S por_cxg_ra_agentid_to_linkid_reg7
 RESET 0x0 0x303030303030303
 DESC Specifies the mapping of Agent ID to Link ID for Agent IDs 56 to 63.
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 2 agent56_linkid
 DESC Specifies the Link ID for Agent ID 56
 F 8 2 agent57_linkid
@@ -5082,6 +5333,7 @@ DESC Specifies the Link ID for Agent ID 63
 R 0xea0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg0
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-F LDID to RAID for LDIDs 0 to 7.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid0_raid
 DESC Specifies the RAID for LDID 0
 F 8 6 ldid1_raid
@@ -5101,6 +5353,7 @@ DESC Specifies the RAID for LDID 7
 R 0xea8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg1
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-F LDID to RAID for LDIDs 8 to 15.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid8_raid
 DESC Specifies the RAID for LDID 8
 F 8 6 ldid9_raid
@@ -5120,6 +5373,7 @@ DESC Specifies the RAID for LDID 15
 R 0xeb0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg2
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-F LDID to RAID for LDIDs 16 to 23.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid16_raid
 DESC Specifies the RAID for LDID 16
 F 8 6 ldid17_raid
@@ -5139,6 +5393,7 @@ DESC Specifies the RAID for LDID 23
 R 0xeb8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg3
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-F LDID to RAID for LDIDs 24 to 31.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid24_raid
 DESC Specifies the RAID for LDID 24
 F 8 6 ldid25_raid
@@ -5158,6 +5413,7 @@ DESC Specifies the RAID for LDID 31
 R 0xec0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg4
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-F LDID to RAID for LDIDs 32 to 39.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid32_raid
 DESC Specifies the RAID for LDID 32
 F 8 6 ldid33_raid
@@ -5177,6 +5433,7 @@ DESC Specifies the RAID for LDID 39
 R 0xec8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg5
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-F LDID to RAID for LDIDs 40 to 47.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid40_raid
 DESC Specifies the RAID for LDID 40
 F 8 6 ldid41_raid
@@ -5196,6 +5453,7 @@ DESC Specifies the RAID for LDID 47
 R 0xed0 64 - S por_cxg_ra_rnf_ldid_to_raid_reg6
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-F LDID to RAID for LDIDs 48 to 55.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid48_raid
 DESC Specifies the RAID for LDID 48
 F 8 6 ldid49_raid
@@ -5215,6 +5473,7 @@ DESC Specifies the RAID for LDID 55
 R 0xed8 64 - S por_cxg_ra_rnf_ldid_to_raid_reg7
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-F LDID to RAID for LDIDs 56 to 63.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid56_raid
 DESC Specifies the RAID for LDID 56
 F 8 6 ldid57_raid
@@ -5234,6 +5493,7 @@ DESC Specifies the RAID for LDID 63
 R 0xee0 64 - S por_cxg_ra_rni_ldid_to_raid_reg0
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-I LDID to RAID for LDIDs 0 to 7.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid0_raid
 DESC Specifies the RAID for LDID 0
 F 8 6 ldid1_raid
@@ -5253,6 +5513,7 @@ DESC Specifies the RAID for LDID 7
 R 0xee8 64 - S por_cxg_ra_rni_ldid_to_raid_reg1
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-I LDID to RAID for LDIDs 8 to 15.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid8_raid
 DESC Specifies the RAID for LDID 8
 F 8 6 ldid9_raid
@@ -5272,6 +5533,7 @@ DESC Specifies the RAID for LDID 15
 R 0xef0 64 - S por_cxg_ra_rni_ldid_to_raid_reg2
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-I LDID to RAID for LDIDs 16 to 23.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid16_raid
 DESC Specifies the RAID for LDID 16
 F 8 6 ldid17_raid
@@ -5291,6 +5553,7 @@ DESC Specifies the RAID for LDID 23
 R 0xef8 64 - S por_cxg_ra_rni_ldid_to_raid_reg3
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-I LDID to RAID for LDIDs 24 to 31.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid24_raid
 DESC Specifies the RAID for LDID 24
 F 8 6 ldid25_raid
@@ -5310,6 +5573,7 @@ DESC Specifies the RAID for LDID 31
 R 0xf00 64 - S por_cxg_ra_rnd_ldid_to_raid_reg0
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-D LDID to RAID for LDIDs 0 to 7.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid0_raid
 DESC Specifies the RAID for LDID 0
 F 8 6 ldid1_raid
@@ -5329,6 +5593,7 @@ DESC Specifies the RAID for LDID 7
 R 0xf08 64 - S por_cxg_ra_rnd_ldid_to_raid_reg1
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-D LDID to RAID for LDIDs 8 to 15.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid8_raid
 DESC Specifies the RAID for LDID 8
 F 8 6 ldid9_raid
@@ -5348,6 +5613,7 @@ DESC Specifies the RAID for LDID 15
 R 0xf10 64 - S por_cxg_ra_rnd_ldid_to_raid_reg2
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-D LDID to RAID for LDIDs 16 to 23.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid16_raid
 DESC Specifies the RAID for LDID 16
 F 8 6 ldid17_raid
@@ -5367,6 +5633,7 @@ DESC Specifies the RAID for LDID 23
 R 0xf18 64 - S por_cxg_ra_rnd_ldid_to_raid_reg3
 RESET 0x0 0x3f3f3f3f3f3f3f3f
 DESC Specifies the mapping of RN-D LDID to RAID for LDIDs 24 to 31.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 6 ldid24_raid
 DESC Specifies the RAID for LDID 24
 F 8 6 ldid25_raid
@@ -5386,21 +5653,25 @@ DESC Specifies the RAID for LDID 31
 R 0xf20 64 - S por_cxg_ra_agentid_to_linkid_val
 RESET 0x0 0xffffffffffffffff
 DESC Specifies which Agent ID to Link ID mappings are valid.
+SGO por_cxg_ra_secure_register_groups_override.linkid_ctl
 F 0 64 valid
 DESC Specifies whether the Link ID is valid; bit number corresponds to logical Agent ID number (from 0 to 63)
 R 0xf28 64 - S por_cxg_ra_rnf_ldid_to_raid_val
 RESET 0x0 0xffffffffffffffff
 DESC Specifies which RN-F LDID to RAID mappings are valid.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 64 valid
 DESC Specifies whether the RAID is valid; bit number corresponds to logical RN-F LDID number (from 0 to 63)
 R 0xf30 64 - S por_cxg_ra_rni_ldid_to_raid_val
 RESET 0x0 0xffffffff
 DESC Specifies which RN-I LDID to RAID mappings are valid.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 32 valid
 DESC Specifies whether the RAID is valid; bit number corresponds to logical RN-I LDID number (from 0 to 31)
 R 0xf38 64 - S por_cxg_ra_rnd_ldid_to_raid_val
 RESET 0x0 0xffffffff
 DESC Specifies which RN-D LDID to RAID mappings are valid.
+SGO por_cxg_ra_secure_register_groups_override.ldid_ctl
 F 0 32 valid
 DESC Specifies whether the RAID is valid; bit number corresponds to logical RN-D LDID number (from 0 to 31)
 R 0x1000 64 V S por_cxg_ra_cxprtcl_link0_ctl
@@ -5553,6 +5824,7 @@ DESC Allows non-secure access to secure QoS control registers
 R 0xa00 64 - S por_rni_cfg_ctl
 RESET 0x200201401 0x3ff3ff777f
 DESC Functions as the configuration control register. Specifies the current mode.
+SGO por_rni_secure_register_groups_override.cfg_ctl
 F 0 1 qpc_en
 DESC When set, enables QPC-based scheduling using two QoS priority classes (QoS15 and non-QoS15)
 F 1 1 wfc
@@ -5598,21 +5870,25 @@ PAR POR_R2_ENABLE_PARAM
 R 0xa10 64 - S por_rni_s0_port_control
 RESET 0x0 0x7ff
 DESC Controls port S0 AXI/ACE slave interface settings.
+SGO por_rni_secure_register_groups_override.port_ctrl
 F 0 11 s0_lpid_mask
 DESC Port S0 LPID mask LPID[0]: Equal to the result of UnaryOR of BitwiseAND of LPID mask and AXID (LPID[0] = |(AXID & mask)); specifies which AXID bit is reflected in the LSB of LPID LPID[2:1]: Equal to port ID[1:0]; the MSB of LPID contains port ID
 R 0xa18 64 - S por_rni_s1_port_control
 RESET 0x0 0x7ff
 DESC Controls port S1 AXI/ACE slave interface settings.
+SGO por_rni_secure_register_groups_override.port_ctrl
 F 0 11 s1_lpid_mask
 DESC Port S1 LPID mask LPID[0]: Equal to the result of UnaryOR of BitwiseAND of LPID mask and AXID (LPID[0] = |(AXID & mask)); specifies which AXID bit is reflected in the LSB of LPID LPID[2:1]: Equal to port ID[1:0]; the MSB of LPID contains port ID
 R 0xa20 64 - S por_rni_s2_port_control
 RESET 0x0 0x7ff
 DESC Controls port S2 AXI/ACE slave interface settings.
+SGO por_rni_secure_register_groups_override.port_ctrl
 F 0 11 s2_lpid_mask
 DESC Port S2 LPID mask LPID[0]: Equal to the result of UnaryOR of BitwiseAND of LPID mask and AXID (LPID[0] = |(AXID & mask)); specifies which AXID bit is reflected in the LSB of LPID LPID[2:1]: Equal to port ID[1:0]; the MSB of LPID contains port ID
 R 0xa80 64 - S por_rni_s0_qos_control
 RESET 0x0 0xff00ff
 DESC Controls QoS settings for port S0 AXI/ACE slave interface.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 1 s0_aw_lat_en
 DESC Enables port S0 AW QoS regulation when set
 F 1 1 s0_ar_lat_en
@@ -5636,6 +5912,7 @@ DESC AR QoS override value for port S0
 R 0xa88 64 - S por_rni_s0_qos_lat_tgt
 RESET 0x0 0xfff0fff
 DESC Controls QoS target latency (in cycles) for regulations of port S0 read and write transactions.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 12 s0_aw_lat_tgt
 DESC Port S0 AW channel target latency; a value of 0 corresponds to no regulation
 F 16 12 s0_ar_lat_tgt
@@ -5643,6 +5920,7 @@ DESC Port S0 AR channel target latency; a value of 0 corresponds to no regulatio
 R 0xa90 64 - S por_rni_s0_qos_lat_scale
 RESET 0x0 0x707
 DESC Controls the QoS target latency scale factor for port S0 read and write transactions. This register represents powers of two from the range 2^(-5) to 2^(-12); it is used to match a 16-bit integrator.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 3 s0_aw_lat_scale
 DESC Port S0 AW QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'b011: 2^(-8) 3'b100: 2^(-9) 3'b101: 2^(-10) 3'b110: 2^(-11) 3'b111: 2^(-12)
 F 8 3 s0_ar_lat_scale
@@ -5650,6 +5928,7 @@ DESC Port S0 AR QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'
 R 0xa98 64 - S por_rni_s0_qos_lat_range
 RESET 0x0 0xf0f0f0f
 DESC Controls the minimum and maximum QoS values generated by the QoS latency regulator for port S0 read and write transactions.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 4 s0_aw_lat_min_qos
 DESC Port S0 AW QoS minimum value
 F 8 4 s0_aw_lat_max_qos
@@ -5661,6 +5940,7 @@ DESC Port S0 AR QoS maximum value
 R 0xaa0 64 - S por_rni_s1_qos_control
 RESET 0x0 0xff00ff
 DESC Controls QoS settings for port S1 AXI/ACE slave interface.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 1 s1_aw_lat_en
 DESC Enables port S1 AW QoS regulation when set
 F 1 1 s1_ar_lat_en
@@ -5684,6 +5964,7 @@ DESC AR QoS override value for port S1
 R 0xaa8 64 - S por_rni_s1_qos_lat_tgt
 RESET 0x0 0xfff0fff
 DESC Controls QoS target latency (in cycles) for regulation of port S1 read and write transactions.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 12 s1_aw_lat_tgt
 DESC Port S1 AW channel target latency; a value of 0 corresponds to no regulation
 F 16 12 s1_ar_lat_tgt
@@ -5691,6 +5972,7 @@ DESC Port S1 AR channel target latency; a value of 0 corresponds to no regulatio
 R 0xab0 64 - S por_rni_s1_qos_lat_scale
 RESET 0x0 0x707
 DESC Controls the QoS target latency scale factor for port S1 read and write transactions. This register represents powers of two from the range 2^(-5) to 2^(-12); it is used to match a 16-bit integrator.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 3 s1_aw_lat_scale
 DESC Port S1 AW QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'b011: 2^(-8) 3'b100: 2^(-9) 3'b101: 2^(-10) 3'b110: 2^(-11) 3'b111: 2^(-12)
 F 8 3 s1_ar_lat_scale
@@ -5698,6 +5980,7 @@ DESC Port S1 AR QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'
 R 0xab8 64 - S por_rni_s1_qos_lat_range
 RESET 0x0 0xf0f0f0f
 DESC Controls the minimum and maximum QoS values generated by the QoS latency regulator for port S1 read and write transactions.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 4 s1_aw_lat_min_qos
 DESC Port S1 AW QoS minimum value
 F 8 4 s1_aw_lat_max_qos
@@ -5709,6 +5992,7 @@ DESC Port S1 AR QoS maximum value
 R 0xac0 64 - S por_rni_s2_qos_control
 RESET 0x0 0xff00ff
 DESC Controls QoS settings for port S2 AXI/ACE slave interface.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 1 s2_aw_lat_en
 DESC Enables port S2 AW QoS regulation when set
 F 1 1 s2_ar_lat_en
@@ -5732,6 +6016,7 @@ DESC AR QoS override value for port S2
 R 0xac8 64 - S por_rni_s2_qos_lat_tgt
 RESET 0x0 0xfff0fff
 DESC Controls QoS target latency (in cycles) for regulation of port S2 read and write transactions.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 12 s2_aw_lat_tgt
 DESC Port S2 AW channel target latency; a value of 0 corresponds to no regulation
 F 16 12 s2_ar_lat_tgt
@@ -5739,6 +6024,7 @@ DESC Port S2 AR channel target latency; a value of 0 corresponds to no regulatio
 R 0xad0 64 - S por_rni_s2_qos_lat_scale
 RESET 0x0 0x707
 DESC Controls the QoS target latency scale factor for port S2 read and write transactions. This register represents powers of two from the range 2^(-5) to 2^(-12); it is used to match a 16-bit integrator.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 3 s2_aw_lat_scale
 DESC Port S2 AW QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'b011: 2^(-8) 3'b100: 2^(-9) 3'b101: 2^(-10) 3'b110: 2^(-11) 3'b111: 2^(-12)
 F 8 3 s2_ar_lat_scale
@@ -5746,6 +6032,7 @@ DESC Port S2 AR QoS scale factor 3'b000: 2^(-5) 3'b001: 2^(-6) 3'b010: 2^(-7) 3'
 R 0xad8 64 - S por_rni_s2_qos_lat_range
 RESET 0x0 0xf0f0f0f
 DESC Controls the minimum and maximum QoS values generated by the QoS latency regulator for port S2 read and write transactions.
+SGO por_rni_secure_register_groups_override.qos_ctrl
 F 0 4 s2_aw_lat_min_qos
 DESC Port S2 AW QoS minimum value
 F 8 4 s2_aw_lat_max_qos
@@ -8102,6 +8389,7 @@ DESC Indicates RN SAM is programmed and ready 1'b0: STALL requests 1'b1: UNSTALL
 R 0xc08 64 - S non_hash_mem_region_reg0
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures non-hashed memory regions 0 and 1.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region1_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 1 size
 F 36 5 region1_size
@@ -8121,6 +8409,7 @@ DESC Memory region 0 valid 1'b0: Not valid 1'b1: Valid for memory region compari
 R 0xc10 64 - S non_hash_mem_region_reg1
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures non-hashed memory regions 2 and 3.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region3_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 3 size
 F 36 5 region3_size
@@ -8140,6 +8429,7 @@ DESC Memory region 2 valid 1'b0: Not valid 1'b1: Valid for memory region compari
 R 0xc18 64 - S non_hash_mem_region_reg2
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures non-hashed memory regions 4 and 5.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region5_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 5 size
 F 36 5 region5_size
@@ -8159,6 +8449,7 @@ DESC Memory region 4 valid 1'b0: Not valid 1'b1: Valid for memory region compari
 R 0xc20 64 - S non_hash_mem_region_reg3
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures non-hashed memory regions 6 and 7.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region7_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 7 size
 F 36 5 region7_size
@@ -8178,6 +8469,7 @@ DESC Memory region 6 valid 1'b0: Not valid 1'b1: Valid for memory region compari
 R 0xc28 64 - S non_hash_mem_region_reg4
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures non-hashed memory regions 8 and 9.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region9_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 9 size
 F 36 5 region9_size
@@ -8230,6 +8522,7 @@ DESC Non-hashed target node ID 11
 R 0xc48 64 - S sys_cache_grp_region0
 RESET 0x0 0x7fffffff7ffffffd
 DESC Configures hashed memory regions 0 and 1.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region1_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 1 size
 F 36 5 region1_size
@@ -8251,6 +8544,7 @@ DESC Memory region 0 valid 1'b0: Not valid 1'b1: Valid for memory region compari
 R 0xc50 64 - S sys_cache_grp_region1
 RESET 0x0 0x7fffffff7fffffff
 DESC Configures hashed memory regions 2 and 3.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region3_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 3 size
 F 36 5 region3_size
@@ -8371,6 +8665,7 @@ DESC Non-hashed node ID for system cache group 3
 R 0xca0 64 - S non_hash_mem_region_reg5
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures non-hashed memory regions 10 and 11.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region11_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 11 size
 F 36 5 region11_size
@@ -8390,6 +8685,7 @@ DESC Memory region 10 valid 1'b0: Not valid 1'b1: Valid for memory region compar
 R 0xca8 64 - S non_hash_mem_region_reg6
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures non-hashed memory regions 12 and 13.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region13_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 13 size
 F 36 5 region13_size
@@ -8409,6 +8705,7 @@ DESC Memory region 12 valid 1'b0: Not valid 1'b1: Valid for memory region compar
 R 0xcb0 64 - S non_hash_mem_region_reg7
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures non-hashed memory regions 14 and 15.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region15_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 15 size
 F 36 5 region15_size
@@ -8428,6 +8725,7 @@ DESC Memory region 14 valid 1'b0: Not valid 1'b1: Valid for memory region compar
 R 0xcb8 64 - S non_hash_mem_region_reg8
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures non-hashed memory regions 16 and 17.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region17_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 17 size
 F 36 5 region17_size
@@ -8447,6 +8745,7 @@ DESC Memory region 16 valid 1'b0: Not valid 1'b1: Valid for memory region compar
 R 0xcc0 64 - S non_hash_mem_region_reg9
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures non-hashed memory regions 18 and 19.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region19_base_addr
 DESC Bits [47:26] of base address of the range CONSTRAINT: Must be an integer multiple of region 19 size
 F 36 5 region19_size
@@ -8617,6 +8916,7 @@ DESC Top address bit 2 for system cache group 3
 R 0xd58 64 - S gic_mem_region_reg
 RESET 0x0 0x7ff0ffffffff007d
 DESC Configures GIC memory region.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 52 11 gic_region_nodeid
 DESC GIC node ID 30
 F 16 32 gic_region_base_addr
@@ -8787,6 +9087,7 @@ DESC Specifies target ID 0 for CPAG 1
 R 0xf00 64 - S sys_cache_grp_secondary_reg0
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures secondary hashed memory regions 0 and 1.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region1_scndry_base_addr
 DESC Bits [47:26] of secondary base address of the range CONSTRAINT: Must be an integer multiple of region 1 size
 F 36 5 region1_scndry_size
@@ -8806,6 +9107,7 @@ DESC Secondary memory region 0 valid 1'b0: Not valid 1'b1: Valid for memory regi
 R 0xf08 64 - S sys_cache_grp_secondary_reg1
 RESET 0x0 0x7ffffffd7ffffffd
 DESC Configures secondary hashed memory regions 2 and 3.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 41 22 region3_scndry_base_addr
 DESC Bits [47:26] of secondary base address of the range CONSTRAINT: Must be an integer multiple of region 3 size
 F 36 5 region3_scndry_size
@@ -8825,6 +9127,7 @@ DESC Secondary memory region 2 valid 1'b0: Not valid 1'b1: Valid for memory regi
 R 0xf10 64 - S sys_cache_grp_cal_mode_reg
 RESET 0x0 0x1000100010001
 DESC Configures the HN-F CAL mode support for all system cache groups.
+SGO por_rnsam_secure_register_groups_override.mem_range
 F 48 1 scg3_hnf_cal_mode_en
 DESC Enables support for HN-F CAL for SCG 3
 F 32 1 scg2_hnf_cal_mode_en
@@ -9070,6 +9373,7 @@ DESC Allows non-secure access to secure SAM registers
 R 0xa00 64 - S por_hni_cfg_ctl
 RESET 0x1 0x1
 DESC Functions as the configuration control register for HN-I.
+SGO por_hni_secure_register_groups_override.cfg_ctl
 F 0 1 reqerr_cohreq_en
 DESC Enables sending of NDE response error to RN and logging of error information for the following requests: 1. Coherent Read 2. CleanUnique/MakeUnique 3. Coherent/CopyBack Write
 R 0xa08 64 - S por_hni_aux_ctl
@@ -9082,6 +9386,7 @@ DESC Enables side reader in physical memory range
 R 0xc00 64 - S por_hni_sam_addrregion0_cfg
 RESET 0x600000000000003f 0x7c0000000000003f
 DESC Configures Address Region 0.
+SGO por_hni_secure_register_groups_override.sam
 F 0 6 order_region_size
 DESC <n>; used to calculate Order Region 0 size within Address Region 0 (2^n*4KB)
 F 58 1 physical_mem_en
@@ -9097,6 +9402,7 @@ DESC Enables early write acknowledgment in Address Region 0; used to improve wri
 R 0xc08 64 - S por_hni_sam_addrregion1_cfg
 RESET 0x6000000000000000 0xfcfffffffff0fc3f
 DESC Configures Address Region 1.
+SGO por_hni_secure_register_groups_override.sam
 F 0 6 order_region_size
 DESC <n>; used to calculate Order Region 1 size within Address Region 1 (2^n*4KB)
 F 10 6 addr_region_size
@@ -9118,6 +9424,7 @@ DESC Address Region 1 fields are programmed and valid
 R 0xc10 64 - S por_hni_sam_addrregion2_cfg
 RESET 0x6000000000000000 0xfcfffffffff0fc3f
 DESC Configures Address Region 2.
+SGO por_hni_secure_register_groups_override.sam
 F 0 6 order_region_size
 DESC <n>; used to calculate Order Region 2 size within Address Region 2 (2^n*4KB)
 F 10 6 addr_region_size
@@ -9139,6 +9446,7 @@ DESC Address Region 2 fields are programmed and valid
 R 0xc18 64 - S por_hni_sam_addrregion3_cfg
 RESET 0x6000000000000000 0xfcfffffffff0fc3f
 DESC Configures Address Region 3.
+SGO por_hni_secure_register_groups_override.sam
 F 0 6 order_region_size
 DESC <n>; used to calculate Order Region 3 size within Address Region 3 (2^n*4KB)
 F 10 6 addr_region_size

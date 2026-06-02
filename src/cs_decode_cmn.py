@@ -27,10 +27,15 @@ def BIT(x, p):
 
 
 def bytes_hex(x):
+    """
+    Convert a byte string to a hex string, read left-to-right with low bytes first.
+    """
     s = ""
     for b in x:
         s += ("%02x" % b)
     return s
+
+assert bytes_hex(b"\x01\x23") == "0123"
 
 
 class CMNDecoder:
