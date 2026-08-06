@@ -43,7 +43,7 @@ def main(argv):
     cmn_capture.add_trace_arguments(parser, cc_default=True)
     parser.add_argument("--ts", type=int, choices=set(TS_PERIODS), help="timestamp period, in cycles")
     opts = parser.parse_args(argv)
-    trace_session = cmn_capture.TraceSession(opts, atb=True)
+    trace_session = cmn_capture.TraceSession(opts, atb=True, allow_rotation=False)
 
     from arm_ds.debugger_v1 import Debugger
     from com.arm.debug.dtsl import ConnectionManager

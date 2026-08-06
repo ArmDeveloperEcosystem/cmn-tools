@@ -15,6 +15,7 @@ import struct
 
 import iommap as mmap
 from devmem_base import DevMapFactory, DevMap, DevMemNoSecure
+import devmem_memap
 import devmem_phys
 
 
@@ -33,7 +34,9 @@ class DevMemFactory(DevMapFactory):
             print("cannot open /dev/mem: try running as sudo", file=sys.stderr)
             sys.exit(1)
         self.memif = None
-        if devmem_phys.memory_interface_available():
+        if devmem_memap.memory_interface_available():
+            self.memif = devmem_memap.MemoryInterface()
+        elif devmem_phys.memory_interface_available():
             self.memif = devmem_phys.MemoryInterface()
 
     def __str__(self):
@@ -117,7 +120,7 @@ class DevMemDevMap(DevMap):
     def _read(self, off, n, fmt=None):
         if self.secure != "NS":
             pa = self.pa + off
-            return self.owner.memif.read(pa, n)
+            return self.owner.memif.read(pa, n, sec=self.secure)
         off = self.adjust_offset(off)
         if fmt is None:
             fmt = {1:"B", 2:"H", 4:"I", 8:"Q"}[n]
@@ -133,7 +136,7 @@ class DevMemDevMap(DevMap):
     def _write(self, off, n, data, fmt=None, check=None):
         if self.secure != "NS":
             pa = self.pa + off
-            return self.owner.memif.write(pa, n, data)
+            return self.owner.memif.write(pa, n, data, sec=self.secure)
         off = self.adjust_offset(off)
         if fmt is None:
             fmt = {1:"B", 2:"H", 4:"I", 8:"Q"}[n]

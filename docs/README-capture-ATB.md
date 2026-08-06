@@ -79,7 +79,7 @@ Offline latency from trace files
 If you have a CoreSight trace file (e.g. captured via `cmn_capture.py` or ATB),
 you can report request/response latency from the trace stream:
 
-    ./cmn_trace_latency.py --cmn-version=0x600 --input trace.bin --tagged-only
+    ./cmn_trace_latency.py --cmn-version=600 --input trace.bin --tagged-only
 
 By default, the tool matches REQ to RSP/DAT using txnid and source/target IDs
 when available; use `--match` to adjust, and `--req-channel`/`--rsp-channels`

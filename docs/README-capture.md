@@ -82,12 +82,13 @@ can filter on CHI fields, such as opcode, as for cmnwatch.py.
 
 In the default sampling mode, the tool will set up watchpoints to
 capture flits at each crosspoint, and print out the captured flits.
-It will take up to 10 samples per crosspoint.
+It will take a configurable number samples (currently 100) per
+crosspoint.
 
 With the --histogram option, the tool summarizes the samples
 for each combination of source and destination type and opcode,
 and also prints a representative flit for each combination.
-Again the default is 10 samples per crosspoint.
+Again the default is 100 samples per crosspoint.
 
 An example histogram of REQ traffic is shown below:
 
@@ -254,6 +255,9 @@ when a watchpoint matches. Actions are specified as:
 | format=&lt;n&gt; | any | set capture format (default 4) |
 | format2=&lt;n&gt; | any | use an additional watchpoint (format 5 or 6) |
 | debug-trigger | any | generate debug trigger (ATB) |
+| cc | any | include cycle count |
+| nocc | any | don't include cycle count |
+| nogen | any | don't generate packet |
 
 
 Data capture
@@ -290,9 +294,9 @@ payload data, or two 16-byte chunks. As a maximum of two
 watchpoints are available, it is not possible to capture the
 header and the full 32-byte payload comprising two chunks.
 
-Avilable formats include:
+Available formats include:
 
-| Mnemonic | dataid | format 1 | format 2 |
+| Mnemonic | dataid | format 1 | format 2 | what it does |
 |---|---:|---:|---:|---:|
 | HDR |  | 4 |  | all DAT headers |
 | H01 | 0 | 4 |  | DAT header for first packet |
@@ -307,7 +311,7 @@ Avilable formats include:
 | HD3 | 2 | 4 | 6 | header + payload bits 511:384 |
 | DALL |  | 5 | 6 | all payloads |
 | D01 | 0 | 5 | 6 | payload bits 255:0 |
-| D23 | 0 | 5 | 6 | payload bits 511:256 |
+| D23 | 2 | 5 | 6 | payload bits 511:256 |
 
 Note that the "DALL" format will capture all data payloads,
 but the captured data does not indicate whether it is bits

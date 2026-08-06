@@ -577,6 +577,43 @@ class MPAM(ACPITable):
             print("  %s" % self.msc[msc_id])
 
 
+
+class MCFGStruct:
+    def __init__(self, base_address, segment_group, start_bus, end_bus):
+        self.base_address = base_address     # ECAM physical base address
+        self.segment_group = segment_group   # PCI segment group number
+        self.start_bus = start_bus           # first bus number
+        self.end_bus = end_bus               # last bus number
+
+    def __str__(self):
+        s = "0x%x: %04x:%02x" % (self.base_address, self.segment_group, self.start_bus)
+        if self.end_bus != self.start_bus:
+            s += "..%04x:%02x" % (self.segment_group, self.end_bus)
+        return s
+
+
+class MCFG(ACPITable):
+    """
+    MCFG: PCIe Memory-mapped Configuration
+    """
+    def __init__(self, fn=None, handle=None, sig=b"MCFG", system=None):
+        ACPITable.__init__(self, fn, handle=handle, sig=sig, system=system)
+        self.cfg = []
+        self.f.read(8)      # reserved bytes
+        while True:
+            s = self.f.read(16)
+            if not s:
+                break
+            assert len(s) == 16, "MCFG truncated"
+            (base_address, segment_group, start_bus, end_bus, reserved) = struct.unpack("<QHBBI", s)
+            cfg = MCFGStruct(base_address, segment_group, start_bus, end_bus)
+            self.cfg.append(cfg)
+
+    def show_subclass(self):
+        for c in self.cfg:
+            print("  %s" % c)
+
+
 def ACPI(fn, system=None):
     """
     Open an ACPI file, returning an ACPITable or subclass thereof.
@@ -595,6 +632,8 @@ def ACPI(fn, system=None):
             return SRAT(fn, handle=f, sig=sig, system=system)
         elif sig == b"PCCT":
             return PCCT(fn, handle=f, sig=sig, system=system)
+        elif sig == b"MCFG":
+            return MCFG(fn, handle=f, sig=sig, system=system)
         elif sig == b"MPAM":
             return MPAM(fn, handle=f, sig=sig, system=system)
         else:

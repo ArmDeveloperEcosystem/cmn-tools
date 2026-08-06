@@ -55,6 +55,41 @@ cmn_list.py
       sudo python cmn_list.py --list
       sudo python cmn_list.py --node-type hn-f
 
+cmn_address_map.py
+  Build a system-wide physical address map by reading the RN-SAMs in
+  every discovered CMN mesh.
+
+  Use this to identify the mesh and home node selected for each address
+  range, resolving inter-mesh gateway routes to the final home mesh.
+  On a local target, ranges are split and annotated using /proc/iomem
+  so memory-mapped devices can be associated with their CMN targets.
+  Differences between RN-SAM tables are reported as warnings. CSV output
+  is available for further processing.
+
+      sudo python cmn_address_map.py
+      sudo python cmn_address_map.py --csv > cmn-address-map.csv
+      sudo python cmn_address_map.py --update
+
+  One or more physical addresses may be supplied for lookup. If the cached
+  JSON contains an I/O address map, it is used without accessing CMN device
+  registers. Otherwise the map is discovered by probing the SAMs. Addresses
+  use the same decimal or ``0x``-prefixed hexadecimal syntax as
+  ``proc_iomem.py``.
+
+      python cmn_address_map.py 0x2a000000 0x40000000
+
+  ``--cached`` requires cached information and fails rather than probing
+  when it is unavailable. ``--live`` ignores cached address information
+  and probes the SAMs. ``--json`` selects an alternative system description.
+
+      python cmn_address_map.py --cached 0x2a000000
+      sudo python cmn_address_map.py --live 0x40000000
+
+  With ``--update``, non-hashed regions hosted by I/O home nodes are
+  captured in the top-level ``io_address_map`` section of the cached CMN
+  system JSON. Named subranges from ``/proc/iomem`` are retained as resource
+  annotations. Hashed regions, including DRAM mappings, are not captured.
+
 cmn_debugmap.py
   Generate a Linux-driver-style CMN debug map from the JSON topology.
 
@@ -131,7 +166,7 @@ cmn_unlock.py
   need to be inspected. This is a bring-up/debug tool and should be used
   with care.
 
-      python cmn_unlock.py --unlock --root
+      python cmn_unlock.py --unlock
 
 
 PMU and perf tools
@@ -229,6 +264,11 @@ cmn_decode_trace.py
   Use this after collecting CMN trace through CoreSight.
 
       python cmn_decode_trace.py --cmn-version 700 trace.bin
+
+  Trace widths can be supplied with ``--pa-width``, ``--req-pa-width``
+  and ``--rsvdc-width``. When omitted, the decoder retains its historical
+  product defaults. The same options are available for
+  ``cmn_trace_latency.py``.
 
 cmn_trace_latency.py
   Report transaction latency from an offline CMN trace file.

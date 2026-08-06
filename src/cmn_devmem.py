@@ -399,7 +399,7 @@ class CMNNodeBase:
             self.children.append(child_node)
             if self.is_XP():
                 # The XP will have CMNPort objects for all its ports. The device nodes should point back to the port.
-                child_node.port = self.port(child_node.port_number)
+                assert child_node.port == self.port(child_node.port_number)
         # Check that the other child pointers are zero.
         # TBD: this shouldn't really be controlled by 'verbose'.
         if self.C.verbose >= 4:
@@ -468,7 +468,9 @@ class CMNNodeBase:
     def properties(self):
         return cmn_node_properties.get(self.type(), CMN_PROP_none)
 
-    def is_home_node(self):
+    def is_home_node(self, include_device=False):
+        if include_device:
+            return self.type() in CMN_NODE_all_HN
         return self.has_properties(CMN_PROP_HNF)    # HN-F and HN-S
 
     def cache_geometry(self):
@@ -650,6 +652,9 @@ class CMNPort:
         return cmn_port_device_type_str(self.connected_type)
 
     def device_type(self):
+        """
+        Compatibility alias for connected_type.
+        """
         return self.connected_type
 
     def XP(self):
@@ -659,10 +664,13 @@ class CMNPort:
         return self.xp.C
 
     def properties(self):
-        return cmn_port_properties[self.connected_type]
+        props = cmn_port_properties[self.connected_type]
+        if self.cal == 3:
+            props |= CMN_PROP_HNI
+        return props
 
     def has_properties(self, props):
-        return cmn_port_device_type_has_properties(self.device_type(), props)
+        return cmn_port_device_type_has_properties(self.connected_type, props)
 
     def port_info(self, n=0):
         """
@@ -876,7 +884,7 @@ class CMNNodeXP(CMNNodeBase):
         attached to this port. This is not the same as the node type.
         """
         p = self.port(rP)
-        return p.device_type() if p is not None else None
+        return p.connected_type if p is not None else None
 
     def port_device_type_str(self, rP):
         """
@@ -913,6 +921,12 @@ class CMNNodeXP(CMNNodeBase):
         individual XP - contrary to the implication of the CMN TRM.
         """
         return 1 if self.n_device_ports() > 2 else 2
+
+    def id_device_bits(self):
+        """
+        Compatibility alias for n_device_bits().
+        """
+        return self.n_device_bits()
 
     def port_base_id(self, rP):
         assert rP < self.n_device_ports(), "%s: bad port number P%u" % (self, rP)
@@ -974,9 +988,18 @@ class CMNNodeXP(CMNNodeBase):
 
 class DTMWatchpoint:
     """
-    Current configuration of a DTM watchpoint.
+    Current configuration of a single DTM physical watchpoint.
+
+    Some of the terminology here reflects DTM register field naming:
+      'dev' is a port number (not a device number).
+      'chn' is a CHI channel selector (wp_chn_sel), 0/1/2/3 for REQ/RSP/SNP/DAT.
+      'chn_num' is a channel instance selector for parallel channels.
+
+    This structure describes a single watchpoint configuration. Any watchpoint grouping,
+    e.g. for multiple ports, or multiple fragments of a DAT packet, or multiple
+    channel instances, must be handled at a higher level.
     """
-    def __init__(self, dtm=None, up=None, wp=None, cfg=None, value=None, mask=None, chn=None, dev=None, grp=None, type=None, pkt_gen=None, cc=None, exclusive=None, combine=None, ctrig=None, dbgtrig=None):
+    def __init__(self, dtm=None, up=None, wp=None, cfg=None, value=None, mask=None, chn=None, chn_num=0, dev=None, grp=None, type=None, pkt_gen=None, cc=None, exclusive=None, combine=None, ctrig=None, dbgtrig=None):
         self.dtm = dtm
         self.C = self.dtm.C
         self.wp = wp           # Watchpoint number
@@ -984,6 +1007,7 @@ class DTMWatchpoint:
         self.value = value
         self.mask = mask
         self.chn = chn
+        self.chn_num = chn_num
         self.dev = dev
         self.grp = grp
         self.type = type          # i.e. format (4 for full flit)
@@ -1003,6 +1027,10 @@ class DTMWatchpoint:
         Unpack watchpoint configuration, from the configuration register value
         """
         self.chn = BITS(self.cfg, 1, 2)
+        if self.C.DTM_WP_CHN_NUM_SHIFT is not None:
+            self.chn_num = BITS(self.cfg, self.C.DTM_WP_CHN_NUM_SHIFT, 2)
+        else:
+            self.chn_num = 0
         self.dev = BIT(self.cfg, 0)
         if self.dtm.xp.n_device_ports() > 2:
             self.dev |= (BIT(self.cfg, 17) << 1)
@@ -1033,8 +1061,13 @@ class DTMWatchpoint:
         if self.type is not None:
             config |= (self.type << self.C.DTM_WP_PKT_TYPE_SHIFT)
         if self.chn is not None:
-            assert self.chn in [0, 1, 2, 3], "bad watchpoint channel: %u" % chn
+            # wp_chn_sel selects the CHI channel: REQ, RSP, SNP, DAT.
+            # wp_chn_num selects the replicated channel.
+            assert self.chn in [0, 1, 2, 3], "bad watchpoint channel: %u" % self.chn
             config |= (self.chn << 1)
+        if self.chn_num:
+            assert self.chn_num < self.C.vc_num[self.chn], "bad channel number for %u (%u VCs): %u" % (self.chn, self.C.vc_num[self.chn], self.chn_num)
+            config |= (self.chn_num << self.C.DTM_WP_CHN_NUM_SHIFT)
         if self.dev is not None:
             dev0 = self.dev & 1
             config |= (dev0 << 0)
@@ -1083,8 +1116,7 @@ class DTMWatchpoint:
         # Remainder are extensions, not recognized by Linux PMU driver
         if self.rsvdc_bsel:
             s == ",wp_rsvdc_bsel=%u" % self.rsvdc_bsel
-        if self.pkt_gen:
-            s += ",wp_pkt_gen=1"
+        s += ",wp_pkt_gen=%u" % int(self.pkt_gen)
         if self.ctrig:
             s += ",wp_ctrig=1"
         if self.dbgtrig:
@@ -1266,10 +1298,15 @@ class CMNDTM:
 
     def dtm_wp_reset(self, wp):
         """
-        Reset a watchpoint to match nothing and do nothing
+        Reset a watchpoint to match nothing and do nothing.
+        But don't change the format and channel info, as we may have captured a packet
+        in the FIFO and need the watchpoint configuration to decode it.
         """
-        w = DTMWatchpoint(dtm=self, pkt_gen=False, value=0xcccccccccccccccc, mask=0, type=4)
-        self.dtm_wp_set(wp, w)
+        cfg = self.dtm_read64(CMN_DTM_WP0_CONFIG_off+(wp*24))
+        self.dtm_write64(CMN_DTM_WP0_MASK_off+(wp*24), 0x0000000000000000)
+        self.dtm_write64(CMN_DTM_WP0_VAL_off+(wp*24), 0xcccccccccccccccc)
+        cfg &= ~self.C.DTM_WP_PKT_GEN
+        self.dtm_write64(CMN_DTM_WP0_CONFIG_off+(wp*24), cfg)
 
     def dtm_reset_wps(self):
         """
@@ -1287,7 +1324,7 @@ class CMNDTM:
         if self.C.product_config.product_id == cmn_base.PART_CMN600:
             h = (w.chn << 30) | (w.dev << 29) | (w.wp << 27) | (w.type << 24) | (nid << 8) | 0x40 | (w.cc << 4) | lossy
         else:
-            h = (w.chn << 28) | (w.wp << 24) | ((nid >> 3) << 11) | (w.dev << 8) | 0x40 | (w.cc << 4) | (w.type << 1) | lossy
+            h = (w.chn_num << 30) | (w.chn << 28) | (w.wp << 24) | ((nid >> 3) << 11) | (w.dev << 8) | 0x40 | (w.cc << 4) | (w.type << 1) | lossy
         return h
 
     def pmu_enable(self):
@@ -1390,6 +1427,10 @@ class CMNNodeDev(CMNNodeBase):
     """
     def __init__(self, *args, **kwargs):
         CMNNodeBase.__init__(self, *args, **kwargs)
+
+    @property
+    def port(self):
+        return self.XP().port(self.port_number)
 
 
 class CMNNodeDT(CMNNodeDev):
@@ -1669,6 +1710,7 @@ class CMN:
             self.pmu_events = None
 
         self.unit_info = self.rootnode.read64(CMN_any_UNIT_INFO)   # por_info_global
+        self.unit_info1 = None
 
         self.multiple_dtms = BIT(self.unit_info, (59 if self.part_ge_S3r2() else 63))
         if verbose > 0 and self.multiple_dtms:
@@ -1689,7 +1731,37 @@ class CMN:
         # TBD currently we don't discover LEGACY_TZ_EN.
         self.root_security = "ROOT" if self.part_ge_S3() else "S"
 
+        self.vc_num = [1, 1, 1, 1]        # instances per CHI channel
+        if self.part_ge_700():
+            self.unit_info1 = self.rootnode.read64(CMN_any_UNIT_INFO1)
+        if self.part_ge_650():
+            # Fields are 2-bit through CMN S3 r0, change to 3-bit in CMN S3 r2
+            if not self.part_ge_700():
+                self.vc_num[1] = max(1, BITS(self.unit_info,  52, 2))
+                self.vc_num[3] = max(1, BITS(self.unit_info,  50, 2))
+            elif not self.part_ge_S3r2():
+                self.vc_num[0] = max(1, BITS(self.unit_info1, 0, 2))
+                self.vc_num[1] = max(1, BITS(self.unit_info,  52, 2))
+                self.vc_num[2] = max(1, BITS(self.unit_info1, 2, 2))
+                self.vc_num[3] = max(1, BITS(self.unit_info,  50, 2))
+            else:
+                self.vc_num[0] = max(1, BITS(self.unit_info1, 0, 3))
+                self.vc_num[1] = max(1, BITS(self.unit_info1, 9, 3))
+                self.vc_num[2] = max(1, BITS(self.unit_info1, 3, 3))
+                self.vc_num[3] = max(1, BITS(self.unit_info1, 6, 3))
+
+        # CMN-600/650/700 and CMN S3 TRMs:
+        # por_info_global has chi_req_rsvdc_width[7:0],
+        # chi_req_addr_width[15:8], and physical_address_width[23:16].
+        self.product_config.rsvdc_width = BITS(self.unit_info, 0, 8)
+        self.product_config.req_pa_width = BITS(self.unit_info, 8, 8)
+        self.product_config.pa_width = BITS(self.unit_info, 16, 8)
         self.product_config.mpam_enabled = self.part_ge_650() and (BIT(self.unit_info, 49) != 0)
+        if self.product_config.mpam_enabled:
+            self.product_config.mpam_partid_width = 9
+
+        self.mecid_width = 0
+
         self.product_config.chi_version = self.chi_version()
         assert self.product_config.chi_version >= 2, "failed to detect CHI version: info=0x%x" % self.unit_info
         if not self.part_ge_S3():
@@ -1700,6 +1772,25 @@ class CMN:
             self.DTM_BASE = CMN_DTM_BASE_S3r1  # 0xA000
         if verbose:
             self.log("CMN configuration: %s" % self.product_config, level=1)
+
+        if self.unit_info1 is not None:
+            if self.product_config.product_id < cmn_base.PART_CMN_S3 or self.product_config.revision_major in [0, 1]:
+                self.product_config.mte_enabled = BIT(self.unit_info1, 19)
+            else:
+                self.product_config.mte_enabled = BIT(self.unit_info1, 25)
+        if self.product_config.product_id == cmn_base.PART_CMN_S3:
+            if self.product_config.revision_major == 1:
+                iohub_enable = BIT(self.unit_info1, 28)
+                chi_mecid_width = BITS(self.unit_info1, 26, 2)
+                mpam12 = BIT(self.unit_info1, 25)
+            elif self.product_config.revision_major >= 2:
+                iohub_enable = BIT(self.unit_info1, 34)
+                chi_mecid_width = BITS(self.unit_info1, 32, 2)
+                mpam12 = BIT(self.unit_info1, 31)
+            if self.product_config.revision_major >= 1:
+                if self.product_config.mpam_enabled:
+                    self.product_config.mpam_partid_width = 12 if mpam12 else 9
+                self.mecid_width = [0, 12, 16, 0][chi_mecid_width]
 
         #
         # Now traverse the CMN space to discover all the nodes. We can optionally
@@ -1737,13 +1828,6 @@ class CMN:
         self.dimY = self.n_XPs // self.dimX
         assert self.n_XPs == (self.dimX * self.dimY), "unexpected: %u x %u mesh but %u XPs" % (self.dimX, self.dimY, self.n_XPs)
         self.coord_bits = cmn_base.id_coord_bits(self.dimX, self.dimY)
-        md = max(self.dimX, self.dimY)
-        if md >= 9:
-            self.coord_bits = 4
-        elif md >= 5:
-            self.coord_bits = 3
-        else:
-            self.coord_bits = 2
         for xp in self.XPs():
             (X,Y) = xp.XY()
             self.coord_XP[(X,Y)] = xp
@@ -1757,6 +1841,7 @@ class CMN:
             self.DTM_WP_CC_EN        = 0x1000   # enable cycle count
             self.DTM_WP_CTRIG        = 0x2000
             self.DTM_WP_DBGTRIG      = 0x4000
+            self.DTM_WP_CHN_NUM_SHIFT = None
         else:
             self.DTM_WP_RSVDC_BSEL_SHIFT = 6
             self.DTM_WP_EXCLUSIVE    = 0x0100
@@ -1766,6 +1851,7 @@ class CMN:
             self.DTM_WP_CC_EN        = 0x4000   # enable cycle count
             self.DTM_WP_CTRIG        = 0x8000
             self.DTM_WP_DBGTRIG      = 0x10000
+            self.DTM_WP_CHN_NUM_SHIFT = 19
         if restore_dtc_status:
             self.restore_dtc_status_on_deletion()
         if self.secure_accessible is None:
@@ -2015,26 +2101,38 @@ class CMN:
         """
         return self.coord_XP[(X,Y)]
 
+    def xy_id(self, x, y):
+        return (x << (3 + self.coord_bits)) | (y << 3)
+
+    def id_xy(self, id):
+        return (BITS(id, 3+self.coord_bits, self.coord_bits),
+                BITS(id, 3, self.coord_bits))
+
     def XP(self, id):
         """
         Return the XP with the given node id. Node id must be an exact XP id (bits 2:0 zero).
         """
-        assert (id & 7) == 0, "bad XP node id: 0x%x" % id
+        if (id & 7) != 0:
+            return None
         for xp in self.XPs():
             if xp.node_id() == id:
                 return xp
-        assert False, "XP node id not found: 0x%x" % id
+        return None
 
     def XP_port_device(self, id):
         """
         Return (XP, port number, device number) for a given device id.
         """
         xp = self.XP(id & ~7)
+        if xp is None:
+            return (None, None, None)
         (port, dev) = xp.id_port_device(id)
         return (xp, port, dev)
 
     def port_at_id(self, id):
         (xp, port, dev) = self.XP_port_device(id)
+        if xp is None:
+            return None
         po = xp.port(port)
         if po is None:
             return None
@@ -2056,6 +2154,10 @@ class CMN:
             for port in xp.ports(properties=properties):
                 yield port
 
+    def xp_ports(self):
+        for port in self.ports():
+            yield (port.XP(), port.port_number)
+
     def topology_nodes(self, include_root=False, include_xps=True, include_devices=True):
         """
         Iterate over discovered topology objects in a stable traversal order.
@@ -2070,14 +2172,28 @@ class CMN:
                     for node in port.nodes():
                         yield node
 
-    def nodes(self, properties=CMN_PROP_none, props=None):
-        # DEPRECATED - not deferred-discovery friendly
-        if props is not None:
-            properties = props
+    def register_nodes(self, properties=CMN_PROP_none):
+        """
+        Yield all discovered register-backed nodes, including the root and XPs.
+        This preserves the historical cmn_devmem nodes() traversal.
+        """
         self.discover_all_devices()
         for node in sorted(self.offset_node.values()):
             if properties in [None, CMN_PROP_none] or node.has_properties(properties):
                 yield node
+
+    def nodes(self, properties=CMN_PROP_none, props=None):
+        """
+        Yield explicit device nodes, matching the shared topology model.
+        """
+        if props is not None:
+            properties = props
+        self.discover_all_devices()
+        for xp in self.XPs():
+            for port in xp.ports():
+                for node in port.nodes():
+                    if properties in [None, CMN_PROP_none] or node.has_properties(properties):
+                        yield node
 
     def devices(self, properties=CMN_PROP_none, props=None):
         """
@@ -2094,9 +2210,31 @@ class CMN:
                     if dev.has_properties(properties):
                         yield dev
 
+    def ids(self, properties=CMN_PROP_none):
+        for port in self.ports(properties=properties):
+            for id in port.ids():
+                yield id
+
+    def rnf_ids(self):
+        for id in self.ids(properties=CMN_PROP_RNF):
+            yield id
+
+    def sn_ids(self):
+        for id in self.ids(properties=CMN_PROP_SN):
+            yield id
+
+    def node_by_id_type(self, id, type):
+        dev = self.device_at_id(id, create=True)
+        if dev is None:
+            return None
+        for node in dev.device_nodes:
+            if node.type() == type:
+                return node
+        return None
+
     def nodes_of_type(self, type):
         # DEPRECATED
-        for n in self.nodes():
+        for n in self.register_nodes():
             if n.type() == type:
                 yield n
 
@@ -2108,9 +2246,9 @@ class CMN:
             nk = (node_type, nid)
             return self.logical_id[nk]
 
-    def home_nodes(self):
+    def home_nodes(self, include_device=False):
         for n in self.nodes():
-            if n.is_home_node():
+            if n.is_home_node(include_device=include_device):
                 yield n
 
     def XPs(self):
@@ -2406,7 +2544,7 @@ def main(argv):
         print("CMNDUMP 0.1")
         for C in CS:
             print("# %s" % C)
-            for node in C.nodes():
+            for node in C.register_nodes():
                 print("NODE 0x%x %s" % (node.node_base_addr, node))
                 for i in range(0, C.node_size(), 8):
                     v = node.read64(i)

@@ -91,6 +91,9 @@ def cmn_from_json(j, S):
         C.product_config = cmn_config.CMNConfig(product_name=v, revision_code=revision_code)
     C.product_config.mpam_enabled = jc.get("mpam_enabled", False)
     C.product_config.chi_version = jc.get("chi_version", None)
+    C.product_config.pa_width = jc.get("pa_width", None)
+    C.product_config.req_pa_width = jc.get("req_pa_width", None)
+    C.product_config.rsvdc_width = jc.get("rsvdc_width", None)
     C.frequency = j.get("frequency", None)
     if "base" in jc:
         C.periphbase = int(jc["base"], 16)
@@ -135,7 +138,8 @@ def cmn_from_json(j, S):
             if "attached" in jp:
                 for ja in jp["attached"]:
                     if ja["type"] == "cpu":
-                        S.set_cpu(ja["cpu"], po, id=ja.get("id", None), lpid=ja.get("lpid", 0))
+                        S.set_cpu(ja["cpu"], po, id=ja.get("id", None),
+                                  lpid=ja.get("lpid", None))
     return C
 
 
@@ -164,7 +168,7 @@ def dmi_system_type():
         return None
 
 
-def system_from_json(j, filename=None):
+def system_from_json(j, filename=None, check_system=True):
     """
     Create a system description object from a JSON structure.
     """
@@ -174,7 +178,7 @@ def system_from_json(j, filename=None):
         S.system_type = S.system_type.strip()
     S.system_uuid = uuid.UUID(j["system_uuid"]) if "system_uuid" in j else None
     S.processor_type = j.get("processor_type", None)
-    if S.system_type is not None and S.processor_type is not None:
+    if check_system and S.system_type is not None and S.processor_type is not None:
         os_type = dmi_system_type()
         if os_type is not None and os_type != S.system_type:
             print("CMN file might be for different system:", file=sys.stderr)
@@ -191,10 +195,28 @@ def system_from_json(j, filename=None):
     for e in j["elements"]:
         if e["type"] == "interconnect" and e["product"] == "CMN":
             cmn_from_json(e, S)   # this will add it to the System object
+    if "io_address_map" in j:
+        ja = j["io_address_map"]
+        homes = []
+        for jh in ja["homes"]:
+            regions = []
+            for jr in jh["regions"]:
+                resources = [cmn_base.IOAddressResource(
+                    int(js["start"], 16), int(js["end"], 16), js["name"])
+                    for js in jr.get("resources", [])]
+                regions.append(cmn_base.IOAddressRegion(
+                    int(jr["start"], 16), int(jr["end"], 16),
+                    status=jr.get("status", "ok"), resources=resources))
+            homes.append(cmn_base.IOAddressHome(
+                jh["mseq"], jh["id"], jh["type_s"], regions=regions))
+        S.io_address_map = cmn_base.IOAddressMap(
+            discovery_time=timestamp_from_json(
+                ja.get("discovery_time", None)), homes=homes)
     return S
 
 
-def system_from_json_file(fn=None, check_timestamp=False, exit_if_not_found=True):
+def system_from_json_file(fn=None, check_timestamp=False, exit_if_not_found=True,
+                          check_system=True):
     """
     Get the system description from a given file name or the standard cached location.
     """
@@ -202,7 +224,8 @@ def system_from_json_file(fn=None, check_timestamp=False, exit_if_not_found=True
         fn = cmn_config_filename()
     try:
         with open(fn) as f:
-            S = system_from_json(json.load(f), filename=fn)
+            S = system_from_json(json.load(f), filename=fn,
+                                 check_system=check_system)
             if check_timestamp:
                 check_system_description_time(S)
             return S
@@ -221,8 +244,9 @@ def json_from_cpu(co):
         "cpu": co.cpu,     # CPU number as known to Linux
         "mseq": co.port.CMN().cmn_seq,   # mesh sequence number in the system
         "id": co.id,       # CHI SRCID - includes port and device bits
-        "lpid": co.lpid    # CHI LPID, generally zero or assigned by DSU
     }
+    if co.lpid is not None:
+        j["lpid"] = co.lpid    # CHI LPID, generally zero or assigned by DSU
     return j
 
 
@@ -315,6 +339,9 @@ def json_from_cmn(C):
         "config": {
             "mpam_enabled": C.product_config.mpam_enabled,
             "chi_version": C.product_config.chi_version,
+            "pa_width": C.product_config.pa_width,
+            "req_pa_width": C.product_config.req_pa_width,
+            "rsvdc_width": C.product_config.rsvdc_width,
             "X": C.dimX,
             "Y": C.dimY,
             "extra_ports": C.extra_ports,
@@ -329,6 +356,35 @@ def json_from_cmn(C):
         j["skiplist"] = [("0x%x" % se) for se in C.node_skiplist]
     if C.frequency is not None:
         j["frequency"] = C.frequency
+    return j
+
+
+def json_from_io_address_map(amap):
+    j = {"homes": []}
+    if amap.discovery_time is not None:
+        j["discovery_time"] = json_timestamp(amap.discovery_time)
+    for home in amap.homes:
+        jh = {
+            "mseq": home.mseq,
+            "id": home.node_id,
+            "type_s": home.type_s,
+            "regions": [],
+        }
+        for region in home.regions:
+            jr = {
+                "start": "0x%x" % region.start,
+                "end": "0x%x" % region.end,
+                "status": region.status,
+                "resources": [],
+            }
+            for resource in region.resources:
+                jr["resources"].append({
+                    "start": "0x%x" % resource.start,
+                    "end": "0x%x" % resource.end,
+                    "name": resource.name,
+                })
+            jh["regions"].append(jr)
+        j["homes"].append(jh)
     return j
 
 
@@ -353,6 +409,8 @@ def json_from_system(S):
         j["elements"].append(jc)
     if S.has_cpu_mappings():
         j["cpus"] = [json_from_cpu(S.cpu_node[c]) for c in sorted(S.cpu_node.keys())]
+    if S.io_address_map is not None:
+        j["io_address_map"] = json_from_io_address_map(S.io_address_map)
     return j
 
 

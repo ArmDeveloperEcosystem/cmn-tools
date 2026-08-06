@@ -135,7 +135,7 @@ class MemoryProperties:
         try:
             for d in DMI().memory():
                 self.size += d.size
-                self.speed = d.c_speed_mts
+                self.speed = d.c_speed_mts or d.p_speed_mts
                 self.data_width_bits = d.d_width
                 # DDR5 (DMI mem_type >= 0x20) physically have 2 32-bit channels,
                 # but in DMI reporting, they are reported as 64-bit.

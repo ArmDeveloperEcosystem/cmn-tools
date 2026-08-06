@@ -97,7 +97,7 @@ class CMNSelectSingle:
         s = s.upper()
         if len(s) > 1 and s.startswith("M") and s[1] in "0123456789":
             ix = s.find(':')
-            meshs = s[1:ix] if ix >= 0 else s
+            meshs = s[1:ix] if ix >= 0 else s[1:]
             try:
                 self.cmn_seq = int(meshs)
             except ValueError:
@@ -144,9 +144,15 @@ class CMNSelectSingle:
                 self.update_node_type(s[:aix])
         elif s.startswith("0X"):
             try:
+                ix = s.find(".P")
+                if ix >= 0:
+                    self.node_port = int(s[ix+2:])
+                    s = s[:ix]
                 self.node_id = int(s, 16)
             except ValueError:
                 raise CMNSelectBad(expr, "bad node id")
+        elif not s:
+            pass
         else:
             self.update_node_type(s)
         if o_verbose:

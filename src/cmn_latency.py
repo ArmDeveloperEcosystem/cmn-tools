@@ -134,7 +134,12 @@ class Watchpoint:
     """
     def __init__(self, dtm, wp_num):
         self.dtm = dtm
-        self.trace_config = CMNTraceConfig(dtm.C.product_config.product_id, has_MPAM=dtm.C.product_config.mpam_enabled, cmn_product_revision=dtm.C.product_config.revision_major)
+        config = dtm.C.product_config
+        self.trace_config = CMNTraceConfig(
+            config.product_id, has_MPAM=config.mpam_enabled,
+            cmn_product_revision=config.revision_major, pa_width=config.pa_width,
+            req_pa_width=config.req_pa_width,
+            rsvdc_width=config.rsvdc_width)
         self.wp = wp_num
         w = dtm.dtm_wp_config(wp_num)
         (self.dev, self.vc, self.ty, self.cce) = (w.dev, w.chn, w.type, w.cc)

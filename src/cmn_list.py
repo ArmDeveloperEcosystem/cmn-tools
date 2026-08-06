@@ -24,6 +24,7 @@ import cmn_select
 import cmn_dtstat
 from cmn_sam import *
 import cmn_routing
+from proc_iomem import describe_iomem_address
 
 
 o_register_slices = False
@@ -48,6 +49,7 @@ class CMNLister:
         self.port_props = port_props
         self.node_props = node_props
         self.node_match = node_match
+        self._lcn_sam_reported = False
 
     def show_cmn(self, cmn=None):
         """
@@ -73,17 +75,20 @@ class CMNLister:
         if BIT(cmn.unit_info, 48):
             print(", R2", end="")
         if cmn.product_config.mpam_enabled:
-            print(", MPAM", end="")
+            print(", MPAM(partid:%u)" % cmn.product_config.mpam_partid_width, end="")
+        if cmn.product_config.mte_enabled:
+            print(", MTE", end="")
         if cmn.multiple_dtms:
             print(", multiple-DTMs", end="")
         if cmn.isolation_enabled:
             print(", device-isolation", end="")
         print()
         if cmn.part_ge_700():
-            info1 = cmn.rootnode.read64(0x908)
+            info1 = cmn.rootnode.read64(CMN_any_UNIT_INFO1)
             print("      info1: 0x%x" % info1, end="")
-            print(", REQ=%u" % BITS(info1, 0, 2), end="")
-            print(", SNP=%u" % BITS(info1, 2, 2), end="")
+            for i in range(0, 4):
+                if cmn.vc_num[i] > 1:
+                    print(", %s=%u" % (["REQ", "RSP", "SNP", "DAT"][i], cmn.vc_num[i]), end="")
             if BIT(info1, 19):
                 print(", MTE", end="")
             if BIT(info1, 23):
@@ -179,7 +184,7 @@ class CMNLister:
             port_info = port.port_info()
             port_info_1 = port.port_info(1)      # May be None for older CMNs
             connected_device_info = port.connect_info
-            connected_device_type = port.device_type()
+            connected_device_type = port.connected_type
             if connected_device_type is None:
                 # The TRM says 0 is "reserved", but it evidently means the port is not connected.
                 # Ports are connected or not, by the implementer. With n_ports=2,
@@ -259,13 +264,17 @@ class CMNLister:
     def show_node(self, n, pfx="        "):
         cmn = self.cmn
         xp = n.XP()
-        info = n.read64(CMN_any_UNIT_INFO)
         info1 = None
         info2 = None
-        if cmn.part_ge_700():
-            info1 = n.read64(CMN_any_UNIT_INFO1)
-            if n.type() in [CMN_NODE_CCLA, CMN_NODE_CCG_HA]:
-                info2 = n.read64(0x910)
+        if n.type() == CMN_NODE_CCLA and cmn.part_ge_S3r2():
+            # CMN S3 r2 CCLA has its sole UNIT_INFO register at 0x910.
+            info = n.read64(0x910)
+        else:
+            info = n.read64(CMN_any_UNIT_INFO)
+            if cmn.part_ge_700():
+                info1 = n.read64(CMN_any_UNIT_INFO1)
+                if n.type() == CMN_NODE_CCG_HA:
+                    info2 = n.read64(0x910)
         sec = n.read64(CMN_any_SECURE_ACCESS)
         print(pfx + "%s (node info: 0x%x, unit info: 0x%x" % (n, n.node_info, info), end="")
         if info1 is not None:
@@ -310,7 +319,7 @@ class CMNLister:
             if cmn.secure_accessible:
                 aux_ctl = n.read64(CMN_any_AUX_CTL)
                 print(pfx + "aux_ctl: 0x%x" % aux_ctl)
-                pwpr = n.read64(0x1000)    # power policy register
+                pwpr = n.read64(pwbase)    # power policy register
                 print(pfx + "pwpr: 0x%x" % pwpr, end="")
                 print(" %s" % {0: "OFF", 2: "MEM_RET", 7: "FUNC_RET", 8: "ON"}[BITS(pwpr, 0, 4)], end="")
                 print(" %s" % ["NOSFSLC", "SFONLY", "HAM", "FAM"][BITS(pwpr, 4, 4)], end="")
@@ -346,10 +355,16 @@ class CMNLister:
             print(pfx + "AXI: %u-bit, %u write buffers" % (width, num_wr_data_buf))
         elif n.type() == CMN_NODE_RNSAM:
             # Only Non-Secure-readable summary here. Detailed configuration is printed later.
-            num_nhm = BITS(info,32,6)
-            num_sys_cache_group = BITS(info,16,4)
+            num_nhm = BITS(info,32,8)
+            num_sys_cache_group = BITS(info, 16, (8 if cmn.part_ge_S3r2() else 4))
             num_hnf = BITS(info,0,8)
             print(pfx + "Hashed targets: %u, cache groups: %u, non-hash groups: %u" % (num_hnf, num_sys_cache_group, num_nhm))
+        elif n.type() == CMN_NODE_CCG_RA and cmn.part_ge_S3r2():
+            self.show_s3_ccg_ra(n, pfx=pfx)
+        elif n.type() == CMN_NODE_CCG_HA and cmn.part_ge_S3r2():
+            self.show_s3_ccg_ha(n, pfx=pfx)
+        elif n.type() == CMN_NODE_CCLA and cmn.part_ge_S3r2():
+            self.show_s3_ccla(n, pfx=pfx)
         elif n.type() == CMN_NODE_DT:
             cmn_dtstat.print_dtc(n, pfx=pfx)
         elif n.type() == CMN_NODE_CXHA:
@@ -389,10 +404,109 @@ class CMNLister:
         if n.is_home_node():
             if cmn.secure_accessible:
                 self.show_home_node_secure_config(n)
-                self.show_home_node_sam(n)
+                self.show_home_node_sam(n, pfx=pfx)
+                self.show_s3_lcn_sam(n, pfx=pfx)
+                self.show_home_node_lid_table(n, pfx=pfx)
         elif n.type() == CMN_NODE_RNSAM:
             if cmn.secure_accessible or sec:
                 self.show_rn_sam(n)
+
+    def show_s3_cml_links(self, n, base, pfx):
+        """Show the three S3 r2 CML protocol-link states."""
+        for link in range(0, 3):
+            ctl = n.read64(base + link*0x10)
+            status = n.read64(base + link*0x10 + 8)
+            if ctl or self.verbose:
+                states = []
+                if BIT(ctl, 0):
+                    states.append("enabled")
+                if BIT(ctl, 1):
+                    states.append("SMP")
+                if BIT(ctl, 2):
+                    states.append("requested")
+                if BIT(ctl, 3):
+                    states.append("up")
+                if BIT(ctl, 4):
+                    states.append("domain-requested")
+                if BIT(status, 0):
+                    states.append("ack")
+                if BIT(status, 1):
+                    states.append("down")
+                if BIT(status, 2):
+                    states.append("domain-ack")
+                print(pfx + "CML link %u: %s ctl=0x%x status=0x%x" %
+                      (link, ",".join(states) if states else "inactive",
+                       ctl, status))
+
+    def show_s3_agent_links(self, n, map_offset, valid_offset, pfx):
+        """Show the S3 r2 mapping of the eight CML agent IDs to links."""
+        mapping = n.read64(map_offset)
+        valid = n.read64(valid_offset) & 0xff
+        links = []
+        for agent in range(0, 8):
+            if BIT(valid, agent):
+                links.append("%u->%u" %
+                             (agent, BITS(mapping, agent*8, 2)))
+        print(pfx + "agent-to-link: %s" %
+              (", ".join(links) if links else "none"))
+
+    def show_s3_ccla(self, n, pfx="          "):
+        """Show basic S3 r2 CML link-agent configuration."""
+        cfg = n.read64(0xB00)
+        aux = n.read64(0xB08)
+        packing = n.read64(0xB10)
+        print(pfx + "CCLA: base-ID=%u cfg=0x%016x aux=0x%016x "
+              "packing=0x%016x" %
+              (BITS(cfg, 36, 3), cfg, aux, packing))
+
+    def show_s3_ccg_ra(self, n, pfx="          "):
+        """Show S3 r2 CCG request-agent configuration and its RN-SAM."""
+        cfg = n.read64(0xA00)
+        aux = n.read64(0xA08)
+        aux2 = n.read64(0xA10)
+        cbusy = n.read64(0xA18)
+        print(pfx + "CCG-RA cfg=0x%016x aux=0x%016x aux2=0x%016x" %
+              (cfg, aux, aux2))
+        print(pfx + "CBusy limits: low=%u medium=%u high=%u" %
+              (BITS(cbusy, 0, 8), BITS(cbusy, 8, 8),
+               BITS(cbusy, 16, 8)))
+        self.show_s3_agent_links(n, 0xD10, 0xD00, pfx)
+        status = n.read64(0x37D0)
+        regions = []
+        for i in range(0, 32):
+            cfg1 = n.read64(0x3000 + i*8)
+            if BIT(cfg1, 0):
+                regions.append((i, cfg1, n.read64(0x3100 + i*8),
+                                n.read64(0x3400 + i*8)))
+        print(pfx + "RA RN-SAM: status=0x%x, %u active HTG(s)" %
+              (status, len(regions)))
+        for (i, cfg1, cfg2, hctl) in regions:
+            base = BITS(cfg1, 16, 36) << 16
+            end = (BITS(cfg2, 16, 36) << 16) | 0xffff
+            hnreg = n.read64(0x3700 + (i // 8)*8)
+            hn_count = BITS(hnreg, (i & 7)*8, 8)
+            hash_name = ("hierarchical" if BIT(hctl, 2) else
+                         ("non-power-of-two" if BIT(hctl, 1) else
+                          "power-of-two"))
+            print(pfx + "  HTG %u: 0x%x-0x%x %s HNs=%u" %
+                  (i, base, end, hash_name, hn_count))
+        self.show_s3_cml_links(n, 0x4000, pfx)
+
+    def show_s3_ccg_ha(self, n, pfx="          "):
+        """Show S3 r2 CCG home-agent and CML-link configuration."""
+        cfg = n.read64(0xA00)
+        aux = n.read64(0xA08)
+        haid = n.read64(0x8) & 0x3ff
+        print(pfx + "CCG-HA: HAID=%u cfg=0x%016x aux=0x%016x" %
+              (haid, cfg, aux))
+        self.show_s3_agent_links(n, 0x1C00, 0x1CF8, pfx)
+        for link in range(0, 3):
+            cache = n.read64(0xA50 + link*8)
+            if cache or self.verbose:
+                print(pfx + "link %u cache-ID: override=%u GCID=%u remote-HN-S=%u" %
+                      (link, BIT(cache, 0), BITS(cache, 1, 5),
+                       BIT(cache, 8)))
+        self.show_s3_cml_links(n, 0x1900, pfx)
 
     def show_node_event_sel(self, n, pfx="          "):
         """
@@ -407,24 +521,54 @@ class CMNLister:
                 print()
 
     def show_home_node_secure_config(self, n, pfx="          "):
-        """
-        Show home-node Secure config, other than address-mapping: mostly QoS.
-        """
+        """Show Secure home-node configuration and QoS controls."""
         hn_qos_band = n.read64(0xA80)
-        hn_qos_resv = n.read64(0xA88)
-        hn_starv = n.read64(0xA90)
         print(pfx + "QoS bands:")
         for (i, qc) in enumerate(["L", "M", "H", "HH"]):
-            (lo, hi) = (BITS(hn_qos_band, i*8, 4), BITS(hn_qos_band, i*8+4, 4))
-            pocq = BITS(hn_qos_resv, i*8, 8)
-            print(pfx + "  %3s  %2u..%2u  POCQ=%3u" % (qc, lo, hi, pocq))
-        print(pfx + "QoS max wins:", end="")
-        for (i, qs) in enumerate(["M/L", "H/L", "HH/L", "H/M", "HH/M", "HH/H"]):
-            print(" %s:%u" % (qs, BITS(hn_starv, i*8, 7)), end="")
-        print()
-        print(pfx + "POCQ reserved for SF evictions: %3u" % (BITS(hn_qos_resv, 32, 8)))
+            lo = BITS(hn_qos_band, i*8, 4)
+            hi = BITS(hn_qos_band, i*8+4, 4)
+            print(pfx + "  %3s  %2u..%2u" % (qc, lo, hi))
+
+        if n.C.part_ge_S3r2():
+            cfg = n.read64(0xA00)
+            aux0 = n.read64(0xA08)
+            aux1 = n.read64(0xA10)
+            cbusy = n.read64(0xA18)
+            print(pfx + "HN-S cfg=0x%016x aux0=0x%016x aux1=0x%016x" %
+                  (cfg, aux0, aux1))
+            print(pfx + "OCM: %s%s" %
+                  ("enabled" if BIT(cfg, 9) else "disabled",
+                   " all-ways" if BIT(cfg, 10) else ""))
+            print(pfx + "CBusy limits: low=%u medium=%u high=%u" %
+                  (BITS(cbusy, 0, 8), BITS(cbusy, 8, 8),
+                   BITS(cbusy, 16, 8)))
+            print(pfx + "CBusy write=0x%x response=0x%x SN=0x%x LBT=0x%x" %
+                  (n.read64(0x1000), n.read64(0x1008),
+                   n.read64(0x1010), n.read64(0x1018)))
+            print(pfx + "POCQ max=0x%x contended-min=0x%x QoS-class=0x%x" %
+                  (n.read64(0x1028), n.read64(0x1030),
+                   n.read64(0x1048)))
+            pa2set = [n.read64(r) for r in
+                      [0x5900, 0x5908, 0x5910, 0x5918]]
+            if any(pa2set):
+                print(pfx + "PA2SETADDR: SLC=0x%x SF=0x%x flex-SLC=0x%x flex-SF=0x%x" %
+                      tuple(pa2set))
+            cpag_ctl = n.read64(0xFD0)
+            if cpag_ctl:
+                print(pfx + "CML CPAG control: 0x%016x" % cpag_ctl)
+        else:
+            hn_qos_resv = n.read64(0xA88)
+            hn_starv = n.read64(0xA90)
+            print(pfx + "QoS max wins:", end="")
+            for (i, qs) in enumerate(["M/L", "H/L", "HH/L", "H/M", "HH/M", "HH/H"]):
+                print(" %s:%u" % (qs, BITS(hn_starv, i*8, 7)), end="")
+            print()
+            print(pfx + "POCQ reserved for SF evictions: %3u" %
+                  BITS(hn_qos_resv, 32, 8))
+
         slc_lock = n.read64(0xC00)
-        print(pfx + "HN-Fs: %u, locked ways: %u" % (BITS(slc_lock, 8, 7), BITS(slc_lock, 0, 4)))
+        print(pfx + "HN-Fs: %u, locked ways: %u" %
+              (BITS(slc_lock, 8, 8), BITS(slc_lock, 0, 4)))
 
     def show_home_node_sam(self, n, pfx="          "):
         # HN mapping:
@@ -433,9 +577,12 @@ class CMNLister:
         hn_sam_ctl = n.read64(0xD00)
         hn_sam_ctl2 = n.read64(0xD28) if n.C.part_ge_700() else 0x0
         print(pfx + "HN SAM control: 0x%x" % hn_sam_ctl)
+        default_region = hn_sam_default_region(n)
+        if default_region is not None:
+            print(pfx + "  default hashed region: %s" % default_region)
         # Show range-based mapping first, as it takes priority
         for reg in hn_sam_regions(n):
-            print(pfx + "  region %u: %s" % (reg.index, reg.range_str()), end="")
+            print(pfx + "  region %u: %s" % (reg.index, str(reg)), end="")
             print(" SN:0x%x" % reg.nodeid, end="")
             print()
         sns = 0
@@ -483,6 +630,76 @@ class CMNLister:
                                 print(" CPA%u" % BITS(rn, 17, 2), end="")
                             print()
 
+    def show_s3_lcn_sam(self, n, pfx="          "):
+        """Show one representative S3 r2 LCN SAM for the mesh."""
+        if not n.C.part_ge_S3r2():
+            return
+        if self._lcn_sam_reported:
+            print(pfx + "LCN SAM: as previously reported")
+            return
+        self._lcn_sam_reported = True
+        unit_info1 = n.read64(0x908)
+        max_htg = min(BITS(unit_info1, 39, 6), 32)
+        max_nh = BITS(unit_info1, 45, 7)
+        regions = []
+        for i in range(0, max_htg):
+            cfg1 = n.read64(0x7000 + i*8)
+            if not BIT(cfg1, 0):
+                continue
+            cfg2 = n.read64(0x7100 + i*8)
+            hctl = n.read64(0x7400 + i*8)
+            hnreg = n.read64(0x7500 + (i // 8)*8)
+            calreg = n.read64(0x7520 + (i // 4)*8)
+            regions.append((i, cfg1, cfg2, hctl,
+                            BITS(hnreg, (i & 7)*8, 8),
+                            BITS(calreg, (i & 3)*16, 2)))
+        print(pfx + "LCN SAM: %u active HTG(s), capacity HTG=%u NH=%u" %
+              (len(regions), max_htg, max_nh))
+        if self.verbose:
+            target_names = ["HN-F", "HN-I", "CXRA", "HN-P",
+                            "PCI-CXRA", "HN-S", "?6", "?7"]
+            for (i, cfg1, cfg2, hctl, hn_count, cal) in regions:
+                base = BITS(cfg1, 16, 36) << 16
+                end = (BITS(cfg2, 16, 36) << 16) | 0xffff
+                hash_name = ("hierarchical" if BIT(hctl, 2) else
+                             ("non-power-of-two" if BIT(hctl, 1) else
+                              "power-of-two"))
+                print(pfx + "  HTG %u: 0x%x-0x%x %s %s HNs=%u CAL=%u" %
+                      (i, base, end, target_names[BITS(cfg1, 2, 3)],
+                       "non-hashed" if BIT(cfg1, 1) else hash_name,
+                       hn_count, [0, 2, 4, 0][cal]))
+
+    def lid_entry(self, n, cluster, ix):
+        base = 0x3C00
+        off = (cluster * 32) + ((ix // 2) * 8)
+        x = n.read64(base + off)
+        return (x >> 32) if (ix & 1) else (x & 0xffffffff)
+
+    def show_home_node_lid_table(self, n, pfx="            "):
+        """
+        Show the LID table, mapping LIDs to node ids.
+        """
+        hns_unit_info_1 = n.read64(CMN_any_UNIT_INFO1)
+        max_rnf_per_cluster = BITS(hns_unit_info_1, 0, 4)
+        if max_rnf_per_cluster == 0:
+            # Too old to have a LID table, or permissions problem
+            return
+        print("%sRNFID table (max %u RN-F per cluster):" % (pfx, max_rnf_per_cluster))
+        assert max_rnf_per_cluster in [1, 2, 4, 8]
+        for cluster in range(0, 128):
+            for ix in range(0, max_rnf_per_cluster):
+                e = self.lid_entry(n, cluster, ix)
+                if BIT(e, 31):
+                    lid_nodeid = BITS(e, 0, 11)
+                    lid_remote = BIT(e, 16)
+                    lid_srctype = BITS(e, 22, 5)
+                    lid_srctype_str = "HN-S" if lid_srctype == 8 else "RN-F"
+                    lid = cluster * max_rnf_per_cluster + ix
+                    print("%s %3x  0x%03x  stype=%2u (%s)  %s" % (pfx, lid, lid_nodeid, lid_srctype, lid_srctype_str, ("remote" if lid_remote else "local")), end="")
+                    if BIT(e, 30):
+                        print(" CPAG%u" % (BITS(e, 17, 5)), end="")
+                    print()
+
     def show_rn_sam(self, n, pfx="            "):
         """
         Show address mapping for RN, comprising:
@@ -501,19 +718,31 @@ class CMNLister:
         gic = n.read64(0xD58 if not n.C.part_ge_700() else 0x1108)
         if BIT(gic, 0):
             print(pfx + "GIC: 0x%x" % gic)
+        if n.C.part_ge_S3r2():
+            dsu = n.read64(0x1110)
+            if BIT(dsu, 0):
+                dsu_base = BITS(dsu, 20, 32) << 20
+                print(pfx + "DSU HN-I: base=0x%x size-code=%u" %
+                      (dsu_base, BITS(dsu, 2, 4)))
+            if self.verbose:
+                print(pfx + "RN-SAM masks: hash=0x%x AXID=0x%x compare=0x%x" %
+                      (n.read64(0xE80), n.read64(0xE88),
+                       n.read64(0xE90)))
         print(pfx + "Non-hashed memory regions:")
         for reg in rn_sam_nonhash_regions(n):
-            print(pfx + "  NHMR %3u: %s" % (reg.index, reg.range_str()), end="")
+            print(pfx + "  NHMR %3u: %s" % (reg.index, str(reg)), end="")
             print(" 0x%x %s" % (reg.nodeid, reg.target_type_str), end="")
+            if n.C.is_local:
+                addr_desc = describe_iomem_address(reg.base)
+                if not addr_desc.startswith("0x"):
+                    print("  %s" % addr_desc, end="")
             print()
         print(pfx + "Hashed memory regions:")
         for reg in rn_sam_hashed_regions(n):
             i = reg.index
-            print(pfx + "  HMR  %3u: %s" % (reg.index, reg.range_str()), end="")
+            print(pfx + "  HMR  %3u: %s" % (reg.index, str(reg)), end="")
             if reg.hn_count > 0:
                 print(" HNs:%u" % reg.hn_count, end="")
-            if reg.CAL:
-                print(" CAL%u" % reg.CAL, end="")
             if reg.sn_mode != 1:
                 print(" %u-SN" % reg.sn_mode, end="")
             if not reg.hashed and reg.nodeid is not None:
@@ -523,8 +752,12 @@ class CMNLister:
                 print(" nonhash node=0x%x" % reg.nodeid, end="")
             print(" %s" % reg.target_type_str, end="")
             print()
-            if reg.hashed and reg.nodeids is not None:
-                print(pfx + "    HNs: %s" % (','.join([("0x%x" % hn) for hn in reg.nodeids])))
+            if reg.n_cpa > 1:
+                for i in range(reg.n_cpa):
+                    print(pfx + "    %u: %s" % (i, reg.target_str(i)))
+            else:
+                if reg.hashed and reg.nodeids is not None:
+                    print(pfx + "    %s" % reg.target_str())
         #hash_addr_mask = n.read64(0xF18)
         #print(pfx + "Hash mask: 0x%016x" % hash_addr_mask)
         if not n.C.part_ge_700():

@@ -243,10 +243,10 @@ def _unconvert_hex_value_mask(v, m):
 
 def _field_candidates(chn, grp, val, mask, cmn_version):
     fields = cmnwatch._fields[chn]
-    mix = cmnwatch.field_selector_for_product(cmn_version)
+    product_key = cmnwatch.cmn_wp_fields.product_key_for_config(cmn_version)
     candidates = []
     for (field, meta) in fields.items():
-        poses = cmnwatch.field_positions(meta, mix)
+        poses = cmnwatch.field_positions(meta, product_key)
         for (fgrp, pos, width) in poses:
             if fgrp != grp:
                 continue
@@ -258,7 +258,7 @@ def _field_candidates(chn, grp, val, mask, cmn_version):
             dontcare = (~care) & bits
             candidates.append({
                 "field": field,
-                "lookup": meta[0],
+                "lookup": cmnwatch.field_decoder(meta),
                 "pos": pos,
                 "width": width,
                 "care": care,
@@ -483,7 +483,7 @@ def _context_from_opts(opts):
 def _arg_cmn_version(s):
     try:
         return cmn_config.cmn_version(s)
-    except KeyError:
+    except (KeyError, ValueError):
         raise argparse.ArgumentTypeError("invalid CMN product identifier")
 
 

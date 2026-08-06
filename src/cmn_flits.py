@@ -51,7 +51,7 @@ CHI_REQ_opcodes = {
     0x19: "WUnF",   # WriteUniqueFull
     0x1A: "WBPt",   # WriteBackPtl
     0x1B: "WBFu",   # WriteBackFull
-    0x1C: "WNSP",
+    0x1C: "WNSP",   # WriteNoSnpPtl
     0x1D: "WNSF",   # WriteNoSnpFull
     0x20: "WUFS",   # WriteUniqueFullStash
     0x22: "StOS",   # StashOnceShared
@@ -59,7 +59,7 @@ CHI_REQ_opcodes = {
     0x24: "ROCI",   # ReadOnceCleanInvalid
     0x25: "ROMI",   # ReadOnceMakeInvalid
     0x26: "RNSD",   # ReadNotSharedDirty
-    0x28: "Sadd",
+    0x28: "Sadd",   # AtomicStore
     0x29: "Sclr",
     0x2A: "Seor",
     0x2B: "Sset",
@@ -67,7 +67,7 @@ CHI_REQ_opcodes = {
     0x2D: "Ssmn",
     0x2E: "Sumx",
     0x2F: "Sumn",
-    0x30: "Ladd",
+    0x30: "Ladd",   # AtomicLoad
     0x31: "Lclr",
     0x32: "Leor",
     0x33: "Lset",
@@ -83,7 +83,11 @@ CHI_REQ_opcodes = {
     0x42: "WEoE",   # WriteEvictOrEvict
     0x43: "WrUZ",   # WriteUniqueZero
     0x44: "WNSZ",   # WriteNoSnoopZero
+    0x47: "SOSS",   # StashOnceSepShared
+    0x48: "SOSU",   # StashOnceSepUnique
     0x4c: "RPUn",   # ReadPreferUnique
+    0x4d: "CIPP",   # CleanInvalidPoPa
+    0x4e: "WNSD",   # WriteNoSnpDef
 }
 
 
@@ -114,8 +118,8 @@ CHI_SNP_opcodes = {
     0x02: "SnCl",   # SnpClean
     0x03: "SnOn",   # SnpOnce
     0x04: "SNSD",   # SnpNotSharedDirty
-    0x05: "SUnS",
-    0x06: "SMIS",
+    0x05: "SUnS",   # SnpUniqueStash
+    0x06: "SMIS",   # SnpMakeInvalidStash
     0x07: "SnUn",   # SnpUnique
     0x08: "SnCS",   # SnpCleanShared
     0x09: "SnCI",   # SnpCleanInvalid
@@ -291,6 +295,13 @@ DVM_op_str = [
 ]
 
 DVM_EL_str = ["EL21", "EL3", "EL1", "EL2"]
+
+
+_Tag_op_str = ["Invalid", "Transfer", "Update", "Match/Fetch"]
+
+
+def tagop_str(t):
+    return _Tag_op_str[t]
 
 
 # Following are DEVEVENT encodings from CMN HN-F.
@@ -499,10 +510,11 @@ class CMNFlit:
                 if self.cbusy:
                     s += " cbusy=0x%x" % (self.cbusy)
                 if self.devevent != 0:
-                    s += " %s" % devevent_str(self.devevent)
+                    s += " dev=\"%s\"" % devevent_str(self.devevent)
             elif self.group.VC == SNP:
                 # SNP
-                s += " fwdnid=0x%03x %18s" % (self.fwdnid, self.addr_str())
+                s += " fwdnid=0x%03x fwdtxnid=0x%03x" % (self.fwdnid, self.fwdtxnid)
+                s += " %s" % self.addr_str()
                 if self.mpam is not None and self.mpam != 0x01:
                     s += " %s" % self.mpam_str(self.mpam)
                 if self.opcode == 0x0d:
@@ -550,11 +562,15 @@ class CMNFlit:
                 if self.cbusy:
                     s += " cbusy=0x%x" % (self.cbusy)
                 if self.devevent != 0:
-                    s += " %s" % devevent_str(self.devevent)
+                    s += " dev=\"%s\"" % devevent_str(self.devevent)
                 if self.tagop is not None:
                     if self.tagop != 0:
-                        s += " tagop=0x%x" % self.tagop
-                        s += " tag=0x%x" % self.tag
+                        s += " tagop=%s" % tagop_str(self.tagop)
+                if self.tag is not None and (self.tag or self.tagop):
+                    # The Tag field for a 32-byte DAT flit is two 4-bit tags
+                    s += " tag=%02x" % self.tag
+                if self.tu is not None and self.tu != 0:
+                    s += " tu=%s" % ["00", "01", "10", "11"][self.tu]
                 if self.poison != 0:
                     s += " poison=0x%x" % (self.poison)
             else:
@@ -624,6 +640,10 @@ assert bytes_as_int(bytearray(b"\x12\x34\x56\x78\x9a")) == 0x9a78563412
 
 
 def bytes_as_chunks(payload, size):
+    """
+    Iterate through chunks of a given bit width - an array of packed data.
+    This is used for format 0/1/2 decode.
+    """
     n_chunks = (len(payload)*8) // size
     x = bytes_as_int(payload)
     for i in range(n_chunks):
@@ -663,7 +683,9 @@ class CMNTraceConfig:
 
     The revision number is the major revision number, not the code from periph_id_2.
     """
-    def __init__(self, cmn_product_id, has_MPAM, cmn_product_revision=0, chi_version=None):
+    def __init__(self, cmn_product_id, has_MPAM, cmn_product_revision=0,
+                 chi_version=None, pa_width=None, req_pa_width=None,
+                 rsvdc_width=None):
         if cmn_product_id in [600, 650, 700]:
             # legacy compatibility
             cmn_product_id = {600: PART_CMN600, 650: PART_CMN650, 700: PART_CMN700}[cmn_product_id]
@@ -674,6 +696,19 @@ class CMNTraceConfig:
             chi_version = _chi_version_default[cmn_product_id]
         self.chi_version = chi_version
         self.has_MPAM = has_MPAM
+        if pa_width is None:
+            pa_width = 48 if cmn_product_id == PART_CMN600 else 52
+        assert 3 <= pa_width <= 52, "invalid physical address width: %s" % pa_width
+        self.pa_width = pa_width
+        if req_pa_width is None:
+            req_pa_width = 48 if cmn_product_id == PART_CMN600 else 52
+        assert 3 <= req_pa_width <= 52, (
+            "invalid REQ physical address width: %s" % req_pa_width)
+        self.req_pa_width = req_pa_width
+        if rsvdc_width is None:
+            rsvdc_width = 8
+        assert 0 <= rsvdc_width <= 255, "invalid RSVDC width: %s" % rsvdc_width
+        self.rsvdc_width = rsvdc_width
         # CMN S3 r0 is like CMN-700 (12-bit MPAM id)
         self._cmn_base_type = {PART_CMN600: 0, PART_CMN650: 1, PART_CMN700: 2, PART_CI700: 2, PART_CMN_S3: 3}[self.cmn_product_id]
         if self.cmn_product_id == PART_CMN_S3 and self.cmn_product_revision < 2:
@@ -704,12 +739,13 @@ class CMNFlitGroup:
     But they will need to be specified by the time we call decode() to
     decode a payload from CMN trace stream, watchpoint FIFO etc.
     """
-    def __init__(self, cfg, format=None, VC=None, payload=None, WP=None, DEV=None, cmn_seq=None, nodeid=None, lossy=False, cc=None, debug=False, packet_start_pos=None, trace_stream_id=None):
+    def __init__(self, cfg, format=None, VC=None, chn_num=0, payload=None, WP=None, DEV=None, cmn_seq=None, nodeid=None, lossy=False, cc=None, debug=False, packet_start_pos=None, trace_stream_id=None):
         self.cfg = cfg
         self.txnid_bits = [8, 10, 12, 12][self.cfg._cmn_base_type]
         self.txnid_fmt = "%02x" if self.txnid_bits <= 8 else "%03x"
         self.format = format    # CMN flit encoding format, needed for decode
         self.VC = VC            # REQ/RSP/SNP/DAT, needed for decode
+        self.chn_num = chn_num  # Replicated channel number - doesn't affect decode
         self.flits = []
         self.payload = payload
         self.cmn_seq = cmn_seq  # CMN instance number, or None if not needed or not known
@@ -725,6 +761,9 @@ class CMNFlitGroup:
             self.decode(payload)
 
     def add_flit(self, flit):
+        """
+        Called by decode(). For format 4 it will add a single flit. For 0/1/2 it will add flit summaries.
+        """
         assert isinstance(flit, CMNFlit)
         assert flit.group is None or flit.group == self
         flit.group = self
@@ -749,11 +788,13 @@ class CMNFlitGroup:
         """
         s = self.prefix_str()
         if self.nodeid is not None:
-            s += "@0x%03x " % self.nodeid
+            s += "@0x%03x" % self.nodeid
         if self.DEV is not None:
-            s += "DEV=%u " % self.DEV       # Port number
+            s += ".P%u" % self.DEV         # Port number
         if False and self.WP is not None:
-            s += "WP=%u " % self.WP         # Direction indicated by TX/RX later
+            if s:
+                s += " "
+            s += "WP=%u " % self.WP         # Direction now indicated by TX/RX later
         return s.strip()
 
     def id_str(self, id, lpid=0):
@@ -765,6 +806,23 @@ class CMNFlitGroup:
 
     def addr_str(self, addr, NSENS=1):
         return "%s0x%012x" % (["S:", "", "RT:", "RL:"][NSENS], addr)
+
+    def is_upload(self):
+        return (self.WP <= 1) if self.WP is not None else None
+
+    def dir_str(self):
+        return ["RX", "TX"][self.is_upload()] if self.WP is not None else None
+
+    def chan_str(self):
+        s = ""
+        if self.WP is not None:
+            s += self.dir_str()
+        s += CHI_VC_strings[self.VC]
+        s += str(self.chn_num) if (self.chn_num >= 1) else " "
+        return s
+
+    def raw_str(self):
+        return bytes_hex(reversed(self.payload))
 
     def __str__(self):
         """
@@ -778,12 +836,9 @@ class CMNFlitGroup:
         s += self.context_str()
         s += "! " if self.lossy else "  "
         if self.debug and self.payload is not None:
-            s += "%36s  " % bytes_hex(reversed(self.payload))
+            s += "%36s  " % self.raw_str()
         if self.VC is not None:
-            if self.WP is not None:
-                up = self.WP <= 1
-                s += ["RX", "TX"][up]
-            s += "%s " % CHI_VC_strings[self.VC]
+            s += self.chan_str() + " "
         if self.payload is not None:
             if self.flits:
                 sep = "  " if self.format == 2 else " "
@@ -925,7 +980,7 @@ class CMNFlitGroup:
             self.add_flit(f)
             # full
             if self.VC == 0:
-                # REQ
+                # REQ full decode
                 if self.cfg.cmn_product_id == PART_CMN600:
                     f.returnnid = BITS(x,34,11)    # or StashNID
                     f.returntxnid = BITS(x,46,8)   # or StashLPIDvalid, StashLPID
@@ -941,8 +996,8 @@ class CMNFlitGroup:
                     f.excl_snoopme = BIT(x,82)
                     f.expcompack = BIT(x,83)
                     f.tracetag = BIT(x,84)
-                    f.addr = BITS(x,85,48)
-                    f.rsvdc = BITS(x,133,8)
+                    f.addr = BITS(x,85,self.cfg.req_pa_width)
+                    f.rsvdc = BITS(x,85+self.cfg.req_pa_width,self.cfg.rsvdc_width)
                     f.mpam = None
                 elif self.cfg.cmn_product_id == PART_CMN650:
                     f.returnnid = BITS(x,36,11)    # or StashNID
@@ -961,12 +1016,12 @@ class CMNFlitGroup:
                     f.tracetag = BIT(x,88)
                     if not self.cfg.has_MPAM:
                         f.mpam = None
-                        f.addr = BITS(x,89,52)
-                        f.rsvdc = BITS(x,141,8)
+                        f.addr = BITS(x,89,self.cfg.req_pa_width)
+                        f.rsvdc = BITS(x,89+self.cfg.req_pa_width,self.cfg.rsvdc_width)
                     else:
                         f.mpam = BITS(x,89,11)
-                        f.addr = BITS(x,100,52)
-                        f.rsvdc = BITS(x,152,8)
+                        f.addr = BITS(x,100,self.cfg.req_pa_width)
+                        f.rsvdc = BITS(x,100+self.cfg.req_pa_width,self.cfg.rsvdc_width)
                 elif self.cfg._cmn_base_type == 2:
                     # CMN-700 or CMN S3 r0
                     f.returnnid = BITS(x,38,11)
@@ -985,12 +1040,12 @@ class CMNFlitGroup:
                     f.tracetag = BIT(x,98)
                     if not self.cfg.has_MPAM:
                         f.mpam = None
-                        f.addr = BITS(x,99,52)
-                        f.rsvdc = BITS(x,151,8)
+                        f.addr = BITS(x,99,self.cfg.req_pa_width)
+                        f.rsvdc = BITS(x,99+self.cfg.req_pa_width,self.cfg.rsvdc_width)
                     else:
                         f.mpam = BITS(x,99,11)
-                        f.addr = BITS(x,110,52)
-                        f.rsvdc = BITS(x,162,8)
+                        f.addr = BITS(x,110,self.cfg.req_pa_width)
+                        f.rsvdc = BITS(x,110+self.cfg.req_pa_width,self.cfg.rsvdc_width)
                 else:
                     # CMN S3 r1
                     f.returnnid = BITS(x,38,11)
@@ -1010,14 +1065,14 @@ class CMNFlitGroup:
                     f.tracetag = BIT(x,99)
                     if not self.cfg.has_MPAM:
                         f.mpam = None
-                        f.addr = BITS(x,121,52)
-                        f.rsvdc = BITS(x,173,8)
+                        f.addr = BITS(x,121,self.cfg.req_pa_width)
+                        f.rsvdc = BITS(x,121+self.cfg.req_pa_width,self.cfg.rsvdc_width)
                     else:
                         f.mpam = BITS(x,100,15)
-                        f.addr = BITS(x,136,52)
-                        f.rsvdc = BITS(x,188,8)
+                        f.addr = BITS(x,136,self.cfg.req_pa_width)
+                        f.rsvdc = BITS(x,136+self.cfg.req_pa_width,self.cfg.rsvdc_width)
             elif self.VC == 1:
-                # RSP
+                # RSP full decode
                 if self.cfg.cmn_product_id == PART_CMN600:
                     f.resperr = BITS(x,38,2)
                     f.resp = BITS(x,40,3)
@@ -1048,46 +1103,51 @@ class CMNFlitGroup:
                 else:
                     f.fwdstate = None
             elif self.VC == 2:
-                # SNP
+                # SNP full decode
                 if self.cfg.cmn_product_id == PART_CMN600:
                     f.fwdnid = BITS(x,23,11)
+                    f.fwdtxnid = BITS(x,34,8)
                     f.NS = BIT(x,47)
-                    f.addr = BITS(x,51,45) << 3
+                    f.addr = BITS(x,51,self.cfg.pa_width-3) << 3
                     f.mpam = None
                 elif self.cfg.cmn_product_id == PART_CMN650:
                     f.fwdnid = BITS(x,25,11)
+                    f.fwdtxnid = BITS(x,36,8)
                     f.NS = BIT(x,51)
                     if not self.cfg.has_MPAM:
-                        f.addr = BITS(x,55,49) << 3
+                        f.addr = BITS(x,55,self.cfg.pa_width-3) << 3
                         f.mpam = None
                     else:
                         f.mpam = BITS(x,55,11)
-                        f.addr = BITS(x,66,49) << 3
+                        f.addr = BITS(x,66,self.cfg.pa_width-3) << 3
                 elif self.cfg._cmn_base_type == 2:
                     f.fwdnid = BITS(x,27,11)
+                    f.fwdtxnid = BITS(x,38,10)
                     f.NS = BIT(x,55)
                     if not self.cfg.has_MPAM:
-                        f.addr = BITS(x,60,49) << 3
+                        f.addr = BITS(x,60,self.cfg.pa_width-3) << 3
                         f.mpam = None
                     else:
                         f.mpam = BITS(x,59,11)
-                        f.addr = BITS(x,70,49) << 3
+                        f.addr = BITS(x,70,self.cfg.pa_width-3) << 3
                 elif self.cfg._cmn_base_type == 3:
                     f.fwdnid = BITS(x,27,11)
+                    f.fwdtxnid = BITS(x,38,10)
                     f.NS = BIT(x,55)
                     f.NSE = BIT(x,56)
                     if not self.cfg.has_MPAM:
-                        f.addr = BITS(x,76,49) << 3
+                        f.addr = BITS(x,76,self.cfg.pa_width-3) << 3
                         f.mpam = None
                     else:
                         f.mpam = BITS(x,60,15)
-                        f.addr = BITS(x,91,49) << 3
+                        f.addr = BITS(x,91,self.cfg.pa_width-3) << 3
                 else:
                     assert False
             elif self.VC == 3:
-                # DAT
+                # DAT full decode
                 f.tagop = None
                 f.tag = None
+                f.tu = None
                 if self.cfg.cmn_product_id == PART_CMN600:
                     f.homenid = BITS(x,34,11)
                     f.resperr = BITS(x,48,2)
@@ -1140,6 +1200,7 @@ class CMNFlitGroup:
                     f.dataid = BITS(x,88,2)
                     f.tagop = BITS(x,90,2)
                     f.tag = BITS(x,92,8)
+                    f.tu = BITS(x,100,2)
                     f.poison = BITS(x,103,4)
                     f.chunkv = BITS(x,107,2)
                     f.devevent = BITS(x,109,2)
@@ -1198,10 +1259,17 @@ def main(argv):
     parser.add_argument("--no-mpam", action="store_true", help="indicate MPAM not present")
     parser.add_argument("--format", type=int)
     parser.add_argument("--vc", type=int, help="CHI channel (REQ/RSP/SNP/DAT)")
+    parser.add_argument("--pa-width", type=int, help="physical address width")
     parser.add_argument("--tests", type=int, default=1000, help="number of tests to run")
+    parser.add_argument("--req-pa-width", type=int, help="REQ address width")
+    parser.add_argument("--rsvdc-width", type=int, help="REQ RSVDC width")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args(argv)
-    cfg = CMNTraceConfig(opts.cmn_version, has_MPAM=(not opts.no_mpam), cmn_product_revision=opts.cmn_revision)
+    cfg = CMNTraceConfig(
+        opts.cmn_version, has_MPAM=(not opts.no_mpam),
+        cmn_product_revision=opts.cmn_revision, pa_width=opts.pa_width,
+        req_pa_width=opts.req_pa_width,
+        rsvdc_width=opts.rsvdc_width)
     for i in range(opts.tests):
         g = CMNFlitGroup(cfg)
         g.VC = opts.vc if opts.vc is not None else random.randrange(4)

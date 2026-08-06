@@ -250,6 +250,9 @@ def add_trace_args(parser):
     parser.add_argument("--cmn-version", type=(lambda x: int(x, 0)), help="CMN version", required=True)
     parser.add_argument("--cmn-revision", type=int, default=0, help="CMN revision")
     parser.add_argument("--mpam", action="store_true", help="CMN has MPAM enabled")
+    parser.add_argument("--pa-width", type=int, help="physical address width")
+    parser.add_argument("--req-pa-width", type=int, help="REQ address width")
+    parser.add_argument("--rsvdc-width", type=int, help="REQ RSVDC width")
     parser.add_argument("--no-sync", action="store_true", help="don't look for sync sequence")
     parser.add_argument("--ignore", type=str, action="append", help="ignore trace stream(s)")
     parser.add_argument("--unformatted", action="store_true", help="trace file has no CoreSight framing")
@@ -286,6 +289,9 @@ def run_for_file(fn, opts, out):
         opts.cmn_version,
         cmn_product_revision=opts.cmn_revision,
         has_MPAM=opts.mpam,
+        pa_width=opts.pa_width,
+        req_pa_width=opts.req_pa_width,
+        rsvdc_width=opts.rsvdc_width,
     )
     stats = LatencyStats()
     matcher = TransactionMatcher(opts, stats, out)

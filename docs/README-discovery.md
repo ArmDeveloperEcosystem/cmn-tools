@@ -84,7 +84,7 @@ instance to instance (i.e. from chip to chip).
 
 To discover the CPU locations, run:
 
-    python cmn_detect_cpu.py
+    python cmn_detect_cpu.py --update
 
 Depending on the interconnect design, there are three possible
 outcomes, which impact on later analysis:

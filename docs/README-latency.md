@@ -7,7 +7,7 @@ It is possible to measure latency directly in CMN, for example:
 
  - the latency between a request and its response
 
-The cmn_capture.py tool uses CHI tagging features in CMN to report on latency.
+The cmn_latency.py tool uses CHI tagging features in CMN to report on latency.
 Before explaining how to use the tool, we cover the basic operation of CHI tagging.
 
 

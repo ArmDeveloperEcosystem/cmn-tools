@@ -14,6 +14,8 @@ from __future__ import print_function
 
 import os
 import sys
+import subprocess
+
 
 import cmn_base
 import cmn_json
@@ -33,7 +35,7 @@ def gen_debugmap(C):
     sl.append("     X" + ''.join([("  %3u    " % i) for i in range(0, C.dimX)]))
     sl.append("Y P D+" + (C.dimX * "--------+"))
     max_ports = max([xp.n_device_ports() for xp in C.XPs()])
-    max_devices = 0
+    max_devices = 2       # Linux driver shows >=2 device rows even if unused
     for port in C.ports():
         dns = port.device_numbers()
         if dns:
@@ -116,7 +118,8 @@ def main(argv):
                 kernel_map = opts.kernel_map + suffix
                 with open(temp_fn, "w") as f:
                     f.write("\n".join(m) + "\n")
-                rc = os.system("diff %s %s %s" % (opts.diff_opts, kernel_map, temp_fn))
+                args = ["diff"] + opts.diff_opts.split() + [kernel_map, temp_fn]
+                rc = subprocess.call(args, shell=False)
                 if rc == 0:
                     print("Successfully reproduced the kernel driver map in %s" % kernel_map)
                     os.remove(temp_fn)

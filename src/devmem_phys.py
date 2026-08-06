@@ -76,12 +76,12 @@ class MemoryInterface:
             self.pipe_expect_ok("size %u" % n_bytes)
             self.cur_n_bytes = n_bytes
 
-    def read(self, addr, n_bytes):
+    def read(self, addr, n_bytes, sec="NS"):
         self.ensure_n_bytes(n_bytes)
         s = self.pipe("read 0x%x" % addr)
         return int(s, 16)
 
-    def write(self, addr, n_bytes, value):
+    def write(self, addr, n_bytes, value, sec="NS"):
         self.ensure_n_bytes(n_bytes)
         self.pipe_expect_ok("write 0x%x 0x%x" % (addr, value))
 

@@ -33,7 +33,8 @@ def system_description(verbose=1, opts=None, frequency=True):
     scanned from the DMI table.
     """
     S = cmn_base.System()
-    S.CMNs = [cmn_devmem.CMN(loc, verbose=verbose, defer_discovery=opts.cmn_defer) for loc in cmn_devmem_find.cmn_locators(opts=opts)]
+    locs = cmn_devmem_find.cmn_locators(opts=opts)
+    S.CMNs = [cmn_devmem.CMN(loc, verbose=verbose, defer_discovery=opts.cmn_defer) for loc in locs]
     S.timestamp = time.time()
     # ensure all devices are discovered before we create the JSON
     for C in S.CMNs:
@@ -76,7 +77,11 @@ def main(argv):
     parser.add_argument("-v", "--verbose", action="count", default=1, help="increase verbosity")
     opts = parser.parse_args(argv)
     o_verbose = opts.verbose
-    S = system_description(verbose=opts.verbose, opts=opts, frequency=(not opts.no_frequency))
+    try:
+        S = system_description(verbose=opts.verbose, opts=opts, frequency=(not opts.no_frequency))
+    except cmn_devmem_find.CMNNotFound as e:
+        print("%s" % e, file=sys.stderr)
+        sys.exit(1)
     if not S.CMNs:
         # This toolkit is currently specific to CMN, and it's not useful to save
         # a system descriptor if the system doesn't have CMN.

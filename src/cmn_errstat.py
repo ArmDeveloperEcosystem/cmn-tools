@@ -97,7 +97,7 @@ def print_errstatus(C):
             print()
         addr_ns = node.read64(0x3118)
         if addr_ns != 0:
-            print("    Address: 0x%x" % addr)
+            print("    Address: 0x%x" % addr_ns)
     # Run through the PrimeCell-style id registers in the root node,
     # to keep register coverage happy
     for r in range(0x3FB8, 0x4000, 8):

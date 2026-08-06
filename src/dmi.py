@@ -163,7 +163,7 @@ class DMIStructure:
 
 def _decode_system(d):
     """
-    DMI_SYSTEM decode. We create a uuid.UUID() object.
+    DMI_SYSTEM (type 1) decode. We create a uuid.UUID() object.
     """
     (_, mfr, prod, vsn, ser) = struct.unpack("<IBBBB", d.raw[:8])
     d.mfr = d.string(mfr)
@@ -175,7 +175,7 @@ def _decode_system(d):
 
 def _decode_processor(d):
     """
-    DMI_PROCESSOR decode
+    DMI_PROCESSOR (type 4) decode
     """
     (_, skt, d.processor_type, d.processor_family, pmfr, d.id, vsn) = struct.unpack("<IBBBBQB", d.raw[:17])
     d.socket = d.string(skt)
@@ -218,25 +218,27 @@ def DMI_CACHE_assoc_type_str(assoc_type):
 
 def _decode_cache(d):
     """
-    DMI_CACHE decode.
+    DMI_CACHE (type 7) decode.
     """
     (_, s_socket, d.config, max_size, inst_size, _, _, d.speed, d.ecc, d.cache_type, assoc) = struct.unpack("<IBHHHHHBBBB", d.raw[:0x13])
     d.socket = d.string(s_socket)
     d.level = (d.config & 7) + 1
     d.assoc_type = assoc
     d.assoc = DMI_CACHE_assoc[assoc] if assoc < len(DMI_CACHE_assoc) else None
-    if max_size == 0xffff:
+    # By observation, if extension fields are used, 16-bit fields may be zero, not only 0xffff
+    if max_size == 0xffff or (max_size == 0 and len(d.raw) >= 0x1b):
         (max_size, inst_size) = struct.unpack("<II", d.raw[0x13:0x1b])
-        (d.max_size, d.inst_size) = ((max_size & 0x7fffffff) << 16, (inst_size & 0x7fffffff) << 16)
+        d.max_size = (max_size & 0x7fffffff) << (16 if (max_size & 0x80000000) else 10)
+        d.inst_size = (inst_size & 0x7fffffff) << (16 if (inst_size & 0x80000000) else 10)
     else:
-        d.max_size = max_size << (16 if (max_size & 0x8000) else 10)
-        d.inst_size = inst_size << (16 if (max_size & 0x8000) else 10)
+        d.max_size = (max_size & 0x7fff) << (16 if (max_size & 0x8000) else 10)
+        d.inst_size = (inst_size & 0x7fff) << (16 if (inst_size & 0x8000) else 10)
     d.p_processor = None      # link not resolved yet
 
 
 def _decode_memory_array(d):
     """
-    DMI_MEMORY_ARRAY decode
+    DMI_MEMORY_ARRAY (type 16) decode
     """
     (_, d.location, d.use, d.ecc, capacity_k, d.h_errinfo, d.n_devices) = struct.unpack("<IBBBIHH", d.raw[:0xf])
     if capacity_k == 0x80000000:
@@ -249,7 +251,7 @@ def _decode_memory_array(d):
 
 def _decode_memory_device(d):
     """
-    DMI_MEMORY_DEVICE decode
+    DMI_MEMORY_DEVICE (type 17) decode
     """
     (_, d.h_array, herr, d.t_width, d.d_width, sz, d.form_factor, _) = struct.unpack("<IHHHHHBB", d.raw[:16])
     (dloc, bloc, d.mem_type, d.md, d.p_speed_mts, mfr, _, _, part, d.rank, xsize, d.c_speed_mts) = struct.unpack("<BBBHHBBBBBIH", d.raw[16:34])
@@ -690,9 +692,13 @@ def print_DMI_memory(D):
                 print("  depth %u" % dm.depth, end="")
         #print()
         if d.c_speed_mts is not None:
-            bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
+            bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second, from configured speed
             print(" speed=%s/%u MT/s" % ((d.p_speed_mts or "?"), d.c_speed_mts), end="")
             print(" - b/w=%u Mbits/s, %u MB/s" % (bw//1000000, bw//1000000//8), end="")
+        elif d.p_speed_mts is not None:
+            print(" speed=%s MT/s (peak; configured speed unknown)", end="")
+        else:
+            print(" speed unknown", end="")
         print("  %s %s" % (d.mfr, d.part))
 
     print("Memory:")
@@ -700,8 +706,9 @@ def print_DMI_memory(D):
         print("  Memory array:   %6s  %-6s" % (memsize_str(da.capacity), DMI_memory_array_ecc.get(da.ecc, "?")), end="")
         print("  %u devices" % (da.n_devices), end="")
         dam = da.p_address_map
-        print("  0x%012x - 0x%012x  %6s" % (dam.start, dam.end, memsize_str(dam.end - dam.start)), end="")
-        print("  partition-width=%u" % (dam.partition_width), end="")
+        if dam is not None:
+            print("  0x%012x - 0x%012x  %6s" % (dam.start, dam.end, memsize_str(dam.end - dam.start)), end="")
+            print("  partition-width=%u" % (dam.partition_width), end="")
         print()
         # Show devices in this array
         for d in da.p_devices:
@@ -710,12 +717,16 @@ def print_DMI_memory(D):
     total_size = 0
     total_bw = 0
     n_memory = 0
+    if o_verbose:
+        print("Calculating bandwidth...")
     for d in D.structures(type=DMI_MEMORY_DEVICE):
         if d.h_array is None:
             print_memory_device(d)    # not seen this one already
         total_size += d.size
         if d.c_speed_mts is not None:
             bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
+            if o_verbose:
+                print("  %u MT/s * %u bits = %10u bits/s = %s = %s = %s" % (d.c_speed_mts, d.d_width, bw, memsize_str(bw, decimal=True, unit="bit/s"), memsize_str(bw, unit="bit/s"), memsize_str(bw//8, unit="B/s")))
             if total_bw is not None:
                 total_bw += bw
         else:

@@ -37,15 +37,31 @@ device node in the topology.
 
 ### `System`
 
-A `System` groups all CMN instances and any discovered CPU mappings.
+A `System` groups all CMN instances and any discovered CPU and I/O address
+mappings.
 
 - `System.CMNs`: all meshes in the system.
 - `System.ports()`, `System.XPs()`, `System.nodes()`: iterate across all
   meshes.
 - `System.cpu_node`: map from OS CPU number to `CPU`.
+- `System.io_address_map`: optional capture of non-hashed physical-address
+  regions hosted by I/O home nodes. Each home refers back to a mesh and CHI
+  target ID; named `/proc/iomem` resources may annotate its regions.
 
 Use `System` when a tool needs a whole-system view, especially on multi-mesh
 systems where CHI ids must be interpreted together with a mesh instance.
+
+
+### I/O address-map capture
+
+`IOAddressMap` is optional whole-system discovery data. It contains
+`IOAddressHome` objects identified by a CMN sequence number, CHI target ID
+and descriptive node type. Each home contains its non-hashed
+`IOAddressRegion` objects. Region bounds are inclusive.
+
+An `IOAddressRegion` may contain `IOAddressResource` annotations derived
+from named `/proc/iomem` entries. These names describe kernel resources; they
+do not assert a more specific operating-system device identity.
 
 
 ### `CMN`
@@ -56,6 +72,11 @@ A `CMN` object represents one rectangular CMN mesh.
   JSON.
 - In `cmn_devmem`, it is also the live access point for register-backed
   discovery and control.
+
+Each mesh's `product_config` records synthesis-time properties needed by
+other tools, including the CHI version, whether MPAM is enabled, and the
+physical-address, REQ-address and REQ-RSVDC widths discovered from
+`por_info_global`.
 
 Key responsibilities:
 
@@ -74,6 +95,10 @@ Important iteration methods:
 `nodes()` and `devices()` are intentionally different. If a tool cares about
 CHI ids seen on the fabric, it usually wants `devices()`. If it cares about
 explicit CMN components, it usually wants `nodes()`.
+
+In both object models, `CMN.nodes()` yields explicit device nodes only. For
+live access, `CMN.register_nodes()` additionally yields the root configuration
+node and XPs for tools which operate directly on every register-backed node.
 
 
 ## XP, Port and Device Slot
@@ -104,6 +129,10 @@ Each port has:
   (`RN-F`, `HN-F`, `SN-F`, etc.)
 - a `base_id()`: the CHI base id for the port
 - zero or more device numbers behind that port
+
+The canonical port attributes are `port_number` and `connected_type`.
+`port` and `device_type()` are compatibility aliases and should not be used by
+new code.
 
 If the port has a CAL, the port can expose multiple device numbers and
 therefore multiple CHI ids.
@@ -193,6 +222,10 @@ A `CPU` maps:
 - LPID
 - the `CMNDevice` through which the CPU enters the fabric
 
+When a CPU's LPID has not been discovered, the object uses `None` and the
+optional `lpid` field is omitted from its JSON description. An LPID of zero
+is represented explicitly and is distinct from an unknown LPID.
+
 This is why CPU mappings hang off device slots rather than device nodes:
 requesters are identified by CHI ids, and those ids belong to device slots.
 
@@ -217,6 +250,12 @@ device ports, so callers should prefer helper methods such as `port_at_id()`,
 `device_at_id()`, `base_id()`, `ids()` and `coords()` instead of re-decoding
 ids manually.
 
+`XP.n_device_bits()` returns the width of the device-number part of a CHI node
+id. `id_device_bits()` is retained as a compatibility alias.
+
+Missing mesh lookups use `None`: `CMN.XP()`, `CMN.port_at_id()` and
+`CMN.device_at_id()` do not assert merely because an id is absent.
+
 
 ## Common Usage Patterns
 
@@ -229,6 +268,10 @@ ids manually.
   slot.
 - Use `port.connected_type` when the distinction is about what is attached to a
   port, not about which explicit CMN node types were discovered.
+- Use `node.CMN()` to navigate to a mesh. `owning_cmn()` is a compatibility
+  alias in the persistent model.
+- Use the `properties=` keyword for filtered iteration. `props=` is retained
+  only for compatibility.
 
 
 ## `cmn_base` vs `cmn_devmem`

@@ -251,6 +251,14 @@ CMN_PORT_DEVTYPE_RNF_CHIG_ESAM  = 0x24
 CMN_PORT_DEVTYPE_SNF_CHIG       = 0x25
 
 
+#
+# Port properties encompass the union of the properties of possible device nodes
+# attached to the port.
+#
+# There is one exception to this - CAL3 RN-F ports have an HN-I node.
+# Rather than give all RN-F ports the HN-I property, we special-case CAL3
+# in the implementations of port.properties().
+#
 cmn_port_properties = {
     CMN_PORT_DEVTYPE_RNI              : (CMN_PROP_RNI | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RND              : (CMN_PROP_RND | CMN_PROP_SAM),
@@ -264,24 +272,24 @@ cmn_port_properties = {
     CMN_PORT_DEVTYPE_HNP              : CMN_PROP_HNI,
     CMN_PORT_DEVTYPE_SNF              : CMN_PROP_SNF,
     CMN_PORT_DEVTYPE_SBSX             : CMN_PROP_SBSX,
-    CMN_PORT_DEVTYPE_HNF              : CMN_PROP_HNF,
+    CMN_PORT_DEVTYPE_HNF              : (CMN_PROP_HNF | CMN_PROP_MPAM),
     CMN_PORT_DEVTYPE_SNF_CHIE         : CMN_PROP_SNF,
     CMN_PORT_DEVTYPE_SNF_CHID         : CMN_PROP_SNF,
     CMN_PORT_DEVTYPE_CXHA             : (CMN_PROP_HN | CMN_PROP_CCG),
     CMN_PORT_DEVTYPE_CXRA             : (CMN_PROP_RN | CMN_PROP_CCG),
-    CMN_PORT_DEVTYPE_CXRH             : (CMN_PROP_RN | CMN_PROP_CCG | CMN_PROP_SAM),
+    CMN_PORT_DEVTYPE_CXRH             : (CMN_PROP_RN | CMN_PROP_HN | CMN_PROP_CCG | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHID         : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHID_ESAM    : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHIC         : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHIC_ESAM    : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHIE         : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHIE_ESAM    : (CMN_PROP_RNF | CMN_PROP_SAM),
-    CMN_PORT_DEVTYPE_HNS              : CMN_PROP_HNS,
+    CMN_PORT_DEVTYPE_HNS              : (CMN_PROP_HNS | CMN_PROP_MPAM),
     CMN_PORT_DEVTYPE_LCN              : CMN_PROP_none,
     CMN_PORT_DEVTYPE_MTSX             : CMN_PROP_none,
     CMN_PORT_DEVTYPE_HNV              : CMN_PROP_HNI,
-    CMN_PORT_DEVTYPE_CCG              : CMN_PROP_CCG,
-    CMN_PORT_DEVTYPE_CCGSMP           : CMN_PROP_CCG,
+    CMN_PORT_DEVTYPE_CCG              : (CMN_PROP_CCG | CMN_PROP_RNI | CMN_PROP_HN | CMN_PROP_SAM),
+    CMN_PORT_DEVTYPE_CCGSMP           : (CMN_PROP_CCG | CMN_PROP_RNI | CMN_PROP_HN | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHIF         : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHIF_ESAM    : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_SNF_CHIF         : CMN_PROP_SNF,

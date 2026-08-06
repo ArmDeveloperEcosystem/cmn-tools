@@ -31,6 +31,8 @@ import chi_spec
 import cmn_base
 import cmn_config
 import cmn_json
+import cmn_wp_fields
+import value_mask
 
 
 o_verbose = 0
@@ -99,61 +101,28 @@ class WatchpointBadShort(WatchpointError):
 
 def convert_value(v):
     """
-    Given a numeric or masked-numeric value specifier,
-    return a pair of a numeric value and a don't-care mask.
+    Convert a value specifier to a value_mask.ValueMask object.
 
-    Table-lookup of enumerated values is assumed to have already been done.
-
-    A value specifier might be a literal value, or a wildcard:
-      0b1x00    -> (0x8, 0x4)
-      0x4xxx    -> (0x4000, 0x0fff)
-    TBD: For non-nybble-aligned fields that don't fit hex wildcards,
-    it would be nice to have a way to represent them compactly.
+    This compatibility wrapper preserves cmnwatch's WatchpointBadValue error
+    type while the shared parser in value_mask raises ValueError.
     """
-    if isinstance(v, bool):
-        return (int(v), 0)
-    if isinstance(v, int):
-        return (v, 0)
     try:
-        v = int(v, 0)
-        return (v, 0)
-    except Exception:
-        pass
-    if v.startswith("0b"):
-        v0 = int(v.replace('x', '0'), 2)
-        v1 = int(v.replace('x', '1'), 2)
-        return (v0, v1-v0)
-    elif v.startswith("0x"):
-        v0 = int(v[2:].replace('x', '0'), 16)
-        v1 = int(v[2:].replace('x', 'f'), 16)
-        return (v0, v1-v0)
-    else:
-        raise WatchpointBadValue(v, "expected integer or bitmask")
+        return value_mask.convert_value(v)
+    except ValueError as e:
+        raise WatchpointBadValue(v, str(e))
 
 
 def unconvert_value_mask(v, m):
     """
-    Inverse of convert_value - given a (value, mask) tuple, convert it back into
-    a single object - either an integer, or a string.
+    Convert a value/don't-care mask pair back to an integer or wildcard string.
     """
-    if m == 0:
-        return v
-    else:
-        s = ""
-        while m or v:
-            if m & 1:
-                s = "x" + s
-            else:
-                s = str(v & 1) + s
-            v >>= 1
-            m >>= 1
-        return "0b" + s
+    return value_mask.unconvert_value_mask(v, m)
 
 
-assert convert_value(123) == (123, 0)
-assert convert_value("123") == (123, 0)
-assert convert_value("0x123") == (0x123, 0)
-assert convert_value("0bx1xx") == (4, 0b1011)
+assert convert_value(123).as_tuple() == (123, 0)
+assert convert_value("123").as_tuple() == (123, 0)
+assert convert_value("0x123").as_tuple() == (0x123, 0)
+assert convert_value("0bx1xx").as_tuple() == (4, 0b1011)
 
 assert unconvert_value_mask(123, 0) == 123
 assert unconvert_value_mask(4, 0b1011) == "0bx1xx"
@@ -186,7 +155,7 @@ class MatchMask:
         if val is not None:
             if o_verbose:
                 print("    setting [%u:%u] to %s" % (pos+bits-1, pos, val), file=sys.stderr)
-            (val, dontcare) = convert_value(val)
+            (val, dontcare) = convert_value(val).as_tuple()
             if val >= (1 << bits):
                 raise WatchpointValueOutOfRange(val, ("value out of range for %u-bit field" % bits))
             dontcare &= ((1 << bits) - 1)
@@ -435,218 +404,17 @@ def _object_to_dict(obj, fields):
 
 
 """
-Documentation in the TRMs, from "REQ channel: primary match group" onwards
+Documentation in the TRMs, from "REQ channel: primary match group" onwards:
    CMN-600: 5.1, tables 5-1 on
    CMN-650: 7.1, tables 7-1 on
    CMN-700: 6.1, tables 6-1 on
    CMN S3 r0: 5.1, tables 5-1 on
    CMN S3 r2: 6.1, tables 6-1 on
 
-Some fields may exist in multple match groups, while others only exist in one.
-This gives us some flexibility in how we allocate fields.
-
-CMN-650 is mostly the same as CMN-700 and CI-700, but lacks MTE support.
-
-For each field we define:
-  (lookup,
-   [CMN-600 positions],
-   [CMN-650/700 positions],
-   [(optional: CMN-S3 positions),
-   (optional: CMN-S3 r2 positions))
-
-If a position list is None, or missing, then it means use the previous one.
-
-If a position list is explicitly empty, the field is not supported for this product.
-
-The lookup can be an array, or a callable.
+Watchpoint field layout tables live in cmn_wp_fields. Some fields may exist
+in multiple match groups, while others only exist in one. This gives us some
+flexibility in how we allocate fields.
 """
-
-_resperr = ["OK", "EXOK", "DERR", "NDERR"]
-
-_req_fields = {
-    "tracetag":   (None,   [(0, 54, 1), (1, 59, 1)],  [(1, 63, 1)]),
-    "srcid":      (None,   [(0, 0, 11)],  [(0, 0, 11), (2, 0, 11)]),
-    "tgtid":      (None,   [(0, 0, 11)],  [(0, 0, 11), (2, 0, 11)]),
-    "returnnid":  (None,   [(0, 11, 11)], [(0, 11, 11)]),
-    "stashnid":   (None,   [],            [(0, 11, 11)]),
-    "stashtgtvalid":  (None,  [],         [(0, 22, 1)]),
-    "endian":     (None,   [(0, 22, 1)],  [(0, 22, 1)]),     # overlays wth stashnidvalid/deep
-    "opcode":     (chi_spec.opcodes_REQ, [(0, 31, 6)],  [(0, 29, 7), (2, 11, 7)]),
-    "size":       (None,   [(0, 37, 3)],  [(0, 36, 3)]),
-    "ns":         (chi_spec.NS,   [(0, 40, 1)],  [(0, 39, 1)]),
-    "allowretry": (None,   [(0, 41, 1)],  [(0, 40, 1)],  None,  [(0, 40, 1), (2, 32, 1)],  [(2, 35, 1)]),
-    "order":      (None,   [(0, 42, 2)],  [(0, 41, 2)]),
-    "pcrdtype":   (None,   [(0, 44, 4)],  [(0, 43, 4)]),
-    "lpid":       (None,   [(0, 48, 5)],  [(0, 47, 5)]),
-    "groupidext": (None,   [],            [(0, 52, 3)]),
-    "expcompack": (None,   [],            [(0, 55, 1)]),
-    "rsvdc":      (None,   [(0, 55, 8)],  [(0, 56, 8)]),
-    "qos":        (None,   [(1, 0, 4)],   [(1, 0, 4)]),
-    "addr":       (None,   [(1, 4, 48)],  [(1, 4, 52)]),
-    "mpam":       (None,   [],            [(2, 18, 11)],   None,   [(2, 18, 12)],  [(2, 18, 15)]),
-    "likelyshared": (None, [(1, 52, 1)],  [(1, 56, 1)]),
-    "memattr":    (None,   [(1, 53, 4)],  [(1, 57, 4)]),
-    "snpattr":    (None,   [(1, 57, 1)],  [(1, 61, 1)]),
-    "excl":       (None,   [(1, 58, 1)],  [(1, 62, 1)]),
-    "snoopme":    (None,   [(1, 58, 1)],  [(1, 62, 1)]),
-    "tagop":      (None,   [],            [],            [(2, 29, 2)],    [(2, 30, 2)],   [(2, 33, 2)]),
-    "mecid":      (None,   [],            [],            [],              [],             [(2, 40, 16)]),
-    "cah":        (None,   [],            [],            [],              [(1, 62, 1)]),
-    "deep":       (None,   [],            [],            [],              [(0, 22, 1)]),
-    "nse":        (None,   [],            [],            [],              [],      [(0, 40, 1)]),
-}
-
-
-_rsp_fields = {
-    "tracetag":   (None,   [(0, 39, 1)],  [(0, 49, 1)]),
-    "qos":        (None,   [(0, 0, 4)],   [(0, 0, 4)]),
-    "srcid":      (None,   [(0, 4, 11)],  [(0, 4, 11)]),
-    "tgtid":      (None,   [(0, 4, 11)],  [(0, 4, 11)]),
-    "opcode":     (chi_spec.opcodes_RSP,   [(0, 15, 4)],  [(0, 15, 5)]),
-    "resperr":    (_resperr,   [(0, 19, 2)], [(0, 20, 2)]),
-    "resp":       (None,   [(0, 21, 3)],  [(0, 22, 3)]),
-    "fwdstate":   (None,   [(0, 24, 3)],  [(0, 25, 3)]),    # SnpRespFwded
-    "cbusy":      (None,   [],            [(0, 28, 3)]),
-    "dbid":       (None,   [(0, 27, 8)],  [(0, 31, 12)]),
-    "pcrdtype":   (None,   [(0, 35, 4)],  [(0, 43, 4)]),
-    "devevent":   (None,   [(0, 40, 2)],  [(0, 50, 2)]),
-    "tagop":      (None,   [],            [],             [(0, 47, 2)]),
-    "datapull":   (None,   [],            [],             [],    [(0, 25, 3)]),
-}
-
-
-def snp_addr(s):
-    """
-    For convenience, we allow the user to specify a line byte address,
-    which we convert to the field value in a SNP packet.
-    TBD: For CMN-600, the full SNP address field is split across two match groups -
-    we don't handle this yet.
-    """
-    (v, m) = convert_value(s)
-    (v, m) = (v >> 3, m >> 3)
-    return unconvert_value_mask(v, m)
-
-
-assert snp_addr(0x8000) == 0x1000
-assert snp_addr("0xxx40") == "0bxxxxxxxx01000"
-
-
-_snp_fields = {
-    "tracetag":   (None,   [(0, 27, 1), (1, 27, 1)],  [(0, 38, 1)],   None,  None, [(0, 39, 1)]),
-    "srcid":      (None,   [(0, 0, 11), (1, 0, 11)],  [(0, 0, 11), (1, 0, 11)], None, None, [(0, 0, 11)]),
-    "opcode":     (chi_spec.opcodes_SNP,   [(0, 19, 5), (1, 19, 5)],  [(0, 30, 5)]),
-    "fwdtxnid":   (None,   [],          [(0, 11, 8)]),
-    "fwdnid":     (None,   [],          [(0, 19, 11)]),
-    "ns":         (chi_spec.NS,   [(0, 24, 1), (1, 24, 1)],  [(0, 35, 1)]),
-    "donotgotosd":(None,   [(0, 25, 1), (1, 25, 1)],  [(0, 36, 1)],  None,  None, [(0, 37, 1)]),
-    "rettosrc":   (None,   [(0, 26, 1), (1, 26, 1)],  [(0, 37, 1)],  None,  None, [(0, 38, 1)]),
-    "addr":       (snp_addr,   [(0, 28, 36)], [(1, 11, 49)],   [(1, 11, 49)], None,  [(1, 0, 49)]),
-    "addr13":     (None,   [(1, 32, 32)], []),
-    "mpam":       (None,   [],          [(0, 43, 11)],    None,     [],   [(1, 49, 15)]),
-    "qos":        (None,   [],          [(0, 39, 4)],     None,     None, [(0, 40, 4)]),
-    "nse":        (None,   [],          [],               [],           [],   [(0, 36, 1)]),
-    "mecid":      (None,   [],          [],               [],           [(0, 43, 16)],   [(0, 44, 16)]),
-    "streamid":   (None,   [],          [],               [],           [(0, 43, 16)],   [(0, 44, 16)]),
-}
-
-
-_resp_DAT = ["I", "SC", "UC", None, None, None, "UD_PD", "SD_PD"]
-
-
-# fwdstate/datasrc are overlaid, currently we don't link this to the opcode
-# fwdstate is valid for: SnpRespDataFwded
-# datasrc is valid for:  CompData, DataSepResp, SnpRespData, SnpRespDataPtl
-
-_dat_fields = {
-    "tracetag":   (None,   [(0, 49, 1)],  [(1, 44, 1)],    None,    None,   [(1, 32, 1)]),
-    "qos":        (None,   [(0, 0, 4)],   [(0, 0, 4)]),
-    "srcid":      (None,   [(0, 4, 11)],  [(0, 4, 11), (1, 0, 11)]),
-    "tgtid":      (None,   [(0, 4, 11)],  [(0, 4, 11), (1, 0, 11)]),
-    "homenid":    (None,   [(0, 15, 11)], [(0, 15, 11)]),
-    "opcode":     (chi_spec.opcodes_DAT,   [(0, 26, 3)],  [(0, 26, 4), (1, 11, 4)]),
-    "resperr":    (_resperr,    [(0, 29, 2)],  [(0, 30, 2), (1, 15, 2)]),
-    "resp":       (_resp_DAT,   [(0, 31, 3)],  [(0, 32, 3), (1, 17, 3)]),
-    "fwdstate":   (None,   [(0, 34, 3)],  [(0, 35, 4)],    None,            [(0, 35, 5)],    [(0, 35, 8)]),
-    "datasrc":    (None,   [(0, 34, 3)],  [(0, 35, 4)],    None,            [(0, 35, 5)],    [(0, 35, 8)]),
-    "stash":      (None,   [],            [(0, 35, 4)],    None,            [(0, 35, 5)],    []),
-    "cbusy":      (None,   [],            [(0, 39, 3)],    None,            [(0, 40, 3)],    [(0, 44, 3)]),
-    "dbid":       (None,   [(0, 37, 8)],  [(0, 42, 12), (1, 32, 12)],  None, [(0, 43, 12), (1, 32, 12)],  [(0, 47, 16)]),
-    "ccid":       (None,   [(0, 45, 2)],  [(0, 54, 2)],    None,            [(0, 55, 2)],    [(1, 38, 2)]),
-    "dataid":     (None,   [(0, 47, 2)],  [(0, 56, 2)],    None,            [(0, 57, 2)],    [(1, 40, 2)]),
-    "poison":     (None,   [(0, 50, 1)],  [(0, 58, 4)],    None,            [(0, 59, 4)],    [(1, 42, 4)]),
-    "chunkv":     (None,   [(0, 51, 2)],  [(1, 45, 2)],    None,            None,            [(1, 33, 2)]),
-    "devevent":   (None,   [(0, 53, 2)],  [(0, 62, 2), (1, 47, 2)],   None,  [(1, 47, 2)],    [(1, 35, 2)]),
-    "cah":        (None,   [],            [],              [],              [(1, 49, 1)],    [(1, 37, 1)]),
-    "rsvdc":      (None,   [(0, 55, 8)],  [(1, 49, 8)],    None,            [(1, 50, 8)],    [(1, 49, 8)]),
-    "tagop":      (None,   [],            [],         [(1, 20, 2)]),
-    "tag":        (None,   [],            [],         [(1, 22, 8)]),
-    "tu":         (None,   [],            [],         [(1, 30, 2)]),
-    "datapull":   (None,   [],            [],         [],        [],    [(0, 43, 1)]),
-    "numdat":     (None,   [],            [],         [],        [],    [(1, 46, 2)]),
-    "replicate":  (None,   [],            [],         [],        [],    [(1, 48, 1)]),
-}
-
-
-# Use the product code to index into the field offset list - falling
-# back to the lsat entry, if the list isn't long enough.
-_field_selector = {
-    cmn_base.PART_CMN600: 1,
-    cmn_base.PART_CMN650: 2,
-    cmn_base.PART_CMN700: 3,
-    cmn_base.PART_CI700: 3,
-    cmn_base.PART_CMN_S3: 4,    # but CMN S3 r2 is 5
-}
-
-def field_selector_for_product(cfg):
-    if cfg.product_id == cmn_config.PART_CMN_S3:
-        assert cfg.revision_major is not None, "CMN S3 needs to know revision"
-        return 5 if cfg.revision_major >= 2 else 4
-    else:
-        return  _field_selector[cfg.product_id]
-
-
-# Add DVM fields as sub-fields of the address
-
-# DVM is encoded in the address field of REQ and SNP, regardless of CMN version
-# SNP packets don't contain the lower bits of the address. The offsets here
-# are relative to the address field in the packet.
-# For SNP we also need to match bit 0 of the address field, to select fragment #0,
-# which corresponds (mostly) to the REQ packet.
-_dvm_fields = [
-    ("vavalid",   None,              1, 4,  1, 0),
-    ("vmidvalid", None,              1, 5,  2, 0),
-    ("asidvalid", None,              1, 6,  3, 0),
-    ("sec",       None,              2, 7,  4, 0),
-    ("el",        chi_spec.DVM_EL,   2, 9,  6, 0),
-    ("type",      chi_spec.DVM_type, 3, 11, 8, 0),
-    ("vmid",      None,              8, 14, 11, 0),
-    ("asid",      None,              16, 22, 19, 0),
-]
-
-
-def _fixdvmaddr(flds, fbits, off):
-    af = flds["addr"]
-    rf = []
-    for f in list(af)[1:]:
-        if f is not None:
-            f = [(grp, pos+off, fbits) for (grp, pos, _) in f]
-        rf.append(f)
-    return rf
-
-
-_dvm_frag = {}
-for (df, dlookup, dbits, reqoff, snpoff, frag) in _dvm_fields:
-    if frag == 0:
-        # For REQ, some DVM fields are only visible when they are in the first fragment,
-        # since in the second, they are in the DAT payload which we can't see.
-        _req_fields["dvm"+df] = tuple([dlookup] + _fixdvmaddr(_req_fields, dbits, reqoff))
-    _snp_fields["dvm"+df] = tuple([dlookup] + _fixdvmaddr(_snp_fields, dbits, snpoff))
-    _dvm_frag["dvm"+df] = frag
-
-
-# Selecting on DVM SNP fields should normally force fragment #0.
-# We might also want to select fragment #0 or #1 explicitly.
-_snp_fields["dvmfrag"] = tuple([None] + _fixdvmaddr(_snp_fields, 1, 0))
 
 
 # Build a consolidated CHI opcodes table that maps opcodes to channel and value.
@@ -660,14 +428,37 @@ for (chn, optab) in enumerate(chi_spec.opcodes):
         _all_opcodes[op] = (chn, i)
 
 
-# Fields indexed by CHI channel
-_fields = [_req_fields, _rsp_fields, _snp_fields, _dat_fields]
+# Fields indexed by CHI channel. Kept as a compatibility view for callers
+# that inspect cmnwatch metadata directly.
+_fields = cmn_wp_fields.all_fields_by_channel()
 
 # Consolidated list of CHI fields (including DVM fields).
 # Used for e.g. constructing command-line arguments.
-chi_fields = list(set([k for flds in _fields for k in flds.keys()]))
+chi_fields = cmn_wp_fields.chi_field_names()
 
 _all_fields = chi_fields + ["exclusive"]
+
+
+def field_positions(meta, product_key):
+    """
+    Return watchpoint bit positions from a field metadata dictionary.
+
+    "meta" is a small dictionary created by cmn_wp_fields. It carries either
+    resolved "positions" for one selected product or a compatibility
+    "positions_by_product" map. The product_key argument selects an entry from
+    that compatibility map.
+    """
+    return cmn_wp_fields.field_positions(meta, product_key)
+
+
+def field_decoder(meta):
+    """
+    Return the optional value decoder from a field metadata dictionary.
+
+    Decoders are shared across products. A decoder may be an enum table or a
+    callable; None means the field value is parsed as a raw integer/wildcard.
+    """
+    return cmn_wp_fields.field_decoder(meta)
 
 
 def match_obj(o, chn=0, up=None, mask=None, cmn_version=None):
@@ -680,12 +471,12 @@ def match_obj(o, chn=0, up=None, mask=None, cmn_version=None):
     return apply_matches_obj_to_watchpoint(wp, o)
 
 
-def fix_matches_obj_for_dvm(chn, o):
+def fix_matches_obj_for_dvm(chn, o, cmn_version):
     """
     If there are any DVM fields, force the opcode and SNP fragment selector
     """
     opcode = [0x14, None, 0x0D, None][chn]
-    for dvmf in _fields[chn].keys():
+    for dvmf in cmn_wp_fields.fields_for_product(cmn_version, chn).keys():
         if dvmf.startswith("dvm") and getattr(o, dvmf, None) is not None:
             # Force opcode
             cur_op = getattr(o, "opcode", None)
@@ -698,20 +489,8 @@ def fix_matches_obj_for_dvm(chn, o):
                 pass
             if chn == SNP and dvmf != "dvmfrag":
                 # apply the fragment selector
-                frag = _dvm_frag[dvmf]
+                frag = cmn_wp_fields.dvm_fragment(dvmf)
                 o.dvmfrag = frag
-
-
-def field_positions(meta, mix):
-    """
-    Given a positions array, and an index (e.g. 0 for CMN-600),
-    find the effective positions for this product.
-    """
-    eff_mix = min(mix, len(meta)-1)
-    while meta[eff_mix] is None:
-        assert eff_mix >= 2
-        eff_mix -= 1
-    return meta[eff_mix]
 
 
 def apply_matches_obj_to_watchpoint(wp, o):
@@ -729,10 +508,9 @@ def apply_matches_obj_to_watchpoint(wp, o):
     """
     assert wp.chn is not None, "channel (REQ/RSP/SNP/DAT) must be specified"
     exclusive = getattr(o, "exclusive", None)
-    fields = _fields[wp.chn]
-    # Index of this CMN's field positions in the tuple
-    mix = field_selector_for_product(wp.cmn_version)
-    fix_matches_obj_for_dvm(wp.chn, o)
+    fields = cmn_wp_fields.fields_for_product(wp.cmn_version, wp.chn)
+    product_key = cmn_wp_fields.product_key_for_config(wp.cmn_version)
+    fix_matches_obj_for_dvm(wp.chn, o, wp.cmn_version)
     for phase in [0, 1]:
         for (k, meta) in fields.items():
             val = getattr(o, k, None)
@@ -747,16 +525,18 @@ def apply_matches_obj_to_watchpoint(wp, o):
                     if wp.up is False:    # n.b. not None
                         raise WatchpointBadValue(val, "can't specify TGTID on download", k, wp.chn)
                     wp.up = True      # tgtid specified, force watchpoint to "up"
-                poses = field_positions(meta, mix)
+                poses = field_positions(meta, product_key)
                 if not poses:
                     raise WatchpointBadValue(val, ("field not supported in this product (%s)" % wp.cmn_version), k, wp.chn)
-                # Get the value-parsing function, so we can do e.g. "resp=UC"
-                # Each channel has its own opcode lookup function.
-                lookup = meta[0]
+                # Get the value-parsing function, so we can do e.g. "resp=UC".
+                lookup = field_decoder(meta)
                 if lookup is not None:
                     # The lookup function may be a table, or a callable.
                     if callable(lookup):
-                        val = lookup(val)
+                        try:
+                            val = lookup(val)
+                        except ValueError as e:
+                            raise WatchpointBadValue(val, str(e), k, wp.chn)
                     elif val in lookup:
                         val = lookup.index(val)
                     elif wp.chn == 0 and val == "AtomicStore":
@@ -820,12 +600,12 @@ def list_fields(cmn_version):
     """
     List all CHI fields that can be matched.
     """
-    mix = field_selector_for_product(cmn_version)
+    product_key = cmn_wp_fields.product_key_for_config(cmn_version)
     for (chn, cf) in zip(_chi_channels, _fields):
         print()
         print("%s fields:" % chn)
         for (f, meta) in cf.items():
-            poses = field_positions(meta, mix)
+            poses = field_positions(meta, product_key)
             if not poses and not o_verbose:
                 # For this product, this field is not present or not observable
                 continue
@@ -837,7 +617,7 @@ def list_fields(cmn_version):
                 groups = ''.join([str(g) for (g, _, _) in poses])
                 print("%2u bits  grp %-4s" % (nbits, groups), end="")
             # Print any enumerator for this CHI field
-            keys = meta[0]
+            keys = field_decoder(meta)
             if keys is not None and not o_verbose:
                 if callable(keys):
                     print("(special)", end="")
@@ -930,7 +710,7 @@ def main(argv):
         try:
             v = cmn_config.cmn_version(s)
             assert isinstance(v, cmn_config.CMNConfig)
-        except KeyError:
+        except (KeyError, ValueError):
             raise argparse.ArgumentTypeError("invalid CMN product identifier")
         return v
     def arg_chi_channel(s):
@@ -941,6 +721,7 @@ def main(argv):
             return _chi_channels.index(s)
         raise argparse.ArgumentTypeError("invalid CHI channel specifier")
     import argparse
+    import subprocess
     import os
     parser = argparse.ArgumentParser(description="CMN flit matching")
     parser.add_argument("--chn", type=arg_chi_channel, default=0, help="CHI channel (REQ/RSP/SNP/DAT)")
@@ -961,6 +742,7 @@ def main(argv):
     parser.add_argument("--cmn-version", type=arg_cmn_version, help="CMN version")
     parser.add_argument("--no-name", action="store_true", help="don't use readable names for events")
     parser.add_argument("--list", action="store_true", help="list possible fields")
+    parser.add_argument("--perf-bin", type=str, default="perf", help="path to perf binary")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("wps", type=str, nargs="*", help="watchpoint specifiers")
     opts = parser.parse_args(argv)
@@ -992,7 +774,7 @@ def main(argv):
         assert not opts.nodeid and not opts.dev
         opts.cmn_instance = cpu.port.CMN().cmn_seq
         opts.nodeid = cpu.port.xp.node_id()
-        opts.dev = cpu.port.port
+        opts.dev = cpu.port.port_number
         opts.lpid = cpu.lpid
     events = []
     def wp_events(wp, opts, name=None):
@@ -1023,6 +805,8 @@ def main(argv):
     else:
         # Construct a watchpoint from whatever fields were on the command line
         flds = _object_to_dict(opts, _all_fields)
+        if opts.up is None:
+            opts.up = True
         try:
             wp = match_kwd(chn=opts.chn, up=opts.up, cmn_version=cmn_version, **flds)
             events += wp_events(wp, opts)
@@ -1041,13 +825,13 @@ def main(argv):
             print("  %s" % (e), file=sys.stderr)
     print(','.join(events))
     if opts.stat:
-        cmd = "perf stat "
+        args = [opts.perf_bin, "stat"]
         for e in events:
-            cmd += " -e %s" % e
-        cmd += " -- sleep %f" % opts.sleep
+            args += ["-e", e]
+        args += ["--", "sleep", ("%f" % opts.sleep)]
         if opts.verbose:
-            print(">>> %s" % (cmd), file=sys.stderr)
-        rc = os.system(cmd)
+            print(">>> %s" % (' '.join(args)), file=sys.stderr)
+        rc = subprocess.call(args, shell=False)
         if rc != 0:
             print("<<< rc=%d" % rc, file=sys.stderr)
     if False:

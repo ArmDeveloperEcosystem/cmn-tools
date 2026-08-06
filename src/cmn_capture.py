@@ -39,12 +39,32 @@ o_decode_verbose = 0
 o_deduplicate = True
 
 
-class BadCaptureWatchpoint(Exception):
+class CaptureSetupException(Exception):
+    pass
+
+
+class NotEnoughWatchpoints(CaptureSetupException):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return "not enough watchpoints: %s" % self.msg
+
+
+class BadCaptureWatchpoint(CaptureSetupException):
     def __init__(self, msg):
         self.msg = msg
 
     def __str__(self):
         return "bad capture specifier: %s" % self.msg
+
+
+class NoPortsMatched(CaptureSetupException):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return "no ports matched: %s" % self.msg
 
 
 def bits(x, p, n):
@@ -81,6 +101,7 @@ def add_trace_arguments(parser, cc_default=False):
     parser.add_argument("--format", type=int, choices=range(8), default=4, help="trace packet format")
     parser.add_argument("--immediate", action="store_true", help="show FIFO contents immediately")
     parser.add_argument("--samples", type=int, default=100, help="number of FIFO samples to collect")
+    parser.add_argument("--no-rotation", action="store_true", help="disallow any configuration that needs dynamic counter rotation")
     parser.add_argument("--cg-disable", action="store_true")
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--count", action="store_true", help="program DTM PMU to count packets")
@@ -118,21 +139,34 @@ class CMNFlitGroupX(CMNFlitGroup):
     """
     Subclass CMN flit decode to provide more annotation of CHI source and target ids.
     """
-    def __init__(self, cfg, cmn_seq=None, nodeid=None, WP=None, DEV=None, VC=None, format=None, cc=0, vis=None):
+    def __init__(self, cfg, cmn_seq=None, nodeid=None, WP=None, DEV=None,
+                 VC=None, chn_num=0, format=None, cc=0, vis=None,
+                 id_map=None, cmn_by_seq=None, lossy=False,
+                 packet_start_pos=None, trace_stream_id=None, debug=None,
+                 annotate_unknown=True):
         assert VC is not None
         assert DEV is not None
         assert format is not None
         assert cmn_seq is not None
-        CMNFlitGroup.__init__(self, cfg, cmn_seq=cmn_seq, nodeid=nodeid, WP=WP, DEV=DEV, VC=VC, format=format, cc=cc, debug=o_decode_verbose)
+        if debug is None:
+            debug = o_decode_verbose
+        CMNFlitGroup.__init__(self, cfg, cmn_seq=cmn_seq, nodeid=nodeid,
+                             WP=WP, DEV=DEV, VC=VC, chn_num=chn_num,
+                             format=format, cc=cc, lossy=lossy,
+                             packet_start_pos=packet_start_pos,
+                             trace_stream_id=trace_stream_id, debug=debug)
         self.vis = vis
-        self.id_map = vis.id_map
+        self.id_map = vis.id_map if vis is not None else id_map
+        self.cmn_by_seq = vis.cmn_by_seq if vis is not None else cmn_by_seq
+        self.annotate_unknown = annotate_unknown
+        assert self.id_map is not None
 
     def id_str(self, id, lpid=0):
         """
         Override, to identify nodes, using our discovered node type and CPU identity
         """
         s = CMNFlitGroup.id_str(self, id, lpid=lpid)
-        ns = "????"
+        ns = None
         ik = id_key(self.cmn_seq, id, lpid)
         if ik in self.id_map:
             ns = self.id_map[ik]
@@ -141,6 +175,10 @@ class CMNFlitGroupX(CMNFlitGroup):
             if ik in self.id_map:
                 # e.g. RN-F where we haven't got CPU mappings for non-zero LPIDs
                 ns = self.id_map[ik]
+        if ns is None:
+            if not self.annotate_unknown:
+                return s
+            ns = "????"
         s += "(%-4s)" % ns[:4]
         return s
 
@@ -148,7 +186,7 @@ class CMNFlitGroupX(CMNFlitGroup):
         """
         Override default address printing, to identify CMN access itself
         """
-        if self.vis.cmn_by_seq[self.cmn_seq].contains_addr(addr):
+        if self.cmn_by_seq is not None and self.cmn_by_seq[self.cmn_seq].contains_addr(addr):
             return "<CMN:%06x>" % (addr & 0xffffff)
         return CMNFlitGroup.addr_str(self, addr, NSENS)
 
@@ -165,7 +203,7 @@ def xp_node_ids(xp):
      - devices with multiple nodes with the same device id
     """
     for port in xp.ports():
-        port_desc = cmn_port_device_type_str(port.device_type())
+        port_desc = cmn_port_device_type_str(port.connected_type)
         for dev in cmn_base.port_devices(port, create=True):
             desc = port_desc
             for n in dev.device_nodes:
@@ -183,8 +221,55 @@ def cmn_node_ids(cmns):
                 yield (cmn.cmn_seq, id, desc)
 
 
+def build_cmn_id_map(cmns):
+    """
+    Build a combined map from (mesh instance, CHI node id, LPID) to a short
+    endpoint label. Node types come from live topology discovery; CPU labels
+    overlay them when cached CPU mappings are available.
+    """
+    id_map = {}
+    for (cmn_seq, id, desc) in cmn_node_ids(cmns):
+        id_map[id_key(cmn_seq, id, 0)] = desc[:4]
+    for C in cmns:
+        cd = cmn_desc(C)
+        if cd is not None and cd.has_cpu_mappings():
+            for cpu in cd.cpus():
+                id_map[id_key(C.cmn_seq, cpu.id, cpu.lpid)] = "#%-3u" % cpu.cpu
+    return id_map
+
+
+def build_cached_cmn_id_map(cmns):
+    """
+    Build an ID map using only the cached JSON topology. A live mesh is matched
+    to its cached description by peripheral base address. Missing cache data is
+    not an error and does not cause live topology discovery.
+    """
+    try:
+        S = cmn_json.system_from_json_file()
+    except Exception:
+        return {}
+    id_map = {}
+    for C in cmns:
+        if C.periphbase is None:
+            continue
+        cd = S.cmn_at_base(C.periphbase)
+        if cd is None:
+            continue
+        for xp in cd.XPs():
+            for (id, desc) in xp_node_ids(xp):
+                id_map[id_key(C.cmn_seq, id, 0)] = desc[:4]
+        if cd.has_cpu_mappings():
+            for cpu in cd.cpus():
+                id_map[id_key(C.cmn_seq, cpu.id, cpu.lpid)] = "#%-3u" % cpu.cpu
+    return id_map
+
+
 def trace_config_from_cmn_config(config):
-    return CMNTraceConfig(config.product_id, has_MPAM=config.mpam_enabled, cmn_product_revision=config.revision_major)
+    return CMNTraceConfig(
+        config.product_id, has_MPAM=config.mpam_enabled,
+        cmn_product_revision=config.revision_major, pa_width=config.pa_width,
+        req_pa_width=config.req_pa_width,
+        rsvdc_width=config.rsvdc_width)
 
 
 class CMNVis:
@@ -203,14 +288,7 @@ class CMNVis:
         self.build_id_map()
 
     def build_id_map(self):
-        self.id_map = {}     # (cmn_seq, id, lpid) -> label
-        for (cmn_seq, id, desc) in cmn_node_ids(self.cmns):
-            self.id_map[(cmn_seq, id, 0)] = desc[:4]
-        for C in self.cmns:
-            cd = cmn_desc(C)
-            if cd is not None and cd.has_cpu_mappings():
-                for cpu in cd.cpus():
-                    self.id_map[(C.cmn_seq, cpu.id, cpu.lpid)] = "#%-3u" % cpu.cpu
+        self.id_map = build_cmn_id_map(self.cmns)
         if o_verbose:
             print("ID map:")
             n_on_line = 0
@@ -240,7 +318,7 @@ class CMNVis:
         assert isinstance(w, cmn_devmem.DTMWatchpoint)
         assert 0 <= w.wp and w.wp <= 3
         cmn_seq = xp.C.cmn_seq
-        fg = CMNFlitGroupX(self.cfgs[cmn_seq], cmn_seq=cmn_seq, nodeid=xp.node_id(), WP=w.wp, DEV=w.dev, VC=w.chn, format=w.type, cc=cc, vis=self)
+        fg = CMNFlitGroupX(self.cfgs[cmn_seq], cmn_seq=cmn_seq, nodeid=xp.node_id(), WP=w.wp, DEV=w.dev, VC=w.chn, chn_num=w.chn_num, format=w.type, cc=cc, vis=self)
         fg.decode(data)
         if o_deduplicate and self.deduper.is_duplicate(fg):
             return
@@ -370,7 +448,7 @@ class WatchBind:
     This represents a watchpoint specification, either up or down, on a specific DTM port.
     It might consume one, or both (in the case of pair-watchpoints) of the DTM's physical watchpoints.
     """
-    def __init__(self, wp, port=None, cc=True, format=4, format2=None, ctrig=False, dbgtrig=False, tag=False, name=None):
+    def __init__(self, wp, port=None, cc=True, chn_num=0, format=4, format2=None, ctrig=False, dbgtrig=False, tag=False, pkt_gen=True, name=None):
         self.name = name
         self.dtm = port.dtm
         self.dtm_port_number = port.port_number - (port.dtm.index * 2)
@@ -378,6 +456,8 @@ class WatchBind:
         self.format = format      # Capture format, e.g. 4 for full header
         self.format2 = format2    # or None
         self.cc = cc
+        self.chn_num = chn_num
+        self.pkt_gen = pkt_gen
         self.ctrig = ctrig
         self.dbgtrig = dbgtrig
         # In current CMN, tag-setting is a function of the DTM, not the watchpoint.
@@ -411,6 +491,8 @@ class WatchBind:
             s += ",format=%u" % self.format
         if self.format2 is not None:
             s += "&%u" % self.format2
+        if self.chn_num > 0:
+            s += ",chn-num=%u" % self.chn_num
         if self.ctrig:
             s += ",cross-trigger"
         if self.dbgtrig:
@@ -472,20 +554,20 @@ dir_str = ["Up", "Down"]
 
 # Data trace configurations: (dataid, format, format2)
 data_trace_mnemonic = {
-    "HDR":   (None, 4, None),
-    "H01":   (0,    4, None),
-    "H23":   (2,    4, None),
-    "D0":    (0,    5, None),
+    "HDR":   (None, 4, None),     # Just the DAT header (control flit)
+    "H01":   (0,    4, None),     # Header for first 32 bytes
+    "H23":   (2,    4, None),     # Header for second 32 bytes
+    "D0":    (0,    5, None),     # First 16 bytes of data
     "D1":    (0,    6, None),
     "D2":    (2,    5, None),
     "D3":    (2,    6, None),
-    "HD0":   (0,    4, 5),
+    "HD0":   (0,    4, 5),        # Header and first 16 bytes of data
     "HD1":   (0,    4, 6),
     "HD2":   (2,    4, 5),
     "HD3":   (2,    4, 6),
     "DALL":  (None, 5, 6),
     "D01":   (0,    5, 6),
-    "D23":   (0,    5, 6),
+    "D23":   (2,    5, 6),
 }
 
 
@@ -493,7 +575,7 @@ class TraceSession:
     """
     All the information we need to manage tracing flits.
     """
-    def __init__(self, opts, handler=None, atb=False, init=True):
+    def __init__(self, opts, handler=None, atb=False, init=True, allow_rotation=True):
         self.opts = opts
         self.atb = atb
         self.cmns = None    # in case next line throws
@@ -521,10 +603,11 @@ class TraceSession:
                     for w in dtm.rotation[d].bind_list:
                         print("      %s" % w)
         if not self.dtms:
-            print("No ports matched: %s" % (nodes), file=sys.stderr)
-            sys.exit(1)
+            raise NoPortsMatched(str(nodes))
         self.dtms_rotating = [dtm for dtm in self.dtms if (dtm.rotation[WP_UP].needs_rotation() or dtm.rotation[WP_DN].needs_rotation())]
         if self.check_need_rotation():
+            if not allow_rotation:
+                raise NotEnoughWatchpoints("%u watchpoints would need rotating" % len(self.dtms_rotating))
             print("Warning: %u watchpoints will need to be dynamically rotated" % len(self.dtms_rotating))
         self.remove_unused_cmns()
         if init:
@@ -562,12 +645,18 @@ class TraceSession:
         self.cmns = [C for C in self.cmns if is_used[C.cmn_seq]]
 
     def CMNs(self):
+        """
+        Yield the CMNs involved in this trace session - not necessarily all the CMNs in the system.
+        """
         if self.cmns is not None:
             return self.cmns
         else:
             return []
 
     def DTCs(self):
+        """
+        Yield all the DTCs for the CMNs involved in this trace session - not necessarily all the DTCs in the system.
+        """
         for C in self.CMNs():
             for dtc in C.DTCs():
                 yield dtc
@@ -624,6 +713,7 @@ class TraceSession:
             #   <location-selector>/<filter>
             # In addition, actions (trigger, tag etc.) can be specified:
             #   <filter>#<actions>
+            original_wspec = wspec
             name = wspec
             nodes = gnodes
             actions = ""
@@ -642,6 +732,8 @@ class TraceSession:
             wp_cross_trigger = self.opts.cross_trigger
             wp_debug_trigger = self.opts.debug_trigger
             wp_tracetag = self.opts.set_tracetag
+            wp_pkt_gen = True
+            wp_chn_num = 0
             for act in actions.split(','):
                 if act == "":
                     pass
@@ -657,6 +749,8 @@ class TraceSession:
                         raise BadCaptureWatchpoint("unknown data trace: choose from %s" % str(data_trace_mnemonic.keys()))
                     if dataid is not None:
                         wspec += ":dataid=%u" % dataid
+                elif act.startswith("chn-num="):
+                    wp_chn_num = int(act[8:])
                 elif act == "cross-trigger":
                     wp_cross_trigger = True
                 elif act == "debug-trigger":
@@ -665,6 +759,10 @@ class TraceSession:
                     wp_tracetag = True
                 elif act == "cc":
                     wp_cc = True
+                elif act == "nocc":
+                    wp_cc = False
+                elif act == "nogen":
+                    wp_pkt_gen = False     # Suppress packet generation - useful for triggers
                 else:
                     raise BadCaptureWatchpoint("unknown watchpoint action '%s'" % act)
             try:
@@ -681,16 +779,19 @@ class TraceSession:
             wps.finalize()
             if wp_format2 is not None and wps.is_multigrp():
                 raise BadCaptureWatchpoint("can't do DAT header+data with multi-group matching")
+            this_spec_matched = False
+            if self.opts.verbose:
+                print("scanning nodes matching wp spec: %s" % str(nodes))
             for port in self.ports_matching_nodes(nodes):
                 ports_checked += 1
-                wb = WatchBind(wps, port, format=wp_format, format2=wp_format2, cc=wp_cc, ctrig=wp_cross_trigger, dbgtrig=wp_debug_trigger, tag=wp_tracetag, name=name)
+                this_spec_matched = True
+                wb = WatchBind(wps, port, format=wp_format, format2=wp_format2, pkt_gen=wp_pkt_gen, cc=wp_cc, ctrig=wp_cross_trigger, dbgtrig=wp_debug_trigger, tag=wp_tracetag, chn_num=wp_chn_num, name=name)
                 if wps.up is None or wps.up:
                     port.dtm.rotation[WP_UP].append(wb)
                 if wps.up is None or not wps.up:
                     port.dtm.rotation[WP_DN].append(wb)
-        if not ports_checked:
-            print("No ports could have these watchpoints", file=sys.stderr)
-            sys.exit(1)
+            if not this_spec_matched:
+                raise NoPortsMatched(original_wspec)
 
     def move_tag_setters_first(self):
         """
@@ -710,6 +811,7 @@ class TraceSession:
         self.dtms = dtms_tag + dtms_nontag
 
     def ports_matching_nodes(self, nodes):
+        nodes = self.resolve_cpu_selectors(nodes)
         xps = [xp for xp in self.XPs() if nodes.can_match_devices_at_xp(xp)]
         if self.opts.verbose >= 2:
             print("XPs: %s" % (','.join([str(xp) for xp in xps])))
@@ -721,6 +823,68 @@ class TraceSession:
                     print("%s: check %s => %s" % (nodes, port, can_match))
                 if can_match:
                     yield port
+
+    def resolve_cpu_selectors(self, nodes):
+        """
+        Resolve CPU selectors using cached CPU mappings, then return selectors
+        expressed in terms of the corresponding live mesh, XP and port.
+
+        Live cmn_devmem meshes deliberately do not own CPU mappings. Keeping
+        this translation here lets the generic selector continue to operate on
+        either object model without teaching it how to find cached topology.
+        """
+        if not any([m.cpu_number is not None for m in nodes.matchers]):
+            return nodes
+        resolved = cmn_select.CMNSelect()
+        desc_by_seq = {}
+        for C in self.CMNs():
+            desc_by_seq[C.cmn_seq] = cmn_desc(C)
+        for matcher in nodes.matchers:
+            if matcher.cpu_number is None:
+                resolved.append(matcher)
+                continue
+            matcher_resolved = False
+            for C in self.CMNs():
+                if matcher.cmn_seq is not None and matcher.cmn_seq != C.cmn_seq:
+                    continue
+                cd = desc_by_seq[C.cmn_seq]
+                if cd is None or not cd.has_cpu_mappings():
+                    continue
+                try:
+                    cpu = cd.owner.cpu(matcher.cpu_number)
+                except (cmn_base.CMNNoCPUMappings, KeyError):
+                    continue
+                if cpu.CMN() != cd:
+                    continue
+                (x, y) = cpu.port.XP().XY()
+                port_number = cpu.port.port_number
+                device_number = cpu.device.device_number
+                if matcher.node_x is not None and matcher.node_x != x:
+                    continue
+                if matcher.node_y is not None and matcher.node_y != y:
+                    continue
+                if matcher.node_port is not None and matcher.node_port != port_number:
+                    continue
+                if matcher.node_device is not None and matcher.node_device != device_number:
+                    continue
+                if matcher.node_id is not None and matcher.node_id != cpu.id:
+                    continue
+                location = matcher.copy()
+                location.cpu_number = None
+                location.cmn_seq = C.cmn_seq
+                location.node_x = x
+                location.node_y = y
+                location.node_port = port_number
+                location.node_device = device_number
+                location.node_id = cpu.id
+                resolved.append(location)
+                matcher_resolved = True
+            if not matcher_resolved:
+                # Retain the CPU matcher: against a live mesh with no CPU
+                # mappings it correctly matches nothing. An empty CMNSelect
+                # would instead mean "match everything".
+                resolved.append(matcher)
+        return resolved
 
     def legacy_xp_selectors(self):
         """
@@ -821,12 +985,12 @@ class TraceSession:
         M = wp.wps[gn]
         assert M.grp == gn
         combine = (wp.is_multigrp() and (n == 0))
-        w = cmn_devmem.DTMWatchpoint(dtm=wb.dtm, pkt_gen=True,
+        w = cmn_devmem.DTMWatchpoint(dtm=wb.dtm, pkt_gen=wb.pkt_gen,
                                      value=M.val, mask=M.mask,
                                      type=wb.format, cc=wb.cc,
                                      ctrig=wb.ctrig,
                                      dbgtrig=wb.dbgtrig,
-                                     dev=dev, chn=wp.chn, grp=M.grp,
+                                     dev=dev, chn=wp.chn, chn_num=wb.chn_num, grp=M.grp,
                                      exclusive=M.exclusive, combine=combine)
         return w
 
@@ -1012,9 +1176,12 @@ class TraceSession:
                     if wb is None:
                         print("** Unexpected data on %s WP%u" % (dtm, e), file=sys.stderr)
                     w = dtm.dtm_wp_config(e, value=False)
-                    (data, cc) = dtm.dtm_fifo_entry(e)
+                    (data, cc) = dtm.dtm_fifo_entry(e)    # Get the actual config for this WP
                     if o_verbose >= 3:
-                        print("%s WP%u (%s) captured %s" % (dtm, e, wb, data))
+                        print("%s WP%u captured:" % (dtm, e))
+                        print("    %s" % (wb))
+                        print("    %s" % (w))
+                        print("    %s" % (data))
                     if self.opts.immediate:
                         self.TV.decode_packet(dtm.xp, w, data, cc)
                     else:
@@ -1056,6 +1223,10 @@ class TraceSession:
         """
         Decode and print some flits captured by trace().
         """
+        if not any(fifocap.values()):
+            if not self.opts.immediate:
+                print("No trace was captured")
+            return
         if self.opts.verbose:
             print("Captured trace:")
             for dtm in self.dtms:
@@ -1171,8 +1342,8 @@ def main(argv):
     else:
         vis = CMNVis()
     try:
-        ts = TraceSession(opts, handler=vis, init=(not opts.inspect))
-    except BadCaptureWatchpoint as e:
+        ts = TraceSession(opts, handler=vis, init=(not opts.inspect), allow_rotation=(not opts.no_rotation))
+    except CaptureSetupException as e:
         print("Error: %s" % e, file=sys.stderr)
         sys.exit(1)
     if opts.setup:

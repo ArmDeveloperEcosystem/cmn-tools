@@ -29,6 +29,7 @@ import random
 import sys
 import time
 import multiprocessing
+from collections import namedtuple
 
 import app_data
 import cmn_json
@@ -207,8 +208,20 @@ class DetectProgress:
             os.remove(self.path)
 
 
-def cpu_mapping_tuple(cpu_obj):
-    return (
+CPUMapping = namedtuple("CPUMapping",
+                        ["cmn_seq", "xp_node_id", "port_number", "srcid", "lpid"])
+
+
+def as_cpu_mapping(m):
+    if m is None:
+        return None
+    if not isinstance(m, CPUMapping):
+        m = CPUMapping(*m)
+    return m
+
+
+def cpu_mapping(cpu_obj):
+    return CPUMapping(
         cpu_obj.port.CMN().cmn_seq,
         cpu_obj.port.xp.node_id(),
         cpu_obj.port.port_number,
@@ -218,22 +231,25 @@ def cpu_mapping_tuple(cpu_obj):
 
 
 def snapshot_cpu_mappings(S):
-    return dict((cpu_obj.cpu, cpu_mapping_tuple(cpu_obj)) for cpu_obj in S.cpus())
+    return dict((cpu_obj.cpu, cpu_mapping(cpu_obj)) for cpu_obj in S.cpus())
 
 
-def discovered_cpu_mapping_tuple(S, cpu):
+def discovered_cpu_mapping(S, cpu):
     rnf = S.cpu_rnf_port[cpu]
-    return (
+    return CPUMapping(
         rnf.port.CMN().cmn_seq,
         rnf.port.xp.node_id(),
         rnf.port.port_number,
         S.cpu_id[cpu],
-        S.cpu_lpid.get(cpu, 0)
+        S.cpu_lpid.get(cpu, None)
     )
 
 
 def mapping_str(m):
-    return "M%u/XP:0x%x/P%u SRCID=0x%x LPID=%u" % m
+    m = as_cpu_mapping(m)
+    lpid = "unknown" if m.lpid is None else str(m.lpid)
+    return "M%u/XP:0x%x/P%u SRCID=0x%x LPID=%s" % (
+        m.cmn_seq, m.xp_node_id, m.port_number, m.srcid, lpid)
 
 
 def verify_cpu_mappings(S, expected, cpus=None):
@@ -246,8 +262,8 @@ def verify_cpu_mappings(S, expected, cpus=None):
         cpus = sorted(set(expected.keys()) | set(S.cpu_rnf_port.keys()))
     for cpu in cpus:
         exp = expected.get(cpu, None)
-        got = discovered_cpu_mapping_tuple(S, cpu) if cpu in S.cpu_rnf_port else None
-        if exp != got:
+        got = discovered_cpu_mapping(S, cpu) if cpu in S.cpu_rnf_port else None
+        if as_cpu_mapping(exp) != as_cpu_mapping(got):
             mismatches.append((cpu, exp, got))
     return mismatches
 
@@ -255,13 +271,15 @@ def verify_cpu_mappings(S, expected, cpus=None):
 def expected_cpu_mapping(expected, cpu):
     if expected is None:
         return None
-    return expected.get(cpu, None)
+    return as_cpu_mapping(expected.get(cpu, None))
 
 
 def expected_rnf_port(S, expected_mapping):
     if expected_mapping is None:
         return None
-    key = expected_mapping[:3]
+    expected_mapping = as_cpu_mapping(expected_mapping)
+    key = (expected_mapping.cmn_seq, expected_mapping.xp_node_id,
+           expected_mapping.port_number)
     if hasattr(S, "rnf_port_map"):
         return S.rnf_port_map.get(key, None)
     for rnf in S.rnf_ports:
@@ -298,7 +316,9 @@ def verify_cpu_rnf_port_guess_atomic(S, cpu, expected_mapping):
 def verify_cpu_lpid_guess_atomic(S, cpu, expected_mapping):
     if expected_mapping is None:
         return False
-    lpid = expected_mapping[4]
+    lpid = as_cpu_mapping(expected_mapping).lpid
+    if lpid is None:
+        return False
     rnf = S.cpu_rnf_port[cpu]
     entry = atomic_entry_for_cpu(S, cpu)
     if not exact_guess_matches(cpu, [[atomic_rnf_events(rnf, entry, lpid=lpid)]], entry=entry):
@@ -314,7 +334,7 @@ def verify_cpu_lpid_guess_atomic(S, cpu, expected_mapping):
 def verify_cpu_srcid_guess_atomic(S, cpu, expected_mapping):
     if expected_mapping is None:
         return False
-    id = expected_mapping[3]
+    id = as_cpu_mapping(expected_mapping).srcid
     rp = S.cpu_rnf_port[cpu]
     cmn = rp.port.CMN()
     entry = atomic_entry_for_cpu(S, cpu)
@@ -1017,6 +1037,41 @@ def print_cpus(S):
         print()
 
 
+def print_cpu_report(S):
+    """
+    Summarize detected CPU mappings and identify RN-F nodes which have no CPU.
+
+    RN-F identity includes the CMN instance because node ids are only unique
+    within a mesh. Count CAL devices separately: they share a port, but are
+    distinct RN-F nodes with distinct CHI node ids.
+    """
+    cpus = list(S.cpus())
+    cpu_count_by_rnf = {}
+    for cpu in cpus:
+        key = (cpu.port.CMN().cmn_seq, cpu.id)
+        cpu_count_by_rnf[key] = cpu_count_by_rnf.get(key, 0) + 1
+
+    rnf_nodes = []
+    for port in S.ports(properties=CMN_PROP_RNF):
+        for node_id in port.ids():
+            rnf_nodes.append((port.CMN().cmn_seq, node_id))
+    rnf_nodes = sorted(rnf_nodes)
+    unused_rnf_nodes = [key for key in rnf_nodes if key not in cpu_count_by_rnf]
+    shared = any([n > 1 for n in cpu_count_by_rnf.values()])
+    nonzero_lpid = any([cpu.lpid is not None and cpu.lpid != 0 for cpu in cpus])
+
+    print("CPU detection report:")
+    print("  CPUs detected: %u" % len(cpus))
+    print("  CPUs share RN-F nodes: %s" % ("yes" if shared else "no"))
+    print("  Non-zero LPIDs in use: %s" % ("yes" if nonzero_lpid else "no"))
+    if unused_rnf_nodes:
+        print("  RN-F nodes without active CPUs: %u" % len(unused_rnf_nodes))
+        for (cmn_seq, node_id) in unused_rnf_nodes:
+            print("    CMN#%u RN-F 0x%x" % (cmn_seq, node_id))
+    else:
+        print("  RN-F nodes without active CPUs: none")
+
+
 def print_mismatches(mismatches):
     for (cpu, exp, got) in mismatches:
         print("CPU %3u: " % cpu, end="")
@@ -1063,14 +1118,15 @@ def apply_expected_cpu_mappings(S, expected, cpus=None):
     for (cpu, mapping) in expected.items():
         if cpus is not None and cpu not in cpus:
             continue
+        mapping = as_cpu_mapping(mapping)
         rnf = expected_rnf_port(S, mapping)
         if rnf is None:
             continue
         S.cpu_rnf_port[cpu] = rnf
         if cpu not in rnf.cpus:
             rnf.cpus.append(cpu)
-        S.cpu_id[cpu] = mapping[3]
-        S.cpu_lpid[cpu] = mapping[4]
+        S.cpu_id[cpu] = mapping.srcid
+        S.cpu_lpid[cpu] = mapping.lpid
 
 
 def write_mismatch_json(S, fn="./cmn-system-mismatch.json"):
@@ -1094,6 +1150,7 @@ def main(argv):
     parser.add_argument("--update", action="store_true", help="refresh cached CPU mappings in the JSON system description")
     parser.add_argument("--discard", action="store_true", help="discard any previous CPU mappings")
     parser.add_argument("--verify", action="store_true", help="verify any existing CPU mappings by rediscovering them")
+    parser.add_argument("--report", action="store_true", help="report previously detected CPU mappings")
     parser.add_argument("--no-use-checkpoint", action="store_true", help="ignore any previous discovery checkpoint")
     parser.add_argument("-o", "--output", type=str, help="output JSON filename")
     parser.add_argument("--cpu", type=int, help="discover one CPU")
@@ -1129,6 +1186,13 @@ def main(argv):
     o_atomic_min_count = opts.atomic_min_count
     o_factor = opts.detection_level
     cmn_traffic_gen.o_verbose = max(0, opts.verbose - 1)
+    if opts.report:
+        S = cmn_json.system_from_json_file(opts.json, check_system=False)
+        if not S.has_cpu_mappings():
+            print("%s: has no CPU mappings to report" % opts.json, file=sys.stderr)
+            sys.exit(1)
+        print_cpu_report(S)
+        return
     if not cmn_perfcheck.check_cmn_pmu_events():
         print("CPU detection requires kernel support for CMN PMU events",
               file=sys.stderr)
@@ -1187,7 +1251,6 @@ def main(argv):
                 if mismatches:
                     print("CPU mapping verification failed:", file=sys.stderr)
                     print_mismatches(mismatches)
-                    S.set_cpu(opts.cpu, S.cpu_rnf_port[opts.cpu].port, id=S.cpu_id[opts.cpu], lpid=S.cpu_lpid.get(opts.cpu, 0))
                     write_mismatch_json(S)
                     sys.exit(1)
                 print("CPU mapping verified for CPU %u" % opts.cpu)
@@ -1261,6 +1324,8 @@ def main(argv):
                 cmn_json.json_dump_file_from_system(S, ofn)
             if output_temp:
                 print("now copy %s to %s or rerun with --update" % (ofn, cmn_json.cmn_config_filename()))
+        if completed_detection and S.has_cpu_mappings():
+            print_cpu_report(S)
     finally:
         if completed_detection and g_progress is not None:
             g_progress.remove()

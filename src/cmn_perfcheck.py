@@ -32,11 +32,26 @@ except NameError:
 
 
 class CMNNoPerf(OSError):
+    pass
+
+
+class CMNNoPerfKernelDriver(CMNNoPerf):
     """
-    Raise this exception if the CMN PMU driver isn't installed.
+    Exception: CMN PMU driver isn't installed.
     """
     def __str__(self):
         return "CMN PMU driver is not installed"
+
+
+class CMNNoPerfCommand(CMNNoPerf):
+    """
+    Exception: perf userspace command isn't installed (or is non-functional wrapper).
+    """
+    def __init__(self, cmd):
+        self.cmd = cmd
+
+    def __str__(self):
+        return "perf command is not installed: %s" % self.cmd
 
 
 def is_cmn_pmu_installed():
@@ -51,7 +66,7 @@ def check_cmn_pmu_installed():
     Check that the arm-cmn driver is loaded, else throw CMNNoPerf.
     """
     if not is_cmn_pmu_installed():
-        raise CMNNoPerf
+        raise CMNNoPerfKernelDriver
 
 
 def _uname_r():
@@ -86,10 +101,17 @@ def _check_perf_timed(e, t):
     cmd = "%s stat -a -x, -e %s -- sleep %f" % (o_perf_bin, e, t)
     if o_verbose >= 2:
         print(">>> %s" % cmd, file=sys.stderr)
-    p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except FileNotFoundError:
+        raise CMNNoPerfCommand(o_perf_bin)
     (out, err) = p.communicate()
     rc = p.returncode
     if rc != 0:
+        es = err.decode()
+        if es.startswith("WARNING: perf not found"):
+            # Wrapper is there, but not the binary it wants to point to
+            raise CMNNoPerfCommand(o_perf_bin)
         # perf command not installed, PMU driver not installed, PMU driver didn't publish event
         if o_verbose >= 2:
             print("err: %s" % err.decode(), file=sys.stderr)
@@ -118,17 +140,15 @@ def _check_perf(e):
     return n
 
 
-def check_perf():
+def is_perf_command_installed():
     """
     Check that the "perf" command is installed.
+    (This will use the global o_perf_bin override if set.)
     """
     try:
         _check_perf("dummy")
         return True
-    except FileNotFoundError as e:
-        # "perf" command not installed
-        if o_verbose:
-            print(e, file=sys.stderr)
+    except CMNNoPerfCommand:
         return False
     except Exception as e:
         if o_verbose:
@@ -197,7 +217,7 @@ def check_hw_pmu_events(file=None):
         if o_verbose:
             print("  kernel.perf_event_paranoid=%d - hardware PMU events can be accessed non-root." % p,
                 file=file)
-    if not check_perf():
+    if not is_perf_command_installed():
         print("** perf command is not installed", file=file)
         return False
     return True
@@ -273,8 +293,9 @@ def main(argv):
     opts = parser.parse_args(argv)
     o_perf_bin = opts.perf_bin
     o_verbose = opts.verbose
-    is_installed = is_cmn_pmu_installed()
-    print("CMN PMU driver is installed: %s" % is_installed)
+    is_driver_installed = is_cmn_pmu_installed()
+    print("CMN PMU driver is installed: %s" % is_driver_installed)
+    print("perf command is installed: %s" % is_perf_command_installed())
     pep = perf_event_paranoid()
     print("perf_event_paranoid: %u" % pep)
     print("Checking for CMN PMU events:")

@@ -36,9 +36,18 @@ import cmn_config
 import cmn_json
 import app_data
 import devmem
+from proc_iomem import iomem_regions
 
 
 o_verbose = 0
+
+
+class CMNNotFound(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return "CMN locations not found: %s" % (self.msg)
 
 
 DT_BASE_DEFAULT = "/sys/firmware/devicetree/base"
@@ -46,57 +55,6 @@ DT_BASE_DEFAULT = "/sys/firmware/devicetree/base"
 
 def _cmn_location_cache():
     return app_data.app_data_cache("cmn-locations.json")
-
-
-class IOmem_region:
-    """
-    A descriptor of an I/O region - basically a line from /proc/iomem
-    """
-    def __init__(self, addr, aend, name=None, level=0):
-        self.addr = addr
-        self.aend = aend     # last included address (..fff) or zero
-        self.name = name
-        self.level = level
-
-    def size(self):
-        return self.aend + 1 - self.addr
-
-    def contains(self, addr):
-        return self.addr <= addr and addr <= self.aend
-
-    def contains_range(self, desc):
-        return self.addr <= desc.addr and desc.aend <= self.aend
-
-    def is_missing(self):
-        return self.addr == 0 and self.aend == 0
-
-    def __str__(self):
-        s = "%x-%x : %s" % (self.addr, self.aend, self.name)
-        s = ("  " * self.level) + s
-        return s
-
-
-def iomem_regions(iomem=None):
-    """
-    Scan over the list of I/O device regions in /proc/iomem,
-    and yield IOmem_region objects.
-    It is up to the caller to find the objects they are looking for.
-    """
-    if iomem is None:
-        iomem = "/proc/iomem"
-    with open(iomem) as f:
-        for ln in f:
-            level = (len(ln) - len(ln.lstrip())) // 2     # count leading "  "
-            ln = ln.strip()
-            toks = ln.split()
-            (a, b) = toks[0].split('-')
-            addr = int(a, 16)
-            aend = int(b, 16)
-            # At this point, don't fault zero-zero objects, because the caller
-            # might still want to check if there are any objects matching the name.
-            ntok = toks[2].split(':')
-            name = ntok[0]
-            yield IOmem_region(addr, aend, name, level)
 
 
 # "ARMHC" prefix isn't enough, ARMHC502 is something different
@@ -109,12 +67,23 @@ cmn_acpi_names = {
 }
 
 
+def acpi_region_type(r):
+    s = r.name
+    ix = s.find(':')
+    if ix > 0:
+        s = s[:ix]
+    return s
+
+
 def cmn_iomem_regions(iomem=None):
+    if o_verbose:
+        print("CMN find: scanning iomem: %s..." % iomem, file=sys.stderr)
     for r in iomem_regions(iomem=iomem):
-        if r.name in cmn_acpi_names:
-            if r.is_missing():
-                print("CMN region(s) found: re-run as root to discover location", file=sys.stderr)
-                sys.exit(1)
+        if acpi_region_type(r) in cmn_acpi_names:
+            if r.is_address_missing():
+                raise CMNNotFound("CMN region(s) found: re-run as root to discover location")
+            if o_verbose >= 2:
+                print("CMN region: %s" % r, file=sys.stderr)
             yield r
 
 
@@ -166,7 +135,7 @@ def cmn_locators_from_iomem(iomem=None):
     for ad in cmn_iomem_regions(iomem=iomem):
         if ad.level == 0:
             assert loc is None
-            product_id = cmn_acpi_names[ad.name]
+            product_id = cmn_acpi_names[acpi_region_type(ad)]
             loc = CMNLocator(periphbase=ad.addr, product_id=product_id, cmn_seq=len(locs), where_found="/proc/iomem")
             if loc.product_id != cmn_base.PART_CMN600:
                 loc.rootnode_offset = 0
@@ -206,10 +175,9 @@ def cmn_locators_from_dt(dt_base=None):
     if dt_base is None:
         dt_base = DT_BASE_DEFAULT
     if o_verbose:
-        print("scanning devicetree: %s" % dt_base)
+        print("CMN find: scanning devicetree: %s..." % dt_base)
     if not os.path.isdir(dt_base):
-        print("%s: missing devicetree directory" % dt_base, file=sys.stderr)
-        sys.exit(1)
+        raise CMNNotFound("missing devicetree directory: %s" % dt_base)
     n_found = 0
     for qdn in os.listdir(dt_base):
         # The devicetree node name won't tell us much, it might be something like "pmu@50000000"
@@ -259,13 +227,12 @@ def cmn_locators_from_json(fn):
     and possibly a node skiplist. It does not contain the full discovered mesh.
     """
     if o_verbose:
-        print("Reading CMN locations from %s" % (fn), file=sys.stderr)
+        print("CMN find: reading CMN locations from %s" % (fn), file=sys.stderr)
     try:
         with open(fn) as f:
             j = json.load(f)
     except Exception as e:
-        print("%s: could not read JSON locations file (%s)" % (fn, e), file=sys.stderr)
-        sys.exit(1)
+        raise CMNNotFound("could not read JSON locations from '%s': %s" % (fn, e))
     cmn_seq = 0
     for e in j["elements"]:
         if e["product"] == "CMN":
@@ -302,6 +269,8 @@ def get_locs_from_dtsl():
     If this is an Arm Debugger connection, where the CMN locations have been added to the
     target config, call the getCMNLocations() DTSL method
     """
+    if o_verbose:
+        print("CMN find: running in debugger, using DTSL...", file=sys.stderr)
     from arm_ds.debugger_v1 import Debugger
     from com.arm.debug.dtsl import ConnectionManager
     debugger = Debugger()
@@ -327,14 +296,18 @@ def cmn_locators(opts=None, single_instance=False):
     locations for /proc/iomem and /sys/firmware/devicetree.
     Always give priority to explicit command-line options.
     """
+    if opts is not None:
+        o_verbose = opts.verbose
     if o_verbose:
-        print("CMN: locating with %s, single=%s" % (opts, single_instance))
+        print("CMN find: locating with %s, single=%s" % (opts, single_instance))
     if "CMN_DUMP" in os.environ:
         opts.cmn_locs_no_cache = True
     locs = []
     # Check if CMN(s) were specified explicitly on the command line
     if opts is not None and opts.cmn_base is not None:
         for (seq, base) in enumerate(opts.cmn_base):
+            if o_verbose:
+                print("CMN find: using provided base address 0x%x" % base, file=sys.stderr)
             loc = CMNLocator(base, opts.cmn_root_offset, cmn_seq=seq, where_found="command-line options")
             locs.append(loc)
     # Check if a CMN locator JSON file is explicitly provided
@@ -352,15 +325,18 @@ def cmn_locators(opts=None, single_instance=False):
             opts.cmn_locs_no_cache = True   # don't write back
             for loc in cmn_locators_from_json(cpath):
                 locs.append(loc)
+            if not locs:
+                print("CMN find: location cache '%s' exists but has no locations" % (cpath), file=sys.stderr)
         else:
             #print("%s: no CMNs found, cache does not exist" % cpath, file=sys.stderr)
             pass
     if not locs:
+        if o_verbose >= 2:
+            print("CMN find: no locations specified, discovering from system...", file=sys.stderr)
         for loc in cmn_locators_from_iomem_and_dt(opts):
             locs.append(loc)
     if not locs:
-        print("No CMN locations found", file=sys.stderr)
-        sys.exit(1)
+        raise CMNNotFound("No CMN locations found")
     if opts is not None and not opts.cmn_locs_no_cache:
         # Save these locations for next time
         cpath = _cmn_location_cache()
@@ -373,8 +349,7 @@ def cmn_locators(opts=None, single_instance=False):
         print("CMN locations saved in %s" % cpath, file=sys.stderr)
     if opts is not None and opts.cmn_instance is not None:
         if opts.cmn_instance >= len(locs):
-            print("Specified CMN instance #%u but only %u instances found" % (opts.cmn_instance, len(locs)), file=sys.stderr)
-            sys.exit(1)
+            raise CMNNotFound("Specified CMN instance #%u but only %u instances found" % (opts.cmn_instance, len(locs)))
         locs = [locs[opts.cmn_instance]]
     elif single_instance:
         locs = [locs[0]]
@@ -402,6 +377,7 @@ def system_is_probably_guest():
     """
     Return true if this system appears to be a VM guest.
     This might be useful in diagnostics if we don't find any CMNs.
+    Currently we only recognize QEMU: other hypervisors TBD.
     """
     if os.path.isdir("/sys/devices/platform/QEMU0002:00"):
         return "KVM"
@@ -442,9 +418,13 @@ def main(argv):
     opts = parser.parse_args(argv)
     o_verbose = opts.verbose
     n_printed = 0
-    for c in cmn_locators(opts=opts):
-        n_printed += 1
-        print(c)
+    try:
+        for c in cmn_locators(opts=opts):
+            n_printed += 1
+            print(c)
+    except CMNNotFound as e:
+        print("CMN not found: %s" % e, file=sys.stderr)
+        sys.exit(1)
     if not n_printed:
         print("No CMN interconnects found", file=sys.stderr)
 

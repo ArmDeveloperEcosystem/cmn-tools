@@ -44,7 +44,7 @@ def port_devices(port, create=False):
     """
     Yield device-slot objects for all slots represented by a port-like object.
     """
-    if create and hasattr(port, "ids"):
+    if create:
         dns = [id - port.base_id() for id in port.ids()]
     else:
         dns = port.device_numbers()
@@ -61,6 +61,41 @@ class CMNException(Exception):
 class CMNNoCPUMappings(CMNException):
     def __str__(self):
         return "System description has no CPU locations - run cmn_detect_cpu.py"
+
+
+class IOAddressResource:
+    """A named physical-address resource within an I/O SAM region."""
+    def __init__(self, start, end, name):
+        assert start <= end
+        self.start = start
+        self.end = end
+        self.name = name
+
+
+class IOAddressRegion:
+    """A non-hashed SAM region homed by an I/O node."""
+    def __init__(self, start, end, status="ok", resources=None):
+        assert start <= end
+        self.start = start
+        self.end = end
+        self.status = status
+        self.resources = [] if resources is None else list(resources)
+
+
+class IOAddressHome:
+    """An I/O home-node reference and the physical regions it hosts."""
+    def __init__(self, mseq, node_id, type_s, regions=None):
+        self.mseq = mseq
+        self.node_id = node_id
+        self.type_s = type_s
+        self.regions = [] if regions is None else list(regions)
+
+
+class IOAddressMap:
+    """Optional whole-system capture of non-hashed I/O address homing."""
+    def __init__(self, discovery_time=None, homes=None):
+        self.discovery_time = discovery_time
+        self.homes = [] if homes is None else list(homes)
 
 
 class NodeGroup:
@@ -88,6 +123,7 @@ class System(NodeGroup):
         self.processor_type = None  # Processor (CPU) type
         self.CMNs = []           # CMN mesh instances - order should match kernel PMU "arm_cmn_<n>" numbering
         self.cpu_node = {}       # CPU number -> CPU object
+        self.io_address_map = None  # optional non-hashed I/O address capture
         self._has_HNS = None     # system uses HN-S rather than HN-F - cached value
 
     def cmn_version(self):
@@ -152,7 +188,9 @@ class System(NodeGroup):
     def discard_cpu_mappings(self):
         for port in self.ports():
             for dn in port.device_numbers():
-                port.device(dn).cpus = []
+                dev = port.device(dn)
+                if dev is not None:
+                    dev.cpus = []
         self.cpu_node = {}
         self.cpu_timestamp = None
         assert not self.has_cpu_mappings()
@@ -287,6 +325,12 @@ class CMN(NodeGroup):
         """
         return self.xy_xp[(x, y)]
 
+    def XP(self, id):
+        """
+        Return the XP with the given node id, or None if it is not present.
+        """
+        return self.id_xp.get(id, None)
+
     def xy_id(self, x, y):
         """
         Calculate the XP id from coordinates
@@ -298,6 +342,16 @@ class CMN(NodeGroup):
         Calculate the (X, Y) coordinates from a device id
         """
         return (BITS(id, 3+self.id_coord_bits, self.id_coord_bits), BITS(id, 3, self.id_coord_bits))
+
+    def XP_port_device(self, id):
+        """
+        Return (XP, port number, device number) for a device id.
+        """
+        xp = self.XP(id & ~7)
+        if xp is None:
+            return (None, None, None)
+        (port, dev) = xp.id_port_device(id)
+        return (xp, port, dev)
 
     def ports(self, properties=0):
         """
@@ -403,6 +457,18 @@ class CMN(NodeGroup):
             return self.id_nodes[id][type]
         else:
             return None
+
+    def node_by_type_and_logical_id(self, node_type, nid):
+        if node_type == CMN_NODE_XP:
+            for xp in self.XPs():
+                if xp.logical_id() == nid:
+                    return xp
+        else:
+            for types in self.id_nodes.values():
+                node = types.get(node_type, None)
+                if node is not None and node.logical_id() == nid:
+                    return node
+        raise KeyError((node_type, nid))
 
     def cpu_from_id(self, id, lpid=0):
         return self.id_lpid_cpu.get((id, lpid), None)
@@ -512,7 +578,16 @@ class CMNPort:
 
     @property
     def port(self):
+        """
+        Compatibility alias for port_number.
+        """
         return self.port_number
+
+    def device_type(self):
+        """
+        Compatibility alias for connected_type.
+        """
+        return self.connected_type
 
     def base_id(self):
         """
@@ -520,33 +595,23 @@ class CMNPort:
         will be distinguished by LSBs. The port base id is itself distinguished
         from the XP id, by bit 2 or bits 2:1.
         """
-        return self.xp.node_id() + (self.port_number << self.xp.id_device_bits())
+        return self.xp.node_id() + (self.port_number << self.xp.n_device_bits())
 
     def ids(self):
         """
         The CHI id(s) for devices on this port.
         """
-        yield self.base_id()
-        if self.cal:
-            yield self.base_id() + 1
-            if self.cal == 3 or self.cal == 4:
-                yield self.base_id() + 2
-                if self.cal == 4:
-                    yield self.base_id() + 3
+        for d in self.device_numbers():
+            yield self.base_id() + d
 
     def is_valid_id(self, id):
         """
         Check if a device id is valid for this port.
         """
-        bid = self.base_id()
-        if not self.cal:
-            mask = 0
-        else:
-            mask = (1 << self.xp.id_device_bits()) - 1
-        return (id & ~mask) == bid
+        return (id - self.base_id()) in self.device_numbers()
 
     def max_devices(self):
-        return 1 << self.xp.id_device_bits()
+        return 1 << self.xp.n_device_bits()
 
     def create_device(self, device_number):
         assert device_number < self.max_devices(), "unexpected device number: %s" % device_number
@@ -565,7 +630,15 @@ class CMNPort:
         return self.device(dn, create=create)
 
     def device_numbers(self):
-        return sorted(self.pdevices.keys())
+        dmap = {}
+        if self.cal:
+            for d in range(self.cal):
+                dmap[d] = True
+        else:
+            dmap[0] = True
+        for d in self.pdevices.keys():
+            dmap[d] = True
+        return sorted(dmap.keys())
 
     def device_credited_slices(self, d):
         dn = self.pdevices.get(d, None)
@@ -575,7 +648,7 @@ class CMNPort:
         dev = self.device(d)
         if dev is None:
             return False
-        return bool(dev.device_nodes) or (dev.device_credited_slices is not None)
+        return bool(dev.device_nodes) or (dev.device_credited_slices not in [None, 0])
 
     def nodes(self):
         for d in self.device_numbers():
@@ -612,7 +685,10 @@ class CMNPort:
         return self.xp.owner
 
     def properties(self):
-        return cmn_port_properties[self.connected_type]
+        props = cmn_port_properties[self.connected_type]
+        if self.cal == 3:
+            props |= CMN_PROP_HNI
+        return props
 
     def has_properties(self, props):
         return (self.properties() & props) == props
@@ -648,10 +724,13 @@ class CMNNodeBase:
         self.is_external = None
 
     def owning_cmn(self):
+        """
+        Compatibility alias for CMN().
+        """
         return self.XP().owner
 
     def CMN(self):
-        return self.owning_cmn()
+        return self.XP().owner
 
     def logical_id(self):
         return self._logical_id
@@ -690,7 +769,7 @@ class CMNNodeBase:
             return (self.x, self.y, 0, 0)
         else:
             (x, y) = (self.owner.xp.x, self.owner.xp.y)
-            return (x, y, self.owner.port, self.device_number)
+            return (x, y, self.owner.port_number, self.device_number)
 
     def dtc_domain(self):
         return self.XP().dtc
@@ -723,7 +802,7 @@ class CMNNodeDev(CMNNodeBase):
         assert isinstance(owner, CMNPort)
         assert type is not None
         assert type != CMN_NODE_XP and type != CMN_NODE_CFG
-        device_mask = (1 << owner.XP().id_device_bits()) - 1
+        device_mask = (1 << owner.XP().n_device_bits()) - 1
         assert device_mask in [0x1, 0x3]
         if (id & ~device_mask) != owner.base_id():
             if owner.CMN().product_config.product_id != PART_CMN600:
@@ -741,6 +820,10 @@ class CMNNodeDev(CMNNodeBase):
     @property
     def port(self):
         return self.owner
+
+    @property
+    def port_number(self):
+        return self.owner.port_number
 
     def XP(self):
         return self.owner.xp
@@ -831,9 +914,11 @@ class CMNNodeXP(CMNNodeBase):
     def port(self, pn):
         return self._port.get(pn, None)
 
-    def ports(self):
+    def ports(self, properties=CMN_PROP_none):
         for pn in sorted(self._port.keys()):
-            yield self._port[pn]
+            port = self._port[pn]
+            if port.has_properties(properties):
+                yield port
 
     def has_any_ports(self, props):
         """
@@ -855,7 +940,7 @@ class CMNNodeXP(CMNNodeBase):
     def children(self):
         return [d for p in self.ports() for d in p.device_nodes]
 
-    def id_device_bits(self):
+    def n_device_bits(self):
         """
         How many bits are used for port number vs. device, on this XP?
         The numbering scheme can be either 1:2 or 2:1. For an XP with more
@@ -864,11 +949,13 @@ class CMNNodeXP(CMNNodeBase):
         doesn't. Documentation (CMN-700 TRM 3.4.2) strongly suggests that
         the scheme is mesh-wide, but in practice it turns out to be per-XP.
         """
-        if True:
-            extra_ports = self.n_ports > 2
-        else:
-            extra_ports = self.CMN().extra_ports
-        return 1 if extra_ports else 2
+        return 1 if self.n_ports > 2 else 2
+
+    def id_device_bits(self):
+        """
+        Compatibility alias for n_device_bits().
+        """
+        return self.n_device_bits()
 
     def port_is_used(self, p):
         return (p in self._port)
@@ -887,9 +974,20 @@ class CMNNodeXP(CMNNodeBase):
         """
         return self._port[p].device_nodes
 
+    def port_base_id(self, p):
+        port = self.port(p)
+        assert port is not None, "%s: bad port number P%u" % (self, p)
+        return port.base_id()
+
+    def id_port_device(self, id):
+        ndb = self.n_device_bits()
+        dev = BITS(id, 0, ndb)
+        port = BITS(id, ndb, 3-ndb)
+        return (port, dev)
+
     def path_str(self):
         (x, y, p, d) = self.coords()
-        return "%s.mxp(%u,%u)" % (self.owning_cmn(), x, y)
+        return "%s.mxp(%u,%u)" % (self.CMN(), x, y)
 
 
 class CacheGeometry:

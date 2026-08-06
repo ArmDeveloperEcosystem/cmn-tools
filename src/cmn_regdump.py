@@ -556,7 +556,7 @@ class CMNRegDumper(CMNRegMapper, Style):
                 if self.o_flat:
                     print("%s.%s.%s = %s" % (reg.regmap.name, reg.name, fld.name, self.valstr(v, width=fld.width)))
                     continue
-                print("    %-7s %28s = %-10s (common)" % (fld.range_str(), fld.name, self.valstr(v, width=fld.width)), end="")
+                print("    %-7s %32s = %-10s (common)" % (fld.range_str(), fld.name, self.valstr(v, width=fld.width)), end="")
                 if self.o_descriptions and fld.desc:
                     print("  %s" % self.descstr(fld.desc), end="")
                 print()
@@ -565,7 +565,7 @@ class CMNRegDumper(CMNRegMapper, Style):
                 for (n, nreg, v) in fvals:
                     print("%s.%s.%s = %s" % (self.locator_str(n), nreg.name, fld.name, self.valstr(v, width=fld.width)))
                 continue
-            print("    %-7s %28s (differs)" % (fld.range_str(), fld.name), end="")
+            print("    %-7s %32s (differs)" % (fld.range_str(), fld.name), end="")
             if self.o_descriptions and fld.desc:
                 print("  %s" % self.descstr(fld.desc), end="")
             print()
@@ -599,7 +599,7 @@ class CMNRegDumper(CMNRegMapper, Style):
             if self.o_flat:
                 print("%s.%s.%s = %s" % (self.node_loc_str, reg.name, fld.name, self.valstr(val, width=fld.width)))
                 continue
-            print("    %-7s %28s = %-10s" % (fld.range_str(), fld.name, self.valstr(val, width=fld.width)), end="")
+            print("    %-7s %32s = %-10s" % (fld.range_str(), fld.name, self.valstr(val, width=fld.width)), end="")
             if self.o_descriptions and fld.desc:
                 print("  %s" % self.descstr(fld.desc), end="")
             print()
