@@ -85,7 +85,7 @@ def main(argv):
     if len(opts.dev) < 2:
         print("need at least two endpoint selector expressions")
         sys.exit(1)
-    S = cmn_json.system_from_json_file(opts.json)
+    S = cmn_json.load_system_for_cli(opts.json)
     C = S.CMNs[opts.cmn_instance]
     while len(opts.dev) >= 2:
         print_routes(S, opts.dev[0], opts.dev[1], opts)

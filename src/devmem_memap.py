@@ -43,6 +43,14 @@ def align_up(a, size):
 MEMAP_SIZE = 4096
 
 
+class MEMAPError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return self.msg
+
+
 class MemoryInterface:
     """
     Implement memory access via AXI-AP.
@@ -64,8 +72,10 @@ class MemoryInterface:
         self.offset_in_page = self.memap_addr - self.mmap_base
         prot = (mmap.PROT_READ | mmap.PROT_WRITE)
         self.m = mmap.mmap(self.fd.fileno(), self.mmap_size, mmap.MAP_SHARED, prot, offset=self.mmap_base)
+        self.sec = None
         devarch = self.int_read32(0xFBC)
-        assert (devarch & 0xfff00fff) == 0x47700a17, "DEVARCH 0x%08x does not indicate MEM-AP" % devarch
+        if (devarch & 0xfff00fff) != 0x47700a17:
+            raise MEMAPError("DEVARCH 0x%08x does not indicate MEM-AP" % devarch)
         cfg = self.int_read32(0xDF4)
         csw = self.int_read32(0xD00)
         if verbose:
@@ -73,11 +83,11 @@ class MemoryInterface:
             print("  CFG = 0x%08x" % cfg)
             print("  CSW = 0x%08x" % csw)
         assert BIT(csw, 6), "%s: MEM-AP is not enabled" % self
-        assert BITS(cfg, 4, 4) == 10, "%s: expected 10-bit DAR space" % self
+        if BITS(cfg, 4, 4) != 10:
+            raise MEMAPError("%s: expected 10-bit DAR space" % self)
         self.n_bytes = None
         self.tar = None
         self.da_mask = 0x3ff
-        self.sec = None
 
     def __del__(self):
         if self.fd is not None:
@@ -168,13 +178,14 @@ def main(argv):
     parser = argparse.ArgumentParser(description="MEM-AP test")
     parser.add_argument("--memap", type=(lambda x:int(x, 16)), help="MEM-AP address")
     parser.add_argument("--addr", type=(lambda x:int(x, 16)), help="address to read")
+    parser.add_argument("--width", type=int, choices=[4, 8], default=8, help="width of read, in bytes (4 or 8)")
     parser.add_argument("--security", type=str, default="NS", help="security (S, NS, ROOT, REALM)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args(argv)
     M = MemoryInterface(memap_addr=opts.memap, verbose=opts.verbose)
     print(M)
     if opts.addr:
-        print("read 0x%x => 0x%x" % (opts.addr, M.read(opts.addr, 8, sec=opts.security)))
+        print("read 0x%x => 0x%x" % (opts.addr, M.read(opts.addr, opts.width, sec=opts.security)))
 
 
 if __name__ == "__main__":

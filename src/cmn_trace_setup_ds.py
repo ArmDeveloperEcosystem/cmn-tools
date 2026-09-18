@@ -38,24 +38,40 @@ def configure_dtcs_for_atb(opts, cmn_mesh, dtsl_cmn_trace_controller):
 
 
 def main(argv):
+    """
+    Build and activate a trace session, then pass it to the DTSL controller.
+
+    Close a partial session if setup fails. On success, leave it open for the
+    controller's later trace_start()/trace_stop() calls. The controller should
+    call close() when it has finished with the session, not after each capture.
+    """
     import argparse
     parser = argparse.ArgumentParser("setup CMN for trace capture on the ATB using Arm Debugger")
     cmn_capture.add_trace_arguments(parser, cc_default=True)
     parser.add_argument("--ts", type=int, choices=set(TS_PERIODS), help="timestamp period, in cycles")
     opts = parser.parse_args(argv)
-    trace_session = cmn_capture.TraceSession(opts, atb=True, allow_rotation=False)
+    cmns = list(cmn_devmem.cmn_from_opts(opts))
+    plan = cmn_capture.TracePlan.from_opts(cmns, opts, allow_rotation=False)
+    trace_session = cmn_capture.TraceSession(plan, opts, atb=True)
 
-    from arm_ds.debugger_v1 import Debugger
-    from com.arm.debug.dtsl import ConnectionManager
-    debugger = Debugger()
-    dtslConnectionConfigurationKey = debugger.getConnectionConfigurationKey()
-    dtslConnection = ConnectionManager.openConnection(dtslConnectionConfigurationKey)
-    dtslCfg = dtslConnection.getConfiguration()
-    dtsl_cmn_trace_controller = dtslCfg.cmn_trace_controller
+    setup_complete = False
+    try:
+        trace_session.activate()
+        from arm_ds.debugger_v1 import Debugger
+        from com.arm.debug.dtsl import ConnectionManager
+        debugger = Debugger()
+        dtslConnectionConfigurationKey = debugger.getConnectionConfigurationKey()
+        dtslConnection = ConnectionManager.openConnection(dtslConnectionConfigurationKey)
+        dtslCfg = dtslConnection.getConfiguration()
+        dtsl_cmn_trace_controller = dtslCfg.cmn_trace_controller
 
-    for cmn_mesh in trace_session.cmns:
-        dtsl_cmn_trace_controller.setTraceSession(trace_session, cmn_mesh.D.cmn_mesh_name)
-        configure_dtcs_for_atb(opts, cmn_mesh, dtsl_cmn_trace_controller)
+        for cmn_mesh in trace_session.cmns:
+            dtsl_cmn_trace_controller.setTraceSession(trace_session, cmn_mesh.D.cmn_mesh_name)
+            configure_dtcs_for_atb(opts, cmn_mesh, dtsl_cmn_trace_controller)
+        setup_complete = True
+    finally:
+        if not setup_complete:
+            trace_session.close(suppress_errors=True)
 
 
 if __name__ == "__main__":

@@ -266,7 +266,7 @@ def main(argv):
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args(argv)
     for fn in opts.inputs:
-        S = cmn_json.system_from_json_file(fn)
+        S = cmn_json.load_system_for_cli(fn)
         C = S.CMNs[0]
         print("Routing for %s (%u nodes)" % (C, len(list(C.nodes()))))
         for from_node in C.nodes(CMN_PROP_CONN):

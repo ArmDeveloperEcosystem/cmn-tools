@@ -11,13 +11,14 @@ from __future__ import print_function
 
 import sys
 import os
-import subprocess
 import tempfile
 import atexit
 
 import cmn_perfcheck
+import cmn_perfstat
 
 
+# Defaults for callers which do not supply explicit settings.
 o_verbose = 0
 
 o_lmbench = None
@@ -25,6 +26,10 @@ o_perf_bin = "perf"
 o_atomic_line_size = 64
 o_atomic_page_size = 4096
 o_keep_exe = False
+
+# Omitted events count instructions; omitted lmbench uses o_lmbench.
+# Explicit None disables counting or lmbench, respectively.
+_DEFAULT = object()
 
 
 # Traffic generation. We need to generate a rapid stream of traffic to the
@@ -309,12 +314,15 @@ def atomic_entry_spec(entry):
     return "%u:%u:%u:%s" % (entry["cpu"], entry["line_index"], entry["byte_offset"], contenders)
 
 
-def _gen_generator(mode=GEN_READ):
+def _gen_generator(mode=GEN_READ, keep_exe=None, verbose=None):
     """
     Compile a traffic generator from a fragment of C.
     """
-    if mode in g_generator_exes:
-        return g_generator_exes[mode]
+    keep_exe = o_keep_exe if keep_exe is None else keep_exe
+    verbose = o_verbose if verbose is None else verbose
+    key = (mode, keep_exe)
+    if key in g_generator_exes:
+        return g_generator_exes[key]
     if mode == GEN_READ:
         src = _gen_read_c.replace("&ACCESS", "x += m[j]")
         cmd = ["cc", "-O2", "-g", "-Wall", "-Werror", "-xc", "-", "-o"]
@@ -323,46 +331,59 @@ def _gen_generator(mode=GEN_READ):
         cmd = ["cc", "-O2", "-g", "-Wall", "-Werror", "-pthread", "-march=armv8.1-a+lse", "-xc", "-", "-o"]
     else:
         raise ValueError("unknown traffic generator mode: %s" % mode)
-    if o_verbose >= 3:
+    if verbose >= 3:
         print()
         print(src)
         print()
     (fd, g_generator_exe) = tempfile.mkstemp(suffix=".exe")
     os.close(fd)
-    g_generator_exes[mode] = g_generator_exe
-    if not o_keep_exe:
+    compiled = False
+    try:
+        out, err, rc, elapsed = cmn_perfcheck.run_command(cmd + [g_generator_exe],
+                verbose=max(0, verbose - 1), input_data=src.encode())
+        if rc != 0:
+            print("compiler out: %s" % out)
+            print("compiler err: %s" % err)
+            sys.exit(1)
+        compiled = True
+    finally:
+        if not compiled:
+            os.remove(g_generator_exe)
+    # Only successful helpers enter the cache; retention is part of the key.
+    if not keep_exe:
         atexit.register(os.remove, g_generator_exe)
-    if o_verbose >= 2:
-        print(">>> %s %s" % (" ".join(cmd), g_generator_exe), file=sys.stderr)
-    p = subprocess.Popen(cmd + [g_generator_exe], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    p.stdin.write(src.encode())
-    (out, err) = p.communicate()
-    if p.returncode != 0:
-        print("compiler out: %s" % out)
-        print("compiler err: %s" % err)
-        sys.exit(1)
-    if o_verbose >= 3:
-        os.system("objdump -d %s" % g_generator_exe)
+    g_generator_exes[key] = g_generator_exe
+    if verbose >= 3:
+        try:
+            out, err, rc, elapsed = cmn_perfcheck.run_command(["objdump", "-d", g_generator_exe])
+            print(out.decode(), end="")
+            if err:
+                print(err.decode(), file=sys.stderr, end="")
+        except OSError as error:
+            print("objdump failed: %s" % error, file=sys.stderr)
     return g_generator_exe
 
 
-def _run_traffic_command(cmd, events=None, perf_bin=None):
-    if perf_bin is None:
-        perf_bin = o_perf_bin
-    if o_verbose >= 1:
+def _run_traffic_command(cmd, events=None, perf=None, verbose=None):
+    """
+    Run traffic with optional perf counting, preserving argument boundaries.
+    """
+    verbose = o_verbose if verbose is None else verbose
+    if perf is None:
+        perf = cmn_perfstat.Perf(perf_bin=o_perf_bin, verbose=verbose)
+    cmd = cmn_perfcheck.command_arguments(cmd)
+    if verbose >= 1:
         print("counting %u events" % len(events or []), file=sys.stderr)
     if events:
         elist = ",".join(events)
-        cmd = "%s stat -x, -e %s -- %s" % (perf_bin, elist, cmd)
-    if o_verbose >= 3:
-        print(">>> %s" % cmd, file=sys.stderr)
-    p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    (out, err) = p.communicate()
-    if o_verbose >= 3:
+        out, err, rc, elapsed = perf.run_stat([elist], cmd, system_wide=False, separator=",")
+    else:
+        out, err, rc, elapsed = cmn_perfcheck.run_command(cmd, verbose=max(0, verbose - 2))
+    if verbose >= 3:
         print("out: %s" % out, file=sys.stderr)
         print("err: %s" % err, file=sys.stderr)
-    if p.returncode != 0:
-        if cmn_perfcheck.check_cmn_pmu_events():
+    if rc != 0:
+        if perf.check_cmn_events():
             # CMN PMU events appear to be available, so what happened?
             errs = err.decode()
             print("%s" % errs, file=sys.stderr)
@@ -380,7 +401,7 @@ def _run_traffic_command(cmd, events=None, perf_bin=None):
             # We cannot get any further. Either the CMN events are not present
             # or we don't have permission to use them.
             print("CMN hardware events are not accessible: ", file=sys.stderr, end="")
-            cmn_perfcheck.check_cmn_pmu_events()
+            perf.check_cmn_events()
             sys.exit(1)
         if count in ["<not counted>", "<not counted", "<not supported"]:
             raise TrafficMeasurementInconclusive("perf did not count all requested events: %s" % e)
@@ -391,44 +412,63 @@ def _run_traffic_command(cmd, events=None, perf_bin=None):
         ecounts.append(r)
     if len(ecounts) != len(events):
         raise TrafficMeasurementInconclusive("perf returned %u counts for %u events" % (len(ecounts), len(events)))
-    if o_verbose >= 2:
+    if verbose >= 2:
         print("counts: %s" % (ecounts))
     return ecounts
 
 
-def cpu_gen_traffic(cpu, events=["instructions"], time=0.1, size_M=16, perf_bin=None):
+def cpu_gen_traffic(cpu, events=_DEFAULT, time=0.1, size_M=16, perf=None,
+                    lmbench_bin=_DEFAULT, keep_exe=None, verbose=None):
     """
-    Generate traffic, and return performance events
+    Generate traffic, and return performance events.
+    Omitted events count instructions; None or an empty list disables counting.
+    lmbench_bin=None selects the generated helper; omission uses o_lmbench.
+    perf is the Perf instance used for counting and availability diagnostics.
+    verbose controls generator diagnostics, independently of perf.verbose.
     """
-    if o_lmbench is not None:
-        cmd = "%s/bw_mem -N %u %uM rd" % (o_lmbench, int(time*100), size_M)
+    if events is _DEFAULT:
+        events = ["instructions"]
+    verbose = o_verbose if verbose is None else verbose
+    if lmbench_bin is _DEFAULT:
+        lmbench_bin = o_lmbench
+    if lmbench_bin is not None:
+        cmd = [os.path.join(lmbench_bin, "bw_mem"), "-N", str(int(time*100)), "%uM" % size_M, "rd"]
     else:
-        exe = _gen_generator(mode=GEN_READ)
-        cmd = "%s %u %u" % (exe, int(time*100), size_M)
+        exe = _gen_generator(mode=GEN_READ, keep_exe=keep_exe, verbose=verbose)
+        cmd = [exe, str(int(time*100)), str(size_M)]
     if cpu is not None:
-        cmd = "taskset -c %u %s" % (cpu, cmd)
-    if o_verbose >= 2:
+        cmd = ["taskset", "-c", str(cpu)] + cmd
+    if verbose >= 2:
         print("generator: %s" % cmd, file=sys.stderr)
-    return _run_traffic_command(cmd, events=events, perf_bin=perf_bin)
+    return _run_traffic_command(cmd, events=events, perf=perf, verbose=verbose)
 
 
-def cpus_gen_atomic_traffic(entries, events=["instructions"], time=0.1, perf_bin=None):
+def cpus_gen_atomic_traffic(entries, events=_DEFAULT, time=0.1, perf=None, keep_exe=None, verbose=None):
     """
     Generate tagged atomic traffic for one or more CPUs. Each entry uses one
     cache line in a shared page, and contender threads can keep ownership of
     that line moving between CPUs.
+    Omitted events count instructions; None or an empty list disables counting.
     """
-    exe = _gen_generator(mode=GEN_ATOMIC_STORE_EOR)
+    if events is _DEFAULT:
+        events = ["instructions"]
+    verbose = o_verbose if verbose is None else verbose
+    exe = _gen_generator(mode=GEN_ATOMIC_STORE_EOR, keep_exe=keep_exe, verbose=verbose)
     specs = [atomic_entry_spec(e) for e in entries]
-    cmd = " ".join([exe, str(int(time*100))] + specs)
-    if o_verbose >= 2:
+    cmd = [exe, str(int(time*100))] + specs
+    if verbose >= 2:
         print("generator: %s" % cmd, file=sys.stderr)
-    return _run_traffic_command(cmd, events=events, perf_bin=perf_bin)
+    return _run_traffic_command(cmd, events=events, perf=perf, verbose=verbose)
 
 
-def cpu_gen_atomic_traffic(cpu, events=["instructions"], time=0.1, perf_bin=None, line_index=0, byte_offset=1, contenders=None):
+def cpu_gen_atomic_traffic(cpu, events=_DEFAULT, time=0.1, perf=None, line_index=0, byte_offset=1, contenders=None, keep_exe=None, verbose=None):
+    """
+    Generate tagged atomic traffic for one CPU.
+    Omitted events count instructions; None or an empty list disables counting.
+    """
     entry = atomic_entry(cpu, line_index=line_index, byte_offset=byte_offset, contenders=contenders)
-    return cpus_gen_atomic_traffic([entry], events=events, time=time, perf_bin=perf_bin)
+    return cpus_gen_atomic_traffic([entry], events=events, time=time, perf=perf,
+                                   keep_exe=keep_exe, verbose=verbose)
 
 
 def main(argv):
@@ -459,13 +499,14 @@ def main(argv):
     o_verbose = opts.verbose
     o_lmbench = opts.lmbench_bin
     o_keep_exe = opts.keep_exe
+    perf = cmn_perfstat.Perf(perf_bin=opts.perf_bin, verbose=opts.verbose)
     for cpu in opts.cpu_list:
         if opts.atomic:
-            cpu_gen_atomic_traffic(cpu, time=opts.time, perf_bin=opts.perf_bin,
+            cpu_gen_atomic_traffic(cpu, time=opts.time, perf=perf,
                                    line_index=opts.line_index, byte_offset=opts.byte_offset,
                                    contenders=opts.contenders)
         else:
-            cpu_gen_traffic(cpu, time=opts.time, size_M=opts.size, perf_bin=opts.perf_bin)
+            cpu_gen_traffic(cpu, time=opts.time, size_M=opts.size, perf=perf)
 
 
 if __name__ == "__main__":

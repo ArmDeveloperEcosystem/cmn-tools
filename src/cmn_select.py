@@ -287,6 +287,32 @@ class CMNSelectSingle:
             return False
         return True
 
+    def match_device_id(self, cmn, node_id):
+        """
+        Match a CHI target ID, resolving its device slot when possible.
+
+        A SAM may reference a device missing from the discovered topology.
+        Such an ID can match mesh/ID-only expressions (including ALL), but
+        cannot satisfy tests of unknown type, coordinates, CPU or logical ID.
+        Offline slots may be materialized; live lookup itself does not discover
+        nodes. Resolved devices use the normal match_device discovery behavior.
+        None is not a device ID (for example, an unresolved aggregation group).
+        """
+        if node_id is None:
+            return False
+        dev = cmn.device_at_id(node_id, create=True)
+        if dev is not None:
+            return self.match_device(dev)
+        if self.cmn_seq is not None and self.cmn_seq != cmn.cmn_seq:
+            return False
+        if self.node_id is not None and self.node_id != node_id:
+            return False
+        if self.node_props not in [None, CMN_PROP_none]:
+            return False
+        return all([value is None for value in [
+            self.node_type, self.node_x, self.node_y, self.node_port,
+            self.node_device, self.cpu_number, self.logical_id]])
+
     def can_match_devices_at_cmn(self, cmn):
         """
         Return true if the selector might match some devices in the given CMN.
@@ -403,6 +429,12 @@ class CMNSelect:
         Return true if any match-expression matches a device slot.
         """
         return (not self.matchers) or any([m.match_device(dev) for m in self.matchers])
+
+    def match_device_id(self, cmn, node_id):
+        """Match a CHI target ID using the common device selection rules."""
+        return node_id is not None and (
+            not self.matchers or
+            any([m.match_device_id(cmn, node_id) for m in self.matchers]))
 
     def can_match_devices_at_cmn(self, cmn):
         return (not self.matchers) or any([m.can_match_devices_at_cmn(cmn) for m in self.matchers])

@@ -12,6 +12,7 @@ from __future__ import print_function
 import os
 import sys
 import struct
+import operator
 
 import iommap as mmap
 from devmem_base import DevMapFactory, DevMap, DevMemNoSecure
@@ -48,7 +49,8 @@ class DevMemFactory(DevMapFactory):
         DevMapFactory.__del__(self)
 
     def mmap(self, pa, size, write=False):
-        assert (size % self.page_size) == 0
+        if (size % self.page_size) != 0:
+            raise ValueError("mapping size must be a multiple of the page size")
         if write:
             prot = (mmap.PROT_READ | mmap.PROT_WRITE)
         else:
@@ -56,15 +58,17 @@ class DevMemFactory(DevMapFactory):
         m = mmap.mmap(self.fd.fileno(), size, mmap.MAP_SHARED, prot, offset=pa)
         return m
 
-    def map(self, pa, size, name=None, write=False):
+    def map(self, pa, size, name=None, write=False, verbose=0):
         """
         Create a physical mapping directly from the /dev/mem object.
         The result is a DevMap object. Often, a caller will want to
         create one or more subclasses of DevMap, representing different
         device types, and have the mapping created by the constructor.
         """
-        assert (pa % self.page_size) == 0, "unaligned address: 0x%x" % pa
-        return DevMemDevMap(pa, size, owner=self, name=name, write=write)
+        pa = operator.index(pa)
+        if (pa % self.page_size) != 0:
+            raise ValueError("unaligned mapping address: 0x%x" % pa)
+        return DevMemDevMap(pa, size, owner=self, name=name, write=write, verbose=verbose)
 
 
 def align_down(a, size):
@@ -97,13 +101,12 @@ class DevMemDevMap(DevMap):
 
     Sub-page sizes are handled by mapping a whole page and offsetting within it.
     """
-    def __init__(self, pa, size, name=None, owner=None, write=False, verbose=0):
-        assert isinstance(owner, DevMapFactory)
-        DevMap.__init__(self, pa, size, name=name, owner=owner, write=write, verbose=verbose)
+    def __init__(self, pa, size, name=None, owner=None, write=False, verbose=0, check=None):
+        DevMap.__init__(self, pa, size, name=name, owner=owner, write=write, verbose=verbose, check=check)
         self.m = None
-        aligned_pa = align_down(pa, owner.page_size)
-        aligned_size = align_up(size, owner.page_size)
-        self.offset_in_page = pa - aligned_pa
+        aligned_pa = align_down(self.pa, owner.page_size)
+        self.offset_in_page = self.pa - aligned_pa
+        aligned_size = align_up(self.offset_in_page + self.size, owner.page_size)
         self.m = owner.mmap(aligned_pa, aligned_size, write=self.writing)
         assert self.m is not None
 
@@ -126,14 +129,13 @@ class DevMemDevMap(DevMap):
             fmt = {1:"B", 2:"H", 4:"I", 8:"Q"}[n]
         if self.verbose():
             print("%s: read 0x%x" % (self, off), end="")
-        assert (off % n) == 0, "%s: invalid offset: 0x%x" % (self, off)
         raw = self.m[off:off+n]
         x = struct.unpack(fmt, raw)[0]
         if self.verbose():
             print(" => 0x%x" % (x))
         return x
 
-    def _write(self, off, n, data, fmt=None, check=None):
+    def _write(self, off, n, data, fmt=None):
         if self.secure != "NS":
             pa = self.pa + off
             return self.owner.memif.write(pa, n, data, sec=self.secure)
@@ -142,7 +144,6 @@ class DevMemDevMap(DevMap):
             fmt = {1:"B", 2:"H", 4:"I", 8:"Q"}[n]
         if self.verbose():
             print("%s: write 0x%x := 0x%x" % (self, off, data))
-        assert (off % n) == 0, "%s: invalid offset: 0x%x" % (self, off)
         self.m[off:off+n] = struct.pack(fmt,data)
 
     def _read8(self, off):
@@ -157,17 +158,17 @@ class DevMemDevMap(DevMap):
     def _read64(self, off):
         return self._read(off, 8)
 
-    def _write8(self, off, data, check=None):
-        self._write(off, 1, data, check=check)
+    def _write8(self, off, data):
+        self._write(off, 1, data)
 
-    def _write16(self, off, data, check=None):
-        self._write(off, 2, data, check=check)
+    def _write16(self, off, data):
+        self._write(off, 2, data)
 
-    def _write32(self, off, data, check=None):
-        self._write(off, 4, data, check=check)
+    def _write32(self, off, data):
+        self._write(off, 4, data)
 
-    def _write64(self, off, data, check=None):
-        self._write(off, 8, data, check=check)
+    def _write64(self, off, data):
+        self._write(off, 8, data)
 
 
 def main(argv):
@@ -183,7 +184,7 @@ def main(argv):
     off = opts.address - base
     width = {"b":1, "h":2, "w":4, "d":8}[opts.width]
     m = DevMap(base, os.sysconf("SC_PAGE_SIZE"), write=(opts.value is not None))
-    if not opts.value:
+    if opts.value is None:
         print("0x%x" % m._read(off, width))
     else:
         m._write(off, width, opts.value)

@@ -37,14 +37,17 @@ CMN_any_ROOT_ACCESS     = 0x0988
 # Port connectivity information.
 # For CMN-600/650 this is max 2 ports with east/north immediately following.
 # For CMN-700 it is up to 6 ports, with east/north following those (at offset 6).
+# For CMN S3 it is up to 8 ports, with ports 6 and 7 located elsewhere
 CMN_XP_DEVICE_PORT_CONNECT_INFO_P0  = 0x08
 CMN_XP_DEVICE_PORT_CONNECT_INFO_P1  = 0x10
+
 def CMN_XP_DEVICE_PORT_CONNECT_INFO_P(p):
-    return 0x08 + 8*p
+    return (0x08 + 8*p) if p < 6 else (0xE70 + 8*(p-6))
+
 CMN_XP_DEVICE_PORT_CAL_CONNECTED_BIT = 7
 
 def CMN_XP_DEVICE_PORT_CONNECT_LDID_INFO_P(p):
-    return 0x48 + 8*p
+    return (0x48 + 8*p) if p < 6 else (0xE80 + 8*(p-6))
 
 
 CMN650_DTM_UNIT_INFO           =  0x910    # CMN-650
@@ -80,6 +83,8 @@ CMN_DTM_PMU_CONFIG_PMEVENTALL_COMBINED = 0x08   # combine PMU counters 0,1,2 and
 CMN_DTM_PMU_CONFIG_CNTR_RST           = 0x100   # clear live counters upon assertion of snapshot
 CMN_DTM_PMU_PMEVCNT_off         = 0x220    # DTM event counters 0 to 3: 16 bits each
 CMN_DTM_PMU_PMEVCNTSR_off       = 0x240    # DTM event counter shadow
+
+CMN_DTM_N_WP = 4
 
 
 # Debug/Trace Controller registers (e.g. CMN-600 TRM Table 3-4)

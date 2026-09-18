@@ -17,8 +17,11 @@ E.g. CMN-600 HN-F, event 0xf (POCQ occupancy), uses the filter.
 
 from __future__ import print_function
 
+
 import os
 import sys
+import json
+
 
 from cmn_enum import *
 
@@ -34,9 +37,9 @@ class Event:
         assert event_number > 0, "all CMN events have non-zero event number"
         self.node_type = node_type
         self.pmu_index = pmu_index            # Handle CCLA_RNI and HN-P which have two PMUs
-        self.event_number = event_number
+        self.event_number = event_number      # Event number within this node type's event space
         self.filter = filter
-        self.pmu_event_name = pmu_event_name
+        self.pmu_event_name = pmu_event_name  # Name is globally unique (includes node type)
         self.description = description
 
     def name(self):
@@ -92,7 +95,7 @@ class Events:
         else:
             e = Event(self, node_type=node_type, pmu_index=pmu_index,
                       event_number=event_number, pmu_event_name=pmu_event_name, filter=filter,
-                      description=None)
+                      description=description)
             self.events_by_node_ix[k] = e
             if node_type not in self.node_type_events_by_ix:
                 self.node_type_events_by_ix[node_type] = {}
@@ -124,6 +127,36 @@ class Events:
                 return self.events_by_node_ix[k]
         return None
 
+    def to_json(self):
+        j = []
+        pk = None
+        tj = None
+        for k in sorted(self.events_by_node_ix.keys()):
+            if len(k) == 4:
+                (node_type, pmu_index, event_number, filter) = k
+            else:
+                (node_type, pmu_index, event_number) = k
+                filter = None
+            tk = (node_type, pmu_index)
+            if tk != pk:
+                tj = []
+                tjm = {
+                    "NodeType": ("0x%x" % node_type),
+                    "PMUIndex": pmu_index,
+                    "Events": tj
+                }
+                j.append(tjm)       # reference: tj will be updated while referred to
+                pk = tk
+            e = self.events_by_node_ix[k]
+            ej = {
+                "EventName": e.pmu_event_name,
+                "EventCode": ("0x%x" % e.event_number),
+            }
+            if e.description:
+                ej["BriefDescription"] = e.description
+            tj.append(ej)
+        return j
+
     def events(self, node_type=None):
         """
         Yield events ordered by (node_type, event_number [, filter])
@@ -144,7 +177,10 @@ class Events:
         Print events in the usual traversal order
         """
         for e in self.events():
-            print("%s" % (e))
+            print("%s" % (e), end="")
+            if e.description:
+                print(" - %s" % e.description, end="")
+            print()
 
     def load(self, fn):
         """
@@ -153,13 +189,16 @@ class Events:
         n_added = 0
         with open(fn) as f:
             for ln in f:
-                x = ln.strip().split(',')
+                lns = ln.strip()
+                if lns.startswith('#'):
+                    continue
+                x = lns.split(',', 5)
                 nt = int(x[0], 16)        # node type
                 pi = int(x[1])            # PMU index (usually zero)
                 en = int(x[2], 16)        # event number
                 fi = int(x[3], 16) if x[3] else None   # sub-field value
                 mn = x[4] if x[4] else None      # mnemonic
-                de = x[5] if x[5] else None
+                de = x[5] if x[5] else None      # descriptive text
                 e = self.add(node_type=nt, pmu_index=pi, event_number=en, filter=fi, pmu_event_name=mn, description=de, allow_duplicates=False)
                 assert e == self.get_event(nt, en, pmu_index=pi, filter=fi), "bad load %s" % e
                 n_added += 1
@@ -184,7 +223,7 @@ class Events:
 
     def dump(self, fn):
         """
-        Dump the event set to a CSv file. Handles "-" meaning stdout.
+        Dump the event set to a CSV file. Handles "-" meaning stdout.
         (There doesn't seem to be a nice pattern for this.)
         """
         if fn == "-":
@@ -192,7 +231,10 @@ class Events:
             fn = "stdout"
         else:
             with open(fn, "w") as f:
-                n_written = self.dump_f(f)
+                if fn.endswith(".json"):
+                    json.dump(self.to_json(), f, indent=4)
+                else:
+                    n_written = self.dump_f(f)
         if o_verbose:
             print("cmn_events: %u events written to %s" % (n_written, fn),
                   file=sys.stderr)
@@ -283,6 +325,11 @@ def event_file_name(product_id):
     return os.path.join(events_dir(), fn)
 
 
+#
+# The Linux PMU driver has different names for HN-F and HN-S events, following the product.
+# Our perf recipes etc. use the HN-F events and we have a translation map here.
+# Caller must find out if their mesh uses HN-S.
+#
 hns_events = {
     "hnf_slc_sf_cache_access": "hns_slc_sf_cache_access_all",
     "hnf_cache_miss": "hns_cache_miss_all",
@@ -303,6 +350,7 @@ def main(argv):
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", type=str, help="input CSV file")
+    parser.add_argument("--cmn-product", type=(lambda x:int(x, 16)), help="CMN product id")
     parser.add_argument("--add-sysfs", action="store_true", help="add events from sysfs")
     parser.add_argument("--list", action="store_true", help="list all events")
     parser.add_argument("-o", "--output", type=str, help="output CSV file")
@@ -312,6 +360,9 @@ def main(argv):
     E = Events()
     if opts.input:
         E.load(opts.input)
+    if opts.cmn_product:
+        fn = event_file_name(opts.cmn_product)
+        E.load(fn)
     if opts.add_sysfs or not opts.input:
         _add_sysfs_events(E)
     if opts.verbose or not (opts.list or opts.output):

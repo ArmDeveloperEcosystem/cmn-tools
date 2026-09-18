@@ -30,7 +30,7 @@ from the CMN base. In that case, pass --cmn-root-offset as well as
 
 For example, on N1SDP:
 
-    python cmn_regdump.py --cmn-base=0x50000000 --cmn-root-offset=0xd00000
+    python src/cmn_regdump.py --cmn-base=0x50000000 --cmn-root-offset=0xd00000
 
 
 Basic usage
@@ -38,40 +38,40 @@ Basic usage
 
 Dump non-zero registers:
 
-    python cmn_regdump.py
+    python src/cmn_regdump.py
 
 Include registers whose value is zero:
 
-    python cmn_regdump.py --include-zero
+    python src/cmn_regdump.py --include-zero
 
 Show field output:
 
-    python cmn_regdump.py --fields
+    python src/cmn_regdump.py --fields
 
 Show register and field descriptions:
 
-    python cmn_regdump.py --descriptions
+    python src/cmn_regdump.py --descriptions
 
 Descriptions can be long. Limit their printed length with:
 
-    python cmn_regdump.py --descriptions --max-desc=40
+    python src/cmn_regdump.py --descriptions --max-desc=40
 
 Show the physical address of each register:
 
-    python cmn_regdump.py --address
+    python src/cmn_regdump.py --address
 
 By default, read-only registers are included. To exclude them:
 
-    python cmn_regdump.py --exclude-read-only
+    python src/cmn_regdump.py --exclude-read-only
 
 Volatile registers can be excluded:
 
-    python cmn_regdump.py --exclude-volatile
+    python src/cmn_regdump.py --exclude-volatile
 
 If Secure registers are not accessible, cmn_regdump.py will skip them.
 If the environment is known to allow Secure access, use:
 
-    python cmn_regdump.py --secure-access
+    python src/cmn_regdump.py --secure-access
 
 
 Selecting nodes
@@ -82,23 +82,23 @@ CMN selector syntax used by other tools in this repository.
 
 Dump all XPs:
 
-    python cmn_regdump.py --node xp
+    python src/cmn_regdump.py --node xp
 
 Dump all HN-F nodes:
 
-    python cmn_regdump.py --node hn-f
+    python src/cmn_regdump.py --node hn-f
 
 Dump one XP by coordinates:
 
-    python cmn_regdump.py --node 'xp(0,0)'
+    python src/cmn_regdump.py --node 'xp(0,0)'
 
 Dump one node by node id:
 
-    python cmn_regdump.py --node hn-f@0x24
+    python src/cmn_regdump.py --node hn-f@0x24
 
 Dump nodes in a particular mesh:
 
-    python cmn_regdump.py --node m1:xp
+    python src/cmn_regdump.py --node m1:xp
 
 More than one --node option may be supplied. The selections are combined.
 
@@ -111,24 +111,24 @@ expression matched against the register name.
 
 Show only NODE_INFO registers:
 
-    python cmn_regdump.py --reg node_info
+    python src/cmn_regdump.py --reg node_info
 
 Show only UNIT_INFO registers on XPs:
 
-    python cmn_regdump.py --node xp --reg unit_info
+    python src/cmn_regdump.py --node xp --reg unit_info
 
 The positional form reads a named register from every matching node:
 
-    python cmn_regdump.py por_mxp_node_info
+    python src/cmn_regdump.py por_mxp_node_info
 
 If a field name is supplied after a dot, only that field is printed:
 
-    python cmn_regdump.py por_mxp_device_port_connect_info_p0.device_type_p0
+    python src/cmn_regdump.py por_mxp_device_port_connect_info_p0.device_type_p0
 
 If a value is supplied, cmn_regdump.py writes the register or field and
 then reads it back:
 
-    python cmn_regdump.py some_register=0x1
+    python src/cmn_regdump.py some_register=0x1
 
 Use write forms with care. Some CMN registers control live interconnect
 state.
@@ -140,11 +140,11 @@ Searching register definitions
 The --search option searches the register definitions for the current
 CMN product rather than reading the target:
 
-    python cmn_regdump.py --search node_info
+    python src/cmn_regdump.py --search node_info
 
 The --search-all option searches all register definition files:
 
-    python cmn_regdump.py --search-all device_port_connect_info
+    python src/cmn_regdump.py --search-all device_port_connect_info
 
 These modes are useful when looking for the exact register or field name
 to use with --reg or positional register access.
@@ -158,11 +158,11 @@ then each XP, followed by the device nodes under that XP.
 
 This can be made explicit:
 
-    python cmn_regdump.py --node-order topology
+    python src/cmn_regdump.py --node-order topology
 
 For comparison work it can be useful to visit nodes by type instead:
 
-    python cmn_regdump.py --node-order type
+    python src/cmn_regdump.py --node-order type
 
 Type order prints the configuration node, then all XPs, then all nodes
 of each device-node type.
@@ -172,34 +172,44 @@ Aggregate mode
 --------------
 
 The --aggregate option groups selected nodes by node type and compares
-register values within each group.
+register values within each group. It also applies to positional register
+and field reads:
+
+    python src/cmn_regdump.py por_mxp_node_info --aggregate
+
+    python src/cmn_regdump.py por_mxp_device_port_connect_info_p0.device_type_p0 --aggregate
+
+A positional name matches exactly and includes zero values. When a field
+is named, only that field is compared, even if other fields in the register
+differ. The --no-common option also applies to these reads. Positional
+writes continue to report each node's before and readback values separately.
 
 When all nodes of a type have the same value for a register, the value
 is printed once:
 
-    python cmn_regdump.py --aggregate --node xp --reg device_port_connect_info
+    python src/cmn_regdump.py --aggregate --node xp --reg device_port_connect_info
 
 When values differ, cmn_regdump.py prints the value for each node:
 
-    python cmn_regdump.py --aggregate --node xp --reg device_port_connect_info --no-fields
+    python src/cmn_regdump.py --aggregate --node xp --reg device_port_connect_info --no-fields
 
 To show only differences, suppress registers and fields whose values are
 common across the group:
 
-    python cmn_regdump.py --aggregate --no-common
+    python src/cmn_regdump.py --aggregate --no-common
 
 This is useful for finding configuration differences between instances
 of the same node type:
 
-    python cmn_regdump.py --aggregate --no-common --node hn-f
+    python src/cmn_regdump.py --aggregate --no-common --node hn-f
 
 With --fields, aggregate mode also compares fields. Fields whose values
 differ are printed per node. Fields whose values are common are printed
 once, unless --no-common is specified:
 
-    python cmn_regdump.py --aggregate --fields --node xp --reg device_port_connect_info
+    python src/cmn_regdump.py --aggregate --fields --node xp --reg device_port_connect_info
 
-    python cmn_regdump.py --aggregate --fields --no-common --node xp --reg device_port_connect_info
+    python src/cmn_regdump.py --aggregate --fields --no-common --node xp --reg device_port_connect_info
 
 If there is only one selected node of a type, aggregate mode prints it
 as a normal node dump. With --no-common, single-node type groups are
@@ -211,7 +221,7 @@ Flat output
 
 The --flat option prints output in a simpler assignment-like form:
 
-    python cmn_regdump.py --flat --node xp --reg node_info
+    python src/cmn_regdump.py --flat --node xp --reg node_info
 
 This can be useful for simple scripts or for diffing output.
 
@@ -253,20 +263,20 @@ Examples
 
 Dump all non-zero HN-F registers, without field detail:
 
-    python cmn_regdump.py --node hn-f --no-fields
+    python src/cmn_regdump.py --node hn-f --no-fields
 
 Show all zero and non-zero XP device-port connection information:
 
-    python cmn_regdump.py --node xp --reg device_port_connect_info --include-zero
+    python src/cmn_regdump.py --node xp --reg device_port_connect_info --include-zero
 
 Find differing XP device-port connection fields:
 
-    python cmn_regdump.py --aggregate --no-common --fields --node xp --reg device_port_connect_info
+    python src/cmn_regdump.py --aggregate --no-common --fields --node xp --reg device_port_connect_info
 
 Find differing UNIT_INFO values on RN-D nodes:
 
-    python cmn_regdump.py --aggregate --no-common --no-fields --node rn-d --reg unit_info
+    python src/cmn_regdump.py --aggregate --no-common --no-fields --node rn-d --reg unit_info
 
 Search all register definition files for registers containing "pmu":
 
-    python cmn_regdump.py --search-all pmu
+    python src/cmn_regdump.py --search-all pmu

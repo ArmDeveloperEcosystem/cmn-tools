@@ -276,6 +276,57 @@ class CMNRegDumper(CMNRegMapper, Style):
                 continue
             yield (n, reg)
 
+    def cmns_read_reg_aggregate(self, CS, reg_name, fld_name=None):
+        """
+        Read an exact register or field name and combine equal values by node type.
+        Like positional access, include explicitly requested zero values and use
+        reg_read's secure-access handling. Cache each result for comparison and
+        field output, without rereading the register.
+        """
+        groups = {}
+        for C in CS:
+            for (n, reg) in self.cmn_iter_reg(C, reg_name):
+                fld = None
+                if fld_name is not None:
+                    fld = reg.field_by_name(fld_name)
+                    if fld is None:
+                        print("%s has no field '%s'" % (reg_name, fld_name), file=sys.stderr)
+                        sys.exit(1)
+                x = self.reg_read(n, reg)
+                if fld is not None:
+                    x = fld.extract(x)
+                groups.setdefault(n.type(), []).append((n, reg, x))
+        if not groups:
+            print("** Register not found: '%s'" % reg_name, file=sys.stderr)
+            return
+        name = reg_name if fld_name is None else reg_name + "." + fld_name
+        for node_type in sorted(groups):
+            vals = groups[node_type]
+            different = any([x != vals[0][2] for (n, reg, x) in vals[1:]])
+            if not different and self.o_no_common:
+                continue
+            if len(vals) > 1:
+                print()
+                print("Node type: %s (%u nodes)" % (cmn_node_type_str(node_type), len(vals)))
+            if not different and len(vals) > 1:
+                (n, reg, x) = vals[0]
+                self.node_loc_str = reg.regmap.name
+                print("%s.%s = 0x%x (common across %u nodes)" % (self.node_loc_str, name, x, len(vals)))
+                if self.o_fields and fld_name is None:
+                    self.reg_dump_fields(reg, x)
+            else:
+                for (n, reg, x) in vals:
+                    self.node_loc_str = self.locator_str(n)
+                    rname = self.node_loc_str + "." + name
+                    if self.o_address:
+                        rname = ("0x%x:" % (n.node_base_addr + reg.addr)) + rname
+                    print("%s = 0x%x" % (rname, x))
+                if self.o_fields and fld_name is None:
+                    if different:
+                        self.reg_dump_aggregate_fields(vals)
+                    else:
+                        self.reg_dump_fields(vals[0][1], vals[0][2])
+
     def cmn_access_reg(self, C, reg_name, fld_name, val=None, fields=False):
         """
         Read, and optionally write (if val is not None), a register
@@ -283,7 +334,9 @@ class CMNRegDumper(CMNRegMapper, Style):
         n_found = 0
         for (n, reg) in self.cmn_iter_reg(C, reg_name):
             n_found += 1
-            rname = self.locator_str(n) + "." + reg_name
+            # Flat field output uses the current node's locator too.
+            self.node_loc_str = self.locator_str(n)
+            rname = self.node_loc_str + "." + reg_name
             if self.o_address:
                 rname = ("0x%x:" % (n.node_base_addr + reg.addr)) + rname
             if False and reg.is_secure and not n.C.secure_accessible:
@@ -378,14 +431,16 @@ class CMNRegDumper(CMNRegMapper, Style):
          - for CMN-700 and earlier, if secure and all overrides set, then read it
          - for CMN S3 onwards, if register is overrideable and all overrides set, then read it
          - otherwise try a secure access
+
+        Restore the previous access mode even if the secure read fails.
         """
         if self.reg_accessible_ns(n, reg):
             return n.read64(reg.addr)
         x = n.read64(reg.addr)
+        access = devmem_base.SecureAccess(n, reg.security)
         try:
-            old_sec = n.set_secure_access(reg.security)
-            xs = n.read64(reg.addr)
-            n.set_secure_access(old_sec)
+            with access:
+                xs = n.read64(reg.addr)
             if xs != x:
                 if x != 0:
                     print("%s: NS read 0x%x, S read 0x%x" % (reg, x, xs))
@@ -394,19 +449,25 @@ class CMNRegDumper(CMNRegMapper, Style):
                     pass
                 x = xs
         except devmem_base.DevMemNoSecure:
+            if access.restore_failed:
+                raise    # Failed restoration must not be treated as unsupported access.
             print("%s: can't read secure register" % reg, file=sys.stderr)
-            pass
         return x
 
     def reg_write(self, n, reg, value):
+        """
+        Write a register, restoring the previous access mode even on failure.
+        """
         if self.reg_accessible_ns(n, reg):
             n.write64(reg.addr, value)
             return
+        access = devmem_base.SecureAccess(n, reg.security)
         try:
-            old_sec = n.set_secure_access(reg.security)
-            n.write64(reg.addr, value)
-            n.set_secure_access(old_sec)
+            with access:
+                n.write64(reg.addr, value)
         except devmem_base.DevMemNoSecure:
+            if access.restore_failed:
+                raise    # Failed restoration must not be treated as unsupported access.
             print("%s: cannot write secure register" % reg, file=sys.stderr)
             sys.exit(1)
 
@@ -691,6 +752,8 @@ def main(argv):
     parser.add_argument("--address", action="store_true", help="show address of each register")
     parser.add_argument("--node-order", choices=["topology", "type"], default="topology", help="node traversal order for register dumps")
     parser.add_argument("--aggregate", action="store_true", help="aggregate register values by node type")
+    parser.add_argument("--no-aggregate", dest="aggregate", action="store_false", help="list all instances individually")
+    parser.set_defaults(aggregate=None)
     parser.add_argument("--no-common", action="store_true", help="in aggregate mode, suppress registers common to all nodes of a type")
     parser.add_argument("--reset", action="store_true", default=True, help="show reset values")
     parser.add_argument("--no-reset", dest="reset", action="store_false", help="don't show reset values")
@@ -707,6 +770,8 @@ def main(argv):
     o_verbose = opts.verbose
     if opts.descriptions is None and opts.search:
         opts.descriptions = True
+    if opts.aggregate is None:
+        opts.aggregate = (not opts.flat)
     if opts.search_all:
         # Search across all products (CMN-600, CMN-700 etc.) regardless of current system
         if not opts.reg and not opts.regs:
@@ -751,8 +816,12 @@ def main(argv):
                 (rs, fld) = rs.split('.')
             else:
                 fld = None
-            for C in CS:
-                D.cmn_access_reg(C, rs, fld, val, fields=opts.fields)
+            if opts.aggregate and val is None:
+                D.cmns_read_reg_aggregate(CS, rs, fld)
+            else:
+                # Keep writes and their readback reports per instance.
+                for C in CS:
+                    D.cmn_access_reg(C, rs, fld, val, fields=opts.fields)
         sys.exit()
     printed_sec_warning = False
     for C in CS:

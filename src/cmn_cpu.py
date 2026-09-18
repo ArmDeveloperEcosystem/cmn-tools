@@ -17,7 +17,7 @@ def main(argv):
     parser = argparse.ArgumentParser(description="CPU location")
     parser.add_argument("cpu", type=int, help="CPU number")
     opts = parser.parse_args(argv)
-    S = cmn_json.system_from_json_file()
+    S = cmn_json.load_system_for_cli()
     c = S.cpu(opts.cpu)
     print(c)
 

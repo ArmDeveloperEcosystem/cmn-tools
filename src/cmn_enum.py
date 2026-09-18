@@ -70,7 +70,7 @@ CMN_PROP_SNF   = (CMN_PROP_SN | CMN_PROP_F)
 # a connected device type (see port_device_type) but have no nodes.
 CMN_NODE_DN      = 1      # "DVM" in Table 2-7; home node for DVMOp operations
 CMN_NODE_CFG     = 2      # Root node
-CMN_NODE_DT      = 3      # Debug and Trace Controller
+CMN_NODE_DT      = 3      # Debug and Trace Controller (DTC0 in HN-D, or other in HN-T)
 CMN_NODE_HNI     = 4
 CMN_NODE_HNF     = 5      # Fully coherent Home Node inc. system cache (SLC) and/or SF
 CMN_NODE_XP      = 6      # Switch/router node (mesh crosspoint)
@@ -82,21 +82,17 @@ CMN_NODE_RND     = 13     # RN-I that accepts DVM
 CMN_NODE_RNSAM   = 15
 CMN_NODE_MTSX    = 16
 CMN_NODE_HNP     = 17     # HN-I optimized for peer-to-peer traffic
-CMN_NODE_CXRA    = 0x100  # CCIX Request Agent
-CMN_NODE_CXHA    = 0x101  # CCIX Home Agent
+CMN_NODE_CXRA    = 0x100  # CCIX Request Agent (local home)
+CMN_NODE_CXHA    = 0x101  # CCIX Home Agent (local requester)
 CMN_NODE_CXLA    = 0x102  # CCIX Link Agent
-CMN_NODE_CCG_RA  = 0x103
-CMN_NODE_CCG_HA  = 0x104
-CMN_NODE_CCLA    = 0x105
-CMN_NODE_CCLA_RNI= 0x106
+CMN_NODE_CCG_RA  = 0x103  # CCG Request Agent (local home)
+CMN_NODE_CCG_HA  = 0x104  # CCG Home Agent (local requester)
+CMN_NODE_CCLA    = 0x105  # CCG Link Agent: C2C link side of RA/HA
+CMN_NODE_CCLA_RNI= 0x106  # CCG LA with RN-I for PCIe tunnelling (CMN-700)
 CMN_NODE_HNS     = 0x200
 CMN_NODE_HNS_MPAM_S  = 0x201
 CMN_NODE_HNS_MPAM_NS = 0x202
 CMN_NODE_APB     = 0x1000 # APB interface
-
-
-# TBD: this doesn't match CMN_PROP_HN, but probably should. Should CXHA be here?
-CMN_NODE_all_HN = [CMN_NODE_HNI, CMN_NODE_HNF, CMN_NODE_HNP, CMN_NODE_HNS]
 
 
 cmn_node_properties = {
@@ -114,11 +110,11 @@ cmn_node_properties = {
     CMN_NODE_RNSAM       : CMN_PROP_SAM,
     CMN_NODE_MTSX        : CMN_PROP_DEV,    # TBD
     CMN_NODE_HNP         : CMN_PROP_HNI,
-    CMN_NODE_CXRA        : (CMN_PROP_RN | CMN_PROP_CCG),
-    CMN_NODE_CXHA        : (CMN_PROP_HN | CMN_PROP_CCG),
+    CMN_NODE_CXRA        : (CMN_PROP_HN | CMN_PROP_CCG),   # local home
+    CMN_NODE_CXHA        : (CMN_PROP_RN | CMN_PROP_CCG),   # local requester
     CMN_NODE_CXLA        : CMN_PROP_DEV,    # CHI access via RA/HA
-    CMN_NODE_CCG_RA      : (CMN_PROP_RN | CMN_PROP_CCG),
-    CMN_NODE_CCG_HA      : (CMN_PROP_HN | CMN_PROP_CCG),
+    CMN_NODE_CCG_RA      : (CMN_PROP_HN | CMN_PROP_CCG),   # local home
+    CMN_NODE_CCG_HA      : (CMN_PROP_RN | CMN_PROP_CCG),   # local requester
     CMN_NODE_CCLA        : CMN_PROP_DEV,    # CHI access via RA/HA
     CMN_NODE_CCLA_RNI    : CMN_PROP_CHI,
     CMN_NODE_HNS         : CMN_PROP_HNS,
@@ -252,12 +248,10 @@ CMN_PORT_DEVTYPE_SNF_CHIG       = 0x25
 
 
 #
-# Port properties encompass the union of the properties of possible device nodes
-# attached to the port.
+# These properties describe the indicated port connected device type.
 #
-# There is one exception to this - CAL3 RN-F ports have an HN-I node.
-# Rather than give all RN-F ports the HN-I property, we special-case CAL3
-# in the implementations of port.properties().
+# HCAL3 RN-F ports also have an HN-I role. cmn_base.port_has_properties()
+# tests that role separately, without combining its bits with the RN-F mask.
 #
 cmn_port_properties = {
     CMN_PORT_DEVTYPE_RNI              : (CMN_PROP_RNI | CMN_PROP_SAM),
@@ -289,7 +283,7 @@ cmn_port_properties = {
     CMN_PORT_DEVTYPE_MTSX             : CMN_PROP_none,
     CMN_PORT_DEVTYPE_HNV              : CMN_PROP_HNI,
     CMN_PORT_DEVTYPE_CCG              : (CMN_PROP_CCG | CMN_PROP_RNI | CMN_PROP_HN | CMN_PROP_SAM),
-    CMN_PORT_DEVTYPE_CCGSMP           : (CMN_PROP_CCG | CMN_PROP_RNI | CMN_PROP_HN | CMN_PROP_SAM),
+    CMN_PORT_DEVTYPE_CCGSMP           : (CMN_PROP_CCG | CMN_PROP_HN | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHIF         : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHIF_ESAM    : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_SNF_CHIF         : CMN_PROP_SNF,
@@ -297,14 +291,6 @@ cmn_port_properties = {
     CMN_PORT_DEVTYPE_RNF_CHIG_ESAM    : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_SNF_CHIG         : CMN_PROP_SNF,
 }
-
-
-# See comment about CXHA in CMN_NODE_all_HN above
-CMN_PORT_DEVTYPE_all_HN = [
-    CMN_PORT_DEVTYPE_HNT, CMN_PORT_DEVTYPE_HNI, CMN_PORT_DEVTYPE_HND,
-    CMN_PORT_DEVTYPE_HNP, CMN_PORT_DEVTYPE_HNF, CMN_PORT_DEVTYPE_HNS,
-    CMN_PORT_DEVTYPE_HNV
-]
 
 
 def cmn_port_device_type_str(dev):
@@ -378,14 +364,12 @@ def _print_all_enums():
         if k.startswith("CMN_NODE_") and not k.startswith("CMN_NODE_all_"):
             props = cmn_node_properties[v]
             print("  %-31s %04x  %-12s %04x  %s" % (k, v, cmn_node_type_str(v), props, cmn_properties_str(props)))
-            #assert (v in CMN_NODE_all_HN) == cmn_node_type_has_properties(v, CMN_PROP_HN)
     print()
     print("Connected device types:")
     for (k, v) in globals().items():
         if k.startswith("CMN_PORT_DEVTYPE_") and not k.startswith("CMN_PORT_DEVTYPE_all_") and v != CMN_PORT_DEVTYPE_NOT_CONNECTED:
             props = cmn_port_properties[v]
             print("  %-31s %04x  %-12s %04x  %s" % (k, v, cmn_port_device_type_str(v), props, cmn_properties_str(props)))
-            #assert (v in CMN_PORT_DEVTYPE_all_HN) == cmn_port_device_type_has_properties(v, CMN_PROP_HN)
 
 
 def main(argv):

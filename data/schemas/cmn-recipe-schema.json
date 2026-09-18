@@ -1,0 +1,465 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "CMN top-down analysis recipe",
+    "description": "A recipe consumed by cmn_topdown.py, containing measurements, nested subrecipes, or both.",
+    "type": "object",
+    "required": [
+        "name"
+    ],
+    "additionalProperties": false,
+    "anyOf": [
+        {
+            "required": [
+                "measure"
+            ]
+        },
+        {
+            "required": [
+                "subrecipes"
+            ]
+        }
+    ],
+    "properties": {
+        "name": {
+            "description": "Analysis name.",
+            "type": "string",
+            "minLength": 1
+        },
+        "description": {
+            "description": "Description used as the report heading; defaults to name.",
+            "type": "string"
+        },
+        "categories": {
+            "description": "Initial category display order; measurements can add more categories.",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            }
+        },
+        "rate_bandwidth": {
+            "description": "Bytes per counted event for bandwidth reporting; null uses the normal rate/percentage display.",
+            "type": [
+                "number",
+                "null"
+            ],
+            "minimum": 0,
+            "exclusiveMinimum": true
+        },
+        "run_if": {
+            "description": "Condition names retained in built-in recipes, such as multisocket. Currently not evaluated by cmn_topdown.py.",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            }
+        },
+        "measure": {
+            "description": "Measurements to accumulate into categories.",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/definitions/metric"
+            }
+        },
+        "subrecipes": {
+            "description": "Nested analyses, each with its own categories and measurements.",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "#"
+            }
+        }
+    },
+    "definitions": {
+        "metric": {
+            "type": "object",
+            "required": [
+                "measure"
+            ],
+            "additionalProperties": false,
+            "oneOf": [
+                {
+                    "required": [
+                        "event"
+                    ]
+                },
+                {
+                    "required": [
+                        "cpu-event"
+                    ]
+                },
+                {
+                    "required": [
+                        "sys-event"
+                    ]
+                },
+                {
+                    "required": [
+                        "ports"
+                    ]
+                }
+            ],
+            "properties": {
+                "measure": {
+                    "description": "Comma-separated actions: category adds a count, -category subtracts it, and *factor scales subsequent actions. #all denotes the total.",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "event": {
+                    "description": "CMN PMU event name, without the arm_cmn/.../ wrapper.",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "cpu-event": {
+                    "description": "CPU PMU event passed to perf.",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "sys-event": {
+                    "description": "System event or complete event expression passed to perf.",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "ports": {
+                    "$ref": "#/definitions/port_properties"
+                },
+                "ports_exclude": {
+                    "description": "Exclude ports matching any of these property specifications.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/port_properties"
+                    }
+                },
+                "split": {
+                    "description": "Report this watchpoint separately for each selected port.",
+                    "type": "boolean"
+                },
+                "watchpoint_up": {
+                    "$ref": "#/definitions/watchpoint"
+                },
+                "watchpoint_down": {
+                    "$ref": "#/definitions/watchpoint"
+                },
+                "watchpoint": {
+                    "$ref": "#/definitions/watchpoint"
+                }
+            },
+            "dependencies": {
+                "ports": {
+                    "oneOf": [
+                        {
+                            "required": [
+                                "watchpoint_up"
+                            ]
+                        },
+                        {
+                            "required": [
+                                "watchpoint_down"
+                            ]
+                        },
+                        {
+                            "required": [
+                                "watchpoint"
+                            ]
+                        }
+                    ]
+                },
+                "ports_exclude": [
+                    "ports"
+                ],
+                "split": [
+                    "ports"
+                ],
+                "watchpoint_up": [
+                    "ports"
+                ],
+                "watchpoint_down": [
+                    "ports"
+                ],
+                "watchpoint": [
+                    "ports"
+                ]
+            }
+        },
+        "port_properties": {
+            "description": "Port property name understood by cmn_properties, such as RN-F or SN-F, or a non-negative CMN_PROP bitmask.",
+            "oneOf": [
+                {
+                    "type": "string",
+                    "minLength": 1
+                },
+                {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            ]
+        },
+        "watchpoint": {
+            "description": "cmnwatch configuration. watchpoint_up/down supplies the direction; watchpoint uses up or infers direction from srcid/tgtid. An empty object matches all traffic on the selected channel. Supported fields and values depend on the CMN product and channel and are checked by cmnwatch.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "chn": {
+                    "description": "CHI channel; defaults to REQ (0).",
+                    "oneOf": [
+                        {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 3
+                        },
+                        {
+                            "type": "string",
+                            "pattern": "^([Rr][Ee][Qq]|[Rr][Ss][Pp]|[Ss][Nn][Pp]|[Dd][Aa][Tt])$"
+                        }
+                    ]
+                },
+                "up": {
+                    "description": "Upload if true/1, download if false/0, or infer from matched fields if null.",
+                    "enum": [
+                        true,
+                        false,
+                        0,
+                        1,
+                        null
+                    ]
+                },
+                "exclusive": {
+                    "description": "Negate the watchpoint match.",
+                    "enum": [
+                        true,
+                        false,
+                        0,
+                        1,
+                        null
+                    ]
+                },
+                "name": {
+                    "description": "Optional perf event name.",
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "addr": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "addr13": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "allowretry": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "cah": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "cbusy": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "ccid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "cg": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "chunkv": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "condcomp": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dataid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "datapull": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "datasrc": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dbid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "deep": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "devevent": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "donotgotosd": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dvmasid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dvmasidvalid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dvmel": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dvmfrag": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dvmsec": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dvmtype": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dvmvavalid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dvmvmid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "dvmvmidvalid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "endian": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "excl": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "expcompack": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "fwdnid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "fwdstate": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "fwdtxnid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "groupidext": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "homenid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "likelyshared": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "lpid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "mecid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "memattr": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "mpam": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "ns": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "nse": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "numdat": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "opcode": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "order": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "pbha": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "pcrdtype": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "poison": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "qos": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "replicate": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "resp": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "resperr": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "rettosrc": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "returnnid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "returntxnid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "rsvdc": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "secsid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "size": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "snoopme": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "snpattr": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "srcid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "stash": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "stashnid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "stashnidvalid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "stashtgtvalid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "streamid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "tag": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "tagop": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "tgtid": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "tracetag": {
+                    "$ref": "#/definitions/match_value"
+                },
+                "tu": {
+                    "$ref": "#/definitions/match_value"
+                }
+            }
+        },
+        "match_value": {
+            "description": "Numeric field value, boolean, symbolic value or numeric/wildcard string (e.g. ReadUnique or 0bx1x). Null leaves the field unconstrained.",
+            "type": [
+                "integer",
+                "boolean",
+                "string",
+                "null"
+            ],
+            "minimum": 0,
+            "minLength": 1
+        }
+    }
+}

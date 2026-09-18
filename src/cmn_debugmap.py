@@ -15,6 +15,7 @@ from __future__ import print_function
 import os
 import sys
 import subprocess
+import tempfile
 
 
 import cmn_base
@@ -93,6 +94,8 @@ def main(argv):
     parser.add_argument("--diff", action="store_true", help="diff our map against the kernel's map")
     parser.add_argument("--kernel-map", type=str, default=DEBUG_CMN_MAP, help="file containing kernel debug map")
     parser.add_argument("--diff-opts", type=str, default="", help="options for 'diff' command")
+    parser.add_argument("--temp-file", type=str,
+                        help="file for generated map; retained after use")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("inputs", type=str, nargs="*", help="additional JSON inputs")
     opts = parser.parse_args(argv)
@@ -105,7 +108,7 @@ def main(argv):
     for fn in opts.inputs:
         if len(opts.inputs) > 1 or opts.verbose:
             print("%s:" % fn)
-        S = cmn_json.system_from_json_file(fn)
+        S = cmn_json.load_system_for_cli(fn)
         for C in S.CMNs:
             if opts.cmn_instance is not None and C.cmn_seq != opts.cmn_instance:
                 continue
@@ -114,18 +117,36 @@ def main(argv):
                 print("\n".join(m))
             else:
                 suffix = "_%u" % C.cmn_seq if C.cmn_seq > 0 else ""
-                temp_fn = "temp.cmnmap" + suffix
                 kernel_map = opts.kernel_map + suffix
-                with open(temp_fn, "w") as f:
-                    f.write("\n".join(m) + "\n")
-                args = ["diff"] + opts.diff_opts.split() + [kernel_map, temp_fn]
-                rc = subprocess.call(args, shell=False)
-                if rc == 0:
-                    print("Successfully reproduced the kernel driver map in %s" % kernel_map)
-                    os.remove(temp_fn)
-                else:
-                    print("Maps do not match: compare %s and %s" % (temp_fn, kernel_map))
-                    mismatched = rc
+                remove_temp = opts.temp_file is None
+                temp_fn = None
+                temp_fd = None
+                try:
+                    if remove_temp:
+                        (temp_fd, temp_fn) = tempfile.mkstemp(prefix="cmnmap-",
+                                                              suffix=".txt")
+                        f = os.fdopen(temp_fd, "w")
+                        temp_fd = None
+                    else:
+                        temp_fn = opts.temp_file
+                        f = open(temp_fn, "w")
+                    with f:
+                        f.write("\n".join(m) + "\n")
+                    args = ["diff"] + opts.diff_opts.split() + [kernel_map, temp_fn]
+                    rc = subprocess.call(args, shell=False)
+                    if rc == 0:
+                        print("Successfully reproduced the kernel driver map in %s" % kernel_map)
+                    else:
+                        if remove_temp:
+                            print("Maps do not match: see diff against %s above" % kernel_map)
+                        else:
+                            print("Maps do not match: compare %s and %s" % (temp_fn, kernel_map))
+                        mismatched = rc
+                finally:
+                    if temp_fd is not None:
+                        os.close(temp_fd)
+                    if remove_temp and temp_fn is not None:
+                        os.remove(temp_fn)
     if mismatched:
         sys.exit(mismatched)
 

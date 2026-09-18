@@ -16,6 +16,12 @@ combine these with the 'combine' attribute when passing to perf.
 The value/mask pairs can also be used when programming CMN
 watchpoints directly, e.g. via /dev/mem.
 
+Compiled watchpoints can also be inspected without accessing hardware.
+wp.field_definitions() gives the field layouts and decoders for its product
+and channel. wp.field_match_masks("opcode") gives field-sized MatchMask copies
+from its configured groups, with value and mask normalized to bit zero.
+The copies retain their group number and the original group's exclusive flag.
+
 The mapping of fields to masks depends on product version (600, 700 etc.)
 and may also depend on product configuration (e.g. MPAM enabled).
 
@@ -27,6 +33,11 @@ from __future__ import print_function
 
 import sys
 
+try:
+    basestring
+except NameError:
+    basestring = str
+
 import chi_spec
 import cmn_base
 import cmn_config
@@ -36,6 +47,8 @@ import value_mask
 
 
 o_verbose = 0
+
+o_default_to_up = False      # Watchpoints default to 'up' if not specified
 
 
 REQ = 0
@@ -224,13 +237,18 @@ class Watchpoint:
     confusion with the 'excl' flag on CHI requests.
     """
     def __init__(self, chn=0, up=None, cmn_version=None, grp=None, mask=None, name=None, **matches):
-        assert cmn_version is not None
-        #assert isinstance(cmn_version, cmn_config.CMNConfig)
-        try:
-            chn = _chi_channels.index(chn.upper())
-        except Exception:
-            pass
-        assert chn in [0, 1, 2, 3], "bad CHI channel, expected 0..3: %s" % chn
+        if not isinstance(cmn_version, cmn_config.CMNConfig):
+            raise TypeError("watchpoint requires a CMNConfig")
+        if isinstance(chn, basestring):
+            try:
+                chn = _chi_channels.index(chn.upper())
+            except ValueError:
+                raise WatchpointError("unknown CHI channel: %s" % chn)
+        cmn_config.check_integer(chn, "CHI channel", maximum=3)
+        if up is not None:
+            if not isinstance(up, cmn_config.integer_types) or up not in [0, 1]:
+                raise WatchpointError("watchpoint direction must be True, False or None")
+            up = bool(up)
         self.cmn_version = cmn_version
         self.up = up
         self.chn = chn
@@ -241,6 +259,47 @@ class Watchpoint:
             self.wps[grp] = mask
         if matches is not None:
             apply_matches_to_watchpoint(self, **matches)
+
+    def field_definitions(self):
+        """Return CHI field metadata resolved for this product and channel.
+
+        Each entry contains ``positions`` (group, bit offset, width tuples)
+        and ``lookup`` (an optional value decoder). Known fields unavailable
+        on this product have an empty positions list. Treat the metadata as
+        read-only; no watchpoint groups are created by this query.
+        """
+        return cmn_wp_fields.fields_for_product(self.cmn_version, self.chn)
+
+    def field_match_masks(self, field):
+        """Return field-sized MatchMask copies from the configured groups.
+
+        Values and masks are shifted to bit zero and limited to the field's
+        width. Each copy retains its group number and exclusive flag. A mask
+        bit of one means don't-care, as in the full group. A configured group
+        may contain the field without constraining it, yielding an open mask.
+        Missing groups and fields unavailable on this product yield no entry.
+
+        These are inspection results, not complete programmable groups:
+        exclusive negates the entire original group, including other fields.
+        Changing the copies does not change this watchpoint, and this query
+        does not finalize an unrestricted watchpoint. Unknown fields or fields
+        invalid for this channel raise WatchpointBadValue.
+        """
+        if not isinstance(field, basestring):
+            raise TypeError("watchpoint field name must be a string")
+        definitions = self.field_definitions()
+        if field not in definitions:
+            reason = "field not valid for this channel" if field in chi_fields else "unknown CHI field"
+            raise WatchpointBadValue(None, reason, field, self.chn)
+        matches = []
+        for grp, pos, width in sorted(field_positions(definitions[field])):
+            match = self.wps.get(grp)
+            if match is not None:
+                bits = (1 << width) - 1
+                matches.append(MatchMask(grp, val=(match.val >> pos) & bits,
+                                         mask=(match.mask >> pos) & bits,
+                                         exclusive=match.exclusive, n_bits=width))
+        return matches
 
     def set(self, grp, val, pos, bits=1, exclusive=False, field=None):
         """
@@ -376,28 +435,15 @@ class Watchpoint:
         return "Watchpoint(%s)" % str(self)
 
 
-class _CKeys:
-    pass
-
-
-def _dict_to_object(kwds):
-    o = _CKeys()
-    for (f, v) in kwds.items():
-        setattr(o, f, v)
-    return o
-
-
-def _object_to_dict(obj, fields):
+def chi_fields_from_options(opts):
     """
-    Given an object (e.g. a class of some kind) and a list of field names,
-    return a dictionary mapping field names that occur as attributes,
-    to their corresponding values.
-      e.g. x.a==1, x.b==2, return {"a":1, "b":2}
-    Used for retrieving CHI fields from an argparse.Namespace object.
+    Extract explicitly supplied CHI fields and exclusive from CLI options.
+    Other options control the tool, not the match. Do not use this filtering
+    step on field dictionaries: the matcher must reject unknown names there.
     """
     flds = {}
-    for f in fields:
-        v = getattr(obj, f)
+    for f in _all_fields:
+        v = getattr(opts, f, None)
         if v is not None:
             flds[f] = v
     return flds
@@ -439,14 +485,14 @@ chi_fields = cmn_wp_fields.chi_field_names()
 _all_fields = chi_fields + ["exclusive"]
 
 
-def field_positions(meta, product_key):
+def field_positions(meta, product_key=None):
     """
     Return watchpoint bit positions from a field metadata dictionary.
 
     "meta" is a small dictionary created by cmn_wp_fields. It carries either
     resolved "positions" for one selected product or a compatibility
     "positions_by_product" map. The product_key argument selects an entry from
-    that compatibility map.
+    that compatibility map. It can be omitted for resolved metadata.
     """
     return cmn_wp_fields.field_positions(meta, product_key)
 
@@ -461,27 +507,29 @@ def field_decoder(meta):
     return cmn_wp_fields.field_decoder(meta)
 
 
-def match_obj(o, chn=0, up=None, mask=None, cmn_version=None):
+def match_fields(matches, chn=0, up=None, mask=None, cmn_version=None):
     """
-    Create a watchpoint for the specified channel, direction and field values.
+    Create a watchpoint from a dictionary of CHI fields and exclusive.
+    Unknown names are errors, even when their value is None. CLI callers
+    should first extract match fields with chi_fields_from_options().
     """
     wp = Watchpoint(chn=chn, up=up, cmn_version=cmn_version)
     if mask is not None and not mask.is_open():
         wp.wps[0] = mask     # allow caller to set up the primary mask directly
-    return apply_matches_obj_to_watchpoint(wp, o)
+    return _apply_match_fields(wp, matches)
 
 
-def fix_matches_obj_for_dvm(chn, o, cmn_version):
+def _fix_matches_for_dvm(chn, matches, fields):
     """
     If there are any DVM fields, force the opcode and SNP fragment selector
     """
     opcode = [0x14, None, 0x0D, None][chn]
-    for dvmf in cmn_wp_fields.fields_for_product(cmn_version, chn).keys():
-        if dvmf.startswith("dvm") and getattr(o, dvmf, None) is not None:
+    for dvmf in fields:
+        if dvmf.startswith("dvm") and matches.get(dvmf) is not None:
             # Force opcode
-            cur_op = getattr(o, "opcode", None)
+            cur_op = matches.get("opcode")
             if cur_op is None:
-                o.opcode = opcode
+                matches["opcode"] = opcode
             elif cur_op != opcode:
                 #raise WatchpointBadValue(cur_op, "opcode not compatible with DVM field")
                 # caller might have specified opcode as string, hex code etc.
@@ -490,13 +538,14 @@ def fix_matches_obj_for_dvm(chn, o, cmn_version):
             if chn == SNP and dvmf != "dvmfrag":
                 # apply the fragment selector
                 frag = cmn_wp_fields.dvm_fragment(dvmf)
-                o.dvmfrag = frag
+                matches["dvmfrag"] = frag
 
 
-def apply_matches_obj_to_watchpoint(wp, o):
+def _apply_match_fields(wp, matches):
     """
     Set fields in the match group(s).
-    The fields are specified as a class object (not a map).
+    The fields are specified in a dictionary, copied before DVM defaults
+    are added so that caller-owned fields are not modified.
     The channel and direction have already been specified.
 
     Placement of fields in match groups is specified in the
@@ -506,14 +555,27 @@ def apply_matches_obj_to_watchpoint(wp, o):
     go through all the fields to try to get an allocation to just
     one group, before we resort to using multiple groups.
     """
-    assert wp.chn is not None, "channel (REQ/RSP/SNP/DAT) must be specified"
-    exclusive = getattr(o, "exclusive", None)
-    fields = cmn_wp_fields.fields_for_product(wp.cmn_version, wp.chn)
-    product_key = cmn_wp_fields.product_key_for_config(wp.cmn_version)
-    fix_matches_obj_for_dvm(wp.chn, o, wp.cmn_version)
+    if not isinstance(matches, dict):
+        raise TypeError("watchpoint fields must be a dictionary")
+    fields = wp.field_definitions()
+    # Validate every supplied name before setting any match bits. In
+    # particular, opocde="ReadShared" must not become an open match just
+    # because only known field names are visited during allocation below.
+    for (k, val) in matches.items():
+        if k not in _all_fields:
+            raise WatchpointBadValue(val, "unknown CHI field", k, wp.chn)
+        if val is None or k == "exclusive":
+            continue
+        if k not in fields:
+            raise WatchpointBadValue(val, "field not valid for this channel", k, wp.chn)
+        if not field_positions(fields[k]):
+            raise WatchpointBadValue(val, "field not supported in this product (%s)" % wp.cmn_version, k, wp.chn)
+    matches = dict(matches)
+    exclusive = matches.get("exclusive")
+    _fix_matches_for_dvm(wp.chn, matches, fields)
     for phase in [0, 1]:
         for (k, meta) in fields.items():
-            val = getattr(o, k, None)
+            val = matches.get(k)
             if val is not None:
                 if o_verbose:
                     print("  setting chn=%u %s = %s" % (wp.chn, k, val), file=sys.stderr)
@@ -525,7 +587,7 @@ def apply_matches_obj_to_watchpoint(wp, o):
                     if wp.up is False:    # n.b. not None
                         raise WatchpointBadValue(val, "can't specify TGTID on download", k, wp.chn)
                     wp.up = True      # tgtid specified, force watchpoint to "up"
-                poses = field_positions(meta, product_key)
+                poses = field_positions(meta)
                 if not poses:
                     raise WatchpointBadValue(val, ("field not supported in this product (%s)" % wp.cmn_version), k, wp.chn)
                 # Get the value-parsing function, so we can do e.g. "resp=UC".
@@ -569,23 +631,21 @@ def apply_matches_obj_to_watchpoint(wp, o):
                             wp.set(grp, val, pos, width, exclusive=exclusive, field=k)
                 except WatchpointBadValue as e:
                     raise type(e)(val, e.reason, k, wp.chn)
-    """
-    Check whether the user specified any CHI fields inappropriate for the channel.
-    The user might have passed in an argparse.Namespace object so there may be
-    extraneous keywords, so we only check for the ones that are valid CHI fields.
-    """
-    for k in [k for k in dir(o) if k in _all_fields]:
-        if getattr(o, k, None) is not None and k not in fields and k != "exclusive":
-            raise WatchpointBadValue(getattr(o, k), "field not valid for this channel", k, wp.chn)
     return wp
 
 
 def apply_matches_to_watchpoint(wp, **kwds):
-    return apply_matches_obj_to_watchpoint(wp, _dict_to_object(kwds))
+    """
+    Apply validated keyword fields to an existing watchpoint.
+    """
+    return _apply_match_fields(wp, kwds)
 
 
 def match_kwd(chn=0, up=None, cmn_version=None, **kwds):
-    return match_obj(_dict_to_object(kwds), chn=chn, up=up, cmn_version=cmn_version)
+    """
+    Create a watchpoint from validated keyword fields.
+    """
+    return match_fields(kwds, chn=chn, up=up, cmn_version=cmn_version)
 
 
 def _field_spec(s):
@@ -676,10 +736,10 @@ def parse_short_watchpoint(ws, opts, cmn_version=None):
             if k not in chi_fields:
                 raise WatchpointBadShort(ws, "'%s' is not a CHI field" % k)
             flds[k] = v
-    for k in chi_fields:
-        if getattr(opts, k, None) is not None and k not in flds:
-            flds[k] = getattr(opts, k)
-    wp = match_kwd(chn=chn, up=up, cmn_version=cmn_version, **flds)
+    for (k, v) in chi_fields_from_options(opts).items():
+        if k not in flds:
+            flds[k] = v
+    wp = match_fields(flds, chn=chn, up=up, cmn_version=cmn_version)
     return wp
 
 
@@ -753,11 +813,12 @@ def main(argv):
         cmn_version = opts.cmn_version
     else:
         try:
-            S = cmn_json.system_from_json_file(fn=opts.cmn_json)
+            S = cmn_json.load_system_for_cli(fn=opts.cmn_json)
             cmn_version = S.cmn_version()
             assert cmn_version is not None
-        except Exception:
-            print("cannot discover CMN product version: run discovery tools", file=sys.stderr)
+        except Exception as e:
+            print("cannot discover CMN product version (%s): run discovery tools" % e, file=sys.stderr)
+            raise
             sys.exit(1)
     assert isinstance(cmn_version, cmn_config.CMNConfig)
     if opts.verbose:
@@ -767,7 +828,7 @@ def main(argv):
         sys.exit()
     if opts.at_cpu is not None:
         if S is None:
-            S = cmn_json.system_from_json_file(fn=opts.cmn_json)
+            S = cmn_json.load_system_for_cli(fn=opts.cmn_json)
         cpu = S.cpu(opts.at_cpu)
         if opts.verbose:
             print("CPU: %s" % cpu, file=sys.stderr)
@@ -783,7 +844,13 @@ def main(argv):
             devs = [opts.dev]
         else:
             # On CMN-600, Linux driver won't catch wp_dev_sel=2 and will select device 0
-            devs = [0, 1, 2, 3] if cmn_version.product_id >= cmn_base.PART_CMN650 else [0, 1]
+            if cmn_version.is_before_gen(cmn_config.CMN_GEN_650):
+                n_devs = 2
+            elif cmn_version.is_before_gen(cmn_config.CMN_GEN_S3):
+                n_devs = 4
+            else:
+                n_devs = 8
+            devs = list(range(n_devs))
         if opts.no_name:
             name = None
         for d in devs:
@@ -804,8 +871,8 @@ def main(argv):
                 sys.exit(1)
     else:
         # Construct a watchpoint from whatever fields were on the command line
-        flds = _object_to_dict(opts, _all_fields)
-        if opts.up is None:
+        flds = chi_fields_from_options(opts)
+        if o_default_to_up and opts.up is None:
             opts.up = True
         try:
             wp = match_kwd(chn=opts.chn, up=opts.up, cmn_version=cmn_version, **flds)
@@ -834,9 +901,6 @@ def main(argv):
         rc = subprocess.call(args, shell=False)
         if rc != 0:
             print("<<< rc=%d" % rc, file=sys.stderr)
-    if False:
-        m = match_obj(opts, chn=opts.chn, up=opts.up, cmn_version=cmn_version)
-        print("Watchpoint: %s" % (m))
 
 
 if __name__ == "__main__":

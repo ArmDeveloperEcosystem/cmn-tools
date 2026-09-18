@@ -19,7 +19,7 @@ import cmn_base
 import cmn_json
 from cmn_enum import *
 import cmnwatch
-from cmn_flits import CMNTraceConfig, CMNFlitGroup
+from cmn_flits import CMNFlitGroup, trace_config_from_cmn_config
 import cmn_dtstat
 
 
@@ -45,7 +45,7 @@ def lookup_cpu(cpu_num):
     """
     global g_system
     if g_system is None:
-        g_system = cmn_json.system_from_json_file()
+        g_system = cmn_json.load_system_for_cli()
     try:
         cpu = g_system.cpu(cpu_num)
     except cmn_base.CMNNoCPUMappings as e:
@@ -134,15 +134,14 @@ class Watchpoint:
     """
     def __init__(self, dtm, wp_num):
         self.dtm = dtm
-        config = dtm.C.product_config
-        self.trace_config = CMNTraceConfig(
-            config.product_id, has_MPAM=config.mpam_enabled,
-            cmn_product_revision=config.revision_major, pa_width=config.pa_width,
-            req_pa_width=config.req_pa_width,
-            rsvdc_width=config.rsvdc_width)
+        self.trace_config = trace_config_from_cmn_config(dtm.C.product_config)
         self.wp = wp_num
         w = dtm.dtm_wp_config(wp_num)
-        (self.dev, self.vc, self.ty, self.cce) = (w.dev, w.chn, w.type, w.cc)
+        # Readout uses XP-wide ports, reversing _set_wp's DTM-local conversion.
+        # For example, local port 1 on DTM 1 is XP port 3.
+        self.dev = w.dev + (dtm.index * 2)
+        (self.vc, self.ty, self.cce) = (w.chn, w.type, w.cc)
+        self.chn_num = w.chn_num
         if o_verbose >= 2:
             print("Trace config: %s %s %s %s %s" % (self.trace_config, self.dev, self.vc, self.ty, self.cce))
 
@@ -150,8 +149,13 @@ class Watchpoint:
         return self.dtm.dtm_is_wp_ready(self.wp)
 
     def get_data_cc(self):
+        """
+        Retrieve a captured flit (or flit group) from the DTM FIFO for this watchpoint.
+        """
         if self.is_ready():
-            return self.dtm.dtm_fifo_entry(self.wp)
+            (data, cc) = self.dtm.dtm_fifo_entry(self.wp)
+            cc_adj = (cc + self.dtm.cc_offset) & 0xffff
+            return (data, cc_adj)
         else:
             return None
 
@@ -165,7 +169,7 @@ class Watchpoint:
             if o_verbose:
                 assert x == self.get_data_cc(), "%s: watchpoint FIFO contents are unstable" % self
             (data, cc) = x
-            fg = CMNFlitGroup(self.trace_config, cmn_seq=self.dtm.xp.C.cmn_seq, nodeid=self.dtm.xp.node_id(), WP=self.wp, DEV=self.dev, VC=self.vc, format=self.ty, cc=cc, payload=data)
+            fg = CMNFlitGroup(self.trace_config, cmn_seq=self.dtm.xp.C.cmn_seq, nodeid=self.dtm.xp.node_id(), WP=self.wp, DEV=self.dev, VC=self.vc, chn_num=self.chn_num, format=self.ty, cc=cc, payload=data)
             if o_verbose:
                 print("%s: captured %s" % (self, fg))
             return fg
@@ -249,16 +253,17 @@ class PortChannel:
     """
     A specific CHI channel on a specific XP port number, possibly also with a LPID to match.
     """
-    def __init__(self, xp=None, dev=None, chn=None, up=None, lpid=None):
+    def __init__(self, xp=None, dev=None, chn=None, chn_num=0, up=None, lpid=None):
         self.xp = xp     # XP object, including CMN instance
         self.dev = dev   # port number
         assert dev is None or (dev >= 0 and dev < 8)
         self.chn = chn
+        self.chn_num = chn_num
         self.up = up
         self.lpid = lpid
 
     def inverse(self, chn=None):
-        return PortChannel(xp=self.xp, dev=self.dev, chn=(chn if chn is not None else self.chn), up=(not self.up))
+        return PortChannel(xp=self.xp, dev=self.dev, chn=(chn if chn is not None else self.chn), chn_num=self.chn_num, up=(not self.up))
 
     def dtm(self):
         # Get the DTM for the port, handling the multiple-DTM case
@@ -283,10 +288,14 @@ class LatencyMonitor:
     "WP0 and WP1 are assigned to flit uploads.
      WP2 and WP3 are assigned to flit downloads."
     """
-    def __init__(self, Cs, verbose=0, poll_time=0.01):
+    def __init__(self, Cs, verbose=0, poll_time=0.01, cc_offset=0):
+        self.dtms = {}        # early in case of exception cleanup
         self.verbose = verbose
         self.poll_time = poll_time
         self.Cs = Cs          # All CMNs in the system
+        self.cc_offset = cc_offset
+        for dtm in self.all_DTMs():
+            dtm.cc_offset = self.cc_offset if dtm.xp.CMN().cmn_seq == 1 else 0
         self.n_captured = 0
         # To work around unwanted captures, we use a no-match WP config in between each capture.
         # Save the originaly requested configuration.
@@ -351,7 +360,10 @@ class LatencyMonitor:
     def is_using_wp(self, dtm, wpnum):
         return (self.dtms[dtm] & (1 << wpnum)) != 0
 
-    def _set_wp(self, dtm, dev, wps, format=4):
+    def _set_wp(self, dtm, dev, wps, format=4, chn_num=0):
+        """
+        Program a watchpoint for XP port dev on its assigned DTM.
+        """
         assert wps.up is not None
         if dtm not in self.dtms:
             self.dtms[dtm] = 0x0        # bitmask: no watchpoints in use in this DTM yet
@@ -362,12 +374,20 @@ class LatencyMonitor:
             wpnum += 1
         wps.finalize()
         assert wps.grps(), "empty watchpoint: %s" % wps
+        # Match the DTM-local numbering used by cmn_capture.WatchBind:
+        # XP ports 2/3 are local ports 0/1 on DTM 1. On a single-DTM XP,
+        # index is zero, so ports 2/3 retain their original numbers.
+        dtm_port_number = dev - (dtm.index * 2)
         for (i, grp) in enumerate(wps.grps()):
-            self.dtms[dtm] |= (1 << (wpnum+i))
+            in_use_mask = (1 << (wpnum + i))
+            if (self.dtms[dtm] & in_use_mask) != 0:
+                print("%s WP%u already in use (by us) - unexpected" % (dtm, wpnum+i), file=sys.stderr)
+            self.dtms[dtm] |= in_use_mask    # note that it's in use
             M = wps.wps[grp]
             if self.verbose:
-                print("%s: set watchpoint %s" % (dtm, M))
-            dtm.dtm_set_watchpoint(wpnum+i, chn=wps.chn, format=format, cc=True, dev=dev, val=M.val, mask=M.mask, group=M.grp, combine=(wps.is_multigrp() and i == 0))
+                cns = str(chn_num+1) if chn_num else ""
+                print("%s WP%u: set P%u %s %s%s %s" % (dtm, wpnum+i, dtm_port_number, ["dn", "up"][wps.up], _chi_channels[wps.chn], cns, M))
+            dtm.dtm_set_watchpoint(wpnum+i, chn=wps.chn, chn_num=chn_num, format=format, cc=True, dev=dtm_port_number, val=M.val, mask=M.mask, group=M.grp, combine=(wps.is_multigrp() and i == 0))
         return Watchpoint(dtm, wpnum)
 
     def set_req(self, pc, wps, format=4):
@@ -382,6 +402,8 @@ class LatencyMonitor:
         assert pc.chn == wps.chn and pc.up == wps.up
         assert self.wp_req is None, "only one tag-setting watchpoint allowed, %s and %s" % (self.wp_req, pc)
         dtm = pc.dtm()
+        if self.verbose:
+            print("%s: enabling DTM to set TraceTag on match" % dtm)
         dtm.dtm_set_control(atb=False, tag=1)
         self.wp_req = self._set_wp(dtm, pc.dev, wps, format=format)
 
@@ -397,13 +419,13 @@ class LatencyMonitor:
         assert isinstance(pc, PortChannel)
         (xp, dev, chn, up) = (pc.xp, pc.dev, pc.chn, pc.up)
         dtm = pc.dtm()
-        key = (dtm, dev, chn, up)
+        key = (dtm, dev, chn, pc.chn_num, up)
         if key in self.watching:
             if self.verbose:
-                print("Duplicate tag-matching watchpoint" % (self.watching[key]))
+                print("Duplicate tag-matching watchpoint: %s vs %s" % (self.watching[key], key))
             return
         rwps = cmnwatch.match_kwd(chn=chn, up=up, cmn_version=dtm.C.product_config, tracetag=1)
-        wp = self._set_wp(dtm, dev, rwps, format=format)
+        wp = self._set_wp(dtm, dev, rwps, format=format, chn_num=pc.chn_num)
         self.wp_rsps.append(wp)
         self.watching[key] = wp
 
@@ -411,16 +433,19 @@ class LatencyMonitor:
         """
         Write the pending WP configurations into the DTMs.
         """
+        if self.verbose:
+            print("Writing DTM configuration:")
         for (pc, format) in self.pending_rsps:
             self._add_rsp(pc, format)
         if self.pending_req is not None:
             (pc, wps, format) = self.pending_req
             self._set_req(pc, wps, format)
         if self.verbose:
-            print("Monitoring:")
+            print("Now monitoring:")
             print("  Lead:   %s" % (self.wp_req))
             print("  Follow: %s" % (', '.join([str(w) for w in self.wp_rsps])))
         self.need_reinit_and_program = False
+        self.dtm_enable()
 
     def get_capture(self):
         """
@@ -515,6 +540,8 @@ class LatencyMonitor:
 
     def close(self):
         self.reset()
+        for dtm in self.active_DTMs():
+            dtm.dtm_set_control(tag=0)
 
     def __del__(self):
         self.close()
@@ -611,7 +638,7 @@ def port_class(Cs, spec):
         for xp in C.XPs():
             for p in xp.ports(props):
                 if o_verbose:
-                    print("%s -> %s P%u" % (spec, xp, p))
+                    print("%s -> %s P%u" % (spec, xp, p.port_number))
                 yield (xp, p.port_number)
 
 
@@ -630,6 +657,7 @@ def port_channels(Cs, spec, default_pc):
         (xp, dev, chn, up) = (default_pc.xp, default_pc.dev, default_pc.chn, default_pc.up)
     else:
         (xp, dev, chn, up) = (None, None, None, None)
+    chn_num = 0
     if len(Cs) == 1:
         C = Cs[0]   # if only one CMN instance, use it
     else:
@@ -641,8 +669,13 @@ def port_channels(Cs, spec, default_pc):
         yield None   # only used on request, if we want an "open" scenario with no tag-setting
         return
     for comp in spec.upper().split(':'):
-        if comp in _chi_channels:
+        if not comp:
+            continue
+        elif comp in _chi_channels:
             chn = _chi_channels.index(comp)
+        elif comp[-1] == '2' and comp[:-1] in _chi_channels:
+            chn - _chi_channels.index(comp[:-1])
+            chn_num = 1       # sic - zero-based
         elif comp == "UP":
             up = True
         elif comp == "DOWN":
@@ -713,7 +746,7 @@ def port_channels(Cs, spec, default_pc):
         if xp is None or dev is None:
             print("%s: must specify CMN port(s)" % (spec), file=sys.stderr)
             sys.exit(1)
-        pc = PortChannel(xp=xp, dev=dev, chn=chn, up=up, lpid=lpid)
+        pc = PortChannel(xp=xp, dev=dev, chn=chn, chn_num=chn_num, up=up, lpid=lpid)
         if o_verbose:
             print("%s -> %s" % (spec, pc))
         yield pc
@@ -728,7 +761,7 @@ def port_channels(Cs, spec, default_pc):
                     continue
                 if dev is not None and wdev != dev:
                     continue
-                yield PortChannel(xp=wxp, dev=wdev, chn=chn, up=up, lpid=lpid)
+                yield PortChannel(xp=wxp, dev=wdev, chn=chn, chn_num=chn_num, up=up, lpid=lpid)
                 n_found += 1
         if n_found == 0:
             print("No ports matching '%s'" % str(wilds), file=sys.stderr)
@@ -750,6 +783,7 @@ def main(argv):
     parser.add_argument("--poll-time", type=float, default=0.01, help="polling time for watchpoint FIFOs")
     parser.add_argument("-N", "--capture", type=int, default=1, help="number of transactions to capture")
     parser.add_argument("--decode-raw", action="store_true", help="show raw packet contents")
+    parser.add_argument("--cc-offset", type=int, default=0, help="CC offset for mesh #1 (experimental)")
     parser.add_argument("--format", type=int, default=4, help="CMN flit capture format")
     parser.add_argument("--diag", action="store_true")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
@@ -787,14 +821,16 @@ def main(argv):
             sys.exit(1)
         pc_rsps = [pc_req.inverse(chn=1), pc_req.inverse(chn=3)]
 
-    with LatencyMonitor(Cs, verbose=opts.verbose, poll_time=opts.poll_time) as mon:
+    with LatencyMonitor(Cs, verbose=opts.verbose, poll_time=opts.poll_time, cc_offset=opts.cc_offset) as mon:
         mon.check_all_FIFOs_empty("before programming")
         for pc_rsp in pc_rsps:
             mon.add_rsp(pc_rsp, format=opts.format)
         mon.check_all_FIFOs_empty("after programming tag-catchers")
         if pc_req is not None:
             try:
-                m = cmnwatch.match_obj(opts, chn=pc_req.chn, up=pc_req.up, cmn_version=pc_req.xp.C.product_config)
+                m = cmnwatch.match_fields(cmnwatch.chi_fields_from_options(opts),
+                                         chn=pc_req.chn, up=pc_req.up,
+                                         cmn_version=pc_req.xp.C.product_config)
             except cmnwatch.WatchpointBadValue as e:
                 print("Bad watchpoint: %s" % e, file=sys.stderr)
                 sys.exit(1)

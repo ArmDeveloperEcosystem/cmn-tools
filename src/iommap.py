@@ -28,6 +28,7 @@ import sys
 import ctypes
 import struct
 import errno
+import operator
 
 
 # Import the Python mmap module to get access to its constants.
@@ -59,46 +60,74 @@ class mmap:
     Represent a single block of memory allocated by mmap.
     """
     def __init__(self, fno, size, flags=MAP_SHARED, prot=(PROT_WRITE | PROT_READ), offset=0):
-        assert size > 0
-        assert (size % os.sysconf("SC_PAGE_SIZE")) == 0
-        assert offset >= 0
+        size = operator.index(size)
+        offset = operator.index(offset)
+        if size <= 0:
+            raise ValueError("mmap size must be positive")
+        if (size % os.sysconf("SC_PAGE_SIZE")) != 0:
+            raise ValueError("mmap size must be a multiple of the page size")
+        if offset < 0:
+            raise ValueError("mmap offset must not be negative")
+        # Keep file offsets and the complete mapped range within the signed
+        # native-long range before passing them to ctypes.
+        offset_max = (1 << (ctypes.sizeof(ctypes.c_long) * 8 - 1)) - 1
+        if offset > offset_max or size - 1 > offset_max - offset:
+            raise ValueError("mmap range does not fit the supported file offsets")
         self.size = size
         self.addr = _libc_mmap(0, size, prot, flags, fno, offset)
         if (self.addr & 0xfff) == 0xfff:
             # Mapping failed. Possible reasons:
             #  - CONFIG_IO_STRICT_DEVMEM and area is forbidden
             if ctypes.get_errno() == errno.EPERM:
-                print("Mapping failed: kernel may be built with CONFIG_IO_STRICT_DEVMEM?", file=sys.stderr)
+                print("Mapping failed (kernel may be built with CONFIG_IO_STRICT_DEVMEM?): 0x%x" % offset, file=sys.stderr)
                 raise OSError(ctypes.get_errno(), os.strerror(ctypes.get_errno()))
             raise EnvironmentError
 
     def close(self):
+        if self.addr is None:
+            return
         rc = _libc_munmap(self.addr, self.size)
         if rc != 0:
             raise OSError
+        self.addr = None
 
     def mprotect(self, prot):
+        if self.addr is None:
+            raise ValueError("mmap closed or invalid")
         rc = _libc_mprotect(self.addr, self.size, prot)
         if rc != 0:
             raise OSError
 
     def seek(self, pos):
+        if self.addr is None:
+            raise ValueError("mmap closed or invalid")
+        if pos < 0 or pos > self.size:
+            raise ValueError("seek position out of range")
         self.pos = pos
 
     def read(self, nbytes):
         return self.__getslice__(self.pos, self.pos+nbytes)
 
+    def _check_access(self, start, end):
+        if self.addr is None:
+            raise ValueError("mmap closed or invalid")
+        if start < 0 or end > self.size:
+            raise IndexError("mmap access out of range")
+
     def __getitem__(self, item):
         # Python3 forwarder
         if isinstance(item, slice):
-            assert item.step is None or item.step == 1
+            if item.step is not None and item.step != 1:
+                raise ValueError("mmap slices do not support a step")
             return self.__getslice__(item.start, item.stop)
         else:
             raise TypeError("non-slice indexing not supported")
 
     def __getslice__(self, start, end):
+        self._check_access(start, end)
         nbytes = end - start
-        assert nbytes in [1,2,4,8], "invalid length for read: %u" % nbytes
+        if nbytes not in [1,2,4,8]:
+            raise ValueError("invalid length for read: %s" % nbytes)
         if nbytes == 1:
             x = ctypes.c_ubyte.from_address(self.addr + start)
             x = struct.pack("B", x.value)
@@ -108,24 +137,26 @@ class mmap:
         elif nbytes == 4:
             x = ctypes.c_uint.from_address(self.addr + start)
             x = struct.pack("I", x.value)
-        elif nbytes == 8:
+        else:
             x = ctypes.c_ulonglong.from_address(self.addr + start)
             x = struct.pack("Q", x.value)
-        else:
-            x = None
         return x
 
     def __setitem__(self, item, value):
         if isinstance(item, slice):
-            assert item.step is None or item.step == 1
+            if item.step is not None and item.step != 1:
+                raise ValueError("mmap slices do not support a step")
             self.__setslice__(item.start, item.stop, value)
         else:
             raise TypeError("non-slice indexing not supported")
 
     def __setslice__(self, start, end, value):
+        self._check_access(start, end)
         nbytes = end - start
-        assert len(value) == nbytes
-        assert nbytes in [1,2,4,8], "invalid length for write: %u" % nbytes
+        if nbytes not in [1,2,4,8]:
+            raise ValueError("invalid length for write: %s" % nbytes)
+        if len(value) != nbytes:
+            raise IndexError("mmap slice assignment is wrong size")
         if nbytes == 1:
             x = ctypes.c_ubyte.from_address(self.addr + start)
             n = struct.unpack("B", value)[0]
@@ -135,11 +166,9 @@ class mmap:
         elif nbytes == 4:
             x = ctypes.c_uint.from_address(self.addr + start)
             n = struct.unpack("I", value)[0]
-        elif nbytes == 8:
+        else:
             x = ctypes.c_ulonglong.from_address(self.addr + start)
             n = struct.unpack("Q", value)[0]
-        else:
-            assert False
         x.value = n
 
 

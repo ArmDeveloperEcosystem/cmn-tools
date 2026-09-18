@@ -17,7 +17,7 @@ RECIPE_LEVEL1 = {
     "measure": [
         {"measure": "CCG", "ports": CMN_PROP_CCG, "watchpoint_up": {"opcode": "PrefetchTgt", "exclusive": True}},
         {"measure": "RN-F", "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "PrefetchTgt", "exclusive": True}},
-        {"measure": "RN-I", "ports": CMN_PROP_RNI, "watchpoint_up": {"opcode": "PrefetchTgt", "exclusive": True}},
+        {"measure": "RN-I", "ports": CMN_PROP_RNI, "ports_exclude": [CMN_PROP_RND, CMN_PROP_CCG], "watchpoint_up": {"opcode": "PrefetchTgt", "exclusive": True}},
         {"measure": "RN-D", "ports": CMN_PROP_RND, "watchpoint_up": {"opcode": "PrefetchTgt", "exclusive": True}},
     ],
 }
@@ -42,7 +42,7 @@ RECIPE_LEVEL3_RNF = {
         {"measure": "#miss,HN-F snoop,-HN-F hit", "event": "hnf_cache_miss"},
         {"measure": "HN-F DRAM,-HN-F snoop", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnp"}},
         {"measure": "HN-F DRAM,-HN-F snoop", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnpSep"}},
-        {"measure": "HN-I", "ports": CMN_PROP_HNI, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnp"}},
+        {"measure": "HN-I", "ports": CMN_PROP_HNI, "ports_exclude": [CMN_PROP_HND, CMN_PROP_CCG], "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnp"}},
         {"measure": "HN-D", "ports": CMN_PROP_HND, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnp"}},
     ],
 }

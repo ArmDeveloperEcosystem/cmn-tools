@@ -28,6 +28,17 @@ o_verbose = 0
 sys_tables = "/sys/firmware/acpi/tables"
 
 
+class BadACPI(Exception):
+    """
+    Unepxected contents of ACPI table
+    """
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return "Bad ACPI input: %s" % self.msg
+
+
 def hexstr(bs):
     s = ""
     for c in bs:
@@ -85,13 +96,18 @@ class ACPITable:
 
 class APIC_GICC:
     """
-    Arm GIC controller
+    Arm GIC CPU interface
     """
-    def __init__(self, n):
+    def __init__(self, n, mpidr=None):
         self.n = n
+        self.mpidr = mpidr
 
     def __str__(self):
         s = "GICC #%u:" % self.n
+        if self.mpidr is not None:
+            # Affinity follows the layout of CPU MPIDR: n.b. GICR_TYPER.Affinity_Value is a different format
+            s += " (0x%010x)" % self.mpidr
+        # Print GICR (redistributor) address if known at this time. May be found later in GICR range scan.
         if self.gicr_addr is not None:
             s += " GICR:0x%x" % self.gicr_addr
         s += " irqs: pmu:%3u vgic:%3u" % (self.pmu_irq, self.vgic_irq)
@@ -147,6 +163,7 @@ class APIC(ACPITable):
             if itype == 0x9:
                 (self.x2apic_id, self.flags, self.acpi_processor_uid) = struct.unpack("<III", id[4:16])
             elif itype == 0xB:
+                # GIC CPU Interface
                 (_, cpuif, cpuid, flags, _, pmu_irq, pp_addr, base_addr, gicv_addr, gich_addr, vgic_irq, gicr_addr, mpidr, pclass, _, spe_irq) = struct.unpack("<IIIIIIQQQQIQQBBH", id[:80])
                 if spe_irq == 0:
                     spe_irq = None
@@ -154,14 +171,14 @@ class APIC(ACPITable):
                     trbe_irq = struct.unpack("<H", id[80:82])[0]
                 else:
                     trbe_irq = None
-                gicc = APIC_GICC(cpuid)
+                gicc = APIC_GICC(cpuid, mpidr=mpidr)
                 gicc.gicr_addr = gicr_addr if gicr_addr else None
                 gicc.pmu_irq = pmu_irq
                 gicc.vgic_irq = vgic_irq
                 gicc.spe_irq = spe_irq
                 gicc.trbe_irq = trbe_irq
                 if o_verbose:
-                    print("    cpu:%3u 0x%x 0x%x 0x%x 0x%x 0x%x" % (cpuid, pp_addr, base_addr, gicv_addr, gich_addr, gicr_addr))
+                    print("    cpu:%3u mpidr:0x%08x 0x%x 0x%x 0x%x 0x%x GICR=0x%x" % (cpuid, mpidr, pp_addr, base_addr, gicv_addr, gich_addr, gicr_addr))
                     print("    %s" % (gicc))
                 assert cpuid not in self.gicc
                 self.gicc[cpuid] = gicc
@@ -169,10 +186,13 @@ class APIC(ACPITable):
                     assert cpuid not in self.gicr, "duplicate CPU number %u" % cpuid
                     self.gicr[cpuid] = gicr_addr
             elif itype == 0xC:
-                assert self.gicd_address is None
+                assert self.gicd_address is None, "multiple GICDs unexpected"
                 (self.gicd_address, _, self.gic_version, _) = struct.unpack("<QIB3s", id[8:])
+                if o_verbose:
+                    print("    GICv%u, GICD at 0x%x" % (self.gic_version, self.gicd_address))
             elif itype == 0xE:
                 (range_base, range_size) = struct.unpack("<QI", id[4:])
+                assert (range_size % 0x10000) == 0
                 self.gicr_ranges.append((range_base, range_size))
             elif itype == 0xF:
                 (gits_id, gits_addr) = struct.unpack("<IQ", id[4:16])
@@ -296,7 +316,10 @@ class SLIT(ACPITable):
         self.n_localities = struct.unpack("<Q", self.f.read(8))[0]
         self.entry = []
         for i in range(self.n_localities):
-            self.entry.append(list(struct.unpack(str(self.n_localities) + "B", self.f.read(self.n_localities))))
+            row = self.f.read(self.n_localities)
+            if len(row) != self.n_localities:
+                raise BadACPI("Locality matrix was incomplete, expected %ux%u" % (self.n_localities, self.n_localities))
+            self.entry.append(list(struct.unpack(str(self.n_localities) + "B", row)))
 
     def show_subclass(self):
         if not self.n_localities:

@@ -26,6 +26,9 @@ import cmn_json
 import cmnwatch
 
 
+o_verbose = 0
+
+
 _EVENT_RE = re.compile(r'arm_cmn(?:_[0-9]+)?/[^/\s]*/')
 
 
@@ -404,13 +407,13 @@ def decode_perf_event(event, cmn_version, force_dvm=False, system=None):
     topology = _describe_topology(system, inst, attrs)
     if topology is not None:
         parts.append(topology)
-    if "wp_grp" in attrs:
-        parts.append("grp=%s" % attrs["wp_grp"])
     if "wp_combine" in attrs:
         parts.append("combine=%s" % attrs["wp_combine"])
     if attrs.get("wp_exclusive", "0") not in ["0", "false", "False"]:
         parts.append("exclusive")
     fields = decode_watchpoint_fields(attrs, cmn_version, force_dvm=force_dvm)
+    if "wp_grp" in attrs and (o_verbose or not fields):
+        parts.append("grp=%s" % attrs["wp_grp"])
     if fields:
         parts.append(", ".join(fields))
     else:
@@ -463,11 +466,11 @@ def annotate_line(line, cmn_version, system=None):
 def _context_from_opts(opts):
     system = None
     if opts.cmn_json is not None:
-        system = cmn_json.system_from_json_file(fn=opts.cmn_json)
+        system = cmn_json.load_system_for_cli(fn=opts.cmn_json)
     elif opts.cmn_version is not None:
-        system = cmn_json.system_from_json_file(exit_if_not_found=False)
+        system = cmn_json.load_system_for_cli(missing_ok=True)
     else:
-        system = cmn_json.system_from_json_file()
+        system = cmn_json.load_system_for_cli()
     try:
         cmn_version = opts.cmn_version
         if cmn_version is None and system is not None:
@@ -488,13 +491,16 @@ def _arg_cmn_version(s):
 
 
 def main(argv):
+    global o_verbose
     global argparse
     import argparse
     parser = argparse.ArgumentParser(description="decode CMN watchpoint perf event strings")
     parser.add_argument("--cmn-version", type=_arg_cmn_version, help="CMN version")
     parser.add_argument("--cmn-json", type=str, help="CMN JSON description")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("text", nargs="*", help="text or perf event strings to annotate; defaults to stdin")
     opts = parser.parse_args(argv)
+    o_verbose = opts.verbose
     try:
         context = _context_from_opts(opts)
     except PerfDecodeError as e:

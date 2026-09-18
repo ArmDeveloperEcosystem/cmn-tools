@@ -1,6 +1,10 @@
 CMN trace capture onto the CoreSight ATB bus
 ============================================
 
+This document describes capture controlled by Arm Debugger. For self-hosted
+capture in which the CMN tools configure and read on-chip CoreSight buffers,
+see [README-cmn-trace-atb.md](README-cmn-trace-atb.md).
+
 README-capture.md explains how to run the cmn_capture.py script to
 capture CMN trace into a buffer within the CMN mesh. For capturing
 larger amounts of trace, it's instead necessary to send the trace out
@@ -109,6 +113,4 @@ be sufficient. This remains heuristic: the CMN cycle counter is only 16 bits and
 is not synchronized across meshes.
 
 In other cases it may be possible to use filtering on the original tag-setting
-watchpoint, as in the first example where --tgtid was used to filter requests
-to a single HN-F rather than requests to all HN-Fs. This will reduce the number of
-tagged packets in the system.
+watchpoint, to reduce the number of tagged packets in the system.

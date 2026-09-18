@@ -3,7 +3,7 @@ CMN System Investigation Tools
 
 These tools help developers understand system performance on
 systems based on Arm&reg;'s CoreLink&trade; CMN family interconnects
-(CMN-600, CMN-650, CMN-700, CI-700 etc.).
+(CMN-600, CMN-650, CMN-700, CI-700, CMN S3 etc.).
 
 The tools are aimed at developers of complex multithreaded
 applications and middleware, and at system administrators and
@@ -21,6 +21,9 @@ Tools are provided to:
 
  - discover the mapping of Linux CPUs to mesh nodes, correctly
    handling CALs, clusters and chip-to-chip variation
+
+ - infer connections between CCG ports on different meshes using
+   [tagged traffic probes](docs/README-c2c-discovery.md)
 
  - visualize the mesh topology as a 2-D diagram
 
@@ -70,7 +73,7 @@ Visualizing a CMN interconnect
 
 The interconnect can be visualized as a text diagram. Run:
 
-    python cmn_diagram.py
+    python src/cmn_diagram.py
 
 This will print a text diagram like this:
 
@@ -92,13 +95,16 @@ Recap - discovering the mesh topology
 
 Let's recap the CMN discovery process:
 
-    sudo python cmn_discover.py
-    python cmn_detect_cpu.py
-    python cmn_diagram_py
+    sudo python src/cmn_discover.py --overwrite
+    python src/cmn_detect_cpu.py --update
+    python src/cmn_diagram.py
 
 If this succeeds, you should have a cached CMN configuration file in
 ``~/.cache/arm/cmn-system.json``, and a diagram of the mesh will
 appear on the console.
+
+For CPU-discovery methods, verification, and implementation details, see
+[README-cpu-discovery.md](docs/README-cpu-discovery.md).
 
 If problems occur see the "troubleshooting" section.
 
@@ -142,7 +148,7 @@ requires some level of knowledge of the CHI architecture.
 The ``cmnwatch.py`` script can be used to generate strings that
 match CHI flits. The strings can be passed to the ``perf`` command.
 
-    perf stat -e `python cmnwatch.py up:req:opcode=Evict` ...
+    perf stat -e `python src/cmnwatch.py up:req:opcode=Evict` ...
 
 will expand into one or more CMN ``watchpoint_up`` events,
 that will count all flits (interconnect packets) matching the
@@ -156,7 +162,7 @@ two watchpoint filters, using CMN's watchpoint combination feature.
 ``cmnwatch.py`` will automatically use the ``wp_combine``
 attribute in this case. For example,
 
-    perf stat -e `python cmnwatch.py up:req:opcode=ReadNoSnp:memattr=0bx00x`
+    perf stat -e `python src/cmnwatch.py up:req:opcode=ReadNoSnp:memattr=0bx00x`
 
 will match on opcode and memory attributes. These are in filter
 groups 0 and 1 respectively, so a combination watchpoint is needed.
@@ -168,6 +174,8 @@ Capturing CHI traffic
 Watchpoints can also be used to capture CHI packet headers for
 analysis, and a tool ``cmn_capture.py`` is provided. For more
 details see README-capture.md .
+For self-hosted capture into CoreSight ATB trace buffers using
+``cmn_trace_atb.py``, see docs/README-cmn-trace-atb.md .
 
 To capture multiple CHI packets involved in a single transaction,
 showing latency (in cycles) between different packets, use

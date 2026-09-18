@@ -332,6 +332,8 @@ class CMNFlit:
         self.data = data
         self.NS = None
         self.NSE = None
+        self.mpam = None
+        self.mecid = None
 
     def is_DVM(self):
         return (self.group.VC == REQ and self.opcode == 0x14) or (self.group.VC == SNP and self.opcode == 0x0d)
@@ -509,7 +511,7 @@ class CMNFlit:
                     s += " fwdstate=%s" % CHI_DAT_resp_str_nonsnoop(self.fwdstate)
                 if self.cbusy:
                     s += " cbusy=0x%x" % (self.cbusy)
-                if self.devevent != 0:
+                if self.devevent:
                     s += " dev=\"%s\"" % devevent_str(self.devevent)
             elif self.group.VC == SNP:
                 # SNP
@@ -561,7 +563,7 @@ class CMNFlit:
                     s += " datasource=%s" % self.datasource_str()
                 if self.cbusy:
                     s += " cbusy=0x%x" % (self.cbusy)
-                if self.devevent != 0:
+                if self.devevent:
                     s += " dev=\"%s\"" % devevent_str(self.devevent)
                 if self.tagop is not None:
                     if self.tagop != 0:
@@ -656,22 +658,55 @@ PART_CMN700   = 0x43c
 PART_CI700    = 0x43a
 PART_CMN_S3   = 0x43e
 
+
 _cmn_product_names = {
-    0x434: "CMN-600",
-    0x436: "CMN-650",
-    0x43c: "CMN-700",
-    0x43a: "CI-700",
-    0x43e: "CMN S3",
+    PART_CMN600: "CMN-600",
+    PART_CMN650: "CMN-650",
+    PART_CMN700: "CMN-700",
+    PART_CI700:  "CI-700",
+    PART_CMN_S3: "CMN S3",
 }
 
 
 _chi_version_default = {
-    0x434: 3,
-    0x436: 4,
-    0x43c: 5,
-    0x43a: 5,
-    0x43e: 7,
+    PART_CMN600: 3,
+    PART_CMN650: 4,
+    PART_CMN700: 5,
+    PART_CI700:  5,
+    PART_CMN_S3: 7,
 }
+
+
+#
+# CMN implementations (microarchitectures) don't correspond exactly with
+# released product versions. We define a series of "base types" to capture
+# changes in trace layouts.
+#
+BASE_TYPE_600   = 0
+BASE_TYPE_650   = 1
+BASE_TYPE_700   = 2
+BASE_TYPE_S3    = 3
+BASE_TYPE_ALTA  = 4      # variant
+
+
+_base_type_map = {
+    PART_CMN600:  BASE_TYPE_600,
+    PART_CMN650:  BASE_TYPE_650,
+    PART_CMN700:  BASE_TYPE_700,
+    PART_CI700:   BASE_TYPE_700,
+    PART_CMN_S3:  BASE_TYPE_S3,
+}
+
+
+def trace_base_type(cmn_product_id, cmn_product_revision):
+    """
+    Determine the basic type for the product.
+    """
+    # CMN S3 r0 is like CMN-700 (12-bit MPAM id)
+    _cmn_base_type = _base_type_map[cmn_product_id]
+    if cmn_product_id == PART_CMN_S3 and cmn_product_revision < 2:
+        _cmn_base_type = BASE_TYPE_700
+    return _cmn_base_type
 
 
 class CMNTraceConfig:
@@ -682,6 +717,7 @@ class CMNTraceConfig:
     independently as part of a CoreSight trace decoder.
 
     The revision number is the major revision number, not the code from periph_id_2.
+    Use trace_config_from_cmn_config() to convert a CMN product configuration.
     """
     def __init__(self, cmn_product_id, has_MPAM, cmn_product_revision=0,
                  chi_version=None, pa_width=None, req_pa_width=None,
@@ -709,18 +745,28 @@ class CMNTraceConfig:
             rsvdc_width = 8
         assert 0 <= rsvdc_width <= 255, "invalid RSVDC width: %s" % rsvdc_width
         self.rsvdc_width = rsvdc_width
-        # CMN S3 r0 is like CMN-700 (12-bit MPAM id)
-        self._cmn_base_type = {PART_CMN600: 0, PART_CMN650: 1, PART_CMN700: 2, PART_CI700: 2, PART_CMN_S3: 3}[self.cmn_product_id]
-        if self.cmn_product_id == PART_CMN_S3 and self.cmn_product_revision < 2:
-            self._cmn_base_type = 2
+        self._cmn_base_type = trace_base_type(self.cmn_product_id, self.cmn_product_revision)
         # Assume CMN S3 r1 MPAM is 15-bit not 12-bit
-        self._MPAM_bits = 0 if not self.has_MPAM else [0, 11, 11, 15][self._cmn_base_type]
+        self._MPAM_bits = 0 if not self.has_MPAM else [0, 11, 11, 15, 15][self._cmn_base_type]
 
     def __str__(self):
         s = _cmn_product_names[self.cmn_product_id]
         if self.has_MPAM:
             s += "+MPAM"
         return s
+
+
+def trace_config_from_cmn_config(config):
+    """
+    Convert CMN product settings to the configuration used by trace decoders.
+    Preserve explicit CHI versions and widths; None retains decoder defaults.
+    Read configuration attributes only, without importing the live CMN model.
+    """
+    return CMNTraceConfig(
+        config.product_id, has_MPAM=config.mpam_enabled,
+        cmn_product_revision=config.revision_major,
+        chi_version=config.chi_version, pa_width=config.pa_width,
+        req_pa_width=config.req_pa_width, rsvdc_width=config.rsvdc_width)
 
 
 def trace_size_bits(cfg):
@@ -745,13 +791,13 @@ class CMNFlitGroup:
         self.txnid_fmt = "%02x" if self.txnid_bits <= 8 else "%03x"
         self.format = format    # CMN flit encoding format, needed for decode
         self.VC = VC            # REQ/RSP/SNP/DAT, needed for decode
-        self.chn_num = chn_num  # Replicated channel number - doesn't affect decode
+        self.chn_num = chn_num  # Replicated channel number (0-based) - doesn't affect decode
         self.flits = []
         self.payload = payload
         self.cmn_seq = cmn_seq  # CMN instance number, or None if not needed or not known
         self.nodeid = nodeid    # XP node id where flit was captured
         self.WP = WP            # Watchpoint number
-        self.DEV = DEV          # Device number (= port number)
+        self.DEV = DEV          # Port number (XP-wide for FIFO captures)
         self.cc = cc            # Cycle count, or None if not recorded
         self.lossy = lossy      # Trace indicated that packets were lost (ATB only)
         self.debug = debug
@@ -818,7 +864,8 @@ class CMNFlitGroup:
         if self.WP is not None:
             s += self.dir_str()
         s += CHI_VC_strings[self.VC]
-        s += str(self.chn_num) if (self.chn_num >= 1) else " "
+        # chn_num is zero-based, but CMN convention is "RSP2" etc.
+        s += str(self.chn_num+1) if (self.chn_num >= 1) else " "
         return s
 
     def raw_str(self):
@@ -899,8 +946,7 @@ class CMNFlitGroup:
             f = CMNFlit()
             f.qos = BITS(x,0,4)
             assert self.VC is not None, "CHI channel must be known for format-4 decode"
-            if self.VC == 0:
-                # REQ
+            if self.VC == REQ:
                 f.tgtid = BITS(x,4,11)
                 f.srcid = BITS(x,15,11)
                 if self.cfg.cmn_product_id == PART_CMN600:
@@ -911,16 +957,21 @@ class CMNFlitGroup:
                     f.txnid = BITS(x,26,10)
                     f.opcode = BITS(x,58,6)
                     f.tracetag = BIT(x,88)
-                elif self.cfg._cmn_base_type == 2:
+                elif self.cfg._cmn_base_type == BASE_TYPE_700:
                     f.txnid = BITS(x,26,12)
                     f.opcode = BITS(x,62,7)
                     f.tracetag = BIT(x,98)
-                else:
+                elif self.cfg._cmn_base_type in [BASE_TYPE_700, BASE_TYPE_S3]:
                     f.txnid = BITS(x,26,12)
                     f.opcode = BITS(x,62,7)
                     f.tracetag = BIT(x,99)
-            elif self.VC == 1:
-                # RSP
+                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
+                    f.txnid = BITS(x,26,12)
+                    f.opcode = BITS(x,62,7)
+                    f.tracetag = BIT(x,147)
+                else:
+                    assert False, "bad base type"
+            elif self.VC == RSP:
                 f.tgtid = BITS(x,4,11)
                 f.srcid = BITS(x,15,11)
                 if self.cfg.cmn_product_id == PART_CMN600:
@@ -931,12 +982,17 @@ class CMNFlitGroup:
                     f.txnid = BITS(x,26,10)
                     f.opcode = BITS(x,36,4)
                     f.tracetag = BIT(x,65)
-                else:
+                elif self.cfg._cmn_base_type in [BASE_TYPE_700, BASE_TYPE_S3]:
                     f.txnid = BITS(x,26,12)
                     f.opcode = BITS(x,38,5)
                     f.tracetag = BIT(x,70)
-            elif self.VC == 2:
-                # SNP
+                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
+                    f.txnid = BITS(x,26,12)
+                    f.opcode = BITS(x,38,5)
+                    f.tracetag = BIT(x,72)
+                else:
+                    assert False, "bad base type"
+            elif self.VC == SNP:
                 f.srcid = BITS(x,4,11)
                 f.tgtid = None
                 if self.cfg.cmn_product_id == PART_CMN600:
@@ -947,16 +1003,21 @@ class CMNFlitGroup:
                     f.txnid = BITS(x,15,10)
                     f.opcode = BITS(x,46,5)
                     f.tracetag = BIT(x,54)
-                elif self.cfg.cmn_product_id != PART_CMN_S3:
+                elif self.cfg._cmn_base_type == BASE_TYPE_700:
                     f.txnid = BITS(x,15,12)
                     f.opcode = BITS(x,50,5)
                     f.tracetag = BIT(x,58)
-                else:
+                elif self.cfg._cmn_base_type == BASE_TYPE_S3:
                     f.txnid = BITS(x,15,12)
                     f.opcode = BITS(x,50,5)
                     f.tracetag = BIT(x,59)
-            elif self.VC == 3:
-                # DAT
+                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
+                    f.txnid = BITS(x,15,12)
+                    f.opcode = BITS(x,50,5)
+                    f.tracetag = BITS(x,104)
+                else:
+                    assert False, "bad base type"
+            elif self.VC == DAT:
                 f.tgtid = BITS(x,4,11)
                 f.srcid = BITS(x,15,11)
                 if self.cfg.cmn_product_id == PART_CMN600:
@@ -967,19 +1028,21 @@ class CMNFlitGroup:
                     f.txnid = BITS(x,26,10)
                     f.opcode = BITS(x,47,4)
                     f.tracetag = BIT(x,77)
-                elif self.cfg._cmn_base_type == 2:
+                elif self.cfg._cmn_base_type == BASE_TYPE_700:
                     f.txnid = BITS(x,26,12)
                     f.opcode = BITS(x,49,4)
                     f.tracetag = BIT(x,95)
-                else:
+                elif self.cfg._cmn_base_type in [BASE_TYPE_S3, BASE_TYPE_ALTA]:
                     f.txnid = BITS(x,26,12)
                     f.opcode = BITS(x,49,4)
                     f.tracetag = BIT(x,102)
+                else:
+                    assert False, "bad base type"
             else:
                 assert False, "bad CMN channel %s" % self.VC
             self.add_flit(f)
-            # full
-            if self.VC == 0:
+            # full decode
+            if self.VC == REQ:
                 # REQ full decode
                 if self.cfg.cmn_product_id == PART_CMN600:
                     f.returnnid = BITS(x,34,11)    # or StashNID
@@ -1019,10 +1082,11 @@ class CMNFlitGroup:
                         f.addr = BITS(x,89,self.cfg.req_pa_width)
                         f.rsvdc = BITS(x,89+self.cfg.req_pa_width,self.cfg.rsvdc_width)
                     else:
+                        assert self.cfg._MPAM_bits == 11
                         f.mpam = BITS(x,89,11)
                         f.addr = BITS(x,100,self.cfg.req_pa_width)
                         f.rsvdc = BITS(x,100+self.cfg.req_pa_width,self.cfg.rsvdc_width)
-                elif self.cfg._cmn_base_type == 2:
+                elif self.cfg._cmn_base_type == BASE_TYPE_700:
                     # CMN-700 or CMN S3 r0
                     f.returnnid = BITS(x,38,11)
                     f.returntxnid = BITS(x,50,12)
@@ -1043,10 +1107,11 @@ class CMNFlitGroup:
                         f.addr = BITS(x,99,self.cfg.req_pa_width)
                         f.rsvdc = BITS(x,99+self.cfg.req_pa_width,self.cfg.rsvdc_width)
                     else:
+                        assert self.cfg._MPAM_bits == 11
                         f.mpam = BITS(x,99,11)
                         f.addr = BITS(x,110,self.cfg.req_pa_width)
                         f.rsvdc = BITS(x,110+self.cfg.req_pa_width,self.cfg.rsvdc_width)
-                else:
+                elif self.cfg._cmn_base_type == BASE_TYPE_S3:
                     # CMN S3 r1
                     f.returnnid = BITS(x,38,11)
                     f.returntxnid = BITS(x,50,12)
@@ -1071,7 +1136,33 @@ class CMNFlitGroup:
                         f.mpam = BITS(x,100,15)
                         f.addr = BITS(x,136,self.cfg.req_pa_width)
                         f.rsvdc = BITS(x,136+self.cfg.req_pa_width,self.cfg.rsvdc_width)
-            elif self.VC == 1:
+                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
+                    f.returnnid = BITS(x,38,11)
+                    f.returntxnid = BITS(x,50,12)
+                    f.size = BITS(x,69,3)
+                    f.NS = BIT(x,120)
+                    f.NSE = BIT(x,121)
+                    f.likelyshared = BIT(x,122)
+                    f.allowretry = BIT(x,123)
+                    f.order = BITS(x,124,2)
+                    f.pcrdtype = BITS(x,126,4)
+                    f.memattr = BITS(x,130,4)
+                    f.snpattr = BIT(x,134)
+                    f.lpid = 0     # Not present
+                    f.excl_snoopme = BIT(x,143)
+                    f.expcompack = BIT(x,144)
+                    f.tagop = BITS(x,145,2)
+                    f.tracetag = BIT(x,147)
+                    f.mpam = BITS(x,148,12)
+                    f.mecid = BITS(x,160,16)
+                    f.rsvdc = BITS(x,176,8)
+                    # addr now occurs in the middle of the flit.
+                    # We assume 48 bits, but may need to check.
+                    assert self.cfg.req_pa_width == 48
+                    f.addr = BITS(x,72,48)
+                else:
+                    assert False, "bad base type"
+            elif self.VC == RSP:
                 # RSP full decode
                 if self.cfg.cmn_product_id == PART_CMN600:
                     f.resperr = BITS(x,38,2)
@@ -1089,7 +1180,7 @@ class CMNFlitGroup:
                     f.dbid = BITS(x,51,10)
                     f.pcrdtype = BITS(x,61,4)
                     f.devevent = BITS(x,66,2)
-                else:
+                elif self.cfg._cmn_base_type in [BASE_TYPE_700, BASE_TYPE_S3]:
                     fws_ds = BITS(x,43,3)
                     f.resperr = BITS(x,46,2)
                     f.resp = BITS(x,48,3)
@@ -1097,12 +1188,23 @@ class CMNFlitGroup:
                     f.dbid = BITS(x,54,12)
                     f.pcrdtype = BITS(x,66,4)
                     f.devevent = BITS(x,71,2)
+                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
+                    f.resperr = BITS(x,43,2)
+                    f.resp = BITS(x,45,3)
+                    fws_ds = BITS(x,48,3)
+                    f.cbusy = BITS(x,51,3)
+                    f.dbid = BITS(x,54,12)
+                    f.pcrdtype = BITS(x,66,4)
+                    f.devevent = None
+                    f.tagop = BITS(x,70,2)
+                else:
+                    assert False, "bad bsae type"
                 if f.opcode == 9:
                     # SnpRespFwded
                     f.fwdstate = fws_ds
                 else:
                     f.fwdstate = None
-            elif self.VC == 2:
+            elif self.VC == SNP:
                 # SNP full decode
                 if self.cfg.cmn_product_id == PART_CMN600:
                     f.fwdnid = BITS(x,23,11)
@@ -1120,7 +1222,7 @@ class CMNFlitGroup:
                     else:
                         f.mpam = BITS(x,55,11)
                         f.addr = BITS(x,66,self.cfg.pa_width-3) << 3
-                elif self.cfg._cmn_base_type == 2:
+                elif self.cfg._cmn_base_type == BASE_TYPE_700:
                     f.fwdnid = BITS(x,27,11)
                     f.fwdtxnid = BITS(x,38,10)
                     f.NS = BIT(x,55)
@@ -1130,7 +1232,7 @@ class CMNFlitGroup:
                     else:
                         f.mpam = BITS(x,59,11)
                         f.addr = BITS(x,70,self.cfg.pa_width-3) << 3
-                elif self.cfg._cmn_base_type == 3:
+                elif self.cfg._cmn_base_type == BASE_TYPE_S3:
                     f.fwdnid = BITS(x,27,11)
                     f.fwdtxnid = BITS(x,38,10)
                     f.NS = BIT(x,55)
@@ -1141,9 +1243,19 @@ class CMNFlitGroup:
                     else:
                         f.mpam = BITS(x,60,15)
                         f.addr = BITS(x,91,self.cfg.pa_width-3) << 3
+                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
+                    f.fwdnid = BITS(x,27,11)
+                    f.fwdtxnid = BITS(x,38,12)
+                    f.NS = BIT(x,100)
+                    f.NSE = BIT(x,101)
+                    assert self.cfg.pa_width == 48
+                    f.addr = BITS(x,55,self.cfg.pa_width-3) << 3
+                    assert self.cfg._MPAM_bits == 12
+                    f.mpam = BITS(x,105,12)
+                    f.mecid = BITS(x,117,16)
                 else:
-                    assert False
-            elif self.VC == 3:
+                    assert False, "bad base type"
+            elif self.VC == DAT:
                 # DAT full decode
                 f.tagop = None
                 f.tag = None
@@ -1174,7 +1286,7 @@ class CMNFlitGroup:
                     f.chunkv = BITS(x,82,2)
                     f.devevent = BITS(x,84,2)
                     f.rsvdc = BITS(x,86,8)
-                elif self.cfg._cmn_base_type == 2:
+                elif self.cfg._cmn_base_type == BASE_TYPE_700:
                     # CMN-700 or S3 r0
                     f.homenid = BITS(x,38,11)
                     f.resperr = BITS(x,53,2)
@@ -1188,7 +1300,7 @@ class CMNFlitGroup:
                     f.poison = BITS(x,104,4)
                     f.chunkv = BITS(x,108,2)
                     f.devevent = BITS(x,110,2)
-                else:
+                elif self.cfg._cmn_base_type == BASE_TYPE_S3:
                     # S3 r2
                     f.homenid = BITS(x,38,11)
                     f.resperr = BITS(x,53,2)
@@ -1205,6 +1317,28 @@ class CMNFlitGroup:
                     f.chunkv = BITS(x,107,2)
                     f.devevent = BITS(x,109,2)
                     f.rsvdc = BITS(x,115,8)
+                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
+                    f.homenid = BITS(x,38,11)
+                    f.resperr = BITS(x,53,2)
+                    f.resp = BITS(x,55,3)
+                    fws_ds = BITS(x,58,8)
+                    f.cbusy = BITS(x,67,3)
+                    f.mecid = BITS(x,70,16)
+                    #f.dbid = BITS(x,70,12)
+                    f.ccid = BITS(x,86,2)
+                    f.dataid = BITS(x,88,2)
+                    f.tagop = BITS(x,90,2)
+                    f.tag = BITS(x,92,8)
+                    f.tu = BITS(x,100,2)
+                    f.cah = BIT(x,103)
+                    f.numdat = BITS(x,104,2)
+                    f.replicate = BIT(x,106)
+                    #f.poison = BITS(x,103,4)
+                    #f.chunkv = BITS(x,107,2)
+                    #f.devevent = BITS(x,109,2)
+                    f.rsvdc = BITS(x,107,self.cfg.rsvdc_width)
+                else:
+                    assert False, "bad base type"
                 if f.opcode == 6:
                     # SnpRespDataFwded
                     f.fwdstate = fws_ds    # note: 4 bits
@@ -1226,8 +1360,13 @@ class CMNFlitGroupDeduper:
     watchpoints on the same XP at the same time.
 
     This is intentionally narrow: only adjacent captures with identical
-    location, timing and payload are treated as duplicates, and only when
-    they came from different watchpoints.
+    XP port, direction, channel instance, timing and payload are treated as
+    duplicates, and only when they came from different watchpoints.
+
+    FIFO callers must supply XP-wide port numbers in DEV. This distinguishes
+    DTMs without a separate DTM index: DTM 0's local port 0 is XP port 0,
+    whereas DTM 1's local port 0 is XP port 2. Identical packets from those
+    ports at the same cycle count are distinct captures and must both survive.
     """
     def __init__(self):
         self.reset()
@@ -1237,7 +1376,8 @@ class CMNFlitGroupDeduper:
         self.prev_wp = None
 
     def duplicate_key(self, fg):
-        return (fg.cmn_seq, fg.nodeid, fg.cc, fg.VC, fg.format, fg.payload)
+        return (fg.cmn_seq, fg.nodeid, fg.DEV, fg.is_upload(), fg.VC,
+                fg.chn_num, fg.cc, fg.format, fg.payload)
 
     def is_duplicate(self, fg):
         key = self.duplicate_key(fg)

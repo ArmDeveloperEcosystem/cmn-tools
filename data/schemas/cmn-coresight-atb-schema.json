@@ -1,0 +1,227 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "CoreSight ATB topology for CMN trace capture",
+    "description": "Platform-specific CoreSight ATB connectivity supplementing separately discovered CMN topology.",
+    "type": "object",
+    "required": ["version", "sources", "devices", "links", "captures"],
+    "additionalProperties": false,
+    "properties": {
+        "version": {
+            "description": "Topology descriptor version (currently 1)",
+            "type": "integer",
+            "enum": [1]
+        },
+        "system": {
+            "description": "Optional platform identification for diagnostics; it is not CMN topology.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "description": {
+                    "type": "string"
+                }
+            }
+        },
+        "generator": {
+            "description": "Tool or person that generated the descriptor",
+            "type": "string"
+        },
+        "sources": {
+            "description": "CMN DTC trace sources, identified in the separately discovered CMN topology",
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+                "$ref": "#/definitions/source"
+            }
+        },
+        "devices": {
+            "description": "Addressable CoreSight devices in paths used for CMN trace capture",
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+                "$ref": "#/definitions/device"
+            }
+        },
+        "links": {
+            "description": "Directed ATB connections from trace sources towards trace sinks",
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+                "$ref": "#/definitions/link"
+            }
+        },
+        "captures": {
+            "description": "Sink selected for each CMN DTC source",
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+                "$ref": "#/definitions/capture"
+            }
+        }
+    },
+    "definitions": {
+        "identifier": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "hexAddress": {
+            "description": "Physical address represented as a hexadecimal string",
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]+$"
+        },
+        "source": {
+            "type": "object",
+            "required": ["id", "cmn_instance", "dtc_domain"],
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "$ref": "#/definitions/identifier"
+                },
+                "cmn_instance": {
+                    "description": "CMN instance sequence number assigned by CMN discovery",
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "dtc_domain": {
+                    "description": "DTC domain number within the CMN instance",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 3
+                },
+                "cmn_base": {
+                    "description": "Optional CMN base address to cross-check the instance binding",
+                    "$ref": "#/definitions/hexAddress"
+                },
+                "description": {
+                    "type": "string"
+                }
+            }
+        },
+        "device": {
+            "type": "object",
+            "required": ["id", "type", "address"],
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "$ref": "#/definitions/identifier"
+                },
+                "type": {
+                    "description": "CoreSight component programming model",
+                    "type": "string",
+                    "enum": [
+                        "funnel",
+                        "replicator",
+                        "tmc-etf",
+                        "tmc-etr",
+                        "tmc-etb",
+                        "etb",
+                        "tpiu",
+                        "atb-bridge"
+                    ]
+                },
+                "address": {
+                    "$ref": "#/definitions/hexAddress"
+                },
+                "part_number": {
+                    "description": "Optional expected CoreSight part number, checked before programming",
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]+$"
+                },
+                "input_ports": {
+                    "description": "Optional number of ATB input ports for validation",
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "output_ports": {
+                    "description": "Optional number of ATB output ports for validation",
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "buffer": {
+                    "description": "Optional reserved system-memory buffer for a TMC-ETR",
+                    "type": "object",
+                    "required": ["address", "size"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "address": {
+                            "$ref": "#/definitions/hexAddress"
+                        },
+                        "size": {
+                            "description": "Buffer size in bytes",
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                },
+                "description": {
+                    "type": "string"
+                }
+            }
+        },
+        "sourceEndpoint": {
+            "description": "The single ATB output of a CMN DTC source",
+            "type": "object",
+            "required": ["source"],
+            "additionalProperties": false,
+            "properties": {
+                "source": {
+                    "$ref": "#/definitions/identifier"
+                }
+            }
+        },
+        "deviceEndpoint": {
+            "type": "object",
+            "required": ["device", "port"],
+            "additionalProperties": false,
+            "properties": {
+                "device": {
+                    "$ref": "#/definitions/identifier"
+                },
+                "port": {
+                    "description": "Zero-based ATB port number",
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "link": {
+            "type": "object",
+            "required": ["from", "to"],
+            "additionalProperties": false,
+            "properties": {
+                "from": {
+                    "oneOf": [
+                        {"$ref": "#/definitions/sourceEndpoint"},
+                        {"$ref": "#/definitions/deviceEndpoint"}
+                    ]
+                },
+                "to": {
+                    "$ref": "#/definitions/deviceEndpoint"
+                }
+            }
+        },
+        "capture": {
+            "type": "object",
+            "required": ["source", "sink"],
+            "additionalProperties": false,
+            "properties": {
+                "source": {
+                    "$ref": "#/definitions/identifier"
+                },
+                "sink": {
+                    "$ref": "#/definitions/identifier"
+                },
+                "description": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

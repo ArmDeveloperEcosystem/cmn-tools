@@ -345,10 +345,8 @@ _CMN_S3_R0_WP_FIELDS = {
         "datapull": [(0, 25, 3)],
     },
     SNP: {
-        "mpam": [],
+        "mpam": [(0, 43, 11)],
         "nse": [],
-        "mecid": [(0, 43, 16)],
-        "streamid": [(0, 43, 16)],
     },
     DAT: {
         "fwdstate": [(0, 35, 5)],
@@ -485,10 +483,11 @@ _WP_PRODUCT_TABLES = {
 
 
 _PRODUCT_KEY_BY_ID = {
-    cmn_config.PART_CMN600: CMN600,
-    cmn_config.PART_CMN650: CMN650,
-    cmn_config.PART_CMN700: CMN700,
-    cmn_config.PART_CI700: CI700,
+    cmn_config.PART_CMN600:   CMN600,
+    cmn_config.PART_CMN600AE: CMN600,
+    cmn_config.PART_CMN650:   CMN650,
+    cmn_config.PART_CMN700:   CMN700,
+    cmn_config.PART_CI700:    CI700,
 }
 
 def product_key_for_config(cfg):

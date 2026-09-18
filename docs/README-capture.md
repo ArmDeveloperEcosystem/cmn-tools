@@ -12,6 +12,10 @@ traffic than can be obtained by PMU events or counting. For example,
 the actual addresses and attributes of memory transactions can be
 captured.
 
+For larger self-hosted captures routed through CoreSight ATB, see
+[README-cmn-trace-atb.md](README-cmn-trace-atb.md). For capture controlled
+by Arm Debugger, see [README-capture-ATB.md](README-capture-ATB.md).
+
 
 CHI basics
 ----------
@@ -239,6 +243,11 @@ This mode may be particularly useful when debugging access to
 I/O devices.
 
 Watchpoint rotation cannot be used with setup/inspect mode.
+
+`--setup` leaves tracing enabled after the command exits. Note that
+`--inspect` currently resets watchpoints and clears the FIFOs before readout;
+it is not read-only. `--no-clear` prevents clearing after readout, but does
+not prevent this initial clearing.
 
 
 Watchpoint actions

@@ -32,6 +32,10 @@ def bytes_hex(x):
     """
     s = ""
     for b in x:
+        try:
+            b = ord(b)
+        except TypeError:
+            pass
         s += ("%02x" % b)
     return s
 
@@ -101,10 +105,25 @@ class CMNDecoder:
                     seen_zeroes += 1
                     if seen_zeroes == self.sync_size-4:
                         x = (yield)
-                        if x == 0x80 and (yield) == 0x00 and (yield) == 0x00 and (yield) == 0x00:
-                            break
-                        elif x == 0x00 and (yield) == 0x00 and (yield) == 0x00 and (yield) == 0x80:
-                            break
+                        # Keep yields out of comparisons: Jython 2.7.2-DEV can
+                        # emit invalid JVM bytecode for e.g. "(yield) == 0x00".
+                        # Nested checks preserve short-circuit byte consumption.
+                        if x == 0x80:
+                            sync_byte = (yield)
+                            if sync_byte == 0x00:
+                                sync_byte = (yield)
+                                if sync_byte == 0x00:
+                                    sync_byte = (yield)
+                                    if sync_byte == 0x00:
+                                        break
+                        elif x == 0x00:
+                            sync_byte = (yield)
+                            if sync_byte == 0x00:
+                                sync_byte = (yield)
+                                if sync_byte == 0x00:
+                                    sync_byte = (yield)
+                                    if sync_byte == 0x80:
+                                        break
                 else:
                     if self.verbose >= 2 and seen_zeroes > 0:
                         self.msg("discarded %u zeroes" % seen_zeroes)

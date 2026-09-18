@@ -86,7 +86,7 @@ class CMNLister:
         if cmn.part_ge_700():
             info1 = cmn.rootnode.read64(CMN_any_UNIT_INFO1)
             print("      info1: 0x%x" % info1, end="")
-            for i in range(0, 4):
+            for i in range(0, 4):     # four CHI channels
                 if cmn.vc_num[i] > 1:
                     print(", %s=%u" % (["REQ", "RSP", "SNP", "DAT"][i], cmn.vc_num[i]), end="")
             if BIT(info1, 19):
@@ -122,9 +122,10 @@ class CMNLister:
         sec = xp.read64(CMN_any_SECURE_ACCESS)
         n_ports = xp.n_device_ports()
         print(pfx + "%s: n_ports=%u" % (xp, n_ports), end="")
-        dtc_domain = xp.dtc_domain()
-        if dtc_domain is not None:
-            print(", dtc_domain=%d" % xp.dtc_domain(), end="")
+        for dtm in xp.DTMs():
+            dtc_domain = dtm.dtc_domain()
+            if dtc_domain is not None:
+                print(", dtm%u_dtc_domain=%u" % (dtm.index, dtc_domain), end="")
         if sec != 0:
             print(", security=0x%x" % sec, end="")
         # print(", child_info=0x%x" % xp.child_info, end="")
@@ -197,8 +198,8 @@ class CMNLister:
             num_dev = BITS(port_info, 0, 3)
             if port.has_cal():
                 print(" (CAL%u)" % port.cal, end="")
-            elif num_dev != 1:
-                print(" devices=%u" % num_dev, end="")
+            else:
+                print(", n_devices=%u" % num_dev, end="")
             if self.verbose:
                 print(" [port_info=0x%x, port_connect_info=0x%x]" % (port_info, connected_device_info), end="")
                 if port_info_1 is not None:
@@ -289,7 +290,7 @@ class CMNLister:
         if n.XY() != xp.XY():
             # Has been seen with CXLA (external) nodes on CMN-600
             print(pfx + "** node has anomalous coordinates: %s, expected %s" % (str(n.XY()), str(xp.XY())))
-        if n.is_home_node():
+        if n.has_properties(CMN_PROP_HNF):
             cg = n.cache_geometry()
             if not cmn.part_ge_700():
                 num_poc_entries = BITS(info, 32, 7)
@@ -401,7 +402,7 @@ class CMNLister:
         else:
             print(pfx + "<no information for node: %s>" % (n))
         self.show_node_event_sel(n)
-        if n.is_home_node():
+        if n.has_properties(CMN_PROP_HNF):
             if cmn.secure_accessible:
                 self.show_home_node_secure_config(n)
                 self.show_home_node_sam(n, pfx=pfx)
@@ -478,6 +479,7 @@ class CMNLister:
             if BIT(cfg1, 0):
                 regions.append((i, cfg1, n.read64(0x3100 + i*8),
                                 n.read64(0x3400 + i*8)))
+        # The CCG RA's RN-SAM is used to route snoops arriving via C2C
         print(pfx + "RA RN-SAM: status=0x%x, %u active HTG(s)" %
               (status, len(regions)))
         for (i, cfg1, cfg2, hctl) in regions:

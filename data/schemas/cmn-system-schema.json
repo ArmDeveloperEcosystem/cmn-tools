@@ -14,8 +14,16 @@
             "type": "string"
         },
         "date": {
-            "description": "Date/time generated, seconds since Linux epoch",
+            "description": "(deprecated) Date/time generated, seconds since Linux epoch",
             "type": "number"
+        },
+        "topology_discovery_time": {
+            "description": "Topology discovery time in UTC RFC 3339 format",
+            "type": "string"
+        },
+        "cpu_discovery_time": {
+            "description": "CPU location discovery time in UTC RFC 3339 format",
+            "type": "string"
         },
         "system_type": {
             "description": "System type, e.g. vendor string from BIOS",
@@ -28,6 +36,153 @@
         "processor_type": {
             "description": "Processor type",
             "type": "string"
+        },
+        "c2c_links": {
+            "description": "Recorded direct chip-to-chip connections. Absent or empty does not establish that no links exist.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "endpoints"],
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "description": "Link identifier, unique within this system description",
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                    },
+                    "endpoints": {
+                        "description": "Two endpoints on different meshes; order does not imply direction",
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                            "type": "object",
+                            "required": ["mseq", "id"],
+                            "additionalProperties": false,
+                            "properties": {
+                                "mseq": {
+                                    "description": "Zero-based CMN sequence number in CMN element order, not a hardware chip ID",
+                                    "type": "integer",
+                                    "minimum": 0
+                                },
+                                "id": {
+                                    "description": "CHI device slot ID within the mesh",
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 65535
+                                },
+                                "type": {
+                                    "description": "Optional explicit node type at this slot; preserved if the node was not captured",
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 65535
+                                },
+                                "interface": {
+                                    "description": "Interface number within this gateway attachment, distinct from XP port number; omitted means unspecified",
+                                    "type": "integer",
+                                    "minimum": 0
+                                }
+                            }
+                        }
+                    },
+                    "protocol": {
+                        "description": "Optional link protocol name, e.g. CHI-C2C or CCIX",
+                        "type": "string"
+                    },
+                    "description": {
+                        "description": "Optional description of the connection",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "io_address_map": {
+            "description": "Non-hashed physical-address regions hosted by CMN I/O home nodes",
+            "type": "object",
+            "required": ["homes"],
+            "additionalProperties": false,
+            "properties": {
+                "discovery_time": {
+                    "description": "I/O address-map discovery time in UTC RFC 3339 format",
+                    "type": "string"
+                },
+                "homes": {
+                    "type": "array",
+                    "items": {
+                        "title": "CMN I/O home",
+                        "type": "object",
+                        "required": ["mseq", "id", "type_s", "regions"],
+                        "additionalProperties": false,
+                        "properties": {
+                            "mseq": {
+                                "description": "CMN instance number",
+                                "type": "integer"
+                            },
+                            "id": {
+                                "description": "I/O home node CHI target ID",
+                                "type": "integer"
+                            },
+                            "type_s": {
+                                "description": "I/O home node type",
+                                "type": "string"
+                            },
+                            "regions": {
+                                "type": "array",
+                                "items": {
+                                    "title": "I/O SAM region",
+                                    "type": "object",
+                                    "required": ["start", "end", "status", "resources"],
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "start": {
+                                            "description": "Inclusive region start as a hex string",
+                                            "type": "string",
+                                            "pattern": "^0x[0-9a-fA-F]+$"
+                                        },
+                                        "end": {
+                                            "description": "Inclusive region end as a hex string",
+                                            "type": "string",
+                                            "pattern": "^0x[0-9a-fA-F]+$"
+                                        },
+                                        "status": {
+                                            "description": "Whether system-wide homing information is consistent",
+                                            "type": "string",
+                                            "enum": ["ok", "inconsistent"]
+                                        },
+                                        "resources": {
+                                            "description": "Named /proc/iomem resources within this region",
+                                            "type": "array",
+                                            "items": {
+                                                "title": "I/O address resource",
+                                                "type": "object",
+                                                "required": ["start", "end", "name"],
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "start": {
+                                                        "description": "Inclusive resource start as a hex string",
+                                                        "type": "string",
+                                                        "pattern": "^0x[0-9a-fA-F]+$"
+                                                    },
+                                                    "end": {
+                                                        "description": "Inclusive resource end as a hex string",
+                                                        "type": "string",
+                                                        "pattern": "^0x[0-9a-fA-F]+$"
+                                                    },
+                                                    "name": {
+                                                        "description": "Kernel resource name",
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         },
         "elements": {
             "description": "System elements, currently all CMNs",
@@ -49,7 +204,7 @@
                     },
                     "version": {
                         "description": "Full product name e.g. CMN-700",
-                        "type": "string"
+                        "type": ["string", "integer"]
                     },
                     "revision": {
                         "description": "Product revision",
@@ -66,7 +221,7 @@
                     "config": {
                         "description": "Product-specific configuration",
                         "type": "object",
-                        "required": ["X", "Y", "chi_version", "xps"],
+                        "required": ["X", "Y", "xps"],
                         "additionalProperties": false,
                         "properties": {
                             "base": {
@@ -83,6 +238,32 @@
                             },
                             "mpam_enabled": {
                                 "type": "boolean"
+                            },
+                            "mpam_partid_width": {
+                                "description": "MPAM PARTID width",
+                                "type": "integer",
+                                "minimum": 1
+                            },
+                            "mte_enabled": {
+                                "type": "boolean"
+                            },
+                            "pa_width": {
+                                "description": "Physical address width",
+                                "type": "integer",
+                                "minimum": 3,
+                                "maximum": 52
+                            },
+                            "req_pa_width": {
+                                "description": "REQ physical address width",
+                                "type": "integer",
+                                "minimum": 3,
+                                "maximum": 52
+                            },
+                            "rsvdc_width": {
+                                "description": "REQ RSVDC width",
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 255
                             },
                             "X": {
                                 "description": "X dimension",
@@ -121,6 +302,14 @@
                                             "description": "XP's CMN node id",
                                             "type": "integer"
                                         },
+                                        "is_external": {
+                                            "type": "boolean"
+                                        },
+                                        "disabled": {
+                                            "description": "Node recorded as disabled; omitted when false",
+                                            "type": "boolean",
+                                            "default": false
+                                        },
                                         "logical_id": {
                                             "description": "Logical ID",
                                             "type": "integer"
@@ -147,7 +336,8 @@
                                             "items": {
                                                 "title": "CMN XP port",
                                                 "type": "object",
-                                                "required": ["port", "type"],
+                                                "required": ["port"],
+                                                "anyOf": [{"required": ["type"]}, {"required": ["base_id"]}],
                                                 "additionalProperties": false,
                                                 "properties": {
                                                     "port": {
@@ -159,15 +349,24 @@
                                                         "type": "integer"
                                                     },
                                                     "type_s": {
-                                                        "description": "Port connected device type",
+                                                        "description": "Port connected device type string",
                                                         "type": "string"
+                                                    },
+                                                    "base_id": {
+                                                        "description": "CHI ID of device slot zero",
+                                                        "type": "integer",
+                                                        "minimum": 0
                                                     },
                                                     "cal": {
                                                         "description": "Component Aggregation Layer (CAL) width",
                                                         "type": ["boolean", "integer"]
                                                     },
+                                                    "ccs": {
+                                                        "description": "CAL credited slices",
+                                                        "type": "integer"
+                                                    },
                                                     "devices": {
-                                                        "description": "Devices connected to port",
+                                                        "description": "Device nodes connected to port",
                                                         "type": "array",
                                                         "items": {
                                                             "title": "CMN device node",
@@ -179,6 +378,14 @@
                                                                     "description": "Device node id",
                                                                     "type": "integer"
                                                                 },
+                                                                "is_external": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "disabled": {
+                                                                    "description": "Node recorded as disabled; omitted when false",
+                                                                    "type": "boolean",
+                                                                    "default": false
+                                                                },
                                                                 "logical_id": {
                                                                     "description": "Logical ID",
                                                                     "type": "integer"
@@ -188,8 +395,31 @@
                                                                     "type": "integer"
                                                                 },
                                                                 "type_s": {
-                                                                    "description": "Device type",
+                                                                    "description": "Device type string",
                                                                     "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    "pdevices": {
+                                                        "description": "Devices on port, indexed by device number",
+                                                        "type": "array",
+                                                        "items": {
+                                                            "title": "CMN port device",
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "id": {
+                                                                    "description": "Device node id",
+                                                                    "type": "integer"
+                                                                },
+                                                                "device_number": {
+                                                                    "description": "Device number within port",
+                                                                    "type": "integer"
+                                                                },
+                                                                "dcs": {
+                                                                    "description": "Device credited slices",
+                                                                    "type": "integer"
                                                                 }
                                                             }
                                                         }
@@ -238,7 +468,7 @@
                         "type": "integer"
                     },
                     "lpid": {
-                        "description": "CHI LPID value",
+                        "description": "CHI LPID value; omitted when not known",
                         "type": "integer"
                     }
                 }

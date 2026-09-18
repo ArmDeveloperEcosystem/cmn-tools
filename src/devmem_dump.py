@@ -56,16 +56,16 @@ class DumpMemFactory(DevMapFactory):
         DevMapFactory.__init__(self, write=write, check=check, is_local=False)
         self.dump = Dump(os.environ["CMN_DUMP"])
 
-    def map(self, pa, size, name=None, write=False):
-        return DumpMemDevMap(pa, size, owner=self, name=name, write=write)
+    def map(self, pa, size, name=None, write=False, verbose=0):
+        return DumpMemDevMap(pa, size, owner=self, name=name, write=write, verbose=verbose)
 
     def __str__(self):
         return str(self.dump)
 
 
 class DumpMemDevMap(DevMap):
-    def __init__(self, pa, size, name=None, owner=None, write=False, check=None):
-        DevMap.__init__(self, pa, size, owner=owner, write=write, check=check)
+    def __init__(self, pa, size, name=None, owner=None, write=False, check=None, verbose=0):
+        DevMap.__init__(self, pa, size, owner=owner, name=name, write=write, check=check, verbose=verbose)
 
     def _read64(self, off):
         addr = self.pa + off

@@ -19,7 +19,6 @@ import sys
 
 import cmn_events
 import cmn_json
-import cmn_perfcheck
 import cmn_perfstat
 import cmn_topdown_recipes
 import cmnwatch
@@ -185,36 +184,23 @@ class Topdown:
 
 class PerfBackend:
     """
-    Thin adapter over cmn_perfstat/cmn_perfcheck so cmn_topdown has explicit dependencies.
+    Apply topdown's measurement duration to one configured Perf instance.
     """
-    def __init__(self, perf_module=cmn_perfstat, perfcheck_module=cmn_perfcheck, perf_bin="perf", measurement_time=None, verbose=0):
-        self.perf_module = perf_module
-        self.perfcheck_module = perfcheck_module
-        self.perf_bin = perf_bin
+    def __init__(self, perf=None, perf_bin="perf", measurement_time=None, verbose=0):
+        self.perf = perf if perf is not None else cmn_perfstat.Perf(perf_bin=perf_bin, verbose=max(0, verbose - 1))
         self.measurement_time = measurement_time
-        self.verbose = verbose
-
-    def configure(self):
-        self.perf_module.o_verbose = max(0, self.verbose - 1)
-        self.perf_module.o_time = self.measurement_time
-        self.perf_module.o_perf_bin = self.perf_bin
-        self.perfcheck_module.o_perf_bin = self.perf_bin
 
     def check_cmn_events(self, check_rsp_dat=False):
-        self.configure()
-        return self.perfcheck_module.check_cmn_pmu_events(check_rsp_dat=check_rsp_dat)
+        return self.perf.check_cmn_events(check_rsp_dat=check_rsp_dat)
 
     def check_cpu_events(self):
-        self.configure()
-        return self.perfcheck_module.check_cpu_pmu_events()
+        return self.perf.check_cpu_events()
 
     def perf_rate(self, events):
-        self.configure()
-        return self.perf_module.perf_rate(events, time=self.measurement_time)
+        return self.perf.rate(events, time=self.measurement_time)
 
     def perf_rate_per_node(self, events):
-        self.configure()
-        return self.perf_module.perf_rate_per_node(events, time=self.measurement_time)
+        return self.perf.rate_per_node(events, time=self.measurement_time)
 
 
 class TopdownRunner:
@@ -291,8 +277,11 @@ class TopdownRunner:
 
     def _watchpoint_metric_plans(self, metric, actions):
         props = decode_properties(metric["ports"])
+        xprops = [decode_properties(p) for p in metric.get("ports_exclude", [])]
         plans = []
         for port in self.system.ports(properties=props):
+            if any(port.has_properties(p) for p in xprops):
+                continue
             port_actions = actions
             if self.options.split or metric.get("split", False):
                 port_actions = self._split_actions(actions, port)
@@ -459,9 +448,11 @@ class TopdownRunner:
                         analyses[mesh_ix].accumulate(action, rate * mult)
         if cpu_events:
             node_rates = self.backend.perf_rate_per_node(cpu_events)
-            assert len(node_rates) == len(self.system.CMNs), "unexpected: %u NUMA nodes but %u meshes" % (len(node_rates), len(self.system.CMNs))
+            if len(node_rates) != len(self.system.CMNs):
+                raise MeasurementError("unexpected: %u NUMA nodes but %u meshes" % (len(node_rates), len(self.system.CMNs)))
             for (mesh_ix, rates) in enumerate(node_rates):
-                assert len(rates) == len(cpu_action_sets), "unexpected: %u node rates but %u CPU events" % (len(rates), len(cpu_action_sets))
+                if len(rates) != len(cpu_action_sets):
+                    raise MeasurementError("unexpected: %u node rates but %u CPU events" % (len(rates), len(cpu_action_sets)))
                 for (actions, rate) in zip(cpu_action_sets, rates):
                     if self.options.verbose >= 2:
                         if rate is not None:
@@ -822,7 +813,7 @@ def main(argv):
         for recipe in recipes:
             print_recipe(recipe)
         return 0
-    system = cmn_json.system_from_json_file()
+    system = cmn_json.load_system_for_cli()
     if options.measurement_time is None:
         options.measurement_time = default_measurement_time(system, verbose=options.verbose)
     if opts.cmd:

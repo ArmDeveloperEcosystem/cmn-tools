@@ -163,14 +163,22 @@ class DMIStructure:
 
 def _decode_system(d):
     """
-    DMI_SYSTEM (type 1) decode. We create a uuid.UUID() object.
+    DMI_SYSTEM (type 1) decode.
+    If the UUID is present, we create a uuid.UUID() object; otherwise, we leave
+    a placeholder string indicating whether it is settable.
     """
     (_, mfr, prod, vsn, ser) = struct.unpack("<IBBBB", d.raw[:8])
     d.mfr = d.string(mfr)
     d.product = d.string(prod)
     d.version = d.string(vsn)
     d.serial = d.string(ser)
-    d.uuid = uuid.UUID(bytes_le=d.raw[8:0x18])
+    uuid_raw = d.raw[8:0x18]
+    if uuid_raw == (b'\xFF' * 16):
+        d.uuid = "<not present, settable>"
+    elif uuid_raw == (b'\x00' * 16):
+        d.uuid = "<not present>"
+    else:
+        d.uuid = uuid.UUID(bytes_le=uuid_raw)
 
 
 def _decode_processor(d):
@@ -357,7 +365,9 @@ class DMI:
         """
         dsys = self.system()
         if dsys is not None:
-            s = "%s %s %s %s" % (dsys.uuid, dsys.mfr, dsys.product, dsys.version)
+            s = "%s %s %s" % (dsys.mfr, dsys.product, dsys.version)
+            if isinstance(dsys.uuid, uuid.UUID):
+                s = str(dsys.uuid) + ' ' + s
         else:
             s = "?"
         if self.fn != DEFAULT_DMI:
@@ -708,7 +718,8 @@ def print_DMI_memory(D):
         dam = da.p_address_map
         if dam is not None:
             print("  0x%012x - 0x%012x  %6s" % (dam.start, dam.end, memsize_str(dam.end - dam.start)), end="")
-            print("  partition-width=%u" % (dam.partition_width), end="")
+            if dam.partition_width > 0:
+                print("  partition-width=%u" % (dam.partition_width), end="")
         print()
         # Show devices in this array
         for d in da.p_devices:
@@ -846,6 +857,7 @@ def main(argv):
     global o_verbose
     import tempfile
     import argparse
+    import subprocess
     parser = argparse.ArgumentParser(description="read SMBIOS DMI file")
     parser.add_argument("-i", "--input", type=str, default=DEFAULT_DMI, help="input DMI file")
     parser.add_argument("--decode", action="store_true", help="print in detail (like dmidecode)")
@@ -866,12 +878,14 @@ def main(argv):
         sys.exit(0)
     if opts.dmidecode:
         (h, temp_fn) = tempfile.mkstemp()
-        os.close(h)
-        convert_for_dmidecode(opts.input, temp_fn)
-        cmd = "dmidecode --from-dump=%s" % (temp_fn)
-        os.system(cmd)
-        os.remove(temp_fn)
-        sys.exit(0)
+        try:
+            os.close(h)
+            convert_for_dmidecode(opts.input, temp_fn)
+            # Temporary-directory names are data, not shell syntax.
+            rc = subprocess.call(["dmidecode", "--from-dump", temp_fn], shell=False)
+        finally:
+            os.remove(temp_fn)
+        sys.exit(rc)
     if opts.os_strings:
         print_os_dmi_strings()
         sys.exit(0)

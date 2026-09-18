@@ -42,8 +42,8 @@ class DSMemFactory(DevMapFactory):
         self.space = space
         self.is_model = (space in ["NP", "SP", "RTP", "RLP"])
 
-    def map(self, pa, size, name=None, write=False):
-        return DSMemDevMap(pa, size, owner=self, name=name, write=write)
+    def map(self, pa, size, name=None, write=False, verbose=0):
+        return DSMemDevMap(pa, size, owner=self, name=name, write=write, verbose=verbose)
 
 
 _prot_map = { "NS": 0, "S": 1, "ROOT": 2, "REALM": 3 }
@@ -66,9 +66,10 @@ class DSMemDevMap(DevMap):
         - if Fast Model, access is indicated only via address space
           (NP, SP, RTP, RLP)
     """
-    def __init__(self, pa, size, name=None, owner=None, write=False, check=None, secure="NS"):
-        assert isinstance(owner, DSMemFactory)
-        DevMap.__init__(self, pa, size, owner=owner, write=write, check=check, secure=secure)
+    def __init__(self, pa, size, name=None, owner=None, write=False, verbose=0, check=None, secure="NS"):
+        if not isinstance(owner, DSMemFactory):
+            raise TypeError("debugger mapping owner must be a DSMemFactory")
+        DevMap.__init__(self, pa, size, owner=owner, name=name, write=write, check=check, secure=secure, verbose=verbose)
         self.secure = secure
 
     def dsaddr(self, off):

@@ -31,9 +31,6 @@ import cmn_config
 from cmn_enum import *
 import cmn_events
 
-from cmn_diagram import CMNDiagram
-
-
 #
 # In response to an environment variable (CMN_DEVMEM_DIAG) we can log register accesses to a file.
 #
@@ -142,10 +139,13 @@ class CMNNodeBase:
 
     Subclassed for XP and DT.
     """
-    def __init__(self, cmn, node_offset, map=None, write=False, parent=None, is_external=False, node_info=None):
+    def __init__(self, cmn, node_offset, map=None, write=False, parent=None, is_external=False, node_info=None, disabled=False):
+        if not isinstance(disabled, bool):
+            raise TypeError("node disabled must be a boolean")
+        self.disabled = disabled
         self.C = cmn
         self.diag_trace = DIAG_DEFAULT       # defer to owning CMN object
-        self.parent = parent
+        self.parent = parent                 # parent in the CMN hierarchy, e.g. CFG or XP
         self.is_external = is_external       # device is external, e.g. RN-SAM
         if node_offset in self.C.offset_node:
             raise CMNDiscoveryError(self.C, "node already discovered: %s" % self.C.offset_node[node_offset])
@@ -165,6 +165,12 @@ class CMNNodeBase:
         else:
             self.node_info = 0x0000     # in case we throw in the next line
             self.node_info = self.read64(CMN_any_NODE_INFO)
+        if parent is not None and parent.is_XP():
+            # We're creating a device node
+            if self.node_id() not in parent._device_objects:
+                xp_devices = parent._device_objects.keys()
+                print("%s: node 0x%03x not in devices: %s" % (parent, self.node_id(), ','.join(["0x%03x" % d for d in xp_devices])), file=sys.stderr)
+            self.device = parent._device_objects[self.node_id()]
         if self.C.verbose >= 3:
             self.C.log("  node: %s" % (self), level=3)
         if not self.has_pmu_events():
@@ -185,6 +191,10 @@ class CMNNodeBase:
 
     def CMN(self):
         return self.C
+
+    def is_disabled(self):
+        """Return the recorded disabled state; this never reads device registers."""
+        return self.disabled
 
     def do_trace_reads(self):
         return (self.diag_trace | self.C.diag_trace) & DIAG_READS
@@ -400,13 +410,6 @@ class CMNNodeBase:
             if self.is_XP():
                 # The XP will have CMNPort objects for all its ports. The device nodes should point back to the port.
                 assert child_node.port == self.port(child_node.port_number)
-        # Check that the other child pointers are zero.
-        # TBD: this shouldn't really be controlled by 'verbose'.
-        if self.C.verbose >= 4:
-            for i in range(self.n_children, 32):
-                child = self.read64(child_off + (i*8))
-                if child != 0x0:
-                    self.C.log("%s: %u children but child pointer #%u is 0x%x" % (self, self.n_children, i, child), level=1)
 
     def child_pointers(self):
         self.child_info = self.read64(CMN_any_CHILD_INFO)
@@ -420,6 +423,13 @@ class CMNNodeBase:
         for i in range(0, self.n_children):
             child = self.read64(child_off + (i*8))
             yield child
+        # Check that the other child pointers are zero, by scanning the remaining entries.
+        # TBD: this shouldn't really be controlled by 'verbose'.
+        if self.C.verbose >= 4:
+            for i in range(self.n_children, 32):
+                child = self.read64(child_off + (i*8))
+                if child != 0x0:
+                    self.C.log("%s: %u children but child pointer #%u is 0x%x" % (self, self.n_children, i, child), level=1)
 
     def type(self):
         """
@@ -468,14 +478,12 @@ class CMNNodeBase:
     def properties(self):
         return cmn_node_properties.get(self.type(), CMN_PROP_none)
 
-    def is_home_node(self, include_device=False):
-        if include_device:
-            return self.type() in CMN_NODE_all_HN
+    def is_home_node(self):
         return self.has_properties(CMN_PROP_HNF)    # HN-F and HN-S
 
     def cache_geometry(self):
-        # move to subclass, if/when we have a HN subclass
-        assert self.is_home_node(), "%s: only home nodes have cache geometry" % self
+        # move to subclass, if/when we have a HN-F subclass
+        assert self.has_properties(CMN_PROP_HNF), "%s: only HN-F has cache geometry" % self
         return hn_cache_geometry(self)
 
     def has_pmu_events(self):
@@ -504,25 +512,6 @@ class CMNNodeBase:
     def y(self):
         return self.XY()[1]
 
-    def PD(self):
-        """
-        Get the (port, device) for the node. We need to know the number of ports.
-        """
-        id = self.node_id()
-        # Old rule (as per published CMN TRM):
-        #   If the CMN has at least one XP with more than 2 device ports,
-        #   all device ids use 2 bits for the port and one for the device.
-        #   Otherwise it's 1 bit for the port and 2 for the device.
-        # Actual rule:
-        #   If this XP has more than 2 device ports, use 2 bits for the port.
-        if self.parent is not None and self.XP().n_device_bits() == 1:
-            D = BIT(id, 0)
-            P = BITS(id, 1, 2)
-        else:
-            D = BITS(id, 0, 2)
-            P = BIT(id, 2)
-        return (P, D)
-
     def coords(self):
         """
         Return device coordinates as a tuple (X, Y, P, D).
@@ -532,7 +521,7 @@ class CMNNodeBase:
         (X, Y) can only be discovered after the mesh size is known.
         """
         (X, Y) = self.XY()
-        (P, D) = self.PD()
+        (P, D) = self.PD() if not self.is_XP() else (0, 0)
         return (X, Y, P, D)
 
     @property
@@ -556,7 +545,7 @@ class CMNNodeBase:
         """
         if self.is_rootnode() or self.is_XP():
             return None
-        return self.CMN().device_at_id(self.node_id(), create=True)
+        return self.device
 
     def show(self):
         # Node-specific subclass can override
@@ -590,6 +579,8 @@ class CMNNodeBase:
                     s += ":(%u,%u,%u,%u)" % (X, Y, P, D)
         if self.C.verbose >= 2:
             s += ":info=0x%x" % self.node_info
+        if self.is_disabled():
+            s += " (disabled)"
         return s
 
 
@@ -599,12 +590,29 @@ class CMNDevice:
     This mirrors the topology concept used in cmn_base without changing
     cmn_devmem's live-discovery model.
     """
-    def __init__(self, port, device_number):
+    def __init__(self, port, node_id, device_number):
         self.port = port
+        self._node_id = node_id
         self.device_number = device_number
+        self._c2c_endpoints = []
+
+    def c2c_endpoints(self):
+        """Iterate recorded link endpoints without discovering child nodes."""
+        return iter(self._c2c_endpoints)
+
+    def cached_node_by_type(self, node_type):
+        """Resolve a previously discovered node without reading registers."""
+        xp = self.XP()
+        if not xp.discovered_children:
+            return None
+        # device_nodes would invoke child discovery; inspect cached children.
+        for node in xp.children:
+            if node.node_id() == self.node_id() and node.type() == node_type:
+                return node
+        return None
 
     def node_id(self):
-        return self.port.base_id() + self.device_number
+        return self._node_id
 
     def CMN(self):
         return self.port.CMN()
@@ -612,12 +620,11 @@ class CMNDevice:
     def XP(self):
         return self.port.XP()
 
+    def PD(self):
+        return (self.port.port_number, self.device_number)
+
     def has_properties(self, props):
-        if props in [None, CMN_PROP_none]:
-            return True
-        if self.port.has_properties(props):
-            return True
-        return any([n.has_properties(props) for n in self.device_nodes])
+        return cmn_base.device_has_properties(self, props)
 
     @property
     def device_nodes(self):
@@ -637,15 +644,19 @@ class CMNPort:
     The XP's CMNPort objects are created along with the XP, based on the
     "connected device info" in the XP. Initially they are not populated
     with device nodes.
+
+    The port number is an index into the XP's port information registers.
+    Port numbers aren't necessarily contiguous from zero.
     """
-    def __init__(self, xp, port_number=None, connect_info=None, dtm=None):
+    def __init__(self, xp, port_number=None, connect_info=None, dtm=None, base_id=None):
         self.xp = xp
         self.port_number = port_number
-        self.dtm = dtm
+        self._base_id = base_id
+        self.dtm = dtm          # CMNDTM object for this port
         self.connect_info = connect_info
         self.connected_type = self.xp.connect_info_type(self.connect_info)
         self._port_info = {}    # Cache for the port_info register(s)
-        self._devices = {}
+        self._devices = {}      # CMNDevice objects, indexed by device number
 
     @property
     def connected_type_s(self):
@@ -663,14 +674,8 @@ class CMNPort:
     def CMN(self):
         return self.xp.C
 
-    def properties(self):
-        props = cmn_port_properties[self.connected_type]
-        if self.cal == 3:
-            props |= CMN_PROP_HNI
-        return props
-
     def has_properties(self, props):
-        return cmn_port_device_type_has_properties(self.connected_type, props)
+        return cmn_base.port_has_properties(self, props)
 
     def port_info(self, n=0):
         """
@@ -681,14 +686,39 @@ class CMNPort:
         if n not in self._port_info:
             if not self.xp.C.part_ge_700():
                 if n > 0:
-                    return None
+                    return None   # Only one info register
                 off = CMN_any_UNIT_INFO + (self.port_number * 8)
             else:
                 if n > 1:
-                    return None
-                off = CMN_any_UNIT_INFO + (self.port_number * 16) + (n * 8)
+                    return None   # Only two info registers
+                if self.port_number < 6:
+                    off = CMN_any_UNIT_INFO + (self.port_number * 16) + (n * 8)
+                else:
+                    off = 0xEE0 + ((self.port_number - 6) * 16) + (n * 8)
             self._port_info[n] = self.xp.read64(off)
         return self._port_info[n]
+
+    def n_devices_from_port_info(self):
+        """
+        Return the number of devices on the port, as indicated by the port information in the XP.
+        Note that CCGs with PCIe tunnelling RN-Is indicate 1 when they really have 2.
+        """
+        return BITS(self.port_info(), 0, 3)
+
+    def n_devices(self):
+        """
+        Return the actual number of devices on the port, adjusting for PCIe-capable CCGs.
+        """
+        n = self.n_devices_from_port_info()
+        if n == 1 and self.has_properties(CMN_PROP_CCG):
+            # TBD: We should check ccg_type in the CCLA.
+            # Only some CCG types have the RN-I device:
+            # CCGPCI (6), CCGDPCI (13), CCGPCIT1HT3H (3), CCGDPCIT1HT3H (10).
+            # Most of them don't. Of the ones that don't, CCGSMP/CCGDSMP have a
+            # distinct port connected type, so we can rule them out.
+            if self.connected_type != CMN_PORT_DEVTYPE_CCGSMP:
+                n = 2
+        return n
 
     def has_cal(self):
         """
@@ -697,6 +727,13 @@ class CMNPort:
         """
         has_cal = BIT(self.connect_info, CMN_XP_DEVICE_PORT_CAL_CONNECTED_BIT)
         return BITS(self.port_info(), 0, 3) if has_cal else 0
+
+    def devices(self, properties=CMN_PROP_none):
+        """
+        Yield the CMNDevice objects for the port.
+        """
+        for dev in cmn_base.port_devices(self, properties=properties):
+            yield dev
 
     @property
     def cal(self):
@@ -714,59 +751,48 @@ class CMNPort:
         """
         return BITS(self.connect_info, 16+(d*4), 4)
 
-    def nodes(self):
+    def nodes(self, discover=True):
         """
-        Yield port nodes in device-number (and hence node-id) order
+        Yield port nodes in device-number (and hence node-id) order.
+        With discover=False, only inspect previously discovered children.
         """
+        if not discover and not self.xp.discovered_children:
+            return
         for n in self.xp.port_nodes(self.port_number):
             yield n
 
-    def max_devices(self):
-        return 1 << self.xp.n_device_bits()
-
     def ids(self):
-        for d in self.device_numbers():
-            yield self.base_id() + d
-
-    def create_device(self, device_number):
-        assert 0 <= device_number and device_number < self.max_devices(), "unexpected device number: %s" % device_number
-        if device_number not in self._devices:
-            self._devices[device_number] = CMNDevice(self, device_number)
-        return self._devices[device_number]
+        """
+        Yield device node ids in order
+        """
+        for id in cmn_base.port_ids(self):
+            yield id
 
     def device(self, device_number, create=False):
-        if create:
-            return self.create_device(device_number)
-        return self._devices.get(device_number, None)
+        dev = self._devices.get(device_number, None)
+        if dev is None and create:
+            raise IndexError("%s: no device slot D%u" % (self, device_number))
+        return dev
 
     def device_at_id(self, id, create=False):
-        assert self.is_valid_id(id), "%s: invalid device id 0x%x" % (self, id)
-        return self.device(id - self.base_id(), create=create)
+        return cmn_base.port_device_at_id(self, id, create=create)
 
     def device_numbers(self):
         """
-        Return the sorted list of device numbers (based at 0) in use at this port
+        Return sorted slot numbers from the cache populated during XP creation.
+        Slots exist independently of child nodes, which might not yet have
+        been discovered.
         """
-        dmap = {}
-        cal = self.cal
-        if cal:
-            for d in range(cal):
-                dmap[d] = True
-        else:
-            dmap[0] = True
-        for n in self.nodes():
-            dmap[n.device_number] = True
-        return sorted(dmap.keys())
+        return sorted(self._devices.keys())
 
     def device_has_explicit_description(self, d):
         return bool(self.XP().port_device_nodes(self.port_number, d)) or (self.device_credited_slices(d) != 0)
 
     def is_valid_id(self, id):
-        dev = id - self.base_id()
-        return dev in self.device_numbers()
+        return cmn_base.port_device_number(self, id) in self.device_numbers()
 
     def base_id(self):
-        return self.xp.port_base_id(self.port_number)
+        return self._base_id
 
     def __str__(self):
         return "%s P%u" % (self.xp, self.port_number)
@@ -790,29 +816,78 @@ class CMNNodeXP(CMNNodeBase):
     """
     def __init__(self, *args, **kwargs):
         CMNNodeBase.__init__(self, *args, **kwargs)
-        # TBD: multiple-DTM configuration
-        dtm0 = CMNDTM(self)
-        self.dtms = [dtm0]
-        self.dtm = dtm0     # Legacy
-        if self.C.multiple_dtms and self.n_device_ports() > 2:
-            self.dtms.append(CMNDTM(self, index=1))
-        self._port_objects = {}
+        self._port_objects = {}     # Indexed by port number
+        self._device_objects = {}   # Indexed by node id
         self.skipped_nodes = None
         # At this point, child device nodes are not yet discovered.
         # In CMN S3, device discovery may be hindered by node isolation.
-        # But we can discover which ports exist.
-        for pn in range(self.n_device_ports()):
-            connect_info = self.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(pn))
-            type = self.connect_info_type(connect_info)
+        # But we can discover which ports exist, and create port objects
+        # In S3 with FlatID, n_device_ports is not to be trusted
+        npc = 8 if self.C.part_ge_S3r2() else self.n_device_ports()
+        cis = [self.read64(CMN_XP_DEVICE_PORT_CONNECT_INFO_P(pn)) for pn in range(npc)]
+        cit = [self.connect_info_type(ci) for ci in cis]
+        mc = -1
+        for (pn, t) in enumerate(cit):
+            if t != CMN_PORT_DEVTYPE_NOT_CONNECTED:
+                mc = pn
+        self.flatid = (mc >= 6)    # If ports 7 or 8 are in use, assume FlatID scheme
+        if "CMN_FLATID" in os.environ:
+            self.flatid = True
+        if not self.flatid:
+            # Number of device bits depends on highest port number
+            ndb = 1 if self.n_device_ports() > 2 else 2
+        else:
+            ndb = None
+        self.set_dtms(max_port_number=mc)
+        bio = 0
+        for pn in range(npc):
+            connect_info = cis[pn]
+            type = cit[pn]
             if type != CMN_PORT_DEVTYPE_NOT_CONNECTED:
-                po = CMNPort(self, pn, connect_info, dtm=self.port_dtm(pn))
+                if not self.flatid:
+                    bio = (pn << ndb)
+                po = CMNPort(self, pn, connect_info, dtm=self.port_dtm(pn), base_id=(self.node_id() + bio))
+                self.C._record_home_node_type(
+                    {CMN_PORT_DEVTYPE_HNF: CMN_NODE_HNF, CMN_PORT_DEVTYPE_HNS: CMN_NODE_HNS}.get(type))
                 self._port_objects[pn] = po
+                nd = po.n_devices()
+                for dn in range(nd):
+                    dev = CMNDevice(po, cmn_base.port_device_id(po, dn), dn)
+                    po._devices[dn] = dev
+                    self._device_objects[dev.node_id()] = dev
+                if self.flatid:
+                    bio += nd
         # At this point, CMNPort objects have been created for all ports in use,
         # but we haven't discovered device nodes.
+
+    def set_dtms(self, max_port_number=1):
+        """
+        Given a maximum port number in use, set up the DTM objects.
+        """
+        if self.C.multiple_dtms:
+            n_dtms = max(1, ((max_port_number + 2) // 2))
+        else:
+            n_dtms = 1
+        self.dtms = [CMNDTM(self, index=ix) for ix in range(n_dtms)]
+        self.dtm = self.dtms[0]     # Legacy
+
+    @property
+    def n_ports(self):
+        """
+        Number of ports in use (numbering might not be consecutive)
+        """
+        return len(self._port_objects)
 
     def DTMs(self):
         for dtm in self.dtms:
             yield dtm
+
+    def dtc_domains(self):
+        """
+        Return a list of DTC domains, one per DTM in index order.
+        A domain is None if unknown. Unit-info reads are cached by each DTM.
+        """
+        return [dtm.dtc_domain() for dtm in self.DTMs()]
 
     def connect_info_type(self, connect_info):
         """
@@ -837,18 +912,23 @@ class CMNNodeXP(CMNNodeBase):
         return self._port_objects.get(port_number, None)
 
     def port_dtm(self, p):
-        if len(self.dtms) > 1 and p >= 2:
-            # In the multiple-DTM case, DTM#1 handles P2/P3
-            return self.dtms[p // 2]
+        if self.C.multiple_dtms:
+            # In the multiple-DTM case, DTM#1 handles P2/P3, DTM#2 handles P4/P5 etc.
+            ix = p // 2
         else:
-            return self.dtms[0]
+            ix = 0
+        assert ix < len(self.dtms), "Port P%u out of range, only %u DTMs" % (ix, len(self.dtms))
+        return self.dtms[ix]
 
     def port_nodes(self, rP):
         """
         Yield all a port's device nodes, ordered by device number.
         (There may be multiple device nodes for a given device number.)
         """
-        for rD in range(0, 4):
+        if not self.discovered_children:
+            self.discover_children()
+        po = self.port(rP)
+        for rD in range(0, po.n_devices()):
             for n in self.port_device_nodes(rP, rD):
                 yield n
 
@@ -899,14 +979,15 @@ class CMNNodeXP(CMNNodeBase):
     def ports(self, properties=CMN_PROP_none):
         """
         Yield port objects of any ports with the given properties,
-        based on testing the XP's "port connected device" info.
+        based on the connected type and CAL information cached when the XP
+        was created. This includes the HN-I role of HCAL3 ports.
         This should be usable before scanning child nodes, because we
         rely on it in CMN S3 to avoid lockups due to device isolation.
         """
-        for p in range(0, 4):
-            pt = self.port_device_type(p)
-            if pt is not None and cmn_port_device_type_has_properties(pt, properties):
-                yield self.port(p)
+        for p in range(0, self.n_device_ports()):
+            port = self.port(p)
+            if port is not None and port.has_properties(properties):
+                yield port
 
     def has_any_ports(self, props):
         """
@@ -914,65 +995,25 @@ class CMNNodeXP(CMNNodeBase):
         """
         return bool(list(self.ports(properties=props)))
 
-    def n_device_bits(self):
-        """
-        In the device node id, the split between port id and device id
-        (whether it is 2:1 or 1:2) depends on the number of ports on the
-        individual XP - contrary to the implication of the CMN TRM.
-        """
-        return 1 if self.n_device_ports() > 2 else 2
-
-    def id_device_bits(self):
-        """
-        Compatibility alias for n_device_bits().
-        """
-        return self.n_device_bits()
-
     def port_base_id(self, rP):
-        assert rP < self.n_device_ports(), "%s: bad port number P%u" % (self, rP)
-        return self.node_id() + (rP << self.n_device_bits())
+        return self.port(rP).base_id()
 
     def id_port_device(self, id):
         """
         Given a device identifier (i.e. CHI srcid/tgtid) belonging
         to this XP, return a tuple of (port, device)
         """
-        ndb = self.n_device_bits()
-        dev = BITS(id, 0, ndb)
-        port = BITS(id, ndb, 3-ndb)
-        return (port, dev)
+        return self._device_objects[id].PD()
+
+    def device_at_id(self, id, create=False):
+        """
+        Look up a slot created during XP initialization, without child discovery.
+        create is accepted for compatibility; live slots are already populated.
+        """
+        return self._device_objects.get(id, None)
 
     def is_valid_id(self, id):
         return (id & ~7) == self.node_id()
-
-    def dtc_domain(self):
-        """
-        Return the DTC domain number of this XP, if known.
-        TBD: Recent CMN allows an XP to have multiple DTMs, with a corrresponding
-        dtm_unit_info register for each one - implying an XP's DTMs could be in
-        different domains. We have not observed this.
-        """
-        if self.C.product_config.product_id == cmn_base.PART_CMN600:
-            if len(self.C.debug_nodes) == 1:
-                return 0       # this mesh has only one DTC
-            else:
-                # In a CMN-600 with multiple DTCs, we can't discover the assignment.
-                return None
-        elif self.C.product_config.product_id == cmn_base.PART_CMN650:
-            return BITS(self.read64(CMN650_DTM_UNIT_INFO), 0, 2)
-        else:
-            return BITS(self.read64(CMN700_DTM_UNIT_INFO), 0, 2)
-
-    def check_reg_is_writeable(self, off):
-        """
-        Some DTM configuration registers are only writeable when the DTM is disabled.
-        The documentation of dtm_enable says:
-          "Enables debug watchpoint and PMU function; prior to writing this bit, all other DT
-           configuration registers must be programmed; once this bit is set, other DT
-           configuration registers must not be modified"
-        """
-        if off >= self.C.DTM_BASE+0x100 and off <= self.C.DTM_BASE+0x4ff and (off-self.C.DTM_BASE) not in [CMN_DTM_CONTROL_off, CMN_DTM_FIFO_ENTRY_READY_off] and self.dtm._dtm_is_enabled:
-            assert False, "try to write DTM programming register at 0x%x when DTM is enabled" % off
 
     def pmu_event_sel(self, eix):
         """
@@ -993,7 +1034,7 @@ class DTMWatchpoint:
     Some of the terminology here reflects DTM register field naming:
       'dev' is a port number (not a device number).
       'chn' is a CHI channel selector (wp_chn_sel), 0/1/2/3 for REQ/RSP/SNP/DAT.
-      'chn_num' is a channel instance selector for parallel channels.
+      'chn_num' is a channel instance selector (0,1,...) for parallel channels.
 
     This structure describes a single watchpoint configuration. Any watchpoint grouping,
     e.g. for multiple ports, or multiple fragments of a DAT packet, or multiple
@@ -1021,6 +1062,12 @@ class DTMWatchpoint:
         self.cfg = cfg
         if cfg is not None:
             self.decode()
+
+    def is_inactive(self):
+        """
+        Return true if the watchpoint can't match anything
+        """
+        return self.value == 0 and self.mask == 0xffffffffffffffff and self.exclusive
 
     def decode(self):
         """
@@ -1066,7 +1113,7 @@ class DTMWatchpoint:
             assert self.chn in [0, 1, 2, 3], "bad watchpoint channel: %u" % self.chn
             config |= (self.chn << 1)
         if self.chn_num:
-            assert self.chn_num < self.C.vc_num[self.chn], "bad channel number for %u (%u VCs): %u" % (self.chn, self.C.vc_num[self.chn], self.chn_num)
+            assert self.chn_num < self.C.vc_num[self.chn], "bad channel number for %s (%u VCs): %u" % (["REQ", "RSP", "SNP", "DAT"][self.chn], self.C.vc_num[self.chn], self.chn_num)
             config |= (self.chn_num << self.C.DTM_WP_CHN_NUM_SHIFT)
         if self.dev is not None:
             dev0 = self.dev & 1
@@ -1091,6 +1138,12 @@ class DTMWatchpoint:
             config |= (self.rsvdc_bsel << self.C.DTM_WP_RSVDC_BSEL_SHIFT)
         self.cfg = config
         return self.cfg
+
+    def chn_str(self):
+        s = ["REQ", "RSP", "SNP", "DAT"][self.chn]
+        if self.chn_num > 0:
+            s += str(self.chn_num + 1)     # our number is zero-based, but conventionally RSP, RSP2 etc.
+        return s
 
     def __str__(self):
         """
@@ -1130,7 +1183,33 @@ class DTMWatchpoint:
 DTM_N_WATCHPOINTS = 4
 DTM_N_FIFO_ENTRIES = 4
 
-class CMNDTM:
+class DTMState(object):
+    """Saved DTM control, watchpoints and local PMU state, owned by one DTM.
+
+    Obtain this through dtm_save(). FIFO contents, snapshot registers and
+    device event selections are outside its scope. Saving does not stop the
+    DTM, so counter values are observations at the time of the reads.
+    """
+    def __init__(self, dtm):
+        self.dtm = dtm
+        self.control = dtm.dtm_read64(CMN_DTM_CONTROL_off)
+        self.pmu_config = dtm.dtm_read64(CMN_DTM_PMU_CONFIG_off)
+        self.counters = dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
+        self.watchpoints = [dtm.dtm_wp_config(wp) for wp in range(DTM_N_WATCHPOINTS)]
+
+    def _validate(self, dtm):
+        if self.dtm is not dtm:
+            raise ValueError("saved state belongs to a different DTM")
+        if len(self.watchpoints) != DTM_N_WATCHPOINTS:
+            raise ValueError("saved state must contain all DTM watchpoints")
+        values = [self.control, self.pmu_config, self.counters]
+        for wp in self.watchpoints:
+            values.extend([wp.cfg, wp.value, wp.mask])
+        for value in values:
+            cmn_config.check_integer(value, "saved DTM register", maximum=(1 << 64) - 1)
+
+
+class CMNDTM(object):
     """
     Debug/trace functionality within an XP.
     Split out from XP partly motivated by register offsets having changed in S3.
@@ -1141,6 +1220,7 @@ class CMNDTM:
         self.index = index
         self.base = xp.C.DTM_BASE + (index * 0x200)
         self.N_FIFO_WORDS = 4 if self.C.part_ge_S3r1() else 3
+        self._unit_info = None
         # We maintain a cached copy of the original DTM enable bit so we can fault writes
         # to DTM configuration registers when enabled.
         self._dtm_is_enabled = None
@@ -1151,23 +1231,75 @@ class CMNDTM:
             s += ".%u" % self.index
         return s
 
+    def ports(self):
+        """
+        Yield this DTM's existing ports, with XP-wide port numbers.
+        Does not discover child nodes or read registers.
+        """
+        for port in self.xp.ports():
+            if port.dtm is self:
+                yield port
+
     def dtm_read64(self, off):
         return self.xp.read64(self.base+off)
 
     def dtm_write64(self, off, value, check=None):
+        self.dtm_check_reg_is_writeable(off)
         return self.xp.write64(self.base+off, value, check=check)
 
     def dtm_set64(self, off, value, check=None):
+        self.dtm_check_reg_is_writeable(off)
         return self.xp.set64(self.base+off, value, check=check)
 
     def dtm_clear64(self, off, value, check=None):
+        self.dtm_check_reg_is_writeable(off)
         return self.xp.clear64(self.base+off, value, check=check)
 
     def dtm_test64(self, off, value):
         return self.xp.test64(self.base+off, value)
 
+    @property
+    def unit_info(self):
+        """
+        Read and cache this DTM's unit-info register on first access.
+        Return None on CMN-600, which has no DTM unit-info register.
+        """
+        config = self.C.product_config
+        if config.is_before_gen(cmn_config.CMN_GEN_650):
+            return None
+        if self._unit_info is None:
+            # Unit-info registers are in the XP's identification area, with
+            # an 8-byte stride, not the DTM control block's 0x200-byte stride.
+            # See the TRM's por_dtm_unit_info and por_dtm_unit_info_dt<n>.
+            # CI-700 uses the CMN-650 layout (Arm 101569, section 5.3.6.12-13).
+            if config.is_before_gen(cmn_config.CMN_GEN_700) or config.product_id == cmn_base.PART_CI700:
+                off = CMN650_DTM_UNIT_INFO
+            else:
+                off = CMN700_DTM_UNIT_INFO
+            self._unit_info = self.xp.read64(off + (self.index * 8))
+        return self._unit_info
+
     def dtc_domain(self):
-        return self.xp.dtc_domain()
+        """
+        Return this DTM's DTC domain, or None if it cannot be determined.
+        """
+        info = self.unit_info
+        if info is not None:
+            return BITS(info, 0, 2)
+        # CMN-600 has no domain indicator. Preserve the single-DTC fallback;
+        # with multiple DTCs the assignment cannot be discovered this way.
+        return 0 if len(self.C.debug_nodes) == 1 else None
+
+    def dtm_check_reg_is_writeable(self, off):
+        """
+        Some DTM configuration registers are only writeable when the DTM is disabled.
+        The documentation of dtm_enable says:
+          "Enables debug watchpoint and PMU function; prior to writing this bit, all other DT
+           configuration registers must be programmed; once this bit is set, other DT
+           configuration registers must not be modified"
+        """
+        if off not in [CMN_DTM_CONTROL_off, CMN_DTM_FIFO_ENTRY_READY_off] and self._dtm_is_enabled:
+            assert False, "%s: try to write DTM programming register at 0x%x when DTM is enabled" % (self, off)
 
     def dtm_enable(self):
         """
@@ -1198,6 +1330,72 @@ class CMNDTM:
     def dtm_sets_tracetag(self):
         return self.dtm_test64(CMN_DTM_CONTROL_off, CMN_DTM_CONTROL_TRACE_TAG_ENABLE)
 
+    def dtm_save(self):
+        """Read the state needed to undo watchpoint and local PMU programming.
+
+        Reads only control, PMU configuration/live counters and the four
+        watchpoint configurations/values/masks. No writes or FIFO accesses.
+        The caller must own this DTM until restoration is complete.
+        """
+        return DTMState(self)
+
+    def dtm_restore(self, state, restore_control=True):
+        """Restore saved watchpoints/counters/configuration while disabled.
+
+        The caller must first disable the DTM. With restore_control=False,
+        leave it disabled so multiple DTMs can be restored before any resume.
+        Use dtm_restore_control() afterwards to restore the original enables.
+        Configuration words are restored exactly, including fields unknown to
+        DTMWatchpoint.decode()/encode(). If a register restore fails, control
+        is not restored.
+        """
+        if not isinstance(state, DTMState):
+            raise TypeError("expected a DTMState")
+        state._validate(self)
+        if self._dtm_is_enabled is None or self._dtm_is_enabled:
+            raise ValueError("disable the DTM before restoring its state")
+        for slot, wp in enumerate(state.watchpoints):
+            self.dtm_write64(CMN_DTM_WP0_VAL_off + 24 * slot, wp.value)
+            self.dtm_write64(CMN_DTM_WP0_MASK_off + 24 * slot, wp.mask)
+            self.dtm_write64(CMN_DTM_WP0_CONFIG_off + 24 * slot, wp.cfg)
+        self.dtm_write64(CMN_DTM_PMU_PMEVCNT_off, state.counters)
+        self.dtm_write64(CMN_DTM_PMU_CONFIG_off, state.pmu_config)
+        if restore_control:
+            self.dtm_restore_control(state)
+
+    def dtm_restore_control(self, state):
+        """Resume saved DTM control after all related configurations are restored."""
+        if not isinstance(state, DTMState):
+            raise TypeError("expected a DTMState")
+        state._validate(self)
+        self.dtm_set_control(control=state.control, atb=True,
+                             enable=bool(state.control & CMN_DTM_CONTROL_DTM_ENABLE))
+
+    def dtm_update_control(self, enable=None, tag=None, sample=None, atb=None, control=None):
+        """Change specified controls, preserving all other bits; return the word.
+
+        Unlike dtm_set_control(), False explicitly clears a feature and None
+        leaves it unchanged. Supply an already saved control word to avoid a
+        read; otherwise read the current control register once. Does not clear
+        watchpoints, counters or FIFO entries.
+        """
+        fields = [(enable, CMN_DTM_CONTROL_DTM_ENABLE),
+                  (tag, CMN_DTM_CONTROL_TRACE_TAG_ENABLE),
+                  (sample, CMN_DTM_CONTROL_SAMPLE_PROFILE_ENABLE),
+                  (None if atb is None else not atb, CMN_DTM_CONTROL_TRACE_NO_ATB)]
+        for value in [enable, tag, sample, atb]:
+            if value is not None and not isinstance(value, bool):
+                raise TypeError("DTM control flags must be bool or None")
+        if control is None:
+            control = self.dtm_read64(CMN_DTM_CONTROL_off)
+        cmn_config.check_integer(control, "DTM control", maximum=(1 << 64) - 1)
+        for value, mask in fields:
+            if value is not None:
+                control = (control | mask) if value else (control & ~mask)
+        self.dtm_set_control(control=control, atb=True,
+                             enable=bool(control & CMN_DTM_CONTROL_DTM_ENABLE))
+        return control
+
     def dtm_clear_fifo(self):
         """
         Ensure the FIFO is empty, after reading its contents.
@@ -1227,13 +1425,12 @@ class CMNDTM:
         # The cycle count is at a fixed bit offset in register #2, but the
         # offset varies by part number, reflecting the FIFO data size
         cc_off = 48
-        if self.C.product_config.product_id == cmn_base.PART_CMN600:
+        if self.C.product_config.is_before_gen(cmn_config.CMN_GEN_650):
             dwidth = 144
             cc_off = 16       # 31:16 in word 2
-        elif self.C.product_config.product_id == cmn_base.PART_CMN650:
+        elif self.C.product_config.is_before_gen(cmn_config.CMN_GEN_700):
             dwidth = 160
-        elif ((self.C.product_config.product_id != cmn_base.PART_CMN_S3) or
-             self.C.product_config.revision_major < 2):
+        elif self.C.product_config.is_before_gen(cmn_config.CMN_GEN_S3r2):
             dwidth = 176
         else:
             dwidth = 196
@@ -1276,13 +1473,13 @@ class CMNDTM:
             w.mask = self.dtm_read64(CMN_DTM_WP0_MASK_off+(wp*24))
         return w
 
-    def dtm_set_watchpoint(self, wp, val=0, mask=0xffffffffffffffff, gen=True, group=None, format=None, chn=None, dev=None, cc=False, exclusive=False, combine=False):
+    def dtm_set_watchpoint(self, wp, val=0, mask=0xffffffffffffffff, gen=True, group=None, format=None, chn=None, chn_num=0, dev=None, cc=False, exclusive=False, combine=False):
         """
         Configure a watchpoint on the XP. The DTM should be disabled.
         The mask is the bits we don't care about. I.e. 0 is exact match, 0xffffffffffffffff is don't care.
         Deprecated: prefer dtm_wp_set instead.
         """
-        w = DTMWatchpoint(dtm=self, value=val, mask=mask, pkt_gen=gen, combine=combine, type=format, chn=chn, dev=dev, cc=cc, grp=group, exclusive=exclusive)
+        w = DTMWatchpoint(dtm=self, value=val, mask=mask, pkt_gen=gen, combine=combine, type=format, chn=chn, chn_num=chn_num, dev=dev, cc=cc, grp=group, exclusive=exclusive)
         self.dtm_wp_set(wp, w)
 
     def dtm_wp_set(self, wp, w):
@@ -1296,24 +1493,43 @@ class CMNDTM:
             self.dtm_write64(CMN_DTM_WP0_MASK_off+(wp*24), w.mask)
         self.dtm_write64(CMN_DTM_WP0_CONFIG_off+(wp*24), w.encode())
 
-    def dtm_wp_reset(self, wp):
+    def dtm_wp_reset(self, wp, preserve_config=True):
         """
         Reset a watchpoint to match nothing and do nothing.
-        But don't change the format and channel info, as we may have captured a packet
-        in the FIFO and need the watchpoint configuration to decode it.
+        By default preserve format and channel info needed to decode existing
+        FIFO entries. With preserve_config=False also clear all configuration
+        (including trace/trigger/combine settings), without reading it first.
+        Neither mode reads or clears FIFO contents. The DTM must be disabled.
         """
+        cmn_config.check_integer(wp, "watchpoint number", maximum=DTM_N_WATCHPOINTS - 1)
+        if not preserve_config:
+            self.dtm_write64(CMN_DTM_WP0_VAL_off + wp * 24, 0xffffffffffffffff)
+            self.dtm_write64(CMN_DTM_WP0_MASK_off + wp * 24, 0)
+            self.dtm_write64(CMN_DTM_WP0_CONFIG_off + wp * 24, 0)
+            return
         cfg = self.dtm_read64(CMN_DTM_WP0_CONFIG_off+(wp*24))
-        self.dtm_write64(CMN_DTM_WP0_MASK_off+(wp*24), 0x0000000000000000)
-        self.dtm_write64(CMN_DTM_WP0_VAL_off+(wp*24), 0xcccccccccccccccc)
         cfg &= ~self.C.DTM_WP_PKT_GEN
+        self.dtm_write64(CMN_DTM_WP0_CONFIG_off+(wp*24), cfg)    # disable packet gen immediately
+        if False:
+            self.dtm_write64(CMN_DTM_WP0_MASK_off+(wp*24), 0x0000000000000000)
+            self.dtm_write64(CMN_DTM_WP0_VAL_off+(wp*24), 0xcccccccccccccccc)
+            cfg &= ~self.C.DTM_WP_EXCLUSIVE
+        else:
+            # Match everything, but then invert it, matching nothing
+            self.dtm_write64(CMN_DTM_WP0_MASK_off+(wp*24), 0xffffffffffffffff)
+            self.dtm_write64(CMN_DTM_WP0_VAL_off+(wp*24), 0x0000000000000000)
+            cfg |= self.C.DTM_WP_EXCLUSIVE
         self.dtm_write64(CMN_DTM_WP0_CONFIG_off+(wp*24), cfg)
 
-    def dtm_reset_wps(self):
+    def dtm_reset_wps(self, preserve_config=True):
         """
-        Reset all watchpoints to match nothing
+        Reset all watchpoints; see dtm_wp_reset() for configuration retention.
         """
-        for i in range(0, 4):
-            self.dtm_wp_reset(i)
+        for i in range(0, CMN_DTM_N_WP):
+            if preserve_config:
+                self.dtm_wp_reset(i)
+            else:
+                self.dtm_wp_reset(i, preserve_config=False)
 
     def dtm_atb_packet_header(self, wp, lossy=0):
         """
@@ -1321,7 +1537,7 @@ class CMNDTM:
         """
         w = self.dtm_wp_config(wp)
         nid = self.xp.node_id()
-        if self.C.product_config.product_id == cmn_base.PART_CMN600:
+        if self.C.product_config.gen == cmn_config.CMN_GEN_600:
             h = (w.chn << 30) | (w.dev << 29) | (w.wp << 27) | (w.type << 24) | (nid << 8) | 0x40 | (w.cc << 4) | lossy
         else:
             h = (w.chn_num << 30) | (w.chn << 28) | (w.wp << 24) | ((nid >> 3) << 11) | (w.dev << 8) | 0x40 | (w.cc << 4) | (w.type << 1) | lossy
@@ -1330,8 +1546,74 @@ class CMNDTM:
     def pmu_enable(self):
         self.dtm_set64(CMN_DTM_PMU_CONFIG_off, CMN_DTM_PMU_CONFIG_PMU_EN)
 
-    def pmu_disable(self):
-        self.dtm_clear64(CMN_DTM_PMU_CONFIG_off, CMN_DTM_PMU_CONFIG_PMU_EN)
+    def pmu_disable(self, config=None):
+        """Disable local counting, optionally using a saved configuration to avoid a read."""
+        if config is None:
+            self.dtm_clear64(CMN_DTM_PMU_CONFIG_off, CMN_DTM_PMU_CONFIG_PMU_EN)
+        else:
+            cmn_config.check_integer(config, "DTM PMU configuration", maximum=(1 << 64) - 1)
+            self.dtm_write64(CMN_DTM_PMU_CONFIG_off, config & ~CMN_DTM_PMU_CONFIG_PMU_EN)
+
+    def pmu_configure_local(self, inputs, width=16):
+        """Configure and enable local counting without exporting to DTC counters.
+
+        Supply one input selector per counter: four at width=16, two at 32,
+        or one at 64. Selectors 0..3 count WP0..WP3 matches; other selectors
+        count XP/device events. Device event selections are programmed separately.
+        The DTM must be disabled. Does not reset counter values or enable DTCs.
+
+        Arm CMN S3 TRM 107858_0203_05, por_dtm_pmu_config:
+        https://documentation-service.arm.com/static/67ac4cf66dbc975ccea92cd0
+        Pair/all-combined fields concatenate local counters. Paired-global bits
+        remain clear, so local counter rollovers are not exported to a DTC.
+        """
+        self._pmu_check_width(width)
+        inputs = list(inputs)
+        if len(inputs) != 64 // width:
+            raise ValueError("need %u input selectors for %u-bit local counters" % (64 // width, width))
+        for value in inputs:
+            cmn_config.check_integer(value, "DTM PMU input selector", maximum=255)
+        config = CMN_DTM_PMU_CONFIG_PMU_EN
+        if width == 32:
+            config |= CMN_DTM_PMU_CONFIG_PMEVCNT01_COMBINED | CMN_DTM_PMU_CONFIG_PMEVCNT23_COMBINED
+        elif width == 64:
+            config |= CMN_DTM_PMU_CONFIG_PMEVENTALL_COMBINED
+        for i, value in enumerate(inputs):
+            config |= value << (32 + i * (width // 16) * 8)
+        if self._dtm_is_enabled is None or self._dtm_is_enabled:
+            raise ValueError("disable the DTM before configuring local counters")
+        self.dtm_write64(CMN_DTM_PMU_CONFIG_off, config)
+
+    @staticmethod
+    def _pmu_check_width(width):
+        cmn_config.check_integer(width, "DTM PMU counter width")
+        if width not in [16, 32, 64]:
+            raise ValueError("DTM PMU counter width must be 16, 32 or 64")
+
+    def pmu_counters(self, width=16):
+        """Read all live local counters in one access, with the programmed width.
+
+        The caller supplies the width so sampling needs no configuration read.
+        Ordering is from the lowest to highest local counter.
+        """
+        self._pmu_check_width(width)
+        value = self.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
+        mask = (1 << width) - 1
+        return [(value >> shift) & mask for shift in range(0, 64, width)]
+
+    def pmu_set_counters(self, values, width=16):
+        """Set all live local counters in one write while the DTM is disabled."""
+        self._pmu_check_width(width)
+        values = list(values)
+        if len(values) != 64 // width:
+            raise ValueError("need %u values for %u-bit local counters" % (64 // width, width))
+        packed = 0
+        for i, value in enumerate(values):
+            cmn_config.check_integer(value, "DTM PMU counter value", maximum=(1 << width) - 1)
+            packed |= value << (i * width)
+        if self._dtm_is_enabled is None or self._dtm_is_enabled:
+            raise ValueError("disable the DTM before setting local counters")
+        self.dtm_write64(CMN_DTM_PMU_PMEVCNT_off, packed)
 
     def pmu_is_enabled(self):
         return self.dtm_test64(CMN_DTM_PMU_CONFIG_off, CMN_DTM_PMU_CONFIG_PMU_EN)
@@ -1366,7 +1648,9 @@ class CMNDTM:
             # The actual event exported by the device will be selected by the device's pmu_event_sel.
             # (Note that for a given (port, device) pair, there must be at
             # most one device capable of exporting PMU events.)
-            port = (eis >> 4) - 1
+            # Multi-DTM selectors use DTM-local ports 0/1. Device discovery
+            # uses XP-wide ports. CMN-700 TRM 102308, por_dtm_pmu_config_dt1-3.
+            port = (eis >> 4) - 1 + 2*self.index
             device = BITS(eis, 2, 2)
             eix = (eis & 3)       # index into device's pmu_event_sel
             s = "P%u device %u PMU Event #%u" % (port, device, eix)
@@ -1432,6 +1716,26 @@ class CMNNodeDev(CMNNodeBase):
     def port(self):
         return self.XP().port(self.port_number)
 
+    def PD(self):
+        """
+        Get the (port, device) for the node.
+        """
+        return self.device.PD()
+
+
+class DTCState(object):
+    """Saved DTC debug/PMU controls; excludes event counters and trace state."""
+    def __init__(self, dtc):
+        self.dtc = dtc
+        self.control = dtc.read64(CMN_DTC_CTL)
+        self.pmu_control = dtc.read64(dtc.PM_BASE + CMN_DTC_PMCR_off)
+
+    def _validate(self, dtc):
+        if self.dtc is not dtc:
+            raise ValueError("saved state belongs to a different DTC")
+        for value in [self.control, self.pmu_control]:
+            cmn_config.check_integer(value, "saved DTC register", maximum=(1 << 64) - 1)
+
 
 class CMNNodeDT(CMNNodeDev):
     """
@@ -1466,25 +1770,62 @@ class CMNNodeDT(CMNNodeDev):
         return BITS(self.node_info, 32, 2)
 
     def is_DTC0(self):
-        return self.dtc_domain() == 0
+        """
+        Return true if this DTC is a DTC0. As of S3, a mesh may contain multiple DTC0s.
+        The node type is always CMN_NODE_DT.
+        """
+        return self.port.has_properties(CMN_PROP_HND)
 
     def dtc_reset(self):
         self.write64(CMN_DTC_CTL, 0)
 
-    def dtc_enable(self, cc=None, pmu=None, clock_disable_gating=None):
+    def dtc_save(self):
+        """Read DTC debug and PMU controls, without changing hardware."""
+        return DTCState(self)
+
+    def dtc_restore(self, state):
+        """Restore saved debug/PMU controls after related DTMs have been stopped."""
+        if not isinstance(state, DTCState):
+            raise TypeError("expected a DTCState")
+        state._validate(self)
+        self.write64(self.PM_BASE + CMN_DTC_PMCR_off, state.pmu_control)
+        self.write64(CMN_DTC_CTL, state.control)
+
+    def dtc_enable(self, cc=None, pmu=None, clock_disable_gating=None, state=None, wait=None):
         """
         Enable the DTC. Optionally also enable other DTC features,
         e.g.
           - cycle-counting for trace
           - PMU
           - always-on clock (i.e. disable clock-gating)
+        wait=False clears wait-for-trigger so counting starts immediately;
+        None preserves it. A state from dtc_save() supplies the control and
+        PMU configuration without read/modify/write accesses. Other optional
+        features retain their existing access behavior.
         """
+        if state is not None:
+            if not isinstance(state, DTCState):
+                raise TypeError("expected a DTCState")
+            state._validate(self)
+        if wait is not None and not isinstance(wait, bool):
+            raise TypeError("DTC wait flag must be bool or None")
         self.C.log("DTC enable: %s" % self)
-        self.set64(CMN_DTC_CTL, CMN_DTC_CTL_DT_EN)
+        if state is None and wait is None:
+            self.set64(CMN_DTC_CTL, CMN_DTC_CTL_DT_EN)
+        else:
+            control = self.read64(CMN_DTC_CTL) if state is None else state.control
+            if wait is not None:
+                control = (control | CMN_DTC_CTL_DT_WAIT_FOR_TRIGGER) if wait else (control & ~CMN_DTC_CTL_DT_WAIT_FOR_TRIGGER)
+            self.write64(CMN_DTC_CTL, control | CMN_DTC_CTL_DT_EN)
         if cc:
+            # Enable cycle counting at the DTMs. This is sticky - regardless of the future contents
+            # of this bit, the DTMs continue to count once started.
             self.set64(CMN_DTC_TRACECTRL, CMN_DTC_TRACECTRL_CC_ENABLE)
         if pmu:
-            self.pmu_enable()
+            if state is None:
+                self.pmu_enable()
+            else:
+                self.pmu_enable(config=state.pmu_control)
         if clock_disable_gating is not None:
             self.clock_disable_gating(clock_disable_gating)
 
@@ -1495,8 +1836,15 @@ class CMNNodeDT(CMNNodeDev):
     def dtc_is_enabled(self):
         return self.test64(CMN_DTC_CTL, CMN_DTC_CTL_DT_EN)
 
-    def pmu_enable(self):
-        self.set64(self.PM_BASE + CMN_DTC_PMCR_off, CMN_DTC_PMCR_PMU_EN)
+    def pmu_enable(self, config=None):
+        """
+        Enable counting, optionally using saved PMU control to avoid a read.
+        """
+        if config is None:
+            self.set64(self.PM_BASE + CMN_DTC_PMCR_off, CMN_DTC_PMCR_PMU_EN)
+        else:
+            cmn_config.check_integer(config, "DTC PMU control", maximum=(1 << 64) - 1)
+            self.write64(self.PM_BASE + CMN_DTC_PMCR_off, config | CMN_DTC_PMCR_PMU_EN)
 
     def pmu_disable(self):
         self.clear64(self.PM_BASE + CMN_DTC_PMCR_off, CMN_DTC_PMCR_PMU_EN)
@@ -1528,11 +1876,11 @@ class CMNNodeDT(CMNNodeDev):
         """
         return self.read64(self.PM_BASE + CMN_DTC_PMCCNTR_off)
 
-    def pmu_clear_cc(self):
+    def pmu_clear_cc(self, value=0):
         """
         Reset the DTC's fixed-function cycle counter to zero
         """
-        self.write64(self.PM_BASE + CMN_DTC_PMCCNTR_off, 0)
+        self.write64(self.PM_BASE + CMN_DTC_PMCCNTR_off, value)
 
     def pmu_cc_subtract(self, t1, t0):
         """
@@ -1574,6 +1922,7 @@ class CMNNodeDT(CMNNodeDev):
         We need to set the "disable clock-gating" bit... this allows
         the clock to run all the time.
         Return the previous setting.
+        Only functional in DTC0.
         """
         return self.setclear64(CMN_DTC_CTL, CMN_DTC_CTL_CG_DISABLE, disable_gating)
 
@@ -1643,6 +1992,7 @@ class CMN:
                 atexit.register(lambda: g_trace_fd.close())
         self.secure_accessible = secure_accessible    # if None, will be found from CFG
         self.cmn_seq = cmn_loc.cmn_seq             # instance number within the system (semi-arbitrary numbering)
+        self._c2c_links = []
         self.periphbase = cmn_loc.periphbase
         rootnode_offset = cmn_loc.rootnode_offset
         self.node_skiplist = cmn_loc.node_skiplist
@@ -1658,6 +2008,7 @@ class CMN:
         # from the root node
         self.product_config = None
         self.frequency = None
+        self._home_node_type = None     # populated from existing discovery metadata
         self.D = devmem.DevMem(write=False, check=check_writes, space=cmn_loc.mem_space)
         self.D.cmn_mesh_name = cmn_loc.name
         self.is_local = self.D.is_local    # False when accessing via remote debugger etc.
@@ -1677,25 +2028,40 @@ class CMN:
         self.extra_ports = NotTestable("shouldn't calculate device ids before all XPs seen")
         # Discovery phase.
         self.creating = True
+
         # we can't map nodes until we know the node size, but we don't
         # know that until we've mapped the root config node...
         # create a temporary 16K mapping to get out of that.
         temp_m = self.D.map(self.periphbase+rootnode_offset, 0x4000)
+
         id01 = temp_m.read64(CMN_CFG_PERIPH_01)
         product_id = (BITS(id01, 32, 4) << 8) | BITS(id01, 0, 8)
+
+        id23 = temp_m.read64(CMN_CFG_PERIPH_23)
+        revision_code = BITS(id23, 4, 4)
+
+        if product_id == cmn_base.PART_CMN600 and revision_code == 1:
+            # Work around a bug in a specific CMN implementation:
+            # product_id mis-identifies as CMN-600: we need to find something
+            # that is safe to read but indicates it's definitely not CMN-600.
+            # Check the later CHI version fields: in CMN-600 these are RES0.
+            unit_info = temp_m.read64(CMN_any_UNIT_INFO)
+            s3_chi_r0_r1 = BITS(unit_info, 60, 3)
+            s3_chi_r2 = BITS(unit_info, 56, 3)
+            if s3_chi_r0_r1 >= 2 or s3_chi_r2 >= 2:
+                product_id = cmn_base.PART_CMN_ALTA
+
         if cmn_loc.product_id is not None:
             assert cmn_loc.product_id == product_id, "expecting %s, found %s" % (cmn_config.product_id_str(cmn_loc.product_id), cmn_base.product_id_str(product_id))
         # For now, if we see CMN-600AE, pretend it's CMN-600, to not break tests in code.
         if product_id == cmn_base.PART_CMN600AE:
             product_id = cmn_base.PART_CMN600
         # We can't get chi_version() until we've read unit_info (por_info_global) and revision (periph_2/3)
-        self.product_config = cmn_config.CMNConfig(product_id=product_id)
+        self.product_config = cmn_config.CMNConfig(product_id=product_id, revision_code=revision_code)
         del temp_m
 
         self.rootnode = self.create_node(rootnode_offset)
 
-        # The release is e.g. r0p0, r1p2
-        self.product_config.set_revision_code(BITS(self.rootnode.read64(CMN_CFG_PERIPH_23), 4, 4))
         # Now it's safe to discover things whose identifiers are revision-dependent
 
         # Load the PMU event database, if available
@@ -1774,23 +2140,22 @@ class CMN:
             self.log("CMN configuration: %s" % self.product_config, level=1)
 
         if self.unit_info1 is not None:
-            if self.product_config.product_id < cmn_base.PART_CMN_S3 or self.product_config.revision_major in [0, 1]:
-                self.product_config.mte_enabled = BIT(self.unit_info1, 19)
+            if self.product_config.is_before_gen(cmn_config.CMN_GEN_S3r2):
+                self.product_config.mte_enabled = bool(BIT(self.unit_info1, 19))
             else:
-                self.product_config.mte_enabled = BIT(self.unit_info1, 25)
-        if self.product_config.product_id == cmn_base.PART_CMN_S3:
-            if self.product_config.revision_major == 1:
+                self.product_config.mte_enabled = bool(BIT(self.unit_info1, 25))
+        if self.product_config.is_at_least_gen(cmn_config.CMN_GEN_S3r1):
+            if self.product_config.is_before_gen(cmn_config.CMN_GEN_S3r2):
                 iohub_enable = BIT(self.unit_info1, 28)
                 chi_mecid_width = BITS(self.unit_info1, 26, 2)
                 mpam12 = BIT(self.unit_info1, 25)
-            elif self.product_config.revision_major >= 2:
+            else:
                 iohub_enable = BIT(self.unit_info1, 34)
                 chi_mecid_width = BITS(self.unit_info1, 32, 2)
                 mpam12 = BIT(self.unit_info1, 31)
-            if self.product_config.revision_major >= 1:
-                if self.product_config.mpam_enabled:
-                    self.product_config.mpam_partid_width = 12 if mpam12 else 9
-                self.mecid_width = [0, 12, 16, 0][chi_mecid_width]
+            if self.product_config.mpam_enabled:
+                self.product_config.mpam_partid_width = 12 if mpam12 else 9
+            self.mecid_width = [0, 12, 16, 0][chi_mecid_width]
 
         #
         # Now traverse the CMN space to discover all the nodes. We can optionally
@@ -1832,7 +2197,7 @@ class CMN:
             (X,Y) = xp.XY()
             self.coord_XP[(X,Y)] = xp
         # Some offsets change from CMN-650 onwards
-        if self.product_config.product_id == cmn_base.PART_CMN600:
+        if self.product_config.is_before_gen(cmn_config.CMN_GEN_650):
             self.DTM_WP_RSVDC_BSEL_SHIFT = None
             self.DTM_WP_EXCLUSIVE    = 0x0020
             self.DTM_WP_COMBINE      = 0x0040
@@ -1865,6 +2230,17 @@ class CMN:
             self.validate_skiplist()
         if self.verbose:
             self.log("Mesh discovery complete%s" % (" (device discovery is lazy)" if self.defer_device_discovery else ""), level=1)
+
+    def c2c_links(self):
+        """Iterate recorded links incident on this mesh without discovery."""
+        return iter(self._c2c_links)
+
+    def is_live(self):
+        """
+        This model provides register access and status queries.
+        No discovery or register access is needed to determine this.
+        """
+        return True
 
     def has_cpu_mappings(self):
         return False
@@ -1913,26 +2289,21 @@ class CMN:
 
     def part_ge_650(self):
         # everything except CMN-600
-        return self.product_config.product_id != cmn_base.PART_CMN600
+        return self.product_config.is_at_least_gen(cmn_config.CMN_GEN_650)
 
     def part_ge_700(self):
         # everything except CMN-600 and CMN-650
-        return self.product_config.product_id not in [cmn_base.PART_CMN600, cmn_base.PART_CMN650]
+        return self.product_config.is_at_least_gen(cmn_config.CMN_GEN_700)
 
     def part_ge_S3(self):
         # everything from S3 onwards
-        return self.product_config.product_id == cmn_base.PART_CMN_S3
+        return self.product_config.is_at_least_gen(cmn_config.CMN_GEN_S3)
 
     def part_ge_S3r1(self):
-        if self.product_config.product_id == cmn_base.PART_CMN_S3:
-            return self.product_config.revision_major >= 1
-        return self.part_ge_S3()
+        return self.product_config.is_at_least_gen(cmn_config.CMN_GEN_S3r1)
 
     def part_ge_S3r2(self):
-        # everything from S3 R2 onwards
-        if self.product_config.product_id == cmn_base.PART_CMN_S3:
-            return self.product_config.revision_major >= 2
-        return self.part_ge_S3()
+        return self.product_config.is_at_least_gen(cmn_config.CMN_GEN_S3r2)
 
     def __str__(self):
         """
@@ -2019,7 +2390,7 @@ class CMN:
 
     def create_node(self, node_offset, parent=None, is_external=False):
         """
-        Create a node, either the root node (parent=None) or an XP, or a child node.
+        Create a node, either the root node (parent=None) or an XP, or a device node.
         """
         assert self.creating or self.defer_device_discovery
         node_base_addr = self.periphbase + node_offset
@@ -2030,6 +2401,7 @@ class CMN:
         m = self.D.map(node_base_addr, self.node_size())
         node_info = m.read64(CMN_any_NODE_INFO)
         node_type = BITS(node_info, 0, 16)
+        self._record_home_node_type(node_type)
         if parent is None:
             # Expecting the configuration node. If we see something else,
             # the root node offset was probably wrong.
@@ -2052,6 +2424,8 @@ class CMN:
             # Legacy API: callers expect debug_nodes to be a list.
             # But we now want it sorted by DTC domain.
             dom = n.dtc_domain()
+            if (dom == 0) != (n.port.has_properties(CMN_PROP_HND)):
+                raise CMNDiscoveryError(self, "DTC disagrees about status (dom=%u, port=%u):" % (dom, n.port.connected_type))
             while dom > len(self.debug_nodes):
                 self.debug_nodes.append(None)     # placeholder
             self.debug_nodes = self.debug_nodes[:dom] + [n] + self.debug_nodes[dom+1:]
@@ -2130,24 +2504,14 @@ class CMN:
         return (xp, port, dev)
 
     def port_at_id(self, id):
-        (xp, port, dev) = self.XP_port_device(id)
-        if xp is None:
-            return None
-        po = xp.port(port)
-        if po is None:
-            return None
-        if not (po.base_id() <= id < (po.base_id() + po.max_devices())):
-            return None
-        return po
+        dev = self.device_at_id(id)
+        return dev.port if dev is not None else None
 
     def device_at_id(self, id, create=False):
         """
         Get the CMNDevice object represented by a given id.
         """
-        po = self.port_at_id(id)
-        if po is None:
-            return None
-        return po.device_at_id(id, create=create)
+        return cmn_base.cmn_device_at_id(self, id, create=create)
 
     def ports(self, properties=CMN_PROP_none):
         for xp in self.XPs():
@@ -2197,18 +2561,15 @@ class CMN:
 
     def devices(self, properties=CMN_PROP_none, props=None):
         """
-        Yield device slots matching properties. Unlike nodes(), this includes
-        external attachments such as RN-F and SN-F.
+        Yield device slots (CMNDevice objects) matching properties.
+        Unlike nodes(), this includes external attachments such as RN-F and SN-F.
         """
-        if props is not None:
+        if props is not None:    # legacy
             properties = props
         self.discover_all_devices(properties)
-        for xp in self.XPs():
-            for port in xp.ports():
-                for id in port.ids():
-                    dev = port.device_at_id(id, create=True)
-                    if dev.has_properties(properties):
-                        yield dev
+        for port in self.ports(properties=properties):
+            for dev in port.devices(properties=properties):
+                yield dev
 
     def ids(self, properties=CMN_PROP_none):
         for port in self.ports(properties=properties):
@@ -2246,9 +2607,23 @@ class CMN:
             nk = (node_type, nid)
             return self.logical_id[nk]
 
-    def home_nodes(self, include_device=False):
+    def home_node_type(self):
+        """Return the recorded home-node type code, or None; no discovery."""
+        return self._home_node_type
+
+    def _record_home_node_type(self, node_type):
+        """Record existing topology metadata, rejecting mixed home types in one mesh."""
+        if not cmn_node_type_has_properties(node_type, CMN_PROP_HNF):
+            return
+        if self._home_node_type is not None and self._home_node_type != node_type:
+            raise cmn_base.CMNBadStructure("CMN#%s: conflicting home-node types: %s and %s" %
+                                  (self.cmn_seq, cmn_node_type_str(self._home_node_type),
+                                   cmn_node_type_str(node_type)))
+        self._home_node_type = node_type
+
+    def home_nodes(self):
         for n in self.nodes():
-            if n.is_home_node(include_device=include_device):
+            if n.has_properties(CMN_PROP_HNF):
                 yield n
 
     def XPs(self):
@@ -2273,28 +2648,38 @@ class CMN:
         for d in self.debug_nodes:
             yield d
 
+    def DTC0s(self):
+        """
+        Yield "main" DTCs that control debug/trace for a group of DTC domains.
+        """
+        self.discover_all_devices(CMN_PROP_HND)
+        for dtc in self.debug_nodes:
+            if dtc.is_DTC0():
+                yield dtc
+
     def DTC0(self):
         """
         Return the "main" DTC, the one that enables debug/trace across the whole mesh.
         Every mesh has one. The only way this will return None is if the device node was isolated.
+        As of CMN S3, a mesh may have more than one.
         """
         self.discover_all_devices(CMN_PROP_HND)
         return self.debug_nodes[0] if self.debug_nodes else None
 
     def dtc_enable(self, cc=None, pmu=None, clock_disable_gating=None):
-        for d in self.DTCs():
+        for d in self.DTC0s():
             d.dtc_enable(cc=cc, pmu=pmu, clock_disable_gating=clock_disable_gating)
 
     def dtc_disable(self):
-        for d in self.DTCs():
+        for d in self.DTC0s():
             d.dtc_disable()
 
     def pmu_enable(self):
-        for d in self.DTCs():
+        for d in self.DTC0s():
             d.pmu_enable()
 
     def clock_disable_gating(self, disable_gating=True):
-        for d in self.DTCs():
+        for d in self.DTC0s():
             d.clock_disable_gating(disable_gating)
 
     def estimate_frequency(self, td=0.02):
@@ -2320,7 +2705,7 @@ def hn_cache_geometry(n):
     Retrieve the cache details for a home node, and create a
     CacheGeometry object.
     """
-    assert n.is_home_node()
+    assert n.has_properties(CMN_PROP_HNF)
     info = n.read64(CMN_any_UNIT_INFO)
     cg = cmn_base.CacheGeometry()
     cg.n_ways = BITS(info, 8, 5)     # For CMN SLC, 16 or 12
@@ -2341,148 +2726,6 @@ def hn_cache_geometry(n):
     else:
         cg.n_sets_log2 = None
     return cg
-
-
-def pmu_counts(x, cfg):
-    """
-    Yield PMU event counts from an event counter register,
-    taking counter combinations into account.
-    """
-    if cfg & CMN_DTM_PMU_CONFIG_PMEVENTALL_COMBINED:
-        yield x
-    else:
-        if cfg & CMN_DTM_PMU_CONFIG_PMEVCNT01_COMBINED:
-            yield BITS(x, 0, 32)
-        else:
-            yield BITS(x, 0, 16)
-            yield BITS(x, 16, 16)
-        if cfg & CMN_DTM_PMU_CONFIG_PMEVCNT23_COMBINED:
-            yield BITS(x, 32, 32)
-        else:
-            yield BITS(x, 32, 16)
-            yield BITS(x, 48, 16)
-
-
-class CMNDiagramPerf(CMNDiagram):
-    """
-    CMN diagram with PMU counter annotations
-    """
-    def __init__(self, cmn, small=False, counter_scale=1, counter_threshold=1):
-        self.pmu_config = {}
-        self.counter_scale = counter_scale
-        self.counter_threshold = counter_threshold
-        cmn.discover_all_devices()
-        CMNDiagram.__init__(self, cmn, small=small, update=False)
-        for xp in cmn.XPs():
-            self.pmu_config[xp] = xp.dtm.dtm_read64(CMN_DTM_PMU_CONFIG_off)
-        self.pmu = {}
-        self.capture_pmu()
-        self.update()
-
-    def capture_pmu(self):
-        for xp in self.C.XPs():
-            self.pmu[xp] = xp.dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
-
-    def port_label_color(self, po):
-        (dev_label, dev_color) = CMNDiagram.port_label_color(self, po)
-        if po.has_properties(CMN_PROP_HNT):
-            # Does this have a DTC node, and if so, is it enabled?
-            for nd in po.nodes():
-                if nd.type() == CMN_NODE_DT and nd.dtc_is_enabled():
-                    dev_color += "!"
-        return (dev_label, dev_color)
-
-    def update(self):
-        CMNDiagram.update(self)
-        for xp in self.C.XPs():
-            if xp.dtm.pmu_is_enabled():
-                (cx, cy) = self.XP_xy(xp)
-                # Get the current PMU values, and calculate the deltas.
-                cfg = self.pmu_config[xp]
-                opd = self.pmu[xp]          # Previous snapshot
-                npd = xp.dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
-                tab = 0
-                for (ov, nv) in zip(pmu_counts(opd, cfg), pmu_counts(npd, cfg)):
-                    dv = nv - ov
-                    if dv < 0:
-                        # TBD: only expect to see this for non-concatenated counters,
-                        # but if we did see it for concatenated, the adjustment is wrong
-                        dv += 0x10000
-                    dv >>= self.counter_scale
-                    dcolor = None
-                    if dv > self.counter_threshold:
-                        dcolor = "red!"
-                    self.at(cx+tab, cy-1, "%4x" % dv, color=dcolor)
-                    tab += 5
-                self.pmu[xp] = npd          # Update the snapshot
-
-
-def cmn_enable_pmu(C, e0=None, e1=None):
-    """
-    Set up the PMUs to count interesting events. Each XP has a DTM with four counters.
-    Each counter can be programmed to count either an XP event or an imported
-    event from one of its connected nodes (HN-F, SN-F etc. or the XP itself);
-    that node needs to be programmed to export a selected event.
-    For example, to count HN-F cache misses:
-      - program HN-F to export HN_CACHE_MISS event as node event #0
-      - program XP DTM counter #0 to count HN-F's exported event #0
-    """
-    for dtm in C.DTMs():
-        dtm.dtm_write64(CMN_DTM_PMU_CONFIG_off, 0)
-    for hnf in C.home_nodes():
-        hnf_evt0 = e0
-        hnf_evt1 = e1
-        hnf.write64(hnf.PMU_EVENT_SEL[0], (hnf_evt1 << 8) | (hnf_evt0))
-        xp = hnf.XP()
-        pc = xp.dtm.dtm_read64(CMN_DTM_PMU_CONFIG_off)
-        pc &= 0xffffffffffffff00   # mask out chaining bits etc.
-        def xp_pmu_event(p,d,e):
-            return ((p+1) << 4) | (d << 2) | e
-        # Construct event selectors for HN-F events
-        evt0 = xp_pmu_event(hnf.port_number, hnf.device_number, 0)
-        evt1 = xp_pmu_event(hnf.port_number, hnf.device_number, 1)
-        o_wide = True
-        if not o_wide:
-            # each XP can count up to four events - and we have two from each SLC
-            if BITS(pc,32,16) == 0:
-                # not yet used this XP's counters 0 and 1
-                # make counters 2 and 3 count the SLC's event 2 (no-event) - avoid XP counting anything else
-                evd = xp_pmu_event(hnf.port_number, hnf.device_number, 2)
-                pc |= (evd << 56) | (evd << 48) | (evt1 << 40) | (evt0 << 32)
-            else:
-                pc = (evt1 << 56) | (evt0 << 48) | (pc & 0x0000ffffffffffff)
-        else:
-            pc = (evt1 << 56) | (evt1 << 48) | (evt0 << 40) | (evt0 << 32)
-            pc |= CMN_DTM_PMU_CONFIG_PMEVCNT01_COMBINED | CMN_DTM_PMU_CONFIG_PMEVCNT23_COMBINED
-        pc |= CMN_DTM_PMU_CONFIG_PMU_EN
-        if C.verbose > 0:
-            print("%s counting %s event %x" % (xp, hnf, pc))
-        xp.dtm.dtm_write64(CMN_DTM_PMU_CONFIG_off, pc)
-    C.pmu_enable()
-    C.dtc_enable()
-
-
-def cmn_sample_pmu(C):
-    """
-    Assuming that PMU events are being actively counted, show the rate of change.
-    We read PMU counters from the individual XP DTMs, not the DTC overflow counters.
-    """
-    snap = {}
-    for dtm in C.DTMs():
-        snap[dtm] = dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
-    time.sleep(0.01)
-    delta = {}
-    def dsub(a,b):
-        r = a - b
-        if r < 0:
-            r += 65536
-        return r
-    # Read the PMU counters again and get the delta
-    for dtm in C.DTMs():
-        cr = dtm.dtm_read64(CMN_DTM_PMU_PMEVCNT_off)
-        delta[dtm] = [dsub(BITS(cr,i*16,16), BITS(snap[dtm],i*16,16)) for i in range(0,4)]
-    for dtm in C.DTMs():
-        print("%s: %s" % (dtm, delta[dtm]))
 
 
 def cmn_instance(opts=None):
@@ -2511,33 +2754,19 @@ def cmn_from_opts(opts):
 
 def main(argv):
     import argparse
-    def inthex(s):
-        return int(s,16)
     try:
-        parser = argparse.ArgumentParser(description="CMN mesh interconnect explorer", allow_abbrev=False)
+        parser = argparse.ArgumentParser(description="CMN device-memory diagnostics", allow_abbrev=False)
     except TypeError:
-        parser = argparse.ArgumentParser(description="CMN mesh interconnect explorer")
+        parser = argparse.ArgumentParser(description="CMN device-memory diagnostics")
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("--dt-enable", action="store_true", help="enable debug/trace")
-    parser.add_argument("--diagram", action="store_true", help="show CMN diagram")
-    parser.add_argument("--sketch", action="store_true", help="show small CMN diagram")
-    parser.add_argument("--watch", action="store_true", help="watch changes in state")
-    parser.add_argument("--watch-interval", type=float, default=0.1, help="interval for watching")
-    parser.add_argument("--counter-scale", type=int, default=0)
-    parser.add_argument("--counter-threshold", type=inthex, default=0x100)
+    parser.add_argument("--diagram", action="store_true", help="show discovered CMN mesh")
+    parser.add_argument("--sketch", action="store_true", help="show small CMN mesh diagram")
     parser.add_argument("--no-color", action="store_true", help="don't use color output")
     parser.add_argument("--force-color", action="store_true", help="force color output even if not to tty")
-    parser.add_argument("--pmu-enable", action="store_true", help="enable PMU events for SLC")
-    parser.add_argument("--e0", type=inthex, default=1)
-    parser.add_argument("--e1", type=inthex, default=3)
-    parser.add_argument("--pmu-sample", action="store_true", help="show PMU counts")
-    parser.add_argument("--pmu-snapshot", action="store_true", help="initiate a PMU snapshot")
-    parser.add_argument("--dtc", type=int, default=0, help="select DTC node/domain, default DTC#0")
     parser.add_argument("--dump", action="store_true", help="dump CMN registers")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args(argv)
-    if opts.watch and not (opts.diagram or opts.sketch):
-        opts.diagram = True
     CS = cmn_from_opts(opts)
 
     if opts.dump:
@@ -2558,40 +2787,17 @@ def main(argv):
     for C in CS:
         print(C)
         if opts.diagram or opts.sketch:
-            D = CMNDiagramPerf(C, small=(opts.sketch), counter_scale=opts.counter_scale, counter_threshold=opts.counter_threshold)
-            if opts.watch:
-                cmn_enable_pmu(C, e0=opts.e0, e1=opts.e1)
-                D.hide_cursor()
-                while True:
-                    print(D.str_color(no_color=opts.no_color, force_color=opts.force_color, for_file=sys.stdout), end="")
-                    time.sleep(opts.watch_interval)
-                    print(D.cursor_up(), end="")
-                    D.clear()
-                    D.update()
-            else:
-                print(D.str_color(no_color=opts.no_color, force_color=opts.force_color, for_file=sys.stdout), end="")
+            import cmn_diagram
+            C.discover_all_devices()
+            D = cmn_diagram.CMNDiagram(C, small=opts.sketch)
+            print(D.str_color(no_color=opts.no_color, force_color=opts.force_color,
+                              for_file=sys.stdout), end="")
         if opts.dt_enable:
             # Force enable DTC(s), in case they were disabled
             for dtc in C.DTCs():
                 dtc.dtc_enable()
             for dtm in C.DTMs():
                 dtm.dtm_enable()
-        if opts.pmu_enable:
-            cmn_enable_pmu(C, e0=opts.e0, e1=opts.e1)
-            opts.pmu_stat = True
-        if opts.pmu_sample:
-            cmn_sample_pmu(C)
-        if opts.pmu_snapshot:
-            for dtc in C.DTCs():
-                was_enabled = dtc.dtc_is_enabled()
-                dtc.dtc_enable()
-                dtc.pmu_enable()
-                status = dtc.pmu_snapshot()
-                print("PMU snapshot from %s: status=0x%x" % (dtc, status))
-                dtc.show()
-                dtc.pmu_disable()
-                if not was_enabled:
-                    dtc.dtc_disable()
 
 
 if __name__ == "__main__":

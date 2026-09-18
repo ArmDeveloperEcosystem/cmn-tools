@@ -93,19 +93,22 @@ def n_sockets():
     return n_cpus() // n_cpus_per_package
 
 
-def cpu_frequency():
+def cpu_frequency(perf):
     """
     Return estimated current CPU frequency (for some typical CPU) in Hz.
     This assumes a homogeneous system.
     """
-    return (cmn_perfstat.cpu_frequency(), "measured")
+    return (perf.cpu_frequency(), "measured")
 
 
-def cmn_frequency(C):
+def cmn_frequency(C, perf):
+    """
+    Use the cached mesh frequency when available, otherwise measure it with perf.
+    """
     if C.frequency is not None:
         return (C.frequency, "cached")
     else:
-        return (cmn_perfstat.cmn_frequency(instance=C.cmn_seq), "measured")
+        return (perf.cmn_frequency(instance=C.cmn_seq), "measured")
 
 
 def cmn_label(C):
@@ -204,28 +207,67 @@ def freq_str(fp):
     return s
 
 
-def summary_groups(S):
+def summary_groups(S, perf):
+    """
+    Build summary entries, retaining perf for frequency measurements when evaluated.
+    """
     groups = []
-    C = S.CMNs[0] if S is not None and S.CMNs else None
-
-    if C is not None:
-        n_meshes = len(S.CMNs)
-        group_CMN = [
-            ("CMN meshes in system",   None,         lambda: len(S.CMNs)),
-            ("CMN version",           None,         lambda: S.cmn_version().product_name(revision=True)),
-            ("CHI",                   None,         lambda: S.cmn_version().chi_version_str()),
-            (per_mesh_name("Mesh X/Y config", n_meshes),       None,         lambda: ("%u x %u" % (C.dimX, C.dimY))),
-            (per_mesh_name("HN-F/S count", n_meshes),          None,         lambda: len(list(C.home_nodes()))),
-            (per_mesh_name("SN count", n_meshes),              None,         lambda: len(list(C.sn_ids()))),
-            (per_mesh_name("SLC capacity per HN", n_meshes),   memsize_str,  lambda: ((slc_size() // len(list(C.home_nodes()))))),
-            (per_mesh_name("CCG count", n_meshes),             None,         lambda: len(list(C.nodes(CMN_PROP_CCG)))),
-        ]
-        if n_meshes == 1:
-            group_CMN.append(("CMN frequency", freq_str, lambda: cmn_frequency(C)))
-        else:
-            for mesh in S.CMNs:
-                group_CMN.append(("%s frequency" % cmn_label(mesh), freq_str, lambda mesh=mesh: cmn_frequency(mesh)))
+    if S is not None and S.CMNs:
+        meshes = list(S.CMNs)
+        n_meshes = len(meshes)
+        # Count each mesh once; use the same counts for grouping, totals and rows.
+        counts = [(len(list(mesh.home_nodes())), len(list(mesh.sn_ids())),
+                   len(list(mesh.nodes(CMN_PROP_CCG)))) for mesh in meshes]
+        disabled_counts = [(sum(n.is_disabled() for n in mesh.home_nodes()),
+                            sum(n.is_disabled() for n in mesh.nodes()) +
+                            sum(xp.is_disabled() for xp in mesh.XPs())) for mesh in meshes]
+        first = meshes[0]
+        same_meshes = all(
+            mesh.product_config == first.product_config and
+            (mesh.dimX, mesh.dimY, mesh.home_node_type()) ==
+            (first.dimX, first.dimY, first.home_node_type()) and count == counts[0]
+            for mesh, count in zip(meshes, counts)) and all(
+                count == disabled_counts[0] for count in disabled_counts)
+        group_CMN = [("CMN meshes in system", None, n_meshes)]
         groups.append(("CMN", group_CMN))
+        if n_meshes > 1:
+            group_CMN.extend([
+                ("HN-F/S count in system", None, sum(h for h, s, c in counts)),
+                ("SN count in system", None, sum(s for h, s, c in counts)),
+                ("CCG count in system", None, sum(c for h, s, c in counts)),
+            ])
+        if n_meshes > 1 and any(total for home, total in disabled_counts):
+            group_CMN.extend([
+                ("Disabled HN-F/S count in system", None, sum(h for h, t in disabled_counts)),
+                ("Disabled node count in system", None, sum(t for h, t in disabled_counts)),
+            ])
+        for mesh, (n_home, n_sn, n_ccg), (disabled_home, disabled_total) in zip(meshes, counts, disabled_counts):
+            if mesh.product_config is None:
+                entries = [("CMN version", None, "unknown configuration")]
+            else:
+                entries = [(name, None, value) for name, value in mesh.product_config.summary_fields()]
+            shared_meshes = n_meshes if same_meshes else 1
+            entries.extend([
+                (per_mesh_name("Mesh X/Y config", shared_meshes), None, "%u x %u" % (mesh.dimX, mesh.dimY)),
+                ("Home-node type", None, cmn_json.home_node_type(mesh)),
+                (per_mesh_name("HN-F/S count", shared_meshes), None, n_home),
+                (per_mesh_name("SN count", shared_meshes), None, n_sn),
+                # The topology does not record cache capacity per home node.
+                (per_mesh_name("SLC capacity per HN", shared_meshes), memsize_str, None),
+                (per_mesh_name("CCG count", shared_meshes), None, n_ccg),
+            ])
+            if disabled_total:
+                entries.extend([
+                    (per_mesh_name("Disabled HN-F/S count", shared_meshes), None, disabled_home),
+                    (per_mesh_name("Disabled node count", shared_meshes), None, disabled_total),
+                ])
+            if same_meshes:
+                group_CMN.extend(entries)
+                break
+            groups.append((cmn_label(mesh), [("CMN instance", None, mesh.cmn_seq)] + entries))
+        for mesh in meshes:
+            name = "CMN frequency" if n_meshes == 1 else "%s frequency" % cmn_label(mesh)
+            group_CMN.append((name, freq_str, lambda mesh=mesh: cmn_frequency(mesh, perf)))
 
     group_Memory = [
         ("Size",                  memsize_str,  mem_size),
@@ -237,7 +279,8 @@ def summary_groups(S):
 
     group_CPU = [
         ("CPU core version",      None,         lambda: ("0x%08x" % cpu_identification())),
-        ("CPU frequency",         freq_str,     cpu_frequency),
+        ("CPU last level cache",  memsize_str,  slc_size),
+        ("CPU frequency",         freq_str,     lambda: cpu_frequency(perf)),
         ("CPU sockets in system", None,         n_sockets),
         ("CPU cores in system",   None,         n_cpus),
     ]
@@ -273,16 +316,15 @@ def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="Show major system parameters")
     parser.add_argument("-o", "--output", type=str, help="JSON output")
-    parser.add_argument("--perf-bin", type=str, help="override 'perf' command")
+    parser.add_argument("--perf-bin", type=str, default="perf", help="override 'perf' command")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args(argv)
     o_verbose = opts.verbose
-    if opts.perf_bin is not None:
-        cmn_perfstat.o_perf_bin = opts.perf_bin
-    S = cmn_json.system_from_json_file(exit_if_not_found=False)
+    perf = cmn_perfstat.Perf(perf_bin=opts.perf_bin)
+    S = cmn_json.load_system_for_cli(missing_ok=True)
     if S is None and o_verbose:
         print("CMN descriptor not available: showing local system information only", file=sys.stderr)
-    groups = summary_groups(S)
+    groups = summary_groups(S, perf)
     j = {}
     for (gname, group) in groups:
         gj = {}

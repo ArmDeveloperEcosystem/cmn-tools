@@ -43,11 +43,11 @@ Checking perf availability
 
 Use cmn_perfcheck.py first on a new system:
 
-    python cmn_perfcheck.py
+    python src/cmn_perfcheck.py
 
 With more verbose output:
 
-    python cmn_perfcheck.py -v
+    python src/cmn_perfcheck.py -v
 
 This checks whether the arm-cmn PMU driver is visible and whether basic
 CMN events can be opened through perf. If this fails, other perf-based
@@ -61,21 +61,21 @@ cmn_perfstat.py collects one or more perf events and prints counts.
 
 Count one event for the default measurement time:
 
-    python cmn_perfstat.py -e arm_cmn_0/cycles/
+    python src/cmn_perfstat.py -e arm_cmn_0/cycles/
 
 Count more than one event:
 
-    python cmn_perfstat.py \
+    python src/cmn_perfstat.py \
       -e arm_cmn_0/cycles/ \
       -e arm_cmn_0/hnf_cache_miss/
 
 Select the measurement time:
 
-    python cmn_perfstat.py --time 2.0 -e arm_cmn_0/cycles/
+    python src/cmn_perfstat.py --time 2.0 -e arm_cmn_0/cycles/
 
 Show estimated CMN frequency from perf:
 
-    python cmn_perfstat.py --frequency
+    python src/cmn_perfstat.py --frequency
 
 cmn_perfstat.py adjusts readings for perf scheduling fraction where perf
 reports it. This is useful when measuring many events, or on systems
@@ -91,27 +91,27 @@ opcode, address bits, memory attributes or source/target identifiers.
 
 Generate event strings for ReadNoSnp requests:
 
-    python cmnwatch.py up:req:opcode=ReadNoSnp
+    python src/cmnwatch.py up:req:opcode=ReadNoSnp
 
 Use the generated strings directly with perf:
 
-    perf stat -e `python cmnwatch.py up:req:opcode=ReadNoSnp` -- sleep 1
+    perf stat -e `python src/cmnwatch.py up:req:opcode=ReadNoSnp` -- sleep 1
 
 List supported CHI fields:
 
-    python cmnwatch.py --list
+    python src/cmnwatch.py --list
 
 Use explicit options instead of the short watchpoint form:
 
-    python cmnwatch.py --upload --REQ --opcode ReadNoSnp
+    python src/cmnwatch.py --upload --REQ --opcode ReadNoSnp
 
 Match traffic at a CPU, using CPU mappings from the CMN JSON topology:
 
-    python cmnwatch.py --at-cpu 0 --upload --REQ --opcode ReadNoSnp
+    python src/cmnwatch.py --at-cpu 0 --upload --REQ --opcode ReadNoSnp
 
 Run perf stat directly from cmnwatch.py:
 
-    python cmnwatch.py --stat --sleep 1 up:req:opcode=ReadNoSnp
+    python src/cmnwatch.py --stat --sleep 1 up:req:opcode=ReadNoSnp
 
 Watchpoint construction requires the tool to know the CMN version. This
 can come from a CMN JSON description, from system discovery, or from an
@@ -128,13 +128,13 @@ direction and fields it matches.
 
 Decode a single event string:
 
-    python cmn_perfdecode.py --cmn-version=cmn-700 \
+    python src/cmn_perfdecode.py --cmn-version=cmn-700 \
         'arm_cmn/watchpoint_up,wp_chn_sel=0,wp_val=0x80000000,wp_mask=0xfffffff01fffffff,wp_grp=0/'
 
 Use it as a filter:
 
-    perf stat -vv -e `python cmnwatch.py up:req:opcode=ReadNoSnp` -- sleep 1 2>&1 \
-        | python cmn_perfdecode.py --cmn-version=cmn-700
+    perf stat -vv -e `python src/cmnwatch.py up:req:opcode=ReadNoSnp` -- sleep 1 2>&1 \
+        | python src/cmn_perfdecode.py --cmn-version=cmn-700
 
 If CMN topology JSON is available, cmn_perfdecode.py also uses the PMU
 name (for example arm_cmn_0) and the event's nodeid/wp_dev_sel fields
@@ -142,7 +142,7 @@ to show the XP, port type, device slot and explicit node type where it
 can. By default it uses the standard cached CMN JSON file. Pass
 --cmn-json to decode against a specific topology file instead:
 
-    python cmn_perfdecode.py --cmn-json systems/json/n1sdp-cmn.json \
+    python src/cmn_perfdecode.py --cmn-json systems/json/n1sdp-cmn.json \
         'arm_cmn_0/watchpoint_up,wp_chn_sel=0,nodeid=0x0,bynodeid=1,wp_dev_sel=0,wp_mask=0xffffffffffffffff/'
 
 
@@ -154,27 +154,27 @@ important traffic behavior.
 
 Run all built-in top-down levels:
 
-    python cmn_topdown.py --all
+    python src/cmn_topdown.py --all
 
 Run a specific level:
 
-    python cmn_topdown.py --level 1
+    python src/cmn_topdown.py --level 1
 
 Use a fixed measurement interval:
 
-    python cmn_topdown.py --all --time 2.0
+    python src/cmn_topdown.py --all --time 2.0
 
 Print request counts as bandwidth:
 
-    python cmn_topdown.py --all --bandwidth
+    python src/cmn_topdown.py --all --bandwidth
 
 For multi-mesh systems, report mesh-scoped metrics per mesh:
 
-    python cmn_topdown.py --all --per-mesh
+    python src/cmn_topdown.py --all --per-mesh
 
 Run a command while measuring:
 
-    python cmn_topdown.py --all --cmd "sleep 2"
+    python src/cmn_topdown.py --all --cmd "sleep 2"
 
 The --cmd process is started by cmn_topdown.py and killed when the
 measurement ends. Use it for short controlled workloads, not for
@@ -184,25 +184,34 @@ long-running services.
 Recipes
 -------
 
-Top-down measurements can be described by JSON recipes. Built-in recipes
+Top-down measurements can be described by JSON recipes. Example JSON recipes
 are in:
 
     data/recipes/
 
 Use an additional recipe:
 
-    python cmn_topdown.py --recipe my-recipe.json
+    python src/cmn_topdown.py --recipe my-recipe.json
 
 Add a directory to the recipe search path:
 
-    python cmn_topdown.py --recipe-path /path/to/recipes --recipe my-recipe.json
+    python src/cmn_topdown.py --recipe-path /path/to/recipes --recipe my-recipe.json
 
 Print the recipe selected by command-line options:
 
-    python cmn_topdown.py --all --print-recipe
+    python src/cmn_topdown.py --all --print-recipe
 
 Recipes are useful when a system or investigation needs a repeatable set
 of events and derived metrics.
+
+You can validate a JSON recipe against the [recipe schema](../data/schemas/cmn-recipe-schema.json)
+(requires the Python `jsonschema` package):
+
+    python src/validate_json.py --schema=data/schemas/cmn-recipe-schema.json my-recipe.json
+
+The schema checks recipe structure and field types, but event availability
+and watchpoint compatibility with the selected CMN product are checked when
+running the recipe.
 
 
 Event definitions
@@ -216,15 +225,15 @@ cmn_events.py can list or regenerate event data.
 
 List events from a CSV file:
 
-    python cmn_events.py -i data/events/cmn-events-0436.csv --list
+    python src/cmn_events.py -i data/events/cmn-events-0436.csv --list
 
 Add events from sysfs, when the running kernel exposes them:
 
-    python cmn_events.py --add-sysfs --list
+    python src/cmn_events.py --add-sysfs --list
 
 Write an output CSV:
 
-    python cmn_events.py -i input.csv -o output.csv
+    python src/cmn_events.py -i input.csv -o output.csv
 
 Most users do not need cmn_events.py directly. It is mainly useful when
 maintaining event definition files or debugging event naming.

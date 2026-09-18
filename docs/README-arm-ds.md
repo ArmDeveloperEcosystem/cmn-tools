@@ -23,17 +23,23 @@ Generally, tools that access CMN directly will run under DS
 (as well as self-hosted), while tools that use Linux PMU (perf)
 drivers will only run self-hosted.
 
+
+Locating the CMN interconnect
+-----------------------------
+
 The location of CMN interconnect(s) in memory must already
 be known. This can be determined by running the tools self-hosted,
-or from vendor information. The CMN location should be passed in
-on the command line:
+or from vendor information. This may be provided in a target
+configuration (SDF) file.
 
-  ./cmn_xxx.py --cmn-base=<address>
+If not, the CMN location should be passed in on the command line:
+
+    ./src/cmn_xxx.py --cmn-base=<address>
 
 For CMN-600, it is also typically necessary to pass in the offset
 of the CMN root (configuration) node:
 
-  ./cmn_xxx.py --cmn-base=<address> --cmn-root-offset=<offset>
+    ./src/cmn_xxx.py --cmn-base=<address> --cmn-root-offset=<offset>
 
 (For later versions of CMN, this offset is always zero.)
 
@@ -85,20 +91,23 @@ Once this is done, self-hosted scripts can access more details
 of CMN configuration. So a typical use case might be:
 
 From DS:
-  ./cmn_unlock.py --unlock <CMN location>
+  ./src/cmn_unlock.py --unlock <CMN location>
 
 Self-hosted:
-  ./cmn_list.py --node-type=rn
+  ./src/cmn_list.py --node-type=rn
+
+See "Locating the CMN interconnect" above for details of how to provide
+the CMN location where needed.
 
 
 Using CMN scripts with Arm development boards
 ---------------------------------------------
 
 N1SDP:
-  ./cmn_discover.py --cmn-base=0x50000000 --cmn-root-offset=0xd00000
+  ./src/cmn_discover.py --cmn-base=0x50000000 --cmn-root-offset=0xd00000
 
 Morello:
-  ./cmn_discover.py --cmn-base=0x50000000 --cmn-root-offset=0x804000
+  ./src/cmn_discover.py --cmn-base=0x50000000 --cmn-root-offset=0x804000
 
 
 The DS scripting environment
@@ -125,12 +134,12 @@ the target - indeed they may not yet have been created.
 
 Note: DS will treat '#' as a comment character in commands such as:
 
-    source cmn_capture.py cpu#0/up:req
+    source src/cmn_capture.py cpu#0/up:req
 
 All characters after '#' will be ignored. To avoid this, enclose
 command-line arguments in quotes where necessary, e.g.
 
-    source cmn_capture.py 'cpu#0/up:req'
+    source src/cmn_capture.py 'cpu#0/up:req'
 
 
 CMN trace capture over CoreSight ATB using DS

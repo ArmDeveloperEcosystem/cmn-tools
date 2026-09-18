@@ -31,7 +31,8 @@ of the interconnect:
    RN-F, HN-F, RN-I etc.
 
 The script does not discover where CPUs are located in the
-interconnect; this is done by a separate script. (See README.md.)
+interconnect; this is done by a separate script. See
+[CPU location discovery](README-cpu-discovery.md).
 
 
 Prerequisites for running CMN mesh discovery
@@ -55,7 +56,7 @@ Running the CMN mesh discovery script
 
 The script can be run as follows:
 
-    python cmn_discover.py
+    python src/cmn_discover.py
 
 This will create a file ``cmn-system.json`` with details of the
 CMN mesh topology. By default, this is saved in
@@ -70,45 +71,14 @@ Discovering the CPU locations
 This step is optional, but allows tools to refer to CPUs under
 their Linux identities rather than physical request ports.
 
-This step takes the topology description JSON file as input and
-generates traffic to discover CPU locations. The goal is to
-detect which request port (RN-F) the CPU is attached to, and also
-the logical id (LPID) by which it is identified in requests.
+After mesh discovery, discover or refresh the CPU mappings with:
 
-The system must be reasonably free of other load. If successful,
-the discovery script will update the cached JSON file.
+    python src/cmn_detect_cpu.py --update
 
-Depending on system design, the mapping of CPUs to interconnect
-locations may be universal across instances, or it may vary from
-instance to instance (i.e. from chip to chip).
+This uses the topology JSON as input and counts generated traffic through
+the Linux CMN PMU driver. It adds CPU locations without repeating mesh
+register discovery.
 
-To discover the CPU locations, run:
-
-    python cmn_detect_cpu.py --update
-
-Depending on the interconnect design, there are three possible
-outcomes, which impact on later analysis:
-
- - at most one CPU per request port
-
- - several CPUs per request port, distinguished by LPID
-
- - several CPUs per request port, not distinguished by LPID
-
-In the last case, CPU-centric analysis may be more approximate,
-as traffic can only be associated with a group of CPUs.
-
-CPU location detection first attempts to identify CPUs through the
-use of atypical atomic operations that do not normally occur in
-software. If this fails (perhaps because interconnect-level atomics
-are disabled in the system) it falls back to a cruder method based
-on measuring traffic volumes. This method can struggle on busy systems.
-
-Sometimes it may be necessary to re-run CPU detection. This might
-occur if the system is rebooted with a changed firmware or OS
-configuration that results in a different CPU layout, or if a
-"metal" instance is relaunched on a different physical silicon.
-
-In these cases the script can be run with the --update option.
-It will use any previous mappings as starting guesses. This will
-considerably accelerate discovery of the new mappings.
+See [README-cpu-discovery.md](README-cpu-discovery.md) for prerequisites,
+RN-F/SRCID/LPID discovery, atomic and interval methods, verification and
+update workflows, checkpoints, limitations, and implementation details.
