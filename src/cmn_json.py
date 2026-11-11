@@ -161,7 +161,8 @@ def product_config_from_json(j):
         chi_version=jc.get("chi_version", None),
         pa_width=jc.get("pa_width", None),
         req_pa_width=jc.get("req_pa_width", None),
-        rsvdc_width=jc.get("rsvdc_width", None))
+        rsvdc_width=jc.get("rsvdc_width", None),
+        dtm_ports=jc.get("dtm_ports", None))
 
 
 def _check_cmn_json(j):
@@ -176,9 +177,21 @@ def _check_cmn_json(j):
     jc = j["config"]
     _json_object(jc, ["X", "Y", "xps"], "CMN configuration")
     for field in ["X", "Y"]:
-        cmn_config.check_integer(jc[field], "CMN %s dimension" % field, minimum=1, maximum=16)
+        cmn_config.check_integer(jc[field], "CMN %s dimension" % field, minimum=1, maximum=32)
+    if "id_device_bits" in jc:
+        cmn_config.check_integer(jc["id_device_bits"], "CMN device ID bits", minimum=1, maximum=4)
+    if "id_y_bits" in jc:
+        cmn_config.check_integer(jc["id_y_bits"], "CMN Y-coordinate bits", minimum=0, maximum=5)
+    if "flatid" in jc and not isinstance(jc["flatid"], bool):
+        raise TypeError("flatid must be a boolean")
     if jc.get("extra_ports") is not None and not isinstance(jc["extra_ports"], bool):
         raise TypeError("extra_ports must be a boolean")
+    if jc.get("vc_num") is not None:
+        counts = _json_array(jc["vc_num"], "CHI channel instance counts")
+        if len(counts) != 4:
+            raise ValueError("vc_num must contain REQ, RSP, SNP and DAT instance counts")
+        for count in counts:
+            cmn_config.check_integer(count, "CHI channel instance count", minimum=1, maximum=7)
     if j.get("frequency") is not None and _json_number(j["frequency"], "CMN frequency") <= 0:
         raise ValueError("CMN frequency must be positive")
     for field in ["base", "rootnode_offset"]:
@@ -221,7 +234,7 @@ def _check_cmn_json(j):
                 _json_object(jd, ["id", "device_number"], "port device")
                 cmn_config.check_integer(jd["id"], "device node ID")
                 cmn_config.check_integer(jd["device_number"], "device number", maximum=7)
-                _integer_fields(jd, ["dcs"])
+                _integer_fields(jd, ["dcs", "type", "dn_domain"])
             for ja in _json_array(jp.get("attached", []), "attached devices"):
                 _json_object(ja, ["type"], "attached device")
                 if ja["type"] == "cpu":
@@ -241,8 +254,13 @@ def cmn_from_json(j, S, warnings=None):
     n_bad_structure_warnings = 0
     jc = j["config"]
     config = product_config_from_json(j)
-    C = S.create_CMN(dimX=jc["X"], dimY=jc["Y"], config=config, extra_ports=jc.get("extra_ports", None))
+    C = S.create_CMN(dimX=jc["X"], dimY=jc["Y"], config=config,
+                     extra_ports=jc.get("extra_ports", None),
+                     id_device_bits=jc.get("id_device_bits", 3),
+                     flatid=jc.get("flatid", False),
+                     id_y_bits=jc.get("id_y_bits"))
     C.frequency = j.get("frequency", None)
+    C.vc_num = list(jc["vc_num"]) if jc.get("vc_num") is not None else None
     if "base" in jc:
         C.periphbase = _hex_address(jc["base"], "CMN base")
     if "rootnode_offset" in jc:
@@ -279,15 +297,20 @@ def cmn_from_json(j, S, warnings=None):
                 # handle older JSON schema, pre CAL4
                 cal = 2 if cal else 0
             base_id = jp.get("base_id", None)
+            legacy_id_layout = not C.flatid and C.id_device_bits == 3
             if base_id is None and "pdevices" in jp and jp["pdevices"]:
                 # Explicit slot numbers also identify the base when D0 was
                 # not captured. Node-only legacy descriptions cannot do this.
                 base_id = min(jd["id"] - jd["device_number"] for jd in jp["pdevices"])
-            if base_id is None and jp.get("devices"):
+            if base_id is None and jp.get("devices") and legacy_id_layout:
                 base_id = min(jd["id"] for jd in jp["devices"])
             if base_id is None:
                 # Port has no nodes - e.g. SN-F. Legacy schema does not record the base id
-                # of the port, so we calculate it.
+                # of the port. Only the original three-bit layout permits
+                # deriving it from the XP id and port number.
+                if not legacy_id_layout:
+                    raise ValueError("%s P%u: base_id is required for this node-ID layout" %
+                                     (xp, p))
                 db = 1 if (np > 2) else 2
                 base_id = xp.node_id() + (p << db)
                 #print("assuming: %s port %u type %s base id 0x%x" % (xp, p, jp["type_s"], base_id))
@@ -310,6 +333,8 @@ def cmn_from_json(j, S, warnings=None):
                         raise ValueError("%s: device D%u ID does not match its base ID" % (po, dn))
                     try:
                         pdo = po.device(dn, create=True)
+                        if "type" in jd:
+                            pdo = po.create_device(dn, connected_type=jd["type"])
                     except cmn_base.CMNBadStructure:
                         n_bad_structure_warnings += 1
                         if warnings is not None:
@@ -320,6 +345,10 @@ def cmn_from_json(j, S, warnings=None):
                         continue
                     if "dcs" in jd:
                         pdo.device_credited_slices = jd["dcs"]
+                    if "dn_domain" in jd:
+                        cmn_config.check_integer(jd["dn_domain"], "DN domain",
+                                                 maximum=cmn_base.NODE_INFO_FIELD_MAX)
+                        pdo.dn_domain = jd["dn_domain"]
             if "attached" in jp:
                 for ja in jp["attached"]:
                     if ja["type"] == "cpu":
@@ -568,6 +597,10 @@ def json_from_port(p):
             "device_number": dn,
             "id": p.base_id() + dn,
         }
+        if pdo.connected_type is not None:
+            jd["type"] = pdo.connected_type
+        if pdo.dn_domain is not None:
+            jd["dn_domain"] = pdo.dn_domain
         dcs = p.device_credited_slices(dn)
         if dcs is not None:
             jd["dcs"] = dcs
@@ -630,7 +663,7 @@ def json_from_cmn(C, mesh_numbers=None):
     j = {
         "type": "interconnect",
         "product": "CMN",
-        "version": C.product_config.product_name(),
+        "version": C.product_config.product_name(revision=C.product_config.revision_override is not None),
         "revision": C.product_config.revision_code,
         "config": {
             "mpam_enabled": C.product_config.mpam_enabled,
@@ -640,6 +673,8 @@ def json_from_cmn(C, mesh_numbers=None):
             "pa_width": C.product_config.pa_width,
             "req_pa_width": C.product_config.req_pa_width,
             "rsvdc_width": C.product_config.rsvdc_width,
+            "dtm_ports": C.product_config.dtm_ports,
+            "vc_num": C.vc_num,
             "X": C.dimX,
             "Y": C.dimY,
             "extra_ports": C.extra_ports,
@@ -648,6 +683,13 @@ def json_from_cmn(C, mesh_numbers=None):
     }
     if C.product_config.revision_code is None:
         del j["revision"]
+    # FlatID meshes can reserve a different number of bits for a device ID.
+    if C.id_device_bits != 3:
+        j["config"]["id_device_bits"] = C.id_device_bits
+    if isinstance(C, cmn_base.CMN) and C.id_y_bits is not None:
+        j["config"]["id_y_bits"] = C.id_y_bits
+    if C.flatid:
+        j["config"]["flatid"] = True
     j["config"] = dict((name, value) for name, value in j["config"].items() if value is not None)
     if C.periphbase is not None:
         j["config"]["base"] = "0x%x" % C.periphbase
@@ -830,7 +872,7 @@ def system_print_summary_info(S, opts):
         max_cal = 0
         max_port_number = 0
         for p in S.ports():
-            max_cal = max(max_cal, p.cal)
+            max_cal = max(max_cal, p.cal or 0)
             max_port_number = max(max_port_number, p.port_number)
         if max_cal:
             print(" CAL%u" % max_cal, end="")

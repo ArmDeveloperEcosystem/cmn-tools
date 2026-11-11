@@ -130,7 +130,7 @@ def add_trace_arguments(parser, cc_default=False):
     cmn_devmem_find.add_cmnloc_arguments(parser)
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     parser.add_argument("--decode-verbose", type=int, default=0)
-    parser.add_argument("watchpoint", type=str, nargs="*", help="short-form watchpoint specifier")
+    parser.add_argument("watchpoint", type=str, nargs="*", help="short-form watchpoint specifier; #tracetag=none|all|first selects tag injection")
 
 
 def cmn_desc(cmn_direct):
@@ -327,8 +327,8 @@ class CMNVis:
         assert 0 <= w.wp and w.wp <= 3
         cmn_seq = xp.C.cmn_seq
         # Undo WatchBind's DTM-local conversion for display and deduplication:
-        # local port 1 on DTM 1 is XP port 3. DTM 0's numbering is unchanged.
-        port = w.dev + (w.dtm.index * 2)
+        # the group size is integration-specific. DTM0 numbering is unchanged.
+        port = w.dev + w.dtm.port_base
         fg = CMNFlitGroupX(self.cfgs[cmn_seq], cmn_seq=cmn_seq, nodeid=xp.node_id(), WP=w.wp, DEV=port, VC=w.chn, chn_num=w.chn_num, format=w.type, cc=cc, vis=self)
         fg.decode(data)
         if o_deduplicate and self.deduper.is_duplicate(fg):
@@ -431,14 +431,25 @@ class CMNHist(CMNVis):
             key += " 0x%03x->" % flit.srcid
         if False:
             key += " ->0x%03x" % flit.tgtid
+        key += "||"
+        if True:
+            key += " q%u" % flit.qos
         return key
 
     def flit_key_str(self, flit_key):
-        return flit_key
+        """
+        Return the printable part of the flit key
+        """
+        ix = flit_key.find("||")
+        return flit_key if ix < 0 else flit_key[:ix]
 
-    def print_histogram(self):
-        # Sort by descending order of counts
+    def print_histogram(self, limit=None):
+        """
+        Print the histogram, sorted by descending order of counts.
+        """
         h = sorted(self.hist.items(), key=lambda x: -x[1])
+        if limit is not None and limit > 0 and len(h) > limit:
+            h = h[:limit]
         for (key, n) in h:
             pc = (n * 100.0) / self.n_total
             print("%8u %3.0f%%  %20s" % (n, pc, self.flit_key_str(key)), end="")
@@ -466,11 +477,14 @@ class WatchBind:
     """
     This represents a watchpoint specification, either up or down, on a specific DTM port.
     It might consume one, or both (in the case of pair-watchpoints) of the DTM's physical watchpoints.
+    tag selects TraceTag injection: 'none', 'all' or 'first'. The historical
+    False/True values mean 'none'/'all'. First-match selection is DTM-wide,
+    even where individual watchpoints have their own tag enables.
     """
-    def __init__(self, wp, port=None, cc=True, chn_num=0, format=4, format2=None, ctrig=False, dbgtrig=False, tag=False, pkt_gen=True, name=None):
+    def __init__(self, wp, port=None, cc=True, chn_num=0, format=4, format2=None, ctrig=False, dbgtrig=False, tag=False, pkt_gen=True, swap_pair=False, name=None):
         self.name = name
         self.dtm = port.dtm
-        self.dtm_port_number = port.port_number - (port.dtm.index * 2)
+        self.dtm_port_number = port.port_number - port.dtm.port_base
         self.wp = wp
         self.format = format      # Capture format, e.g. 4 for full header
         self.format2 = format2    # or None
@@ -479,9 +493,11 @@ class WatchBind:
         self.pkt_gen = pkt_gen
         self.ctrig = ctrig
         self.dbgtrig = dbgtrig
-        # In current CMN, tag-setting is a function of the DTM, not the watchpoint.
-        # But we track it per watchpoint. This may restrict scheduling.
-        self.tag = tag
+        if tag is not False and tag is not True and tag not in ('none', 'all', 'first'):
+            raise BadCaptureWatchpoint("tag must be 'none', 'all', 'first', False or True")
+        self.tag = tag is True or tag in ('all', 'first')
+        self.tag_first = tag == 'first'
+        self.swap_pair = swap_pair
 
     def n_groups(self):
         """
@@ -507,6 +523,12 @@ class WatchBind:
         """
         return not self.is_multigrp()
 
+    def can_share_tag(self, other):
+        """Whether both bindings can use the same DTM-wide tag controls."""
+        if not self.dtm.has_wp_tten() and self.tag != other.tag:
+            return False
+        return not (self.tag and other.tag and self.tag_first != other.tag_first)
+
     def __str__(self):
         s = "%s.P%u,%s" % (self.dtm, self.dtm_port_number, self.wp)
         if self.format != 4 or self.format2 is not None:
@@ -520,7 +542,7 @@ class WatchBind:
         if self.dbgtrig:
             s += ",debug-trigger"
         if self.tag:
-            s += ",tracetag"
+            s += ",tracetag=first" if self.tag_first else ",tracetag"
         if self.name is not None:
             s += ",name=\"%s\"" % self.name
         s = "WatchBind(%s)" % s
@@ -549,8 +571,9 @@ class WatchRotation:
     def needs_rotation(self):
         if self.n_groups() > 2:
             return True
-        # Even two singletons cannot share if their DTM-wide tag setting differs.
-        return len(self.bind_list) == 2 and self.bind_list[0].tag != self.bind_list[1].tag
+        # Shared controls include both the legacy enable and first-match mode.
+        return (len(self.bind_list) == 2 and
+                not self.bind_list[0].can_share_tag(self.bind_list[1]))
 
     def append(self, wp):
         assert isinstance(wp, WatchBind)
@@ -585,7 +608,8 @@ class WatchRotation:
         else:
             second = None
             nwb = self.next()
-            if nwb != wb and nwb.can_share() and nwb.tag == wb.tag:
+            if (nwb != wb and nwb.can_share() and
+                    wb.can_share_tag(nwb)):
                 self.advance()
                 second = (nwb, 0, nwb.format)
         return [first, second]
@@ -629,6 +653,10 @@ class TracePlan:
             if wb.dtm not in self.bindings:
                 raise BadCaptureWatchpoint("binding refers to a DTM outside this plan")
             wb.n_groups()    # Validate group/format combinations before activation.
+            if wb.tag and not wb.wp.up:
+                raise BadCaptureWatchpoint("download watchpoint can't set TraceTag")
+            if wb.tag_first and not wb.dtm.has_tag_first():
+                raise BadCaptureWatchpoint("first-match TraceTag injection is not supported by %s" % wb.dtm)
             if wb.wp.up is None or wb.wp.up:
                 self.bindings[wb.dtm][WP_UP].append(wb)
             if wb.wp.up is None or not wb.wp.up:
@@ -643,7 +671,13 @@ class TracePlan:
         self.dtms_rotating = [dtm for dtm in self.dtms if any(
             WatchRotation(dtm, self.bindings[dtm][d]).needs_rotation() for d in [WP_UP, WP_DN])]
         if self.dtms_rotating and not allow_rotation:
-            raise NotEnoughWatchpoints("%u DTMs would need rotating" % len(self.dtms_rotating))
+            if False:
+                for dtm in self.dtms:
+                    for d in [WP_UP, WP_DN]:
+                        r = WatchRotation(dtm, self.bindings[dtm][d])
+                        if r.needs_rotation():
+                            print(r)
+            raise NotEnoughWatchpoints("%u DTMs (%s...) would need rotating" % (len(self.dtms_rotating), str(self.dtms_rotating[0])))
 
     @classmethod
     def from_opts(cls, cmns, opts, allow_rotation=True):
@@ -707,6 +741,7 @@ class TracePlanBuilder:
     def CMNs(self):
         """
         Return the discovered meshes available during selector resolution.
+        Stable
         """
         if self.cmns is not None:
             return self.cmns
@@ -758,7 +793,10 @@ class TracePlanBuilder:
                     raise BadCaptureWatchpoint("bad node selector: %s" % wnodes)
             # Process actions
             if '#' in wspec:
-                (wspec, actions) = wspec.split('#')
+                try:
+                    (wspec, actions) = wspec.split('#')
+                except ValueError:
+                    raise BadCaptureWatchpoint("expect <spec>#<action>,<action>...")
             wp_format = self.opts.format
             wp_format2 = None
             wp_cc = self.opts.cc
@@ -767,6 +805,7 @@ class TracePlanBuilder:
             wp_tracetag = self.opts.set_tracetag
             wp_pkt_gen = True
             wp_chn_num = 0
+            wp_swap_pair = False
             for act in actions.split(','):
                 if act == "":
                     pass
@@ -790,12 +829,18 @@ class TracePlanBuilder:
                     wp_debug_trigger = True
                 elif act == "tracetag":
                     wp_tracetag = True
+                elif act.startswith("tracetag="):
+                    wp_tracetag = act[len("tracetag="):]
+                    if wp_tracetag not in ('none', 'all', 'first'):
+                        raise BadCaptureWatchpoint("tracetag must be none, all or first")
                 elif act == "cc":
                     wp_cc = True
                 elif act == "nocc":
                     wp_cc = False
                 elif act == "nogen":
                     wp_pkt_gen = False     # Suppress packet generation - useful for triggers
+                elif act == "swap":
+                    wp_swap_pair = True    # Experimental diagnostic when wp_combine appears not to be working
                 else:
                     raise BadCaptureWatchpoint("unknown watchpoint action '%s'" % act)
             try:
@@ -804,7 +849,7 @@ class TracePlanBuilder:
                 wps = cmnwatch.parse_short_watchpoint(wspec, self.opts, cmn_version=self.cmns[0].product_config)
             except cmnwatch.WatchpointError as e:
                 raise BadCaptureWatchpoint("can't do this watchpoint: %s" % e)
-            if wp_tracetag and not wps.up:
+            if wp_tracetag and wp_tracetag != 'none' and not wps.up:
                 raise BadCaptureWatchpoint("download watchpoint can't set TraceTag")
             if self.opts.verbose:
                 print("Watchpoint (groups %s) at %s" % (str(wps.grps()), nodes))
@@ -817,7 +862,7 @@ class TracePlanBuilder:
                 print("scanning nodes matching wp spec: %s" % str(nodes))
             for port in self.ports_matching_nodes(nodes):
                 this_spec_matched = True
-                wb = WatchBind(wps, port, format=wp_format, format2=wp_format2, pkt_gen=wp_pkt_gen, cc=wp_cc, ctrig=wp_cross_trigger, dbgtrig=wp_debug_trigger, tag=wp_tracetag, chn_num=wp_chn_num, name=name)
+                wb = WatchBind(wps, port, format=wp_format, format2=wp_format2, pkt_gen=wp_pkt_gen, cc=wp_cc, ctrig=wp_cross_trigger, dbgtrig=wp_debug_trigger, tag=wp_tracetag, chn_num=wp_chn_num, swap_pair=wp_swap_pair, name=name)
                 bindings.append(wb)
             if not this_spec_matched:
                 raise NoPortsMatched(original_wspec)
@@ -1006,7 +1051,8 @@ class TraceSession:
             self.current_wb[dtm] = [None] * CMN_DTM_N_WP
         self._activation_started = False
         self._activated = False
-        self._running = False
+        self._trace_dtcs = []
+        self._dtc_for_dtm_cache = {}
         self._cleanup_cmns = []
         self._closed = False
 
@@ -1067,7 +1113,7 @@ class TraceSession:
         self._closed = True
         errors = []
         if not leave_configured:
-            if self._running:
+            if self.any_DTCs_running():
                 try:
                     self.trace_stop(suppress_errors=suppress_errors)
                 except BaseException as error:
@@ -1109,10 +1155,47 @@ class TraceSession:
     def DTCs(self):
         """
         Yield all the DTCs for the CMNs involved in this trace session - not necessarily all the DTCs in the system.
+        Stable
         """
         for C in self.CMNs():
             for dtc in C.DTCs():
                 yield dtc
+
+    def any_DTCs_running(self):
+        """
+        Return whether this session has started trace on any of its DTCs.
+        """
+        return any(dtc._running for dtc in self._trace_dtcs)
+
+    def _dtc_for_dtm(self, dtm):
+        """
+        Find the DTC controlling a planned DTM, caching its domain lookup.
+        """
+        if dtm not in self._dtc_for_dtm_cache:
+            domain = dtm.dtc_domain()
+            matches = [dtc for dtc in self.DTCs()
+                       if dtc.CMN() is dtm.C and dtc.dtc_domain() == domain]
+            if domain is None or len(matches) != 1:
+                raise ValueError("cannot determine DTC for %s" % dtm)
+            self._dtc_for_dtm_cache[dtm] = matches[0]
+        return self._dtc_for_dtm_cache[dtm]
+
+    def _dtms_for_dtcs(self, dtcs):
+        """
+        Select planned DTMs controlled by the requested DTCs.
+        """
+        selected_cmns = set(dtc.CMN() for dtc in dtcs)
+        complete_cmns = set(C for C in selected_cmns
+                            if all(dtc in dtcs for dtc in C.DTCs()))
+        selected = []
+        for dtm in self.dtms:
+            if dtm.C not in selected_cmns:
+                continue
+            # A full-mesh selection needs no per-DTM domain lookup. CMN-600
+            # cannot identify a DTM's domain when it has multiple DTCs.
+            if dtm.C in complete_cmns or self._dtc_for_dtm(dtm) in dtcs:
+                selected.append(dtm)
+        return selected
 
     def init_cmn(self):
         """
@@ -1138,9 +1221,12 @@ class TraceSession:
         Generate a DTMWatchpoint object from a WatchBind and an index (0 or 1) into the watchpoint's groups.
         """
         dev = wb.dtm_port_number
-        wp = wb.wp
-        gn = wp.grps()[n]
-        M = wp.wps[gn]
+        wp = wb.wp                # DTM watchpoint number (0..3)
+        match_groups = wp.grps()  # List (1 or 2 entries) of match groups for this watchpoint
+        if wb.swap_pair:
+            match_groups = list(reversed(match_groups))
+        gn = match_groups[n]
+        M = wp.wps[gn]       # Look up the match specification for that match-group
         assert M.grp == gn
         combine = (wp.is_multigrp() and (n == 0))
         w = cmn_devmem.DTMWatchpoint(dtm=wb.dtm, pkt_gen=wb.pkt_gen,
@@ -1148,6 +1234,7 @@ class TraceSession:
                                      type=wb.format, cc=wb.cc,
                                      ctrig=wb.ctrig,
                                      dbgtrig=wb.dbgtrig,
+                                     tten=wb.tag and wb.dtm.has_wp_tten(),
                                      dev=dev, chn=wp.chn, chn_num=wb.chn_num, grp=M.grp,
                                      exclusive=M.exclusive, combine=combine)
         return w
@@ -1188,7 +1275,13 @@ class TraceSession:
         rotations = self.rotations[dtm]
         assignments = rotations[WP_UP].next_pair() + rotations[WP_DN].next_pair()
         assert len(assignments) == 4         # One entry for each DTM WP
-        self._running = True    # Direct programming also requires stop/close.
+        cmn_dtcs = list(dtm.C.DTCs())
+        if not cmn_dtcs or not all(dtc in self._trace_dtcs and dtc._running
+                                   for dtc in cmn_dtcs):
+            dtc = self._dtc_for_dtm(dtm)
+            if dtc not in self._trace_dtcs:
+                self._trace_dtcs.append(dtc)
+            dtc._running = True    # Direct programming also requires stop/close.
         if o_verbose >= 2:
             print("%s: configure trace" % dtm)
             for (i, wba) in enumerate(assignments):
@@ -1210,6 +1303,14 @@ class TraceSession:
             dtm_control = cmn_devmem.CMN_DTM_CONTROL_TRACE_NO_ATB
         else:
             dtm_control = 0
+        # Inspect both upload slots: the tag setter can be the second binding.
+        for assignment in assignments[:2]:
+            if assignment is not None:
+                wb = assignment[0]
+                if wb.tag and not dtm.has_wp_tten():
+                    dtm_control |= cmn_devmem.CMN_DTM_CONTROL_TRACE_TAG_ENABLE
+                if wb.tag_first:
+                    dtm_control |= dtm.C.DTM_CONTROL_TRACE_TAG_FIRST_MATCH
         #if opts.fifo:
         #    xp.set64(cmn_devmem.CMN_DTM_CONTROL, 0x08)
         #else:
@@ -1225,8 +1326,6 @@ class TraceSession:
             w.type = capture_format
             if o_verbose >= 2:
                 print("  WP%u := %s" % (off, wb))
-            if wb.tag and d == WP_UP:
-                dtm_control |= cmn_devmem.CMN_DTM_CONTROL_TRACE_TAG_ENABLE
             if dtm_control is not None:
                 # Now we know whether or not this DTM is setting TraceTag, write its control
                 dtm.dtm_write64(cmn_devmem.CMN_DTM_CONTROL_off, dtm_control)   # DTM is still disabled
@@ -1267,18 +1366,31 @@ class TraceSession:
             print("enable DTM on %s" % dtm)
         dtm.dtm_enable()
 
-    def trace_start(self):
+    def trace_start(self, dtcs=None):
+        """
+        Start selected DTCs and their planned DTMs.
+        """
         self._require_active()
-        self._running = True    # Also covers a failure partway through starting.
         if self.opts.verbose:
             print("cmn_capture: start...")
-        self.dtc_disable()
+        if dtcs is None:
+            dtcs = list(self.DTCs())
+        else:
+            dtcs = list(dtcs)
+        dtms = self._dtms_for_dtcs(dtcs)
+        for dtc in dtcs:
+            if dtc not in self._trace_dtcs:
+                self._trace_dtcs.append(dtc)
+            dtc._running = True    # Also covers a failure partway through starting.
+        for dtc in dtcs:
+            dtc.dtc_disable()
         if self.opts.verbose >= 2:
             self.show_fifos("before DTC enable")
-        self.dtc_enable()
+        for dtc in dtcs:
+            dtc.dtc_enable()
         if self.opts.verbose >= 2:
             self.show_fifos("after DTC enable")
-        for dtm in reversed(self.dtms):
+        for dtm in reversed(dtms):
             # Here we are scanning just the XPs that we want to monitor.
             # The others are left disabled.
             self.configure_dtm(dtm)
@@ -1291,15 +1403,16 @@ class TraceSession:
             # We've programmed the local PMUs in the DTMs, and even though we aren't
             # forwarding local counts to the DTC, the DTMs won't count until we set
             # the global PMU enable.
-            for dtc in self.DTCs():
+            for dtc in dtcs:
                 dtc.pmu_clear()
                 dtc.pmu_enable()
 
         # Start CMN generating ATB trace
         if self.opts.cg_disable:
-            for dtc in self.DTCs():
+            for dtc in dtcs:
                 dtc.set64(cmn_devmem.CMN_DTC_CTL, cmn_devmem.CMN_DTC_CTL_CG_DISABLE)    # experimental
-        self.dtc_enable()
+        for dtc in dtcs:
+            dtc.dtc_enable()
         if False:
             # Generate some more alignment packets in the ATB stream
             for _ in range(0, 3):
@@ -1397,22 +1510,31 @@ class TraceSession:
         for C in self.CMNs():
             C.dtc_disable()
 
-    def trace_stop(self, suppress_errors=False):
-        # Stop generating trace, and collect it
-        if not self._running:
+    def trace_stop(self, suppress_errors=False, dtcs=None):
+        """
+        Stop selected running DTCs and their planned DTMs.
+        """
+        if dtcs is None:
+            dtcs = [dtc for dtc in self._trace_dtcs if dtc._running]
+        else:
+            dtcs = [dtc for dtc in dtcs if dtc._running]
+        if not dtcs:
             return
-        self._running = False
+        dtms = self._dtms_for_dtcs(dtcs)
         errors = []
-        for C in self.CMNs():
+        for dtc in dtcs:
             try:
-                C.dtc_disable()
+                dtc.dtc_disable()
             except BaseException as error:
                 errors.append(error)
-        for dtm in self.dtms:
+        for dtm in dtms:
             try:
                 dtm.dtm_disable()
             except BaseException as error:
                 errors.append(error)
+        if not errors:
+            for dtc in dtcs:
+                dtc._running = False
         report_cleanup_errors(errors, suppress_errors=suppress_errors)
         if suppress_errors:
             return     # Do not make diagnostic reads while unwinding a failure.
@@ -1482,6 +1604,7 @@ def main(argv):
     parser.add_argument("--include-polling", action="store_true", help="include CMN polling reqs from script")
     parser.add_argument("--histogram", action="store_true", help="print histogram of packet types")
     parser.add_argument("--histogram2", action="store_true", help="histogram distinguishing direction")
+    parser.add_argument("--histogram-limit", type=int, default=20, help="depth of histogram")
     parser.add_argument("--setup", action="store_true", help="set up but don't capture")
     parser.add_argument("--inspect", action="store_true", help="inspect captured data")
     parser.add_argument("--no-deduplicate", action="store_true")
@@ -1527,7 +1650,7 @@ def main(argv):
                 cap = ts.trace()
                 ts.show_captured_trace(cap)
             if opts.histogram:
-                vis.print_histogram()
+                vis.print_histogram(limit=opts.histogram_limit)
         failed = False
     finally:
         ts.close(leave_configured=leave_configured, suppress_errors=failed)

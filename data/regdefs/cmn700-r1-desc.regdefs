@@ -1,4 +1,6 @@
 GROUP por_ccg_ha_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_ccg_ha_node_info
 RESET 0x104 0xffffffffffff
 DESC Provides component identification information.
@@ -7331,28 +7333,28 @@ F 4 4 lnk0_num_reqcrds
 DESC Controls the number of CCIX request credits assigned to Link 0 4'h0: Total credits are equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned 
 F 8 4 lnk0_num_datcrds
 DESC Controls the number of CCIX data credits assigned to Link 0 4'h0: Total credits are equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned 
-F 15 1 lnk0_rspmsg_send_exp_agentid
+F 15 1 lnk0_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 0
-F 16 1 lnk0_smp_mode_en
+F 16 1 lnk0_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 0.
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk0_send_compack
+F 17 1 lnk0_send_compack NV
 DESC When set, sends CompAck for CCIX Link 0.
-F 18 1 lnk0_en_cbusy_prop
+F 18 1 lnk0_en_cbusy_prop NV
 DESC When set, enables propagation of CBusy on CCIX Link 0.
-F 19 1 lnk0_en_datasource_prop
+F 19 1 lnk0_en_datasource_prop NV
 DESC When set, enables propagation of DataSource on CCIX Link 0.
-F 20 1 lnk0_en_devevent_prop
+F 20 1 lnk0_en_devevent_prop NV
 DESC When set, enables propagation of DevEvent on CCIX Link 0.
-F 21 1 lnk0_en_loopback_prop
+F 21 1 lnk0_en_loopback_prop NV
 DESC When set, enables propagation of LoopBack on CCIX Link 0.
-F 22 1 lnk0_en_pbha_prop
+F 22 1 lnk0_en_pbha_prop NV
 DESC When set, enables propagation of PBHA on CCIX Link 0.
-F 23 1 lnk0_en_strongnc_prop
+F 23 1 lnk0_en_strongnc_prop NV
 DESC When set, enables propagation of StrongNC on CCIX Link 0.
-F 24 1 lnk0_req_rsvdc_ovrd_en
+F 24 1 lnk0_req_rsvdc_ovrd_en NV
 DESC When set, overrides CHI REQ RSVDC field with req rsvdc strap input for incoming requests on CCIX Link 0. Note: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) 
-F 25 1 lnk0_dat_rsvdc_ovrd_en
+F 25 1 lnk0_dat_rsvdc_ovrd_en NV
 DESC When set, overrides CHI DAT RSVDC field with dat rsvdc strap input for incoming data on CCIX Link 0. Note: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) 
 R 0x1c08 64 ROV S por_ccg_ha_cxprtcl_link0_status
 RESET 0x2 0x7
@@ -7378,28 +7380,28 @@ F 4 4 lnk1_num_reqcrds
 DESC Controls the number of CCIX request credits assigned to Link 1 4'h0: Total credits are equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned
 F 8 4 lnk1_num_datcrds
 DESC Controls the number of CCIX data credits assigned to Link 1 4'h0: Total credits equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned
-F 15 1 lnk1_rspmsg_send_exp_agentid
+F 15 1 lnk1_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 1
-F 16 1 lnk1_smp_mode_en
+F 16 1 lnk1_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 1.
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk1_send_compack
+F 17 1 lnk1_send_compack NV
 DESC When set, sends CompAck for CCIX Link 1.
-F 18 1 lnk1_en_cbusy_prop
+F 18 1 lnk1_en_cbusy_prop NV
 DESC When set, enables propagation of CBusy on CCIX Link 1.
-F 19 1 lnk1_en_datasource_prop
+F 19 1 lnk1_en_datasource_prop NV
 DESC When set, enables propagation of DataSource on CCIX Link 1.
-F 20 1 lnk1_en_devevent_prop
+F 20 1 lnk1_en_devevent_prop NV
 DESC When set, enables propagation of DevEvent on CCIX Link 1.
-F 21 1 lnk1_en_loopback_prop
+F 21 1 lnk1_en_loopback_prop NV
 DESC When set, enables propagation of LoopBack on CCIX Link 1.
-F 22 1 lnk1_en_pbha_prop
+F 22 1 lnk1_en_pbha_prop NV
 DESC When set, enables propagation of PBHA on CCIX Link 1.
-F 23 1 lnk1_en_strongnc_prop
+F 23 1 lnk1_en_strongnc_prop NV
 DESC When set, enables propagation of StrongNC on CCIX Link 1.
-F 24 1 lnk1_req_rsvdc_ovrd_en
+F 24 1 lnk1_req_rsvdc_ovrd_en NV
 DESC When set, overrides CHI REQ RSVDC field with req rsvdc strap input for incoming requests on CCIX Link 1. Note: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) 
-F 25 1 lnk1_dat_rsvdc_ovrd_en
+F 25 1 lnk1_dat_rsvdc_ovrd_en NV
 DESC When set, overrides CHI DAT RSVDC field with dat rsvdc strap input for incoming data on CCIX Link 1. Note: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) 
 R 0x1c18 64 ROV S por_ccg_ha_cxprtcl_link1_status
 RESET 0x2 0x7
@@ -7425,28 +7427,28 @@ F 4 4 lnk2_num_reqcrds
 DESC Controls the number of CCIX request credits assigned to Link 2 4'h0: Total credits are equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned
 F 8 4 lnk2_num_datcrds
 DESC Controls the number of CCIX data credits assigned to Link 2 4'h0: Total credits are equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned
-F 15 1 lnk2_rspmsg_send_exp_agentid
+F 15 1 lnk2_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 2
-F 16 1 lnk2_smp_mode_en
+F 16 1 lnk2_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 2.
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk2_send_compack
+F 17 1 lnk2_send_compack NV
 DESC When set, sends CompAck for CCIX Link 2.
-F 18 1 lnk2_en_cbusy_prop
+F 18 1 lnk2_en_cbusy_prop NV
 DESC When set, enables propagation of CBusy on CCIX Link 2.
-F 19 1 lnk2_en_datasource_prop
+F 19 1 lnk2_en_datasource_prop NV
 DESC When set, enables propagation of DataSource on CCIX Link 2.
-F 20 1 lnk2_en_devevent_prop
+F 20 1 lnk2_en_devevent_prop NV
 DESC When set, enables propagation of DevEvent on CCIX Link 2.
-F 21 1 lnk2_en_loopback_prop
+F 21 1 lnk2_en_loopback_prop NV
 DESC When set, enables propagation of LoopBack on CCIX Link 2.
-F 22 1 lnk2_en_pbha_prop
+F 22 1 lnk2_en_pbha_prop NV
 DESC When set, enables propagation of PBHA on CCIX Link 2.
-F 23 1 lnk2_en_strongnc_prop
+F 23 1 lnk2_en_strongnc_prop NV
 DESC When set, enables propagation of StrongNC on CCIX Link 2.
-F 24 1 lnk2_req_rsvdc_ovrd_en
+F 24 1 lnk2_req_rsvdc_ovrd_en NV
 DESC When set, overrides CHI REQ RSVDC field with req rsvdc strap input for incoming requests on CCIX Link 2. Note: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) 
-F 25 1 lnk2_dat_rsvdc_ovrd_en
+F 25 1 lnk2_dat_rsvdc_ovrd_en NV
 DESC When set, overrides CHI DAT RSVDC field with dat rsvdc strap input for incoming data on CCIX Link 2. Note: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) 
 R 0x1c28 64 ROV S por_ccg_ha_cxprtcl_link2_status
 RESET 0x2 0x7
@@ -7638,6 +7640,8 @@ F 32 4 pmu_occup1_id
 DESC CXHA PMU occupancy event selector ID
 ENDGROUP
 GROUP por_ccg_ra_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_ccg_ra_node_info
 RESET 0x103 0xffffffffffff
 DESC Provides component identification information.
@@ -14093,24 +14097,24 @@ F 12 2 lnk0_excl_resperr_value
 DESC Two bit value to override RespErr field of an exclusive response. Applicable only if lnk0_excl_resperr_ovrd bit is set. NOTE: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) and must only be used if the corresponding link end pair does not support exclusive monitoring
 F 14 1 lnk0_spcl_cbkwr_crd_en
 DESC When set, notifies RA to use special credits from HA to send CopyBack writes on CCIX Link 0 NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 15 1 lnk0_rspmsg_send_exp_agentid
+F 15 1 lnk0_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 0
-F 16 1 lnk0_smp_mode_en
+F 16 1 lnk0_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 0.
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk0_send_compack
+F 17 1 lnk0_send_compack NV
 DESC When set, sends CompAck for CCIX Link 0.
-F 18 1 lnk0_dis_rmt_datasrc
+F 18 1 lnk0_dis_rmt_datasrc NV
 DESC When set, disables propagation of remote data source for CCIX Link 0. NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 19 1 lnk0_dis_rmt_devevent
+F 19 1 lnk0_dis_rmt_devevent NV
 DESC When set, disables propagation of remote Dev Event field for CCIX Link 0. NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 20 2 lnk0_cbusy_prop_ctl
+F 20 2 lnk0_cbusy_prop_ctl NV
 DESC Controls the propagation of Cbusy field for CCIX Link 0. 2'b00: Send RA Cbusy on all responses based on the limits programmed in por_ccg_ra_cbusy_limit_ctl 2'b01: Pass through remote CBusy on late completion responses (CompData, Comp) 2'b10: Greater of RA Cbusy or remote Cbusy. Applicable to responses where remote Cbusy can be sent NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 22 1 lnk0_en_loopback_prop
+F 22 1 lnk0_en_loopback_prop NV
 DESC When set, enables propagation of LoopBack on CCIX Link 0.
-F 23 1 lnk0_en_pbha_prop
+F 23 1 lnk0_en_pbha_prop NV
 DESC When set, enables propagation of PBHA on CCIX Link 0.
-F 24 1 lnk0_dat_rsvdc_ovrd_en
+F 24 1 lnk0_dat_rsvdc_ovrd_en NV
 DESC When set, overrides CHI DAT RSVDC field with dat rsvdc strap input for incoming data on CCIX Link 0. Note: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) 
 R 0x1c08 64 ROV S por_ccg_ra_ccprtcl_link0_status
 RESET 0x2 0x1f
@@ -14150,24 +14154,24 @@ F 12 2 lnk1_excl_resperr_value
 DESC Two bit value to override RespErr field of an exclusive response. Applicable only if lnk1_excl_resperr_ovrd bit is set. NOTE: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) and must only be used if the corresponding link end pair does not support exclusive monitoring
 F 14 1 lnk1_spcl_cbkwr_crd_en
 DESC When set, notifies RA to use special credits from HA to send CopyBack writes on CCIX Link 1 NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 15 1 lnk1_rspmsg_send_exp_agentid
+F 15 1 lnk1_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 1
-F 16 1 lnk1_smp_mode_en
+F 16 1 lnk1_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 1.
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk1_send_compack
+F 17 1 lnk1_send_compack NV
 DESC When set, sends CompAck for CCIX Link 1.
-F 18 1 lnk1_dis_rmt_datasrc
+F 18 1 lnk1_dis_rmt_datasrc NV
 DESC When set, disables propagation of remote data source for CCIX Link 1. NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 19 1 lnk1_dis_rmt_devevent
+F 19 1 lnk1_dis_rmt_devevent NV
 DESC When set, disables propagation of remote Dev Event field for CCIX Link 1. NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 20 2 lnk1_cbusy_prop_ctl
+F 20 2 lnk1_cbusy_prop_ctl NV
 DESC Controls the propagation of Cbusy field for CCIX Link 1. 2'b00: Send RA Cbusy on all responses based on the limits programmed in por_ccg_ra_cbusy_limit_ctl 2'b01: Pass through remote CBusy on late completion responses (CompData, Comp) 2'b10: Greater of RA Cbusy or remote Cbusy. Applicable to responses where remote Cbusy can be sent NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 22 1 lnk1_en_loopback_prop
+F 22 1 lnk1_en_loopback_prop NV
 DESC When set, enables propagation of LoopBack on CCIX Link 1.
-F 23 1 lnk1_en_pbha_prop
+F 23 1 lnk1_en_pbha_prop NV
 DESC When set, enables propagation of PBHA on CCIX Link 1.
-F 24 1 lnk1_dat_rsvdc_ovrd_en
+F 24 1 lnk1_dat_rsvdc_ovrd_en NV
 DESC When set, overrides CHI DAT RSVDC field with dat rsvdc strap input for incoming data on CCIX Link 1. Note: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) 
 R 0x1c18 64 ROV S por_ccg_ra_ccprtcl_link1_status
 RESET 0x2 0x1f
@@ -14207,24 +14211,24 @@ F 12 2 lnk2_excl_resperr_value
 DESC Two bit value to override RespErr field of an exclusive response. Applicable only if lnk2_excl_resperr_ovrd bit is set. NOTE: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) and must only be used if the corresponding link end pair does not support exclusive monitoring
 F 14 1 lnk2_spcl_cbkwr_crd_en
 DESC When set, notifies RA to use special credits from HA to send CopyBack writes on CCIX Link 2 NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 15 1 lnk2_rspmsg_send_exp_agentid
+F 15 1 lnk2_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 2
-F 16 1 lnk2_smp_mode_en
+F 16 1 lnk2_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 2.
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk2_send_compack
+F 17 1 lnk2_send_compack NV
 DESC When set, sends CompAck for CCIX Link 2.
-F 18 1 lnk2_dis_rmt_datasrc
+F 18 1 lnk2_dis_rmt_datasrc NV
 DESC When set, disables propagation of remote data source for CCIX Link 2. NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 19 1 lnk2_dis_rmt_devevent
+F 19 1 lnk2_dis_rmt_devevent NV
 DESC When set, disables propagation of remote Dev Event field for CCIX Link 2. NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 20 2 lnk2_cbusy_prop_ctl
+F 20 2 lnk2_cbusy_prop_ctl NV
 DESC Controls the propagation of Cbusy field for CCIX Link 2. 2'b00: Send RA Cbusy on all responses based on the limits programmed in por_ccg_ra_cbusy_limit_ctl 2'b01: Pass through remote CBusy on late completion responses (CompData, Comp) 2'b10: Greater of RA Cbusy or remote Cbusy. Applicable to responses where remote Cbusy can be sent NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 22 1 lnk2_en_loopback_prop
+F 22 1 lnk2_en_loopback_prop NV
 DESC When set, enables propagation of LoopBack on CCIX Link 2.
-F 23 1 lnk2_en_pbha_prop
+F 23 1 lnk2_en_pbha_prop NV
 DESC When set, enables propagation of PBHA on CCIX Link 2.
-F 24 1 lnk2_dat_rsvdc_ovrd_en
+F 24 1 lnk2_dat_rsvdc_ovrd_en NV
 DESC When set, overrides CHI DAT RSVDC field with dat rsvdc strap input for incoming data on CCIX Link 2. Note: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) 
 R 0x1c28 64 ROV S por_ccg_ra_ccprtcl_link2_status
 RESET 0x2 0x1f
@@ -14254,6 +14258,8 @@ F 32 4 pmu_occup1_id
 DESC PMU occupancy event selector ID
 ENDGROUP
 GROUP por_ccla_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_ccla_node_info
 RESET 0x105 0xffffffffffff
 DESC Provides component identification information.
@@ -14730,19 +14736,19 @@ R 0x3010 64 - S por_ccla_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
 SGO por_ccla_secure_register_groups_override.ras_secure_access_override
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_ccla_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_ccla_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3018 64 - S por_ccla_erraddr
 RESET 0x0 0x800fffffffffffff
@@ -14793,19 +14799,19 @@ DESC Enables corrected error interrupt as specified in por_ccla_errfr.CFI
 R 0x3110 64 - - por_ccla_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_ccla_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_ccla_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3118 64 - - por_ccla_erraddr_NS
 RESET 0x0 0x800fffffffffffff
@@ -14825,6 +14831,8 @@ F 0 3 ERRSRC
 DESC Source of the parity error 3'b000: Read data buffer 0 3'b001: Read data buffer 1 3'b010: Write data buffer 0 3'b011: Write data buffer 1 3'b100: Passive Buffer 3'b101: CCLA Data RAM 3'b110: Rsvd 3'b111: CXL Viral
 ENDGROUP
 GROUP por_apb_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_apb_node_info
 RESET 0xffff 0xffffffff
 DESC Provides component identification information.
@@ -14851,6 +14859,8 @@ F 2 1 dmc_apb_only
 DESC DMC AXI utility bus access by APB only 1'b0: DMC AXU accessible via CHI/AXI in addition to APB 1'b1: DMC AXU accessible only via APB
 ENDGROUP
 GROUP por_cfgm_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_cfgm_node_info
 RESET 0x2 0xffffffffffff
 DESC Provides component identification information.
@@ -16309,12 +16319,12 @@ DESC Interrupt mask
 R 0x1c10 64 - S por_ppu_int_status
 RESET 0x0 0xffffffffffffffff
 DESC Provides HN-F PPU event interrupt status.
-F 0 64 hnf_ppu_status
+F 0 64 hnf_ppu_status W1C
 DESC Interrupt status
 R 0x1c18 64 - S por_ppu_int_status_1
 RESET 0x0 0xffffffffffffffff
 DESC Provides HN-F PPU event interrupt status.
-F 0 64 hnf_ppu_status_1
+F 0 64 hnf_ppu_status_1 W1C
 DESC Interrupt status
 R 0x1c20 64 - S por_ppu_qactive_hyst
 RESET 0x10 0xffff
@@ -16324,22 +16334,22 @@ DESC QACTIVE hysteresis
 R 0x1c28 64 - S por_mpam_s_err_int_status
 RESET 0x0 0xffffffffffffffff
 DESC Provides HN-F MPAM Secure Error interrupt status.
-F 0 64 hnf_mpam_s_err_int_status
+F 0 64 hnf_mpam_s_err_int_status W1C
 DESC MPAM S Interrupt status
 R 0x1c30 64 - S por_mpam_s_err_int_status_1
 RESET 0x0 0xffffffffffffffff
 DESC Provides HN-F MPAM Secure Error interrupt status.
-F 0 64 hnf_mpam_s_err_int_status_1
+F 0 64 hnf_mpam_s_err_int_status_1 W1C
 DESC MPAM S Interrupt status
 R 0x1c38 64 - - por_mpam_ns_err_int_status
 RESET 0x0 0xffffffffffffffff
 DESC Provides HN-F MPAM Non-Secure Error interrupt status.
-F 0 64 hnf_mpam_ns_err_int_status
+F 0 64 hnf_mpam_ns_err_int_status W1C
 DESC MPAM NS Interrupt status
 R 0x1c40 64 - - por_mpam_ns_err_int_status_1
 RESET 0x0 0xffffffffffffffff
 DESC Provides HN-F MPAM Non-Secure Error interrupt status.
-F 0 64 hnf_mpam_ns_err_int_status_1
+F 0 64 hnf_mpam_ns_err_int_status_1 W1C
 DESC MPAM NS Interrupt status
 R 0x3000 64 RO S por_cfgm_errgsr_mxp_0
 RESET 0x0 0xffffffffffffffff
@@ -16935,6 +16945,8 @@ F 32 8 cidr3
 DESC Component ID 3
 ENDGROUP
 GROUP por_cxg_ha_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_cxg_ha_node_info
 RESET 0x101 0xffffffffffff
 DESC Provides component identification information.
@@ -24225,9 +24237,9 @@ F 4 4 lnk0_num_reqcrds
 DESC Controls the number of CCIX request credits assigned to Link 0 4'h0: Total credits are equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned 
 F 8 4 lnk0_num_datcrds
 DESC Controls the number of CCIX data credits assigned to Link 0 4'h0: Total credits are equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned 
-F 15 1 lnk0_rspmsg_send_exp_agentid
+F 15 1 lnk0_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 0
-F 16 1 lnk0_smp_mode_en
+F 16 1 lnk0_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 0.
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1c08 64 ROV S por_cxg_ha_cxprtcl_link0_status
@@ -24254,9 +24266,9 @@ F 4 4 lnk1_num_reqcrds
 DESC Controls the number of CCIX request credits assigned to Link 1 4'h0: Total credits are equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned
 F 8 4 lnk1_num_datcrds
 DESC Controls the number of CCIX data credits assigned to Link 1 4'h0: Total credits equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned
-F 15 1 lnk1_rspmsg_send_exp_agentid
+F 15 1 lnk1_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 1
-F 16 1 lnk1_smp_mode_en
+F 16 1 lnk1_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 1.
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1c18 64 ROV S por_cxg_ha_cxprtcl_link1_status
@@ -24283,9 +24295,9 @@ F 4 4 lnk2_num_reqcrds
 DESC Controls the number of CCIX request credits assigned to Link 2 4'h0: Total credits are equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned
 F 8 4 lnk2_num_datcrds
 DESC Controls the number of CCIX data credits assigned to Link 2 4'h0: Total credits are equally divided across all links 4'h1: 25% of credits assigned 4'h2: 50% of credits assigned 4'h3: 75% of credits assigned 4'h4: 100% of credits assigned 4'hF: 0% of credits assigned
-F 15 1 lnk2_rspmsg_send_exp_agentid
+F 15 1 lnk2_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 2
-F 16 1 lnk2_smp_mode_en
+F 16 1 lnk2_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 2.
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1c28 64 ROV S por_cxg_ha_cxprtcl_link2_status
@@ -24510,19 +24522,19 @@ R 0x3010 64 - S por_cxg_ha_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
 SGO por_cxg_ha_secure_register_groups_override.ras_secure_access_override
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_cxg_ha_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_cxg_ha_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3018 64 - S por_cxg_ha_erraddr
 RESET 0x0 0x800fffffffffffff
@@ -24573,19 +24585,19 @@ DESC Enables corrected error interrupt as specified in por_cxg_ha_errfr.CFI
 R 0x3110 64 - - por_cxg_ha_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_cxg_ha_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_cxg_ha_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3118 64 - - por_cxg_ha_erraddr_NS
 RESET 0x0 0x800fffffffffffff
@@ -24605,6 +24617,8 @@ F 0 3 ERRSRC
 DESC Source of the parity error 3'b000: Read data buffer 0 3'b001: Read data buffer 1 3'b010: Write data buffer 0 3'b011: Write data buffer 1 3'b100: Passive Buffer
 ENDGROUP
 GROUP por_cxg_ra_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_cxg_ra_node_info
 RESET 0x100 0xffffffffffff
 DESC Provides component identification information.
@@ -31041,9 +31055,9 @@ F 12 2 lnk0_excl_resperr_value
 DESC Two bit value to override RespErr field of an exclusive response. Applicable only if lnk0_excl_resperr_ovrd bit is set. NOTE: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) and must only be used if the corresponding link end pair does not support exclusive monitoring
 F 14 1 lnk0_spcl_cbkwr_crd_en
 DESC When set, notifies RA to use special credits from HA to send CopyBack writes on CCIX Link 0 NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 15 1 lnk0_rspmsg_send_exp_agentid
+F 15 1 lnk0_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 0
-F 16 1 lnk0_smp_mode_en
+F 16 1 lnk0_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 0.
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1c08 64 ROV S por_cxg_ra_cxprtcl_link0_status
@@ -31082,9 +31096,9 @@ F 12 2 lnk1_excl_resperr_value
 DESC Two bit value to override RespErr field of an exclusive response. Applicable only if lnk1_excl_resperr_ovrd bit is set. NOTE: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) and must only be used if the corresponding link end pair does not support exclusive monitoring
 F 14 1 lnk1_spcl_cbkwr_crd_en
 DESC When set, notifies RA to use special credits from HA to send CopyBack writes on CCIX Link 1 NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 15 1 lnk1_rspmsg_send_exp_agentid
+F 15 1 lnk1_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 1
-F 16 1 lnk1_smp_mode_en
+F 16 1 lnk1_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 1.
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1c18 64 ROV S por_cxg_ra_cxprtcl_link1_status
@@ -31123,9 +31137,9 @@ F 12 2 lnk2_excl_resperr_value
 DESC Two bit value to override RespErr field of an exclusive response. Applicable only if lnk2_excl_resperr_ovrd bit is set. NOTE: This field is applicable only when SMP Mode enable bit is clear (i.e. Non-SMP mode) and must only be used if the corresponding link end pair does not support exclusive monitoring
 F 14 1 lnk2_spcl_cbkwr_crd_en
 DESC When set, notifies RA to use special credits from HA to send CopyBack writes on CCIX Link 2 NOTE: This field is applicable only if the link programmed for SMP mode (i.e. SMP Mode enable bit is set)
-F 15 1 lnk2_rspmsg_send_exp_agentid
+F 15 1 lnk2_rspmsg_send_exp_agentid NV
 DESC When set sends Expanded Agent ID on CCIX Response Messages for CCIX Link 2
-F 16 1 lnk2_smp_mode_en
+F 16 1 lnk2_smp_mode_en NV
 DESC When set, enables Symmetric Multiprocessor Mode (SMP) Mode for CCIX Link 2.
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1c28 64 ROV S por_cxg_ra_cxprtcl_link2_status
@@ -31154,6 +31168,8 @@ F 32 4 pmu_occup1_id
 DESC PMU occupancy event selector ID
 ENDGROUP
 GROUP por_cxla_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_cxla_node_info
 RESET 0x102 0xffffffffffff
 DESC Provides component identification information.
@@ -31804,6 +31820,8 @@ F 48 16 pmevcntsr3
 DESC PMU event counter 3 shadow register
 ENDGROUP
 GROUP por_dn_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_dn_node_info
 RESET 0x1 0xffffffffffff
 DESC Provides component identification information.
@@ -32646,6 +32664,8 @@ F 32 4 pmu_occup1_id
 DESC PMU occupancy event selector ID 4'b0000: All 4'b0001: DVM ops 4'b0010: DVM syncs
 ENDGROUP
 GROUP por_dt_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_dt_node_info
 RESET 0x3 0x3ffffffff
 DESC Provides component identification information.
@@ -32905,6 +32925,8 @@ F 0 1 ss_req
 DESC Write a 1 to request PMU snapshot
 ENDGROUP
 GROUP por_hnf_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_hnf_node_info
 RESET 0x5 0xffffffffffff
 DESC Provides component identification information.
@@ -34216,19 +34238,19 @@ R 0x3010 64 - S por_hnf_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
 SGO por_hnf_secure_register_groups_override.ras_secure_access_override
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_hnf_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_hnf_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3018 64 - S por_hnf_erraddr
 RESET 0x0 0x800fffffffffffff
@@ -34301,19 +34323,19 @@ DESC Enables corrected error interrupt as specified in por_hnf_errfr_NS.CFI
 R 0x3110 64 - - por_hnf_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_hnf_erraddr_NS contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_hnf_errmisc_NS valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3118 64 - - por_hnf_erraddr_NS
 RESET 0x0 0x800fffffffffffff
@@ -53717,6 +53739,8 @@ F 0 3 num_cxg_pag30
 DESC Specifies the number of CXRAs in CPAG30 Constraint: May use pag_tgtid0 through pag_tgtid7 of por_hnf_cml_port_aggr_grp_reg[0,1] when POR_RNSAM_FLEX_TGTID_EN_PARAM = 0 3'b000: 1 port used 3'b001: 2 ports used 3'b010: 4 ports used 3'b011: 8 ports used 3'b100: 16 ports used 3'b101: 32 ports used 3'b110: Reserved 3'b111: Reserved
 ENDGROUP
 GROUP por_hnf_mpam_ns_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_hnf_mpam_ns_node_info
 RESET 0x9 0xffffffffffff
 DESC Provides component identification information.
@@ -54038,6 +54062,8 @@ F 0 16 hnf_ns_mpamcfg_cpbm_cpbm
 DESC Bitmap of portions of cache capacity allocable by the partition selected by MPAMCFG_PART_SEL. NOTE: CPBM can not be all zeros for any PARTID.
 ENDGROUP
 GROUP por_hnf_mpam_s_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_hnf_mpam_s_node_info
 RESET 0x8 0xffffffffffff
 DESC Provides component identification information.
@@ -54394,6 +54420,8 @@ F 0 16 hnf_s_mpamcfg_cpbm_cpbm
 DESC Bitmap of portions of cache capacity allocable by the partition selected by MPAMCFG_PART_SEL. NOTE: CPBM can not be all zeros for any PARTID.
 ENDGROUP
 GROUP por_hni_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_hni_node_info
 RESET 0x0 0xffffffffffff
 DESC Provides component identification information.
@@ -54622,19 +54650,19 @@ R 0x3010 64 - S por_hni_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
 SGO por_hni_secure_register_groups_override.ras_secure_access_override
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_hni_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_hni_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
 R 0x3018 64 - S por_hni_erraddr
 RESET 0x0 0x800fffffffffffff
@@ -54693,19 +54721,19 @@ DESC Enables corrected error interrupt as specified in por_hni_errfr_NS.CFI
 R 0x3110 64 - - por_hni_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register.
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_hni_errmisc_NS valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_hni_erraddr_NS contains a physical address for that recorded error 1'b0: Address is not valid
 R 0x3118 64 - - por_hni_erraddr_NS
 RESET 0x0 0x800fffffffffffff
@@ -54733,6 +54761,8 @@ F 52 5 LPID
 DESC Error logic processor ID
 ENDGROUP
 GROUP por_mtu_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_mtu_node_info
 RESET 0x10 0xffffffffffff
 DESC Provides component identification information.
@@ -55002,19 +55032,19 @@ R 0x3010 64 - S por_mtu_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
 SGO por_mtu_secure_register_groups_override.ras_secure_access_override
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_mtu_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_mtu_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3018 64 - S por_mtu_erraddr
 RESET 0x0 0x800fffffffffffff
@@ -55080,19 +55110,19 @@ DESC Enables corrected error interrupt as specified in por_mtu_errfr_NS.CFI
 R 0x3110 64 - - por_mtu_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_mtu_erraddr_NS contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_mtu_errmisc_NS valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3118 64 - - por_mtu_erraddr_NS
 RESET 0x0 0x800fffffffffffff
@@ -55118,6 +55148,8 @@ F 63 1 CECOF
 DESC Corrected error counter overflow
 ENDGROUP
 GROUP por_mxp_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_mxp_node_info
 RESET 0x2000000000006 0xfffffffffffff
 DESC Provides component identification information.
@@ -57281,7 +57313,7 @@ DESC When set, trace packet is not delivered out of ATB, and FIFO entry holds th
 R 0x2118 64 - - por_dtm_fifo_entry_ready
 RESET 0x0 0xf
 DESC Controls status of DTM FIFO entries.
-F 0 4 ready
+F 0 4 ready W1C
 DESC Indicates which DTM FIFO entries are ready; write a 1 to clear Bit [3]: Entry 3 ready when set Bit [2]: Entry 2 ready when set Bit [1]: Entry 1 ready when set Bit [0]: Entry 0 ready when set
 R 0x2120 64 ROV - por_dtm_fifo_entry0_0
 RESET 0x0 0xffffffffffffffff
@@ -57580,7 +57612,7 @@ DESC When set, trace packet is not delivered out of ATB, and FIFO entry holds th
 R 0x2318 64 - - por_dtm_fifo_entry_ready_dt1
 RESET 0x0 0xf
 DESC Controls status of DTM FIFO entries.
-F 0 4 ready
+F 0 4 ready W1C
 DESC Indicates which DTM FIFO entries are ready; write a 1 to clear Bit [3]: Entry 3 ready when set Bit [2]: Entry 2 ready when set Bit [1]: Entry 1 ready when set Bit [0]: Entry 0 ready when set
 R 0x2320 64 ROV - por_dtm_fifo_entry0_0_dt1
 RESET 0x0 0xffffffffffffffff
@@ -57879,7 +57911,7 @@ DESC When set, trace packet is not delivered out of ATB, and FIFO entry holds th
 R 0x2518 64 - - por_dtm_fifo_entry_ready_dt2
 RESET 0x0 0xf
 DESC Controls status of DTM FIFO entries.
-F 0 4 ready
+F 0 4 ready W1C
 DESC Indicates which DTM FIFO entries are ready; write a 1 to clear Bit [3]: Entry 3 ready when set Bit [2]: Entry 2 ready when set Bit [1]: Entry 1 ready when set Bit [0]: Entry 0 ready when set
 R 0x2520 64 ROV - por_dtm_fifo_entry0_0_dt2
 RESET 0x0 0xffffffffffffffff
@@ -58178,7 +58210,7 @@ DESC When set, trace packet is not delivered out of ATB, and FIFO entry holds th
 R 0x2718 64 - - por_dtm_fifo_entry_ready_dt3
 RESET 0x0 0xf
 DESC Controls status of DTM FIFO entries.
-F 0 4 ready
+F 0 4 ready W1C
 DESC Indicates which DTM FIFO entries are ready; write a 1 to clear Bit [3]: Entry 3 ready when set Bit [2]: Entry 2 ready when set Bit [1]: Entry 1 ready when set Bit [0]: Entry 0 ready when set
 R 0x2720 64 ROV - por_dtm_fifo_entry0_0_dt3
 RESET 0x0 0xffffffffffffffff
@@ -58497,19 +58529,19 @@ R 0x3010 64 - S por_mxp_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
 SGO por_mxp_secure_register_groups_override.ras_secure_access_override
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_mxp_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3028 64 - S por_mxp_errmisc
 RESET 0x0 0x87ff0000007fffff
@@ -58588,19 +58620,19 @@ DESC Enables corrected error interrupt as specified in por_mxp_errfr_NS.CFI
 R 0x3110 64 - - por_mxp_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_mxp_errmisc_NS valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3128 64 - - por_mxp_errmisc_NS
 RESET 0x0 0x87ff0000007fffff
@@ -58619,6 +58651,8 @@ Mesh Without Replicated Channels: Bits [4:2]: Transaction type 3'b000: REQ 3'b00
 Mesh With Single MXP (1x1 Mesh): Bits [4:3]: Transaction type 2'b00:  REQ 2'b01:  RSP 2'b10:  SNP 2'b11:  DAT Bits [2:0]: Port 3'b000: Port 0 3'b001: Port 1 3'b010: Port 2 3'b011: Port 3 3'b100: Port 4 3'b101: Port 5
 ENDGROUP
 GROUP por_rnd_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_rnd_node_info
 RESET 0xd 0xffffffffffff
 DESC Provides component identification information.
@@ -59059,6 +59093,8 @@ F 24 6 pmu_event3_id
 DESC RN-D PMU Event 3 ID; see pmu_event0_id for encodings
 ENDGROUP
 GROUP por_rni_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_rni_node_info
 RESET 0xa 0xffffffffffff
 DESC Provides component identification information.
@@ -59481,6 +59517,8 @@ F 24 6 pmu_event3_id
 DESC RN-I PMU Event 3 ID; see pmu_event0_id for encodings
 ENDGROUP
 GROUP por_sbsx_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_sbsx_node_info
 RESET 0x7 0xffffffffffff
 DESC Provides component identification information.
@@ -59614,19 +59652,19 @@ R 0x3010 64 - S por_sbsx_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
 SGO por_sbsx_secure_register_groups_override.ras_secure_access_override
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_sbsx_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_sbsx_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3018 64 - S por_sbsx_erraddr
 RESET 0x0 0x800fffffffffffff
@@ -59679,19 +59717,19 @@ DESC Enables corrected error interrupt as specified in por_sbsx_errfr_NS.CFI
 R 0x3110 64 - - por_sbsx_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_sbsx_erraddr_NS contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_sbsx_errmisc_NS valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3118 64 - - por_sbsx_erraddr_NS
 RESET 0x0 0x800fffffffffffff
@@ -59713,6 +59751,8 @@ F 28 3 SIZE
 DESC Error transaction size
 ENDGROUP
 GROUP por_rnsam_registers
+BASE 0x0
+RANGE 0x10000
 R 0x0 64 RO - por_rnsam_node_info
 RESET 0xf 0xffffffffffff
 DESC Provides component identification information.

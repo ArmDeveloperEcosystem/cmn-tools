@@ -321,7 +321,7 @@ def main(argv):
     from cmn_perfstat import Perf
     parser = argparse.ArgumentParser(description="check if CMN PMU driver is installed")
     parser.add_argument("--perf-bin", type=str, default="perf", help="path to perf binary")
-    parser.add_argument("-v", "--verbose", action="count", default=1, help="increase verbosity")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
     opts = parser.parse_args(argv)
     perf = Perf(perf_bin=opts.perf_bin, verbose=opts.verbose)
     is_driver_installed = is_cmn_pmu_installed()
@@ -329,10 +329,8 @@ def main(argv):
     print("perf command is installed: %s" % perf.is_installed())
     pep = perf_event_paranoid()
     print("perf_event_paranoid: %u" % pep)
-    print("Checking for CMN PMU events:")
-    perf.check_cmn_events()
-    print("Checking for CPU hardware PMU events:")
-    perf.check_cpu_events()
+    print("CMN PMU events available: %s" % perf.check_cmn_events())
+    print("CPU hardware PMU events available: %s" % perf.check_cpu_events())
 
 
 if __name__ == "__main__":

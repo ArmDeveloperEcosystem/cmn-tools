@@ -30,6 +30,17 @@ of the interconnect:
  - the type of device attached to each device port, e.g.
    RN-F, HN-F, RN-I etc.
 
+For FlatID meshes, discovery counts the device slots reported by each XP's
+ports and chooses the device-ID field width from the largest XP population.
+It assigns slot IDs before scanning XP child nodes and saves the width in the
+topology JSON when it differs from three bits.
+
+On a mesh where the CFG node exposes only part of the original XP grid,
+the saved X/Y dimensions still describe the node-ID encoding grid. Discovery
+uses the wrapped dimensions in `por_info_global_2` and the visible XP IDs;
+the number of CFG child pointers need not equal X times Y. Coordinates with
+no exposed XP are absent from the saved topology.
+
 The script does not discover where CPUs are located in the
 interconnect; this is done by a separate script. See
 [CPU location discovery](README-cpu-discovery.md).
@@ -66,6 +77,37 @@ CMN mesh topology. By default, this is saved in
 It will print summary details of the CMN mesh.
 
 
+Skipping inaccessible nodes
+---------------------------
+
+When an XP or device node cannot safely be accessed, supply its register-space
+offset from `PERIPHBASE` or its absolute address in the `skiplist` of a CMN
+locations JSON file. For example:
+
+```json
+{"elements": [{"product": "CMN", "base": "0x50000000",
+               "skiplist": ["0x100000", "0x50200000"]}]}
+```
+
+Pass the file with `python src/cmn_discover.py --cmn-locations locations.json`.
+If the CMN base address is found automatically, keep the skiplist in a separate
+JSON file instead:
+
+```json
+{"skiplist": ["0x100000", "0x200000"]}
+```
+
+Pass it with `python src/cmn_discover.py --cmn-skiplist skiplist.json`.
+The offsets are relative to `PERIPHBASE`; absolute addresses also work. Select
+one CMN with `--cmn-instance` if more than one location is found.
+The config node's child pointers identify XP entries; each discovered XP's
+child pointers identify device entries. An address that matches both kinds of
+node, or matches no child pointer, is rejected. Skipping an XP also omits its
+devices from discovery; do not separately list its devices, since their child
+pointers cannot be checked. Only list nodes whose addresses are known to be
+unsafe to access.
+
+
 Discovering the CPU locations
 -----------------------------
 This step is optional, but allows tools to refer to CPUs under
@@ -81,4 +123,4 @@ register discovery.
 
 See [README-cpu-discovery.md](README-cpu-discovery.md) for prerequisites,
 RN-F/SRCID/LPID discovery, atomic and interval methods, verification and
-update workflows, checkpoints, limitations, and implementation details.
+update workflows, checkpoints, and limitations.

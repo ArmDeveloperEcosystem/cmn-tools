@@ -119,7 +119,7 @@ class BoundWatchpoint(object):
         dev = port.port_number
         # The selector uses XP port numbers; the register uses DTM-local ones.
         if port.CMN().multiple_dtms:
-            dev -= 2 * self.dtm.index
+            dev -= self.dtm.port_base
         self.physical = cmn_devmem.DTMWatchpoint(
             dtm=self.dtm, up=wp.up, chn=wp.chn, chn_num=vc, dev=dev,
             grp=match.grp, value=match.val, mask=match.mask, pkt_gen=False,
@@ -398,8 +398,18 @@ class DirectProbe(object):
             dtm = binding.dtm
             if dtm in self.running and (dtm in self.tagged) == enabled:
                 continue
-            dtm.dtm_update_control(control=self.states[dtm].control,
-                                   enable=True, tag=enabled, sample=False)
+            per_wp_tag = dtm.has_wp_tten()
+            control = self.states[dtm].control
+            if per_wp_tag:
+                # Reuse the programmed watchpoint; no configuration read is needed.
+                if dtm in self.running:
+                    self.stop(dtm)
+                binding.physical.tten = enabled
+                dtm.dtm_wp_set(binding.slot, binding.physical)
+                dtm.pmu_configure_local([binding.slot], width=64)
+            dtm.dtm_update_control(control=control,
+                                   enable=True, tag=enabled and not per_wp_tag, sample=False,
+                                   tag_first=False)  # Probe rates require tagging every match.
             self.running.add(dtm)
             if enabled:
                 self.tagged.add(dtm)

@@ -288,7 +288,9 @@ class CMNLister:
         print()
         pfx += "  "
         if n.XY() != xp.XY():
-            # Has been seen with CXLA (external) nodes on CMN-600
+            # Discrepancy has been seen with CXLA (external) nodes on CMN-600
+            # TBD currently this test will never trigger, as support for FlatID mapping now means
+            # we get the device node XY() by reference to its XP.
             print(pfx + "** node has anomalous coordinates: %s, expected %s" % (str(n.XY()), str(xp.XY())))
         if n.has_properties(CMN_PROP_HNF):
             cg = n.cache_geometry()

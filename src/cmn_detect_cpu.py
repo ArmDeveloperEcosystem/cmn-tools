@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 """
-Detect where CPUs are located in the CMN mesh, by generating traffic.
+Detect where CPUs are located in the CMN mesh, or install known mappings.
 
 Copyright (C) Arm Ltd. 2024. All rights reserved.
 SPDX-License-Identifier: Apache 2.0
@@ -28,11 +28,13 @@ import os
 import copy
 import hashlib
 import random
+import re
 import sys
 import time
 from collections import namedtuple
 
 import app_data
+import cmn_base
 import cmn_json
 import cmn_traffic_gen
 from cmn_enum import *
@@ -294,6 +296,101 @@ def cpu_mapping(cpu_obj):
 
 def snapshot_cpu_mappings(S):
     return dict((cpu_obj.cpu, cpu_mapping(cpu_obj)) for cpu_obj in S.cpus())
+
+
+def parse_cpu_mapping_update(spec):
+    """Parse CPU=[mM:]ID[:lpid=N] or CPU=delete; default to mesh 0, LPID 0."""
+    number = r"(?:0[xX][0-9a-fA-F]+|[0-9]+)"
+    match = re.match(r"(%s)=(?:delete|(?:m(%s):)?(%s)(?::lpid=(%s))?)\Z" %
+                     (number, number, number, number), spec)
+    if match is None:
+        raise ValueError("invalid CPU mapping %r: expected CPU=[mM:]ID[:lpid=N] or CPU=delete" % spec)
+    # Decimal values with leading zeros have the same meaning on Python 2 and 3.
+    values = [int(v, 16 if v.lower().startswith("0x") else 10) if v is not None else None
+              for v in match.groups()]
+    cpu, mesh, srcid, lpid = values
+    if srcid is None:
+        return cpu, None
+    if srcid > cmn_base.NODE_INFO_FIELD_MAX:
+        raise ValueError("CPU mapping %r: node ID out of range" % spec)
+    if lpid is None:
+        lpid = 0
+    # AMBA CHI IHI 0050E.b, Table 13-6: LPID[4:0].
+    # https://documentation-service.arm.com/static/6295e03db334256d9ea8ae86
+    if lpid > 31:
+        raise ValueError("CPU mapping %r: LPID must be in 0..31" % spec)
+    return cpu, (0 if mesh is None else mesh, srcid, lpid)
+
+
+def read_cpu_mapping_updates(mapping_groups, filenames):
+    """Read whitespace-separated assignments with # comments; '-' is stdin.
+
+    Reject repeated CPU numbers across all inputs so input order cannot hide
+    conflicting assignments. Report file and line information for bad input.
+    """
+    updates = {}
+
+    def read_lines(lines, source):
+        for lineno, raw in enumerate(lines, 1):
+            for spec in raw.split("#", 1)[0].split():
+                try:
+                    cpu, mapping = parse_cpu_mapping_update(spec)
+                    if cpu in updates:
+                        raise ValueError("CPU %u specified more than once" % cpu)
+                    updates[cpu] = mapping
+                except ValueError as e:
+                    raise ValueError("%s:%u: %s" % (source, lineno, e))
+
+    for group in mapping_groups:
+        read_lines(group, "--map")
+    for filename in filenames:
+        if filename == "-":
+            read_lines(sys.stdin, "stdin")
+        else:
+            with open(filename) as f:
+                read_lines(f, filename)
+    if not updates:
+        raise ValueError("no CPU mapping updates supplied")
+    return updates
+
+
+def apply_cpu_mapping_updates(S, updates, discard=False):
+    """Validate a complete batch, then add, replace or delete selected CPUs.
+
+    Resolve RN-F ports from cached topology only. Check the final identities
+    before modifying any mapping, allowing swaps within a batch and preserving
+    unselected CPUs unless discard is requested. Deleting an absent CPU is a
+    no-op. Return whether the mappings changed.
+    """
+    previous = dict((co.cpu, (co.port, co.id, co.lpid)) for co in S.cpus()) if S.has_cpu_mappings() else {}
+    mappings = {} if discard else previous.copy()
+    meshes = dict((cmn.cmn_seq, cmn) for cmn in S.CMNs)
+    for cpu, mapping in sorted(updates.items()):
+        if mapping is None:
+            mappings.pop(cpu, None)
+            continue
+        mesh, srcid, lpid = mapping
+        if mesh not in meshes:
+            raise ValueError("CPU %u: mesh m%u is not in the system description" % (cpu, mesh))
+        port = meshes[mesh].port_at_id(srcid)
+        if port is None or not port.has_properties(CMN_PROP_RNF):
+            raise ValueError("CPU %u: m%u:0x%x is not an RN-F device in the system description" %
+                             (cpu, mesh, srcid))
+        mappings[cpu] = (port, srcid, lpid)
+    identities = {}
+    for cpu, (port, srcid, lpid) in sorted(mappings.items()):
+        key = (port.CMN().cmn_seq, srcid)
+        at_id = identities.setdefault(key, {})
+        if lpid in at_id or None in at_id or (lpid is None and at_id):
+            raise ValueError("CPU %u: conflicting CPU mappings at m%u:0x%x (LPID %s)" %
+                             (cpu, key[0], srcid, lpid))
+        at_id[lpid] = cpu
+    if mappings == previous:
+        return False
+    S.discard_cpu_mappings()
+    for cpu, (port, srcid, lpid) in sorted(mappings.items()):
+        S.set_cpu(cpu, port, id=srcid, lpid=lpid)
+    return True
 
 
 def mapping_str(m):
@@ -1296,16 +1393,27 @@ def main(argv, backend=None):
     uses old mappings as measured atomic guesses and writes only when mappings
     changed. A single-CPU update preserves all other cached mappings. Ordinary
     discovery writes a new output file rather than overwriting the topology.
+    ``--map`` and ``--map-file`` edit known mappings without discovery, writing
+    the input JSON unless ``--output`` selects another file.
     """
     import argparse
     defaults = CPUDiscoveryOptions()
-    parser = argparse.ArgumentParser(description="Discover where CPUs are located in system mesh",
+    parser = argparse.ArgumentParser(description="Discover CPU placement by traffic measurement, or edit known mappings",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--json", type=str, default=cmn_json.cmn_config_filename(), help="JSON system description")
     parser.add_argument("--update", action="store_true", help="refresh cached CPU mappings in the JSON system description")
     parser.add_argument("--discard", action="store_true", help="discard any previous CPU mappings")
     parser.add_argument("--verify", action="store_true", help="verify any existing CPU mappings by rediscovering them")
     parser.add_argument("--report", action="store_true", help="report previously detected CPU mappings")
+    parser.add_argument("--map", action="append", nargs="+", default=[], metavar="CPU=MAPPING",
+                        help="add/replace CPU=[mM:]ID[:lpid=N] or CPU=delete without measurement; "
+                             "mesh and LPID default to 0, LPID range 0..31; "
+                             "accepts multiple entries and may be repeated; "
+                             "edits the input JSON unless --output is given; "
+                             "preserves other CPUs unless --discard is given")
+    parser.add_argument("--map-file", action="append", default=[], metavar="FILE",
+                        help="read mapping updates from FILE (- for stdin); whitespace-separated "
+                             "entries and # comments; may be repeated")
     parser.add_argument("--no-use-checkpoint", action="store_true", help="ignore any previous discovery checkpoint")
     parser.add_argument("-o", "--output", type=str, help="output JSON filename")
     parser.add_argument("--cpu", type=int, help="discover one CPU")
@@ -1325,6 +1433,24 @@ def main(argv, backend=None):
     parser.add_argument("--keep-exe", action="store_true", help="keep the generated traffic helper executable")
     parser.add_argument("-v", "--verbose", action="count", default=1, help="increase verbosity")
     opts = parser.parse_args(argv)
+    if opts.map or opts.map_file:
+        if opts.verify or opts.report or opts.cpu is not None:
+            parser.error("--map/--map-file cannot be combined with --verify, --report or --cpu")
+        try:
+            updates = read_cpu_mapping_updates(opts.map, opts.map_file)
+            S = cmn_json.load_system_for_cli(opts.json, check_system=False)
+            changed = apply_cpu_mapping_updates(S, updates, discard=opts.discard)
+        except (ValueError, IOError, OSError) as e:
+            parser.error(str(e))
+        ofn = opts.output if opts.output is not None else opts.json
+        if changed or opts.output is not None:
+            if changed:
+                S.cpu_timestamp = time.time() if S.has_cpu_mappings() else None
+            print("Writing JSON file with CPU locations: %s" % ofn, file=sys.stderr)
+            cmn_json.json_dump_file_from_system(S, ofn)
+        else:
+            print("CPU mappings unchanged", file=sys.stderr)
+        return
     # Reporting reads cached mappings only and therefore needs neither PMU
     # validation nor a discovery session.
     if opts.report:

@@ -97,15 +97,15 @@ def device_has_properties(device, props):
     Do not inspect nodes when the port already satisfies the request: in the
     live model that would trigger otherwise unnecessary child discovery.
     """
-    if props in [None, CMN_PROP_none] or device.port.has_properties(props):
+    if props in [None, CMN_PROP_none]:
+        return True
+    if device.connected_type is None:
+        port_match = device.port.has_properties(props)
+    else:
+        port_match = cmn_port_device_type_has_properties(device.connected_type, props)
+    if port_match:
         return True
     return any([n.has_properties(props) for n in device.device_nodes])
-
-
-def cmn_device_at_id(cmn, id, create=False):
-    """Resolve an id via its XP, or return None if the XP or slot is absent."""
-    xp = cmn.XP(id & ~7)
-    return xp.device_at_id(id, create=create) if xp is not None else None
 
 
 def port_has_properties(port, props):
@@ -378,13 +378,16 @@ class System(NodeGroup):
             if instance is None or instance == i:
                 yield c
 
-    def create_CMN(self, dimX=None, dimY=None, extra_ports=None, config=None):
+    def create_CMN(self, dimX=None, dimY=None, extra_ports=None, config=None,
+                   id_device_bits=3, flatid=False, id_y_bits=None):
         """
         Create a CMN instance in the system.
         """
         if config is None:
             raise TypeError("CMN product configuration must be provided")
-        c = CMN(self, dimX=dimX, dimY=dimY, cmn_seq=len(self.CMNs), config=config, extra_ports=extra_ports)
+        c = CMN(self, dimX=dimX, dimY=dimY, cmn_seq=len(self.CMNs), config=config,
+                extra_ports=extra_ports, id_device_bits=id_device_bits, flatid=flatid,
+                id_y_bits=id_y_bits)
         self.CMNs.append(c)
         return c
 
@@ -530,18 +533,55 @@ class CPU(Requester):
         return s
 
 
-def id_coord_bits(dimX, dimY):
+class CoordScheme:
     """
-    The number of bits used for both X and Y coordinates in device ids
-    is derived from the larger of the two dimensions.
+    Coordinate field positions and widths above the low node ID bits.
+    XP IDs reserve three low bits; device IDs may use a different offset.
     """
-    md = max(dimX, dimY)
-    if md > 8:
+    def __init__(self, x_size, y_size):
+        self.y_pos = 0
+        self.y_size = y_size
+        self.x_pos = y_size
+        self.x_size = x_size
+
+    def id_x(self, id, offset=3):
+        return BITS(id, offset+self.x_pos, self.x_size)
+
+    def id_y(self, id, offset=3):
+        return BITS(id, offset+self.y_pos, self.y_size)
+
+    def id_xy(self, id, offset=3):
+        return (self.id_x(id, offset=offset), self.id_y(id, offset=offset))
+
+    def xy_id(self, x, y, offset=3):
+        return ((x << self.x_pos) | y) << offset
+
+
+def dim_bits(n):
+    """
+    The number of bits required to represent a coordinate, given a dimension
+    """
+    if n > 16:
+        return 5
+    elif n > 8:
         return 4
-    elif md > 4:
+    elif n > 4:
         return 3
     else:
         return 2
+
+
+def id_coord_bits(dimX, dimY, flatid=False):
+    """
+    Return the coordinate layout for XP or device IDs. X is above Y.
+    In the original scheme both fields use the larger dimension's width;
+    in the flat ID scheme each field uses its own dimension's width.
+    """
+    if not flatid:
+        b = dim_bits(max(dimX, dimY))
+        return CoordScheme(b, b)
+    else:
+        return CoordScheme(dim_bits(dimX), dim_bits(dimY))
 
 
 class CMN(NodeGroup):
@@ -550,29 +590,44 @@ class CMN(NodeGroup):
 
     There may be multiple CMN meshes in a system.
     """
-    def __init__(self, owner=None, dimX=None, dimY=None, cmn_seq=None, config=None, extra_ports=None):
+    def __init__(self, owner=None, dimX=None, dimY=None, cmn_seq=None, config=None,
+                 extra_ports=None, id_device_bits=3, flatid=False, id_y_bits=None):
         if owner is not None and not isinstance(owner, System):
             raise TypeError("CMN owner must be a System")
         if config is not None and not isinstance(config, CMNConfig):
             raise TypeError("CMN product configuration must be a CMNConfig")
-        # The current model's coordinate encoding uses at most four bits.
-        check_integer(dimX, "CMN X dimension", minimum=1, maximum=16)
-        check_integer(dimY, "CMN Y dimension", minimum=1, maximum=16)
+        check_integer(dimX, "CMN X dimension", minimum=1, maximum=32)
+        check_integer(dimY, "CMN Y dimension", minimum=1, maximum=32)
+        check_integer(id_device_bits, "CMN device ID bits", minimum=1, maximum=4)
+        if id_y_bits is not None:
+            check_integer(id_y_bits, "CMN Y-coordinate bits", minimum=0, maximum=5)
+            if dimY > (1 << id_y_bits):
+                raise ValueError("CMN Y-coordinate bits cannot represent Y dimension %u" % dimY)
+        if not isinstance(flatid, bool):
+            raise TypeError("flatid must be a boolean")
         if cmn_seq is not None:
             check_integer(cmn_seq, "CMN sequence number")
         if extra_ports is not None and not isinstance(extra_ports, bool):
             raise TypeError("extra_ports must be a boolean or None")
         self.owner = owner     # e.g. System
         self.product_config = config
+        self.vc_num = None     # REQ/RSP/SNP/DAT instance counts, or unknown
         self.cmn_seq = cmn_seq          # sequence number within the system
         self.periphbase = None
         self.rootnode_offset = None     # For early CMNs: None means not known
         self.node_skiplist = None
         self.dimX = dimX
         self.dimY = dimY
-        self.id_coord_bits = id_coord_bits(self.dimX, self.dimY)
+        self.id_device_bits = id_device_bits
+        self.flatid = flatid
+        self.id_coord_bits = id_coord_bits(self.dimX, self.dimY, flatid=self.flatid)
+        self.id_y_bits = id_y_bits
+        if id_y_bits is not None:
+            self.id_coord_bits = CoordScheme(self.id_coord_bits.x_size, id_y_bits)
         self.xy_xp = {}        # map (x, y) -> xp
         self.id_xp = {}        # map xp id -> xp
+        self.id_port = {}      # map represented device id -> port, including lazy slots
+        self.id_device = {}    # map materialized device id -> CMNDevice
         self.debug_nodes = []
         self.id_nodes = {}     # map node id -> (type -> node)
         self.id_lpid_cpu = {}  # map (id, lpid) -> cpu
@@ -625,27 +680,46 @@ class CMN(NodeGroup):
         """
         return self.id_xp.get(id, None)
 
-    def xy_id(self, x, y):
+    def xy_xp_id(self, x, y):
         """
-        Calculate the XP id from coordinates
+        Calculate the XP id from coordinates.
         """
-        return (x << (3 + self.id_coord_bits)) | (y << 3)
+        return self.id_coord_bits.xy_id(x, y)
 
-    def id_xy(self, id):
+    def xp_id_xy(self, id):
         """
-        Calculate the (X, Y) coordinates from a device id
+        Decode coordinates from an XP id.
         """
-        return (BITS(id, 3+self.id_coord_bits, self.id_coord_bits), BITS(id, 3, self.id_coord_bits))
+        if id & 7:
+            raise ValueError("0x%x is not an XP node ID" % id)
+        return self.id_coord_bits.id_xy(id)
+
+    def xy_device_id(self, x, y):
+        """
+        Calculate the first device id at the given XP coordinates.
+        """
+        return self.id_coord_bits.xy_id(x, y, offset=self.id_device_bits)
+
+    def device_id_xy(self, id):
+        """
+        Calculate the (X, Y) coordinates from a device id.
+        """
+        return self.id_coord_bits.id_xy(id, offset=self.id_device_bits)
+
+    def device_xp_id(self, id):
+        """
+        Find the XP id encoded by a device id.
+        """
+        return (id >> self.id_device_bits) << 3
 
     def XP_port_device(self, id):
         """
         Return (XP, port number, device number) for a device id.
         """
-        xp = self.XP(id & ~7)
-        if xp is None:
+        device = self.device_at_id(id, create=True)
+        if device is None:
             return (None, None, None)
-        (port, dev) = xp.id_port_device(id)
-        return (xp, port, dev)
+        return (device.XP(),) + device.PD()
 
     def ports(self, properties=0):
         """
@@ -692,20 +766,18 @@ class CMN(NodeGroup):
         """
         Get the CMNPort object which owns a given id.
         """
-        xp_id = (id & ~7)
-        if xp_id not in self.id_xp:
-            return None
-        xp = self.id_xp[xp_id]
-        for p in xp.ports():
-            if p.is_valid_id(id):
-                return p
-        return None
+        device = self.id_device.get(id)
+        return device.port if device is not None else self.id_port.get(id)
 
     def device_at_id(self, id, create=False):
         """
         Get the CMNDevice object represented by a given id.
         """
-        return cmn_device_at_id(self, id, create=create)
+        device = self.id_device.get(id)
+        if device is not None or not create:
+            return device
+        port = self.id_port.get(id)
+        return port.device_at_id(id, create=True) if port is not None else None
 
     def cpus_at_id(self, id):
         for co in self.id_lpid_cpu.values():
@@ -744,9 +816,12 @@ class CMN(NodeGroup):
         """
         Yield CHI node ids for all nodes matching properties.
         """
-        for p in self.ports(properties=properties):
+        for p in self.ports():
             for id in p.ids():
-                yield id
+                device = p.device_at_id(id)
+                if ((device is not None and device.has_properties(properties)) or
+                        (device is None and p.has_properties(properties))):
+                    yield id
 
     def rnf_ids(self):
         """
@@ -857,11 +932,13 @@ class CMNDevice:
     and corresponding node id. This may comprise several internal device nodes,
     or no explicit CMN nodes at all for external attachments such as RN-Fs.
     """
-    def __init__(self, port=None, node_id=None, device_number=None):
+    def __init__(self, port=None, node_id=None, device_number=None, connected_type=None):
         if not isinstance(port, CMNPort):
             raise TypeError("device port must be a CMNPort")
         check_integer(node_id, "device node ID", maximum=NODE_INFO_FIELD_MAX)
         check_integer(device_number, "device number", maximum=7)
+        if connected_type is not None:
+            check_integer(connected_type, "device connected type", maximum=NODE_INFO_FIELD_MAX)
         if node_id != port_device_id(port, device_number):
             raise ValueError("device node ID does not match port base ID and device number")
         if not port.xp.is_valid_id(node_id):
@@ -869,6 +946,8 @@ class CMNDevice:
         self.port = port
         self._node_id = node_id
         self.device_number = device_number
+        self.connected_type = connected_type  # None inherits the port's type
+        self.dn_domain = None       # Logical ID of the DN handling this requester's DVMs
         self.device_credited_slices = None
         self.device_nodes = []       # Order of device nodes is not significant
         self.cpus = []
@@ -977,13 +1056,31 @@ class CMNPort:
         """
         return port_device_number(self, id) in self.device_numbers()
 
-    def create_device(self, device_number):
+    def create_device(self, device_number, connected_type=None):
         """
         Create a device on this port.
         """
         check_integer(device_number, "device number", maximum=7)
+        if connected_type is not None:
+            check_integer(connected_type, "device connected type", maximum=NODE_INFO_FIELD_MAX)
         if device_number not in self.pdevices:
-            self.pdevices[device_number] = CMNDevice(self, node_id=port_device_id(self, device_number), device_number=device_number)
+            node_id = port_device_id(self, device_number)
+            cmn = self.CMN()
+            existing_port = cmn.id_port.get(node_id)
+            if existing_port is not None and existing_port is not self:
+                raise CMNBadStructure("device ID 0x%x belongs to both %s and %s" %
+                                      (node_id, existing_port, self))
+            device = CMNDevice(
+                self, node_id=node_id,
+                device_number=device_number, connected_type=connected_type)
+            self.pdevices[device_number] = device
+            cmn.id_port[node_id] = self
+            cmn.id_device[node_id] = device
+        elif connected_type is not None:
+            device = self.pdevices[device_number]
+            if device.connected_type is not None and device.connected_type != connected_type:
+                raise ValueError("device D%u has conflicting connected types" % device_number)
+            device.connected_type = connected_type
         return self.pdevices[device_number]
 
     def device(self, device_number, create=False):
@@ -1040,7 +1137,9 @@ class CMNPort:
         return self.xp.owner
 
     def has_properties(self, props):
-        return port_has_properties(self, props)
+        return port_has_properties(self, props) or any(
+            cmn_port_device_type_has_properties(d.connected_type, props)
+            for d in self.pdevices.values() if d.connected_type is not None)
 
     def path_str(self):
         return "%s.p%u" % (self.XP().path_str(), self.port_number)
@@ -1169,7 +1268,7 @@ class CMNNodeDev(CMNNodeBase):
             raise ValueError("XP and configuration nodes cannot be port device nodes")
         CMNNodeBase.__init__(self, type=type, type_s=type_s, owner=owner, id=id, logical_id=logical_id, disabled=disabled)
         dn = id - owner.base_id()
-        if not 0 <= dn < 4:
+        if not 0 <= dn < min(8, 1 << owner.xp.owner.id_device_bits) or not owner.xp.is_valid_id(id):
             raise ValueError("%s: bad node ID 0x%x" % (owner, id))
         self.CMN()._record_home_node_type(type)
         self.device_object = self.owner.create_device(dn)
@@ -1219,13 +1318,12 @@ class CMNNodeXP(CMNNodeBase):
         check_integer(x, "XP X coordinate", maximum=owner.dimX - 1)
         check_integer(y, "XP Y coordinate", maximum=owner.dimY - 1)
         check_integer(n_ports, "XP port count", maximum=8)
-        calc_id = owner.xy_id(x, y)
-        if id is not None:
-            check_integer(id, "XP node ID", maximum=NODE_INFO_FIELD_MAX)
-            if calc_id != id:
-                raise ValueError("(%u,%u) should have ID 0x%x, has 0x%x" % (x, y, calc_id, id))
+        if id is None:
+            id = owner.xy_xp_id(x, y)
         else:
-            id = calc_id
+            check_integer(id, "XP node ID", maximum=NODE_INFO_FIELD_MAX)
+            if id & 7:
+                raise ValueError("XP node ID must have its low three bits clear")
         CMNNodeBase.__init__(self, type=CMN_NODE_XP, type_s="XP", owner=owner, id=id, logical_id=logical_id, disabled=disabled)
         self._port = {}
         self.x = x
@@ -1285,9 +1383,17 @@ class CMNNodeXP(CMNNodeBase):
         if port_number in self._port:
             raise CMNBadStructure("%s: duplicate port P%u" % (self, port_number))
         p = CMNPort(self, port_number, type=type, type_s=type_s, cal=cal, base_id=base_id)
+        ids = list(p.ids())
+        for id in ids:
+            existing_port = self.owner.id_port.get(id)
+            if existing_port is not None:
+                raise CMNBadStructure("device ID 0x%x belongs to both %s and %s" %
+                                      (id, existing_port, p))
         self.owner._record_home_node_type(
             {CMN_PORT_DEVTYPE_HNF: CMN_NODE_HNF, CMN_PORT_DEVTYPE_HNS: CMN_NODE_HNS}.get(type))
         self._port[port_number] = p
+        for id in ids:
+            self.owner.id_port[id] = p
         return p
 
     def port(self, pn):
@@ -1300,10 +1406,10 @@ class CMNNodeXP(CMNNodeBase):
                 yield port
 
     def device_at_id(self, id, create=False):
-        for p in self.ports():
-            if p.is_valid_id(id):
-                return p.device_at_id(id, create=create)
-        return None
+        port = self.owner.id_port.get(id)
+        if port is None or port.xp is not self:
+            return None
+        return self.owner.device_at_id(id, create=create)
 
     def has_any_ports(self, props):
         """
@@ -1316,9 +1422,9 @@ class CMNNodeXP(CMNNodeBase):
 
     def is_valid_id(self, id):
         """
-        Check if a node id is valid for this XP.
+        Check if a device id belongs to this XP.
         """
-        return (id & ~7) == self.id
+        return self.owner.device_xp_id(id) == self.node_id()
 
     @property
     def n_children(self):

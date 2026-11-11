@@ -24,6 +24,7 @@ CMN_any_CHILD_INFO      = 0x0080
 # under various names, not consistent. The fields are node-specific anyway.
 CMN_any_UNIT_INFO       = 0x0900     # For most nodes. CMN-700 CCLA it's at 0x910.
 CMN_any_UNIT_INFO1      = 0x0908     # CMN-700 on. Some nodes call it unit_info2
+CMN_CFG_INFO2           = 0x0910     # CMN S3 r2 on
 
 CMN_any_AUX_CTL         = 0x0A08
 
@@ -64,6 +65,7 @@ CMN_DTM_CONTROL_DTM_ENABLE             = 0x01
 CMN_DTM_CONTROL_TRACE_TAG_ENABLE       = 0x02     # set TraceTag on a match
 CMN_DTM_CONTROL_SAMPLE_PROFILE_ENABLE  = 0x04     # use PMSIRR/PMSICR countdown
 CMN_DTM_CONTROL_TRACE_NO_ATB           = 0x08     # trace to FIFO in XP
+CMN_DTM_CONTROL_TRACE_TAG_FIRST_MATCH  = 0x10     # S4: tag only the first match
 
 CMN_DTM_FIFO_ENTRY_READY_off    = 0x118     # write 1 to clear
 CMN_DTM_FIFO_ENTRY0_0_off       = 0x120

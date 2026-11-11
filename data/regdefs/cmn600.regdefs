@@ -1,4 +1,6 @@
 GROUP por_sbsx_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_sbsx_node_info
 RESET 0x7 0xffffffffffff
 F 0 16 node_type
@@ -46,13 +48,13 @@ F 3 1 FI
 F 8 1 CFI
 R 0x3010 64 - S por_sbsx_errstatus
 RESET 0x0 0xed800000
-F 31 1 AV
-F 30 1 V
-F 29 1 UE
-F 27 1 OF
-F 26 1 MV
-F 24 1 CE
-F 23 1 DE
+F 31 1 AV W1C
+F 30 1 V W1C
+F 29 1 UE W1C
+F 27 1 OF W1C
+F 26 1 MV W1C
+F 24 1 CE W1C
+F 23 1 DE W1C
 R 0x3018 64 - S por_sbsx_erraddr
 RESET 0x0 0x8000ffffffffffff
 F 0 48 ADDR
@@ -80,13 +82,13 @@ F 3 1 FI
 F 8 1 CFI
 R 0x3110 64 - - por_sbsx_errstatus_NS
 RESET 0x0 0xed800000
-F 31 1 AV
-F 30 1 V
-F 29 1 UE
-F 27 1 OF
-F 26 1 MV
-F 24 1 CE
-F 23 1 DE
+F 31 1 AV W1C
+F 30 1 V W1C
+F 29 1 UE W1C
+F 27 1 OF W1C
+F 26 1 MV W1C
+F 24 1 CE W1C
+F 23 1 DE W1C
 R 0x3118 64 - - por_sbsx_erraddr_NS
 RESET 0x0 0x8000ffffffffffff
 F 0 48 ADDR
@@ -99,6 +101,8 @@ F 24 4 MEMATTR
 F 28 3 SIZE
 ENDGROUP
 GROUP por_dt_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_dt_node_info
 RESET 0x3 0xffffffffffff
 F 0 16 node_type
@@ -248,6 +252,8 @@ F 0 8 cidr2
 F 32 8 cidr3
 ENDGROUP
 GROUP por_cxla_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_cxla_node_info
 RESET 0x102 0xffffffffffff
 F 0 16 node_type
@@ -510,6 +516,8 @@ F 32 16 pmevcntsr2
 F 48 16 pmevcntsr3
 ENDGROUP
 GROUP por_rnd_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_rnd_node_info
 RESET 0xd 0xffffffffffff
 F 0 16 node_type
@@ -691,6 +699,8 @@ F 16 5 pmu_event2_id
 F 24 5 pmu_event3_id
 ENDGROUP
 GROUP por_hnf_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_hnf_node_info
 RESET 0x5 0xffffffffffff
 F 0 16 node_type
@@ -2009,13 +2019,13 @@ F 3 1 FI
 F 8 1 CFI
 R 0x3010 64 - S por_hnf_errstatus
 RESET 0x0 0xed800000
-F 31 1 AV
-F 30 1 V
-F 29 1 UE
-F 27 1 OF
-F 26 1 MV
-F 24 1 CE
-F 23 1 DE
+F 31 1 AV W1C
+F 30 1 V W1C
+F 29 1 UE W1C
+F 27 1 OF W1C
+F 26 1 MV W1C
+F 24 1 CE W1C
+F 23 1 DE W1C
 R 0x3018 64 - S por_hnf_erraddr
 RESET 0x0 0x8000ffffffffffff
 F 63 1 NS
@@ -2054,13 +2064,13 @@ F 3 1 FI
 F 8 1 CFI
 R 0x3110 64 - - por_hnf_errstatus_NS
 RESET 0x0 0xed800000
-F 31 1 AV
-F 30 1 V
-F 29 1 UE
-F 27 1 OF
-F 26 1 MV
-F 24 1 CE
-F 23 1 DE
+F 31 1 AV W1C
+F 30 1 V W1C
+F 29 1 UE W1C
+F 27 1 OF W1C
+F 26 1 MV W1C
+F 24 1 CE W1C
+F 23 1 DE W1C
 R 0x3118 64 - - por_hnf_erraddr_NS
 RESET 0x0 0x8000ffffffffffff
 F 63 1 NS
@@ -2076,6 +2086,8 @@ F 62 1 SETMATCH
 F 0 4 ERRSRC
 ENDGROUP
 GROUP por_dn_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_dn_node_info
 RESET 0x1 0xffffffffffff
 F 0 16 node_type
@@ -2398,6 +2410,8 @@ F 24 6 pmu_event3_id
 F 32 4 pmu_occup1_id
 ENDGROUP
 GROUP por_cxg_ha_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_cxg_ha_node_info
 RESET 0x101 0xffffffffffff
 F 0 16 node_type
@@ -2753,13 +2767,13 @@ F 3 1 FI
 F 8 1 CFI
 R 0x3010 64 - S por_cxg_ha_errstatus
 RESET 0x0 0xed800000
-F 31 1 AV
-F 30 1 V
-F 29 1 UE
-F 27 1 OF
-F 26 1 MV
-F 24 1 CE
-F 23 1 DE
+F 31 1 AV W1C
+F 30 1 V W1C
+F 29 1 UE W1C
+F 27 1 OF W1C
+F 26 1 MV W1C
+F 24 1 CE W1C
+F 23 1 DE W1C
 R 0x3018 64 - S por_cxg_ha_erraddr
 RESET 0x0 0x8000ffffffffffff
 F 63 1 NS
@@ -2786,13 +2800,13 @@ F 3 1 FI
 F 8 1 CFI
 R 0x3110 64 - S por_cxg_ha_errstatus_NS
 RESET 0x0 0xed800000
-F 31 1 AV
-F 30 1 V
-F 29 1 UE
-F 27 1 OF
-F 26 1 MV
-F 24 1 CE
-F 23 1 DE
+F 31 1 AV W1C
+F 30 1 V W1C
+F 29 1 UE W1C
+F 27 1 OF W1C
+F 26 1 MV W1C
+F 24 1 CE W1C
+F 23 1 DE W1C
 R 0x3118 64 - S por_cxg_ha_erraddr_NS
 RESET 0x0 0x8000ffffffffffff
 F 63 1 NS
@@ -2804,6 +2818,8 @@ F 48 8 ERRSET
 F 0 2 ERRSRC
 ENDGROUP
 GROUP por_cxg_ra_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_cxg_ra_node_info
 RESET 0x100 0xffffffffffff
 F 0 16 node_type
@@ -3283,6 +3299,8 @@ F 24 6 pmu_event3_id
 F 32 4 pmu_occup1_id
 ENDGROUP
 GROUP por_rni_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_rni_node_info
 RESET 0xa 0xffffffffffff
 F 0 16 node_type
@@ -3454,6 +3472,8 @@ F 16 5 pmu_event2_id
 F 24 5 pmu_event3_id
 ENDGROUP
 GROUP por_mxp_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_mxp_node_info
 RESET 0x6 0xffffffffffff
 F 0 16 node_type
@@ -3663,7 +3683,7 @@ F 2 1 sample_profile_enable
 F 3 1 trace_no_atb
 R 0x2118 64 - - por_dtm_fifo_entry_ready
 RESET 0x0 0xf
-F 0 4 ready
+F 0 4 ready W1C
 R 0x2120 64 ROV - por_dtm_fifo_entry0_0
 RESET 0x0 0xffffffffffffffff
 F 0 64 fifo_data0
@@ -3673,7 +3693,7 @@ F 0 64 fifo_data1
 R 0x2130 64 ROV - por_dtm_fifo_entry0_2
 RESET 0x0 0xffffffff
 F 0 16 fifo_data2
-F 16 16 fifo_cycle_count
+F 16 16 fifo_cycle_count RO
 R 0x2138 64 ROV - por_dtm_fifo_entry1_0
 RESET 0x0 0xffffffffffffffff
 F 0 64 fifo_data0
@@ -3825,13 +3845,13 @@ F 3 1 FI
 F 8 1 CFI
 R 0x3010 64 - S por_mxp_errstatus
 RESET 0x0 0xed800000
-F 31 1 AV
-F 30 1 V
-F 29 1 UE
-F 27 1 OF
-F 26 1 MV
-F 24 1 CE
-F 23 1 DE
+F 31 1 AV W1C
+F 30 1 V W1C
+F 29 1 UE W1C
+F 27 1 OF W1C
+F 26 1 MV W1C
+F 24 1 CE W1C
+F 23 1 DE W1C
 R 0x3028 64 - S por_mxp_errmisc
 RESET 0x0 0x7ff0000003f7ff7
 F 48 11 TGTID
@@ -3861,13 +3881,13 @@ F 3 1 FI
 F 8 1 CFI
 R 0x3110 64 - - por_mxp_errstatus_NS
 RESET 0x0 0xed800000
-F 31 1 AV
-F 30 1 V
-F 29 1 UE
-F 27 1 OF
-F 26 1 MV
-F 24 1 CE
-F 23 1 DE
+F 31 1 AV W1C
+F 30 1 V W1C
+F 29 1 UE W1C
+F 27 1 OF W1C
+F 26 1 MV W1C
+F 24 1 CE W1C
+F 23 1 DE W1C
 R 0x3128 64 - - por_mxp_errmisc_NS
 RESET 0x0 0x7ff0000003f7ff7
 F 48 11 TGTID
@@ -3876,6 +3896,8 @@ F 4 11 SRCID
 F 0 3 ERRSRC
 ENDGROUP
 GROUP por_cfgm_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_cfgm_node_info
 RESET 0x2 0xffffffffffff
 F 0 16 node_type
@@ -4710,7 +4732,7 @@ RESET 0x0 0xffffffffffffffff
 F 0 64 hnf_ppu_enable
 R 0x1008 64 - S por_ppu_int_status
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_ppu_status
+F 0 64 hnf_ppu_status W1C
 R 0x1010 64 - S por_ppu_qactive_hyst
 RESET 0x10 0xffff
 F 0 16 hnf_ppu_qact_hyst
@@ -4813,6 +4835,8 @@ F 0 8 cidr2
 F 32 8 cidr3
 ENDGROUP
 GROUP por_rnsam_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_rnsam_node_info
 RESET 0xf 0xffffffffffff
 F 0 16 node_type
@@ -5350,6 +5374,8 @@ F 12 11 sn_nodeid_61
 F 0 11 sn_nodeid_60
 ENDGROUP
 GROUP por_hni_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_hni_node_info
 RESET 0x4 0xffffffffffff
 F 0 16 node_type
@@ -5455,13 +5481,13 @@ F 3 1 FI
 F 8 1 CFI
 R 0x3010 64 - S por_hni_errstatus
 RESET 0x0 0xed800000
-F 23 1 DE
-F 24 1 CE
-F 26 1 MV
-F 27 1 OF
-F 29 1 UE
-F 30 1 V
-F 31 1 AV
+F 23 1 DE W1C
+F 24 1 CE W1C
+F 26 1 MV W1C
+F 27 1 OF W1C
+F 29 1 UE W1C
+F 30 1 V W1C
+F 31 1 AV W1C
 R 0x3018 64 - S por_hni_erraddr
 RESET 0x0 0x8000ffffffffffff
 F 0 48 ADDR
@@ -5492,13 +5518,13 @@ F 3 1 FI
 F 8 1 CFI
 R 0x3110 64 - - por_hni_errstatus_NS
 RESET 0x0 0xed800000
-F 23 1 DE
-F 24 1 CE
-F 26 1 MV
-F 27 1 OF
-F 29 1 UE
-F 30 1 V
-F 31 1 AV
+F 23 1 DE W1C
+F 24 1 CE W1C
+F 26 1 MV W1C
+F 27 1 OF W1C
+F 29 1 UE W1C
+F 30 1 V W1C
+F 31 1 AV W1C
 R 0x3118 64 - - por_hni_erraddr_NS
 RESET 0x0 0x8000ffffffffffff
 F 0 48 ADDR

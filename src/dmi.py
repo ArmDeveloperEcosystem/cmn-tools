@@ -196,6 +196,10 @@ def _decode_processor(d):
     d.h_cache[1] = h_L1 if h_L1 != 0xffff else None
     d.h_cache[2] = h_L2 if h_L2 != 0xffff else None
     d.h_cache[3] = h_L3 if h_L3 != 0xffff else None
+    (srl, ass, pno) = struct.unpack("BBB", d.raw[0x20:0x23])
+    d.serial = d.string(srl)
+    d.asset_tag = d.string(ass)
+    d.part_no = d.string(pno)
     (d.n_cores, d.n_cen, d.n_threads) = struct.unpack("<BBB", d.raw[0x23:0x26])
     if d.n_cores == 0xff:
         d.n_cores = struct.unpack("<H", d.raw[0x2a:0x2c])[0]
@@ -496,13 +500,20 @@ class DMI:
         assert len(ds) <= 1, "unexpected: %u structures of type %s" % (len(ds), DMI_type_str(type))
         return ds[0].decode() if len(ds) == 1 else None
 
+    def processor_0(self):
+        """
+        Return the first processor (socket) entry
+        """
+        for d in self.structures(type=DMI_PROCESSOR):
+            return d
+        return None
+
     def processor(self):
         """
         Return the processor type from the (first) processor entry
         """
-        for d in self.structures(type=DMI_PROCESSOR):
-            return d.version
-        return None
+        d = self.processor_0()
+        return d.version if d is not None else None
 
     def system(self):
         """
@@ -733,6 +744,9 @@ def print_DMI_memory(D):
     for d in D.structures(type=DMI_MEMORY_DEVICE):
         if d.h_array is None:
             print_memory_device(d)    # not seen this one already
+        if not d.is_installed:
+            # Slot with no DIMM installed - may show in DMI as a device
+            continue
         total_size += d.size
         if d.c_speed_mts is not None:
             bw = d.c_speed_mts * DDR_MTS * d.d_width       # bits per second
@@ -797,6 +811,8 @@ def print_DMI_system(D, file_is_local=True):
         elif d.cpu_status != DMI_CPU_ENABLED:
             print(" status=%u" % d.cpu_status, end="")
         print()
+        if d.serial is not None:
+            print("    Serial: %s" % d.serial)
 
 
 def os_dmi_string(s):
@@ -815,6 +831,8 @@ def print_os_dmi_strings():
     """
     Print all DMI strings that the OS is exposing (e.g. Linux /sys)
     """
+    if o_verbose:
+        print("Scanning %s..." % DEFAULT_DMI_STRINGS)
     for k in sorted(os.listdir(DEFAULT_DMI_STRINGS)):
         try:
             s = os_dmi_string(k)
@@ -865,6 +883,7 @@ def main(argv):
     parser.add_argument("--summary", action="store_true", help="print one line per structure")
     parser.add_argument("--system", action="store_true", help="print system information")
     parser.add_argument("--uuid", action="store_true", help="print system UUID")
+    parser.add_argument("--proc0-serial", action="store_true", help="print processor #0 serial number")
     parser.add_argument("--memory", action="store_true", help="print memory records")
     parser.add_argument("--dump-bin", type=str, help="dump contents to a file")
     parser.add_argument("--dmidecode", action="store_true", help="run 'dmidecode' command")
@@ -896,9 +915,11 @@ def main(argv):
         sys.exit(1)
     if opts.verbose:
         print("%s: opening DMI file" % opts.input, file=sys.stderr)
-    print()
-    print(D)
-    if not (opts.decode or opts.dump or opts.summary or opts.memory or opts.uuid or opts.dump_bin):
+    bare_output = (opts.uuid or opts.proc0_serial)
+    if not bare_output:
+        print()
+        print(D)
+    if not (opts.decode or opts.dump or opts.summary or opts.memory or opts.dump_bin or bare_output):
         opts.system = True
     if opts.decode or opts.dump:
         print_DMI_detail(D, type=opts.type, dump=opts.dump)
@@ -911,6 +932,9 @@ def main(argv):
     if opts.uuid:
         # Bare UUID - should be same as /sys/class/dmi/id/product_uuid
         print("%s" % D.system().uuid)
+    if opts.proc0_serial:
+        p0 = D.processor_0()
+        print("%s" % (p0.serial if p0 else "n/a"))
 
 
 if __name__ == "__main__":

@@ -7,8 +7,14 @@ Copyright (C) Arm Ltd. 2025. All rights reserved.
 SPDX-License-Identifier: Apache 2.0
 
 This module manages definitions of programming registers and their fields.
-It can read and write registers in its own simple format ('regdefs'),
-and also read them from IP-XACT XML.
+It can read and write registers in its own simple format ('regdefs').
+Field lines have the form F <pos> <width> <name> [<access>] [W1C]. The optional
+access token combines access and volatility (NV, V, RO, ROV, WO, WOV).
+NV means read/write and non-volatile; the legacy spelling - is also accepted.
+If omitted, both properties are inherited from the register. Writers emit
+the token only for fields with different properties.
+W1C marks a write-one-to-clear field, independently of its access and volatility.
+Register lines may also end in W1C, in which case all their fields inherit it.
 """
 
 from __future__ import print_function
@@ -27,6 +33,19 @@ def BITS(x, p, n):
 
 
 WARNING_LIMIT = 10
+
+
+def access_code(access):
+    """
+    Validate and normalize a combined access/volatility code.
+    """
+    if access is None or access in ("RW", "NV"):
+        return ""
+    if access == "RWV":
+        return "V"
+    if access not in ("", "V", "RO", "ROV", "WO", "WOV"):
+        raise ValueError("unsupported register/field access: %r" % (access,))
+    return access
 
 
 class RegDefs:
@@ -177,7 +196,10 @@ class RegMap:
         return "%s: %u registers" % (self.name, len(self.regs_by_addr))
 
     def reg_str(self, r):
-        return "0x%x %u %s %s %s" % (r.addr, r.n_bits, (r.access or "-"), (r.security or "-"), r.name)
+        s = "0x%x %u %s %s %s" % (r.addr, r.n_bits, (r.access or "-"), (r.security or "-"), r.name)
+        if r.is_w1c:
+            s += " W1C"
+        return s
 
     def fixup_overrides(self):
         """
@@ -242,7 +264,13 @@ class RegMap:
                 print("SGO %s" % r.secure_group_override.qual_name(), file=f)
             if fields and not (rb is not None and r.same_fields(rb)):
                 for fld in r.fields:
-                    print("F %u %u %s" % (fld.pos, fld.width, fld.name), file=f)
+                    fld.validate_access(r)
+                    override = ""
+                    if fld.access != r.access:
+                        override = " " + (fld.access or "NV")
+                    if fld.is_w1c and not r.is_w1c:
+                        override += " W1C"
+                    print("F %u %u %s%s" % (fld.pos, fld.width, fld.name, override), file=f)
                     if descriptions and fld.desc:
                         try:
                             print("DESC %s" % fld.desc, file=f)
@@ -265,8 +293,7 @@ class RegMap:
         It is assumed a GROUP line has been read. Return when a regmap has been read,
         leaving the file-like object open for more reading.
 
-        The input file is assumed to be machine-generated (likely by this module);
-        formatting errors will generally trigger asserts.
+        Invalid field definitions raise ValueError.
         """
         r = None
         fld = None
@@ -279,16 +306,29 @@ class RegMap:
                 pass
             elif ln.startswith("R "):
                 # Register definition
-                (_, addr, n_bits, access, sec, name) = ln.split()
+                parts = ln.split()
+                is_w1c = len(parts) == 7 and parts[-1] == "W1C"
+                if is_w1c:
+                    parts = parts[:-1]
+                (_, addr, n_bits, access, sec, name) = parts
                 n_bits = int(n_bits, 0)
-                r = Register(int(addr, 16), name, n_bits=n_bits, access=("" if access == "-" else access), security=("" if sec == "-" else sec))
+                r = Register(int(addr, 16), name, n_bits=n_bits, access=("" if access == "-" else access),
+                             security=("" if sec == "-" else sec), is_w1c=is_w1c)
                 self.add_register(r)
                 fld = None
                 in_desc = False
             elif ln.startswith("F "):
-                assert r is not None
-                (_, pos, width, name) = ln.split()
-                fld = RegField(name, int(pos), int(width))
+                if r is None:
+                    raise ValueError("field without a register: %s" % ln)
+                parts = ln.split()
+                is_w1c = len(parts) > 4 and parts[-1] == "W1C"
+                if is_w1c:
+                    parts = parts[:-1]
+                if len(parts) not in (4, 5):
+                    raise ValueError("bad field definition: %s" % ln)
+                (_, pos, width, name) = parts[:4]
+                access = None if len(parts) == 4 else ("" if parts[4] == "-" else parts[4])
+                fld = RegField(name, int(pos), int(width), access=access, is_w1c=is_w1c)
                 r.add_field(fld)
                 in_desc = False
             elif ln.startswith("RESET "):
@@ -382,19 +422,25 @@ def regdefs_from_file(fn, verbose=0):
             return RegDefs(fn).load(f, filename=fn, verbose=verbose)
 
 
-class Register:
+class Register(object):
     """
     A single register, possibly with fields.
+    'is_w1c' marks the register and its fields as write-one-to-clear.
     """
-    def __init__(self, addr, name=None, desc=None, n_bits=64, access=None, security=None, external=False, reset=None):
-        assert n_bits > 0
+    def __init__(self, addr, name=None, desc=None, n_bits=64, access=None, security=None, external=False, reset=None, is_w1c=False):
+        if n_bits not in (8, 16, 32, 64):
+            raise ValueError("%s: unexpected register size: %s" % (name, n_bits))
+        if not isinstance(is_w1c, bool):
+            raise TypeError("%s: is_w1c must be a boolean" % name)
         self.regmap = None       # Will be back pointer when added to RegMap
         self.addr = addr         # Generally, offset from base address of a component
-        assert n_bits in [8, 16, 32, 64], "%s: unexpected register size: %s" % (name, n_bits)
         self.n_bits = n_bits
         self.name = name
         self.desc = desc
-        self.access = access
+        self.access = access_code(access)
+        self.is_w1c = is_w1c
+        if self.is_w1c and self.access.rstrip("V") == "RO":
+            raise ValueError("%s: write-one-to-clear register is read-only" % name)
         self.security = security
         self.external = external
         self.reset = reset
@@ -434,7 +480,8 @@ class Register:
         """
         return (r is not None and
                 self.addr == r.addr and self.n_bits == r.n_bits and self.name == r.name and
-                self.access == r.access and self.security == r.security and self.external == r.external)
+                self.access == r.access and self.security == r.security and self.external == r.external and
+                self.is_w1c == r.is_w1c)
 
     def same_fields(self, r):
         if self.fields_mask != r.fields_mask:
@@ -456,24 +503,30 @@ class Register:
         return not (self == r)
 
     def set_root_group_override(self, ovr):
-        # Set the override field as a string, pending fixup to a RegField
+        """
+        Set the override field as a string, pending fixup to a RegField
+        """
         self.root_group_override = ovr
         if ovr is not None:
-            assert self.is_secure
+            if not self.is_secure:
+                print("unexpected Root override (%s) on non-Secure register: %s" % (ovr, self), file=sys.stderr)
             self.regmap.overrides[ovr] = True
 
     def set_secure_group_override(self, ovr):
         self.secure_group_override = ovr
         if ovr is not None:
-            assert self.is_secure
+            if not self.is_secure:
+                print("unexpected Secure override (%s) on non-Secure register: %s" % (ovr, self), file=sys.stderr)
             self.regmap.overrides[ovr] = True
 
     def add_field(self, f):
         """
-        Add a field to this register. We're justified in raising assertions for impossible fields,
-        but should be cautious about reporting overlaps etc.
+        Add a field, inheriting omitted properties and rejecting impossible fields.
+        Overlapping fields are reported but retained.
         """
-        assert (f.pos + f.width) <= self.n_bits, "%s: bad field %s" % (self, f)
+        if f.pos < 0 or f.width <= 0 or (f.pos + f.width) > self.n_bits:
+            raise ValueError("%s: bad field %s" % (self, f))
+        f.validate_access(self)
         if (f.mask_in_reg & self.fields_mask) != 0:
             # This field overlaps with a previous field.
             print("%s: overlapping field %s:" % (self, f), end="", file=sys.stderr)
@@ -484,6 +537,9 @@ class Register:
         self.fields.append(f)
         self.fields_mask |= f.mask_in_reg
         f.reg = self
+        if f.access is None:
+            f.access = self.access
+        f.is_w1c = f.is_w1c or self.is_w1c
         if f.is_parameterized:
             self.n_parameterized += 1
 
@@ -520,33 +576,66 @@ class Register:
         s = "%s at 0x%x" % (self.name, self.addr)
         if self.n_bits != 64:
             s += " (%u bits)" % self.n_bits
-        if self.access:
-            s += " (%s)" % self.access
+        if self.access or self.is_w1c:
+            properties = self.access or "RW"
+            if self.is_w1c:
+                properties += ",W1C"
+            s += " (%s)" % properties
         if self.security:
             s += " (%s)" % self.security
         return s
 
 
-class RegField:
+class RegField(object):
     """
     A register field.
 
-    'access' may refine the register access, e.g. a RO field of a RW register.
+    'access' combines access and volatility using the register encoding.
+    None inherits both properties when the field is added to a register;
+    an explicit code specifies both, e.g. RO is read-only and non-volatile.
+    A field may restrict register access or volatility, but cannot widen them.
 
-    'reset' is typically a named RTL parameter rather than a literal value.
+    'is_w1c' marks a write-one-to-clear field of any width. A field also
+    becomes W1C when added to a register marked W1C.
+
+    'reset' is typically a named configuration parameter rather than a literal value.
     """
-    def __init__(self, name=None, pos=None, width=1, desc=None, access=None, reset=None, is_reserved=False):
-        assert pos is not None
-        assert width > 0
+    def __init__(self, name=None, pos=None, width=1, desc=None, access=None, reset=None, is_reserved=False, is_w1c=False):
+        if pos is None or pos < 0 or width <= 0:
+            raise ValueError("%s: invalid field position/width: %s/%s" % (name, pos, width))
+        if not isinstance(is_w1c, bool):
+            raise TypeError("%s: is_w1c must be a boolean" % name)
         self.reg = None
         self.name = name
         self.desc = desc
         self.pos = pos
         self.width = width
-        self.access = access
+        self.access = access_code(access) if access is not None else None
+        self.is_w1c = is_w1c
         self.reset = reset
         self.is_reserved = is_reserved
         self.is_security_override = False    # may be set in fixup_overrides()
+
+    @property
+    def is_volatile(self):
+        return bool(self.access and self.access.endswith("V"))
+
+    def validate_access(self, reg):
+        """
+        Reject field properties that cannot be supported by the register.
+        """
+        access = reg.access if self.access is None else access_code(self.access)
+        if not isinstance(self.is_w1c, bool):
+            raise TypeError("%s.%s: is_w1c must be a boolean" % (reg.name, self.name))
+        if (self.is_w1c or reg.is_w1c) and access.rstrip("V") == "RO":
+            raise ValueError("%s.%s: write-one-to-clear field is read-only" % (reg.name, self.name))
+        reg_access = access_code(reg.access)
+        reg_mode = reg_access.rstrip("V")
+        if reg_mode and access.rstrip("V") != reg_mode:
+            raise ValueError("%s.%s: field access %s incompatible with register access %s" %
+                             (reg.name, self.name, access or "RW", reg_access or "RW"))
+        if access.endswith("V") and not reg_access.endswith("V"):
+            raise ValueError("%s.%s: volatile field in non-volatile register" % (reg.name, self.name))
 
     def range_str(self):
         if self.width == 1:
@@ -557,7 +646,8 @@ class RegField:
 
     def __eq__(self, f):
         return (f is not None and self.pos == f.pos and self.width == f.width and
-                self.name == f.name and self.desc == f.desc and self.reset == f.reset)
+                self.name == f.name and self.desc == f.desc and self.reset == f.reset and
+                self.access == f.access and self.is_w1c == f.is_w1c)
 
     def __ne__(self, f):
         return not (self == f)
@@ -614,9 +704,9 @@ def diff_regdefs(rda, rdb, file=None):
     if file is None:
         file = sys.stdout
     for n in merge_keys(rda.keys(), rdb.keys()):
-        if n not in rdb._maps:
+        if n not in rdb:
             print("-GROUP %s" % n, file=file)
-        elif n not in rda._maps:
+        elif n not in rda:
             rdb[n].dump(file)
         else:
             rdb[n].dump(file, base=rda[n])

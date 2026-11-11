@@ -121,10 +121,8 @@ both as Python2.7 and as any current version of Python3.
 Output to stderr is highlighted in red, and DS will print a warning message
 (CMD656) indicating a possible script error. This is undesirable when
 stderr is being used for informational and progress messages and minor
-warnings. We could either ensure that this sort of message uses stdout
-(when running under DS), or we could redirect stderr to stdout at some
-point early in module loading. Currently the latter approach is taken,
-in devmem_ds.py.
+warnings. Currently, we deal with this by redirecting stderr to stdout
+at an early stage when running under DS.
 
 File references, or other OS references (e.g. querying the number of CPUs,
 or the hardware architecture), will be to the machine locally running DS.

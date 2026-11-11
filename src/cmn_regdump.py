@@ -21,6 +21,7 @@ import cmn_base
 import cmn_devmem_find
 import devmem_base
 import cmn_select
+import cmn_config
 import regview
 
 
@@ -31,11 +32,38 @@ def BITS(x, p, n):
     return (x >> p) & ((1 << n) - 1)
 
 
+def reg_properties_str(reg, as_parent=False):
+    """
+    Show register access/volatility, labeling the parent for a named field.
+    """
+    properties = reg.access or "RW"
+    if reg.is_w1c:
+        properties += ",W1C"
+    return "(%s%s)" % ("register " if as_parent else "", properties)
+
+
+def field_properties_prefix(fld):
+    """
+    Show only the field properties that differ from its containing register.
+    """
+    properties = []
+    access = fld.access.rstrip("V") or "RW"
+    reg_access = fld.reg.access.rstrip("V") or "RW"
+    if access != reg_access:
+        properties.append(access)
+    if fld.is_volatile != fld.reg.is_volatile:
+        properties.append("V" if fld.is_volatile else "NV")
+    if fld.is_w1c and not fld.reg.is_w1c:
+        properties.append("W1C")
+    return "(%s) " % ",".join(properties) if properties else ""
+
+
 _cmn_part_map = {
     cmn_base.PART_CMN600: "cmn600",
     cmn_base.PART_CMN650: "cmn650",
     cmn_base.PART_CMN700: "cmn700",
     cmn_base.PART_CMN_S3: "cmns3",
+    cmn_base.PART_CMN_S4: "cmns4",
 }
 
 
@@ -46,7 +74,7 @@ def get_pident(cfg):
     between published CMN versions.
     """
     pident = _cmn_part_map.get(cfg.product_id, None)
-    if cfg.product_id in [cmn_base.PART_CMN700, cmn_base.PART_CMN_S3]:
+    if cfg.product_id in [cmn_base.PART_CMN700, cmn_base.PART_CMN_S3, cmn_base.PART_CMN_S4]:
         pident += ("-r%u" % cfg.revision_major)
     return pident
 
@@ -137,7 +165,7 @@ class CMNRegMapper:
             sys.exit(1)
         self.set_regmaps_from_file(regfn)
         self.regmaps_product = cfg
-        self.global_override_available = cfg.product_id not in [cmn_base.PART_CMN_S3]
+        self.global_override_available = cfg.is_before_gen(cmn_config.CMN_GEN_S3)
 
     def set_regmaps_from_file(self, regfn):
         if o_verbose:
@@ -311,7 +339,10 @@ class CMNRegDumper(CMNRegMapper, Style):
             if not different and len(vals) > 1:
                 (n, reg, x) = vals[0]
                 self.node_loc_str = reg.regmap.name
-                print("%s.%s = 0x%x (common across %u nodes)" % (self.node_loc_str, name, x, len(vals)))
+                prefix = field_properties_prefix(reg.field_by_name(fld_name)) if fld_name is not None and not self.o_flat else ""
+                properties = "" if self.o_flat else " " + reg_properties_str(reg, as_parent=(fld_name is not None))
+                print("%s%s.%s = 0x%x (common across %u nodes)%s" %
+                      (prefix, self.node_loc_str, name, x, len(vals), properties))
                 if self.o_fields and fld_name is None:
                     self.reg_dump_fields(reg, x)
             else:
@@ -320,7 +351,10 @@ class CMNRegDumper(CMNRegMapper, Style):
                     rname = self.node_loc_str + "." + name
                     if self.o_address:
                         rname = ("0x%x:" % (n.node_base_addr + reg.addr)) + rname
-                    print("%s = 0x%x" % (rname, x))
+                    if fld_name is not None and not self.o_flat:
+                        rname = field_properties_prefix(reg.field_by_name(fld_name)) + rname
+                    properties = "" if self.o_flat else " " + reg_properties_str(reg, as_parent=(fld_name is not None))
+                    print("%s = 0x%x%s" % (rname, x, properties))
                 if self.o_fields and fld_name is None:
                     if different:
                         self.reg_dump_aggregate_fields(vals)
@@ -352,9 +386,12 @@ class CMNRegDumper(CMNRegMapper, Style):
             old_val = self.reg_read(n, reg)
             if fld_name is not None:
                 rname += "." + fld_name
+                if not self.o_flat:
+                    rname = field_properties_prefix(fld) + rname
+            properties = "" if self.o_flat else " " + reg_properties_str(reg, as_parent=(fld is not None))
             if fld is None:
                 if val is None:
-                    print("%s = 0x%x" % (rname, old_val))
+                    print("%s = 0x%x%s" % (rname, old_val, properties))
                     if fields:
                         self.reg_dump_fields(reg, old_val)
                 else:
@@ -363,10 +400,10 @@ class CMNRegDumper(CMNRegMapper, Style):
                     print("%s = 0x%x -> 0x%x" % (rname, old_val, rb_val), end="")
                     if rb_val != val:
                         print(" (wrote 0x%x)" % val, end="")
-                    print()
+                    print(properties)
             else:
                 if val is None:
-                    print("%s = 0x%x" % (rname, fld.extract(old_val)))
+                    print("%s = 0x%x%s" % (rname, fld.extract(old_val), properties))
                 else:
                     new_val = fld.insert(old_val, val)
                     self.reg_write(n, reg, new_val)
@@ -375,7 +412,7 @@ class CMNRegDumper(CMNRegMapper, Style):
                     print("%s = 0x%x -> 0x%x" % (rname, fld.extract(old_val), rb_field), end="")
                     if rb_field != val:
                         print(" (wrote 0x%x, read 0x%x)" % (new_val, rb_val), end="")
-                    print()
+                    print(properties)
         if n_found == 0:
             print("** Register not found: '%s'" % reg_name, file=sys.stderr)
 
@@ -566,8 +603,7 @@ class CMNRegDumper(CMNRegMapper, Style):
                         self.n_regs_reserved_bits_set += 1
 
     def reg_dump_common_suffix(self, reg, x, show_reset=True):
-        if reg.access:
-            print(" (%s)" % reg.access, end="")
+        print(" " + reg_properties_str(reg), end="")
         if reg.is_secure:
             print(" (%s)" % reg.security, end="")
         if show_reset and reg.reset is not None and x == reg.reset[0]:
@@ -606,6 +642,7 @@ class CMNRegDumper(CMNRegMapper, Style):
     def reg_dump_aggregate_fields(self, vals):
         reg = vals[0][1]
         for fld in reg.fields:
+            prefix = "" if self.o_flat else field_properties_prefix(fld)
             fvals = [(n, nreg, fld.extract(x)) for (n, nreg, x) in vals]
             different = any([v != fvals[0][2] for (n, nreg, v) in fvals[1:]])
             if not different:
@@ -617,7 +654,7 @@ class CMNRegDumper(CMNRegMapper, Style):
                 if self.o_flat:
                     print("%s.%s.%s = %s" % (reg.regmap.name, reg.name, fld.name, self.valstr(v, width=fld.width)))
                     continue
-                print("    %-7s %32s = %-10s (common)" % (fld.range_str(), fld.name, self.valstr(v, width=fld.width)), end="")
+                print("    %-7s %32s = %-10s (common)" % (fld.range_str(), prefix + fld.name, self.valstr(v, width=fld.width)), end="")
                 if self.o_descriptions and fld.desc:
                     print("  %s" % self.descstr(fld.desc), end="")
                 print()
@@ -626,7 +663,7 @@ class CMNRegDumper(CMNRegMapper, Style):
                 for (n, nreg, v) in fvals:
                     print("%s.%s.%s = %s" % (self.locator_str(n), nreg.name, fld.name, self.valstr(v, width=fld.width)))
                 continue
-            print("    %-7s %32s (differs)" % (fld.range_str(), fld.name), end="")
+            print("    %-7s %32s (differs)" % (fld.range_str(), prefix + fld.name), end="")
             if self.o_descriptions and fld.desc:
                 print("  %s" % self.descstr(fld.desc), end="")
             print()
@@ -660,7 +697,8 @@ class CMNRegDumper(CMNRegMapper, Style):
             if self.o_flat:
                 print("%s.%s.%s = %s" % (self.node_loc_str, reg.name, fld.name, self.valstr(val, width=fld.width)))
                 continue
-            print("    %-7s %32s = %-10s" % (fld.range_str(), fld.name, self.valstr(val, width=fld.width)), end="")
+            prefix = field_properties_prefix(fld)
+            print("    %-7s %32s = %-10s" % (fld.range_str(), prefix + fld.name, self.valstr(val, width=fld.width)), end="")
             if self.o_descriptions and fld.desc:
                 print("  %s" % self.descstr(fld.desc), end="")
             print()
@@ -681,7 +719,7 @@ def search_all_in_regdefs(reg_ex, rd, style, file_name=None):
                 printed_file = True
             if style.o_flat:
                 reg_name = "%s.%s" % (r.regmap.name, r.name)
-                print("%s" % (reg_name), end="")
+                print("%s" % reg_name, end="")
                 if style.o_reset and r.reset is not None:
                     # The reset value typically has a mask of valid bits, but we just print the value here
                     print(" (reset 0x%x)" % (r.reset[0]), end="")
@@ -690,6 +728,8 @@ def search_all_in_regdefs(reg_ex, rd, style, file_name=None):
                     print("  %s" % r.regmap)
                     last_regmap = r.regmap
                 print("    %s" % r, end="")
+                if not r.access and not r.is_w1c:
+                    print(" (RW)", end="")
                 if style.o_descriptions and r.desc:
                     print(" -- %s " % r.desc, end="")
             print()
@@ -698,7 +738,8 @@ def search_all_in_regdefs(reg_ex, rd, style, file_name=None):
                     if style.o_flat:
                         print("%s%s %s" % (reg_name, f.range_str(), f.name), end="")
                     else:
-                        print("      %s" % f, end="")
+                        prefix = field_properties_prefix(f)
+                        print("      %s %s%s" % (f.range_str(), prefix, f.name), end="")
                     if style.o_reset and f.reset is not None:
                         # E.g. RTL parameter name
                         print(" (reset %s)" % (f.reset), end="")

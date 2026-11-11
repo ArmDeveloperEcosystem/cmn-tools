@@ -149,8 +149,20 @@ def _counter_lines(output):
 def _parse_aggregate(output, events, time):
     """
     Return one Reading (or None for an uncounted event) per event argument.
+    The events list was passed in by the user and may have included paired
+    watchpoint events which perf (and the kernel) will have seen as two grouped
+    events and returned zero for the second, but we should return one value.
+    We fix that up here, although this is a point solution.
     """
     counts = [_reading(fields, time) for fields in _counter_lines(output)]
+    if len(counts) != len(events):
+        ncounts = []
+        for e in events:
+            ncounts.append(counts.pop(0))
+            if "wp_combine" in e:
+                r2 = counts.pop(0)
+                assert r2 is None or r2.raw_value is None or r2.raw_value == 0, "expected zero: %s" % r2.raw_value
+        counts = ncounts
     if len(counts) != len(events):
         raise ValueError("perf returned %u counts for %u events" % (len(counts), len(events)))
     return counts

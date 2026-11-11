@@ -139,7 +139,7 @@ class Watchpoint:
         w = dtm.dtm_wp_config(wp_num)
         # Readout uses XP-wide ports, reversing _set_wp's DTM-local conversion.
         # For example, local port 1 on DTM 1 is XP port 3.
-        self.dev = w.dev + (dtm.index * 2)
+        self.dev = w.dev + dtm.port_base
         (self.vc, self.ty, self.cce) = (w.chn, w.type, w.cc)
         self.chn_num = w.chn_num
         if o_verbose >= 2:
@@ -377,7 +377,7 @@ class LatencyMonitor:
         # Match the DTM-local numbering used by cmn_capture.WatchBind:
         # XP ports 2/3 are local ports 0/1 on DTM 1. On a single-DTM XP,
         # index is zero, so ports 2/3 retain their original numbers.
-        dtm_port_number = dev - (dtm.index * 2)
+        dtm_port_number = dev - dtm.port_base
         for (i, grp) in enumerate(wps.grps()):
             in_use_mask = (1 << (wpnum + i))
             if (self.dtms[dtm] & in_use_mask) != 0:

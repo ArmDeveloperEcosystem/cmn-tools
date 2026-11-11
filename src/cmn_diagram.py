@@ -26,7 +26,7 @@ class CMNDiagram(textdiagram.TextDiagram):
     def __init__(self, cmn, small=False, compact=False, update=True, decimal=False, xwidth=0, xheight=0, x_range=DEFAULT_RANGE, y_range=DEFAULT_RANGE):
         textdiagram.TextDiagram.__init__(self, width=80, height=20)
         self.C = cmn
-        self.max_port = max([max([p.port_number for p in xp.ports()]) for xp in cmn.XPs()])
+        self.max_port = max([max([0]+[p.port_number for p in xp.ports()]) for xp in cmn.XPs()])
         self.compact = compact
         self.small = small
         def clip_range(r, d):

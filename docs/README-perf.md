@@ -45,7 +45,8 @@ Use cmn_perfcheck.py first on a new system:
 
     python src/cmn_perfcheck.py
 
-With more verbose output:
+The default output gives a brief availability summary. To include diagnostic
+details and the perf commands used:
 
     python src/cmn_perfcheck.py -v
 
@@ -217,17 +218,29 @@ running the recipe.
 Event definitions
 -----------------
 
-CMN PMU event definitions are held in CSV files under:
+CMN PMU event definitions are held in `.events` and legacy CSV files under:
 
     data/events/
 
 cmn_events.py can list or regenerate event data.
 
+List the bundled event catalogues, event counts and supported node types:
+
+    python src/cmn_events.py --list
+
+Counts include hardware event selectors and named aliases in `.events` files,
+or event entries in legacy CSV files.
+
 List events from a CSV file:
 
     python src/cmn_events.py -i data/events/cmn-events-0436.csv --list
 
-Add events from sysfs, when the running kernel exposes them:
+Events are read from the local Linux host's sysfs only when `--add-sysfs` is
+specified. Select an event source with `--input`, `--cmn-product` or
+`--add-sysfs` to list individual events. With neither an event source nor
+`--list`, the command displays help.
+
+Read events from sysfs, when the running kernel exposes them:
 
     python src/cmn_events.py --add-sysfs --list
 

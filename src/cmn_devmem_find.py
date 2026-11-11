@@ -38,6 +38,11 @@ import app_data
 import devmem
 from proc_iomem import iomem_regions
 
+try:
+    basestring
+except NameError:
+    basestring = str
+
 
 o_verbose = 0
 
@@ -224,7 +229,8 @@ def cmn_locators_from_iomem_and_dt(opts=None):
 def cmn_locators_from_json(fn):
     """
     CMN locator JSON is a simple format containing CMN physical address(es)
-    and possibly a node skiplist. It does not contain the full discovered mesh.
+    and possibly a skiplist of XP or device node addresses. It does not
+    contain the full discovered mesh.
     """
     if o_verbose:
         print("CMN find: reading CMN locations from %s" % (fn), file=sys.stderr)
@@ -246,6 +252,31 @@ def cmn_locators_from_json(fn):
                 loc.node_skiplist = sl
             yield loc
             cmn_seq += 1
+
+
+def node_skiplist_from_json(fn):
+    """
+    Read relative or absolute node addresses from a standalone skiplist.
+    """
+    try:
+        with open(fn) as stream:
+            data = json.load(stream)
+        entries = data["skiplist"]
+        if not isinstance(entries, list):
+            raise ValueError("skiplist must be an array")
+        offsets = []
+        for entry in entries:
+            if not isinstance(entry, basestring) or not entry.startswith("0x"):
+                raise ValueError("skiplist entries must be hex strings")
+            value = int(entry, 16)
+            if value < 0:
+                raise ValueError("skiplist entries must be nonnegative")
+            offsets.append(value)
+        if len(set(offsets)) != len(offsets):
+            raise ValueError("duplicate skiplist address")
+        return offsets
+    except (IOError, OSError, ValueError, TypeError, KeyError) as e:
+        raise CMNNotFound("could not read node skiplist from '%s': %s" % (fn, e))
 
 
 def json_from_cmn_locators(locs):
@@ -353,6 +384,10 @@ def cmn_locators(opts=None, single_instance=False):
         locs = [locs[opts.cmn_instance]]
     elif single_instance:
         locs = [locs[0]]
+    if opts is not None and opts.cmn_skiplist is not None:
+        if len(locs) != 1:
+            raise CMNNotFound("--cmn-skiplist requires one CMN location; use --cmn-instance")
+        locs[0].node_skiplist = node_skiplist_from_json(opts.cmn_skiplist)
     return locs
 
 
@@ -396,6 +431,7 @@ def add_cmnloc_arguments(parser):
     ag.add_argument("--cmn-base", type=inthex, action="append", help="CMN base address(es)")
     ag.add_argument("--cmn-root-offset", type=inthex, default=0, help="CMN root node offset")
     ag.add_argument("--cmn-locations", type=str, help="JSON file with CMN locations")
+    ag.add_argument("--cmn-skiplist", type=str, help="JSON file with node offsets to skip for one CMN")
     ag.add_argument("--cmn-locs-no-cache", action="store_true", help="don't use cached locations")
     ag.add_argument("--cmn-instance", type=int, help="CMN instance e.g. 0, 1, ...")
     ag.add_argument("--cmn-version", type=int, help="CMN product number")

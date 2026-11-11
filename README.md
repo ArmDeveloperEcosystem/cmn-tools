@@ -3,7 +3,9 @@ CMN System Investigation Tools
 
 These tools help developers understand system performance on
 systems based on Arm&reg;'s CoreLink&trade; CMN family interconnects
-(CMN-600, CMN-650, CMN-700, CI-700, CMN S3 etc.).
+(CMN-600, CMN-650, CMN-700, CI-700, CMN S3, CMN S4).
+See [CMN products and releases](docs/README-cmn-products.md) for the
+feature progression and configuration differences.
 
 The tools are aimed at developers of complex multithreaded
 applications and middleware, and at system administrators and
@@ -103,7 +105,7 @@ If this succeeds, you should have a cached CMN configuration file in
 ``~/.cache/arm/cmn-system.json``, and a diagram of the mesh will
 appear on the console.
 
-For CPU-discovery methods, verification, and implementation details, see
+For CPU-discovery methods, verification, and limitations, see
 [README-cpu-discovery.md](docs/README-cpu-discovery.md).
 
 If problems occur see the "troubleshooting" section.

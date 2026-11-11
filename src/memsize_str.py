@@ -25,13 +25,13 @@ def memsize_str(n, decimal=False, legacy=False, unit="B"):
     if not decimal:
         suf = ("" if legacy else "i")
         for u in range(4, 0, -1):
-            # For values which are over 1000* one unit, but not quite at the next unit,
-            # we want to avoid scientific notation - so we force use of the next unit.
-            if n >= 1000*(1 << ((u-1)*10)):
+            # Three significant digits round 999.5 up to 1e+03. Switch to the
+            # next unit before rounding would introduce scientific notation.
+            if n >= 999.5*(1 << ((u-1)*10)):
                 return "%.3g%s%s%s" % ((float(n) / (1 << (u*10))), "?KMGT"[u], suf, unit)
     else:
         for (i, u) in enumerate([1000000000000, 1000000000, 1000000, 1000]):
-            if n >= u:
+            if n >= 0.9995*u:
                 return "%.3g%s%s" % ((float(n) / u), "TGMK"[i], unit)
     return ("%.3g%s" % (n, unit))
 

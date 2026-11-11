@@ -53,8 +53,7 @@ PART_CMN600AE = 0x438
 PART_CMN700   = 0x43c
 PART_CI700    = 0x43a
 PART_CMN_S3   = 0x43e
-# Synthetic id for an obfuscated product configuration accepted by tools.
-PART_CMN_ALTA = 0x410
+PART_CMN_S4   = 0x410
 
 
 # CMN generation - monotonic, for feature comparisons etc.
@@ -64,7 +63,8 @@ CMN_GEN_700   = 3
 CMN_GEN_S3    = 6
 CMN_GEN_S3r1  = 7
 CMN_GEN_S3r2  = 8
-CMN_GEN_ALTA  = 10
+CMN_GEN_S3r5  = 9
+CMN_GEN_S4    = 10
 
 
 # Generation for r0 of each product
@@ -75,7 +75,7 @@ _cmn_generation = {
     PART_CMN700:   CMN_GEN_700,
     PART_CI700:    CMN_GEN_700,
     PART_CMN_S3:   CMN_GEN_S3,
-    PART_CMN_ALTA: CMN_GEN_ALTA,
+    PART_CMN_S4:   CMN_GEN_S4,
 }
 
 
@@ -86,7 +86,7 @@ _cmn_product_names_by_id = {
     PART_CMN700:   "CMN-700",
     PART_CI700:    "CI-700",
     PART_CMN_S3:   "CMN S3",
-    PART_CMN_ALTA: "CMN-ALTA",
+    PART_CMN_S4:   "CMN S4",
 }
 
 
@@ -97,7 +97,7 @@ cmn_products_by_name = {
     "CMN-700":   PART_CMN700,
     "CI-700":    PART_CI700,
     "CMN-S3":    PART_CMN_S3,
-    "CMN-ALTA":  PART_CMN_ALTA,
+    "CMN-S4":    PART_CMN_S4,
 }
 
 
@@ -133,13 +133,14 @@ def _parse_product_config_options(s):
     Parse synthesis-time configuration overrides from a product string suffix.
 
     The suffix form is:
-        cmn-alta-r0p2:chi=g,mpam=on,pa=48,req_pa=48,rsvdc=8
+        cmn-s4-r1p0:chi=g,mpam=on,pa=48,req_pa=48,rsvdc=8
     """
     chi_version = None
     mpam_enabled = None
     pa_width = None
     req_pa_width = None
     rsvdc_width = None
+    dtm_ports = None
     if s == "":
         raise CMNProductValueError("empty CMN product configuration suffix")
     for opt in s.split(","):
@@ -160,10 +161,12 @@ def _parse_product_config_options(s):
             req_pa_width = int(v, 0)
         elif k in ["rsvdc", "rsvdc_width"]:
             rsvdc_width = int(v, 0)
+        elif k == "dtm_ports":
+            dtm_ports = int(v, 0)
         else:
             raise CMNProductValueError("unknown CMN product configuration option: %s" % k)
     return (chi_version, mpam_enabled, pa_width,
-            req_pa_width, rsvdc_width)
+            req_pa_width, rsvdc_width, dtm_ports)
 
 
 def product_id_str(n):
@@ -176,7 +179,7 @@ def product_id_str(n):
     return "CMN-0x%x??" % n
 
 
-# map the periph_id_2 codes on to releases.
+# map the periph_id_2 codes on to known releases.
 # Not systematic - CMN-600 r2p1 has a higher code than r3p0
 # TBD: the CMN-600 r2p1 and r3p2 TRMs disagree on the numbering.
 # TBD: CMN S3 r2p1, r2p2 and r2p3 are tentative awaiting documentation.
@@ -187,7 +190,7 @@ _cmn_revisions = {
     PART_CMN700: ["r0p0", "r1p0", "r2p0", "r3p0"],
     PART_CI700:  ["r0p0", "r1p0", "r2p0"],
     PART_CMN_S3: ["r0p0", "r0p1", "r1p0", "r2p0", "r2p1", "r2p2", "r2p3"],
-    PART_CMN_ALTA: ["r0p0", "r0p1", "r0p2"],
+    PART_CMN_S4: ["r0p0", "r1p0"],
 }
 
 
@@ -215,9 +218,10 @@ class CMNConfig:
     def __init__(self, product_id=None, product_name=None, revision_code=None,
                  chi_version=None, mpam_enabled=None, mpam_partid_width=_DEFAULT_PARTID_WIDTH,
                  mte_enabled=None, pa_width=None, req_pa_width=None,
-                 rsvdc_width=None):
+                 rsvdc_width=None, dtm_ports=None):
         self.product_id = product_id        # 3-digit hex code e.g. 0x434
         self.revision_code = revision_code
+        self.revision_override = None
         if mte_enabled is not None and not isinstance(mte_enabled, bool):
             raise TypeError("MTE enabled must be a boolean")
         self.mte_enabled = mte_enabled
@@ -226,6 +230,7 @@ class CMNConfig:
         parsed_req_pa_width = None
         parsed_rsvdc_width = None
         parsed_pa_width = None
+        parsed_dtm_ports = None
         if product_name is not None:
             # A product name e.g. "cmn-700" or "cmn s3 r2"
             if product_id is not None:
@@ -236,7 +241,7 @@ class CMNConfig:
                 (product_name, opt_suffix) = product_name.split(":", 1)
                 (parsed_chi_version, parsed_mpam_enabled, parsed_pa_width,
                  parsed_req_pa_width,
-                 parsed_rsvdc_width) = _parse_product_config_options(opt_suffix)
+                 parsed_rsvdc_width, parsed_dtm_ports) = _parse_product_config_options(opt_suffix)
             product_name = product_name.upper().replace(' ', '-')
             if not product_name.startswith(("CMN", "CI-")):
                 product_name = "CMN-" + product_name
@@ -253,7 +258,20 @@ class CMNConfig:
             if rev_suffix is not None:
                 if len(rev_suffix) < 4:
                     rev_suffix += "p0"
-                self.revision_code = _cmn_revisions[self.product_id].index(rev_suffix.lower())
+                revision = rev_suffix.lower()
+                if self.product_id == PART_CMN_S3 and revision == "r5p0":
+                    # Development implementations need an explicit name until
+                    # their peripheral revision code is unambiguous.
+                    self.revision_override = revision
+                else:
+                    self.revision_code = _cmn_revisions[self.product_id].index(revision)
+        if dtm_ports is None:
+            dtm_ports = parsed_dtm_ports
+        if dtm_ports is not None:
+            check_integer(dtm_ports, "ports per DTM")
+            if dtm_ports not in [1, 2, 4]:
+                raise ValueError("ports per DTM must be 1, 2 or 4")
+        self.dtm_ports = dtm_ports
         if mpam_enabled is None:
             mpam_enabled = parsed_mpam_enabled
         if chi_version is None:
@@ -294,28 +312,37 @@ class CMNConfig:
         check_integer(self.product_id, "CMN product id")
         if self.product_id not in _cmn_generation:
             raise CMNProductValueError("unknown CMN product id: 0x%x" % self.product_id)
-        if revision_code is not None:
-            check_integer(revision_code, "CMN revision code", maximum=len(_cmn_revisions[self.product_id]) - 1)
-        self.update_revision_major()
-        self.gen = _cmn_generation[self.product_id]
-        if self.product_id == PART_CMN_S3 and self.revision_major is not None:
-            if self.revision_major >= 2:
-                self.gen = CMN_GEN_S3r2
-            elif self.revision_major == 1:
-                self.gen = CMN_GEN_S3r1
+        self.set_revision_code(self.revision_code)
         if self.mpam_enabled is None and self.is_before_gen(CMN_GEN_700):
             self.mpam_enabled = False
 
+    @property
+    def clipped_revision_code(self):
+        max_revision_code = len(_cmn_revisions[self.product_id]) - 1
+        if self.revision_code > max_revision_code:
+            return max_revision_code
+        return self.revision_code
+
     def set_revision_code(self, revision_code):
+        """
+        Accept unknown nonnegative revision codes without accepting invalid inputs.
+        """
         if revision_code is not None:
-            check_integer(revision_code, "CMN revision code", maximum=len(_cmn_revisions[self.product_id]) - 1)
+            check_integer(revision_code, "CMN revision code")
         self.revision_code = revision_code
         self.update_revision_major()
+        self.gen = _cmn_generation[self.product_id]
+        if self.product_id == PART_CMN_S3 and self.revision_major is not None:
+            if self.revision_major >= 5:
+                self.gen = CMN_GEN_S3r5
+            elif self.revision_major >= 2:
+                self.gen = CMN_GEN_S3r2
+            elif self.revision_major == 1:
+                self.gen = CMN_GEN_S3r1
 
     def update_revision_major(self):
-        if self.revision_code is not None:
-            check_integer(self.revision_code, "CMN revision code", maximum=len(_cmn_revisions[self.product_id]) - 1)
-            rev_str = _cmn_revisions[self.product_id][self.revision_code]
+        if self.revision_override is not None or self.revision_code is not None:
+            rev_str = self.revision_override or _cmn_revisions[self.product_id][self.clipped_revision_code]
             pix = rev_str.index('p')
             self.revision_major = int(rev_str[1:pix])
         else:
@@ -331,7 +358,9 @@ class CMNConfig:
         except LookupError:
             s = "unknown product (%s)" % str(self.product_id)
         if revision:
-            if self.revision_code is not None:
+            if self.revision_override is not None:
+                s += " " + self.revision_override
+            elif self.revision_code is not None:
                 try:
                     s += " " + _cmn_revisions[self.product_id][self.revision_code]
                 except LookupError:
@@ -339,6 +368,25 @@ class CMNConfig:
             else:
                 s += " rev?"
         return s
+
+    def ports_per_dtm(self):
+        """Physical port grouping when multiple DTMs are enabled.
+
+        S3 r5 and S4 integrations select two or four ports per DTM. Their
+        identification registers do not expose that synthesis choice.
+        """
+        if self.dtm_ports is not None:
+            if self.is_at_least_gen(CMN_GEN_S3r5) and self.dtm_ports not in [2, 4]:
+                raise ValueError("S3 r5 and S4 require two or four ports per DTM")
+            return self.dtm_ports
+        if self.is_at_least_gen(CMN_GEN_S3r5):
+            raise ValueError("%s requires dtm_ports=2 or dtm_ports=4 for multiple-DTM access" %
+                             self.product_name(revision=True))
+        return 2
+
+    def dtm_port_base(self, index):
+        """First XP port handled by a DTM; DTM0 also covers single-DTM XPs."""
+        return index * self.ports_per_dtm() if index else 0
 
     def chi_version_str(self):
         if self.chi_version is None:
@@ -366,6 +414,7 @@ class CMNConfig:
             ("PA width", self.pa_width),
             ("REQ PA width", self.req_pa_width),
             ("RSVDC width", self.rsvdc_width),
+            ("Ports per DTM", self.dtm_ports),
         ]
 
     def __eq__(self, b):
@@ -377,6 +426,8 @@ class CMNConfig:
         return (isinstance(b, CMNConfig)
                 and self.product_id == b.product_id
                 and self.revision_code == b.revision_code
+                and self.revision_override == b.revision_override
+                and self.dtm_ports == b.dtm_ports
                 and self.mpam_enabled == b.mpam_enabled
                 and self.mpam_partid_width == b.mpam_partid_width
                 and self.mte_enabled == b.mte_enabled
@@ -408,7 +459,7 @@ class CMNConfig:
 
 def cmn_version(s):
     """
-    Given a string, e.g. "cmn-700" or "cmn-alta-r0p2:chi=g,mpam=on",
+    Given a string, e.g. "cmn-700" or "cmn-s4-r1p0:chi=g,mpam=on",
     return a CMNConfig object.
     """
     return CMNConfig(product_name=s)

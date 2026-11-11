@@ -128,7 +128,7 @@ def dtm_counter_input(pcfg, counter):
     return (first, note)
 
 
-def collect_dtc_sources(C, dtc=None, xps=None, if_tag=False):
+def collect_dtc_sources(C, dtc=None, xps=None, if_tag=False, structured=False, enabled_only=False):
     """
     Index configured DTM exports by DTC domain and global counter number.
 
@@ -136,11 +136,18 @@ def collect_dtc_sources(C, dtc=None, xps=None, if_tag=False):
     each selected DTM configuration once, and decode only exported inputs.
     Device lookup uses the existing discovery/isolation checks. A None domain
     is retained separately, never guessed to belong to the selected DTC.
+    With structured=True, each entry's description is instead the dictionary
+    returned by CMNDTM.pmu_event_input_selector(), for programmatic comparison.
+    The remaining tuple fields and configuration reads are unchanged.
+    enabled_only skips PMU-disabled DTMs before decoding their inputs. DTM
+    trace enable is independent and does not exclude PMU counter exports.
     """
     sources = {}
     for dtm in C.DTMs():
         if xps is not None and dtm.xp.node_id() not in xps:
             continue
+        if if_tag and dtm.has_wp_tten():
+            raise ValueError("S4 tag enables are per watchpoint; inspect --dtms without --if-tag")
         domain = dtm.dtc_domain()
         if dtc is not None and domain is not None and domain != dtc:
             continue
@@ -150,6 +157,8 @@ def collect_dtc_sources(C, dtc=None, xps=None, if_tag=False):
             if not control & CMN_DTM_CONTROL_TRACE_TAG_ENABLE:
                 continue
         pcfg = dtm.dtm_read64(CMN_DTM_PMU_CONFIG_off)
+        if enabled_only and not pcfg & CMN_DTM_PMU_CONFIG_PMU_EN:
+            continue
         if not BITS(pcfg, 4, 4):
             continue
         if control is None:
@@ -170,7 +179,8 @@ def collect_dtc_sources(C, dtc=None, xps=None, if_tag=False):
             first, combined = dtm_counter_input(pcfg, i)
             eis = BITS(pcfg, 32+first*8, 8)
             if eis not in descriptions:
-                descriptions[eis] = dtm.pmu_event_input_selector_str(eis)
+                descriptions[eis] = (dtm.pmu_event_input_selector(eis) if structured else
+                                     dtm.pmu_event_input_selector_str(eis))
             notes = status + ([combined] if combined else [])
             counters[global_counter].append((dtm, i, eis, descriptions[eis], notes))
     return sources
@@ -189,6 +199,8 @@ def print_dtc_sources(sources, pfx="    ", pmcr=0):
             continue
         print("%s  #%u%s: %u DTM counter%s" % (pfx, i, paired, len(entries), "s" if len(entries) != 1 else ""))
         for dtm, counter, eis, description, notes in entries:
+            if isinstance(description, dict):
+                description = description["description"]
             annotation = " [%s]" % "; ".join(notes) if notes else ""
             print("%s    %s counter #%u%s: input 0x%02x: %s" %
                   (pfx, dtm, counter, annotation, eis, description))
@@ -210,8 +222,10 @@ def print_dtm(dtm, pfx="", detail=0, show_pmu=True, if_active=False):
     if detail > 0:
         print(" DTM control: 0x%08x" % (dctl), end="")
     print(" (%s)" % ("enabled" if is_enabled else "disabled"), end="")
-    if dctl & CMN_DTM_CONTROL_TRACE_TAG_ENABLE:
+    if not dtm.has_wp_tten() and dctl & CMN_DTM_CONTROL_TRACE_TAG_ENABLE:
         print(" (trace tag)", end="")
+    if dtm.has_tag_first() and dctl & dtm.C.DTM_CONTROL_TRACE_TAG_FIRST_MATCH:
+        print(" (first-match trace tag)", end="")
     if dctl & CMN_DTM_CONTROL_SAMPLE_PROFILE_ENABLE:
         print(" (sample profile)", end="")
     print(" (%s)" % ("FIFO" if (dctl & CMN_DTM_CONTROL_TRACE_NO_ATB) else "ATB"), end="")
@@ -254,6 +268,8 @@ def print_dtm_watchpoints(dtm, pfx="    ", if_active=False, fifo=None, print_all
                 print(" exclusive", end="")
             if w.pkt_gen:
                 print(" pkt_gen", end="")
+            if w.tten:
+                print(" trace-tag", end="")
             if w.cc:
                 print(" cc", end="")
             if w.ctrig:
@@ -303,20 +319,24 @@ def print_dtm_pmu(dtm, pfx="    "):
             # A device may have zero, one or several PMUs that can export events to the DTM
             for soff in n.PMU_EVENT_SEL:
                 pmu_sel = n.read64(soff)
+                pix = (soff - n.PMU_EVENT_SEL_BASE) >> 3
                 if not printed_header:
                     print("%s  Device PMU exports:" % pfx)
                     printed_header = True
-                print("%s    %016x  %s" % (pfx, pmu_sel, n))
-                pmu_filter = BITS(pmu_sel, 32, 8)
+                print("%s    %016x  %s [PMU %u]" % (pfx, pmu_sel, n, pix))
                 for e in range(0, CMN_DTM_N_WP):
                     esel = BITS(pmu_sel, e*8, 8)
                     if esel != 0:
                         print("%s          E%u: 0x%x" % (pfx, e, esel), end="")
                         if dtm.C.pmu_events is not None:
-                            pix = (soff - n.PMU_EVENT_SEL_BASE) >> 3
-                            ev = dtm.C.pmu_events.get_event(n.type(), esel, pmu_index=pix, filter=pmu_filter)
+                            ev = dtm.C.pmu_events.decode_selector(n.type(), esel, pmu_sel, pmu_index=pix)
                             if ev is not None:
                                 print(" - %s" % ev.name(), end="")
+                            else:
+                                diagnostic = dtm.C.pmu_events.event_lookup_error(n.type(), esel, pmu_index=pix)
+                                print(" - [%s]" % diagnostic, end="")
+                        else:
+                            print(" - [no event database loaded]", end="")
                         print()
 
 

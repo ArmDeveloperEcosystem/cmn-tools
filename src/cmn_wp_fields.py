@@ -32,12 +32,12 @@ CMN700 = "cmn700"
 CI700 = "ci700"
 CMN_S3_R0 = "cmn_s3_r0"
 CMN_S3_R2 = "cmn_s3_r2"
-CMN_ALTA_CHI_LT_G = "cmn_alta_chi_lt_g"
-CMN_ALTA = "cmn_alta"
+CMN_S3_CHI_F = "cmn_s3_chi_f"
+CMN_S4 = "cmn_s4"
 
 
 _CHI_CHANNELS = ["REQ", "RSP", "SNP", "DAT"]
-_PRODUCT_KEYS = [CMN600, CMN650, CMN700, CI700, CMN_S3_R0, CMN_S3_R2, CMN_ALTA_CHI_LT_G, CMN_ALTA]
+_PRODUCT_KEYS = [CMN600, CMN650, CMN700, CI700, CMN_S3_R0, CMN_S3_R2, CMN_S3_CHI_F, CMN_S4]
 
 
 _resperr = ["OK", "EXOK", "DERR", "NDERR"]
@@ -366,6 +366,8 @@ _CMN_S3_R0_WP_FIELDS = {
 
 _CMN_S3_R2_WP_FIELDS = {
     REQ: {
+        "returntxnid": [(0, 23, 6)],
+        "stashnidvalid": [(0, 22, 1)],
         "allowretry": [(2, 35, 1)],
         "mpam": [(2, 18, 15)],
         "tagop": [(2, 33, 2)],
@@ -374,6 +376,10 @@ _CMN_S3_R2_WP_FIELDS = {
         "streamid": [(2, 40, 16)],
         "secsid": [(2, 56, 1)],
         "nse": [(0, 40, 1)],
+    },
+    RSP: {
+        "cg": [(0, 52, 1)],
+        "condcomp": [(0, 53, 1)],
     },
     SNP: {
         "tracetag": [(0, 39, 1)],
@@ -408,7 +414,7 @@ _CMN_S3_R2_WP_FIELDS = {
 }
 
 
-_CMN_ALTA_CHI_LT_G_WP_FIELDS = {
+_CMN_S3_CHI_F_WP_FIELDS = {
     REQ: {
         "returnnid": [],
         "returntxnid": [(0, 23, 6)],
@@ -450,19 +456,55 @@ _CMN_ALTA_CHI_LT_G_WP_FIELDS = {
 }
 
 
-_CMN_ALTA_WP_FIELDS = {
+# CMN S4 has fixed 16-bit NodeID slots and three SNP/DAT groups.
+_CMN_S4_WP_FIELDS = {
     REQ: {
-        "returnnid": [],
-        "returntxnid": [(0, 23, 6)],
-        "stashnidvalid": [(0, 22, 1)],
+        "srcid": [(0, 0, 16)], "tgtid": [(0, 0, 16)],
+        "stashnid": [(0, 16, 16)], "returnnid": [(0, 16, 16)],
+        "stashnidvalid": [(0, 32, 1)], "stashtgtvalid": [(0, 32, 1)],
+        "endian": [(0, 32, 1)], "deep": [(0, 32, 1)],
+        "returntxnid": [(0, 33, 6)], "opcode": [(0, 39, 7), (2, 11, 7)],
+        "size": [(0, 46, 3)], "ns": [(0, 49, 1)], "nse": [(0, 50, 1)],
+        "groupidext": [(0, 51, 3)], "expcompack": [(0, 54, 1)],
+        "rsvdc": [(0, 55, 8)],
+        "qos": [(1, 0, 4)], "addr": [(1, 4, 52)],
+        "likelyshared": [(1, 56, 1)], "memattr": [(1, 57, 4)],
+        "snpattr": [(1, 61, 1)], "excl": [(1, 62, 1)],
+        "snoopme": [(1, 62, 1)], "cah": [(1, 62, 1)],
+        "tracetag": [(1, 63, 1)],
+        "order": [(2, 0, 2)], "pcrdtype": [(2, 2, 4)], "lpid": [(2, 6, 5)],
+        "mpam": [(2, 18, 15)], "tagop": [(2, 33, 2)],
+        "allowretry": [(2, 35, 1)], "pbha": [(2, 36, 4)],
+        "mecid": [(2, 40, 16)], "streamid": [(2, 40, 16)],
+        "secsid": [(2, 56, 1)], "src_cal_dev_id": [(2, 57, 2)],
     },
     RSP: {
-        "cg": [(0, 52, 1)],
-        "condcomp": [(0, 53, 1)],
+        "qos": [(0, 0, 4)], "srcid": [(0, 4, 16)], "tgtid": [(0, 4, 16)],
+        "opcode": [(0, 20, 5)], "resperr": [(0, 25, 2)], "resp": [(0, 27, 3)],
+        "fwdstate": [(0, 30, 3)], "datapull": [(0, 30, 3)],
+        "cbusy": [(0, 33, 3)], "dbid": [(0, 36, 12)], "pcrdtype": [(0, 48, 4)],
+        "tagop": [(0, 52, 2)], "tracetag": [(0, 54, 1)],
+        "devevent": [(0, 55, 2)], "cg": [(0, 57, 1)], "condcomp": [(0, 58, 1)],
+        "src_cal_dev_id": [(0, 59, 2)],
     },
     SNP: {
-        "addr": [(1, 0, 45)],
-        "mpam": [(1, 45, 15)],
+        "srcid": [(0, 0, 16)], "fwdtxnid": [(0, 16, 8)], "fwdnid": [(0, 24, 16)],
+        "opcode": [(0, 40, 5)], "ns": [(0, 45, 1)], "nse": [(0, 46, 1)],
+        "donotgotosd": [(0, 47, 1)], "mecid": [(0, 48, 16)],
+        "streamid": [(0, 48, 16)], "addr": [(1, 0, 49)], "mpam": [(1, 49, 15)],
+        "rettosrc": [(2, 0, 1)], "tracetag": [(2, 1, 1)], "qos": [(2, 2, 4)],
+    },
+    DAT: {
+        "qos": [(0, 0, 4)], "srcid": [(0, 4, 16)], "tgtid": [(0, 4, 16)],
+        "homenid": [(0, 20, 16)], "opcode": [(0, 36, 4), (1, 0, 4)],
+        "datapull": [(0, 40, 1)], "cbusy": [(0, 41, 3)], "dbid": [(0, 44, 16)],
+        "numdat": [(0, 60, 2)], "replicate": [(0, 62, 1)],
+        "tagop": [(1, 4, 2)], "tag": [(1, 6, 16)], "tu": [(1, 22, 4)],
+        "tracetag": [(1, 26, 1)], "chunkv": [(1, 27, 4)], "devevent": [(1, 31, 2)],
+        "cah": [(1, 33, 1)], "ccid": [(1, 34, 2)], "dataid": [(1, 36, 2)],
+        "poison": [(1, 38, 8)], "rsvdc": [(1, 46, 8)], "src_cal_dev_id": [(1, 54, 2)],
+        "resperr": [(2, 0, 2)], "resp": [(2, 2, 3)],
+        "fwdstate": [(2, 5, 8)], "datasrc": [(2, 5, 8)],
     },
 }
 
@@ -474,11 +516,10 @@ _WP_PRODUCT_TABLES = {
     CI700: [_CMN600_WP_FIELDS, _CMN650_WP_FIELDS, _CMN700_WP_FIELDS, _CI700_WP_FIELDS],
     CMN_S3_R0: [_CMN600_WP_FIELDS, _CMN650_WP_FIELDS, _CMN700_WP_FIELDS, _CMN_S3_R0_WP_FIELDS],
     CMN_S3_R2: [_CMN600_WP_FIELDS, _CMN650_WP_FIELDS, _CMN700_WP_FIELDS, _CMN_S3_R0_WP_FIELDS, _CMN_S3_R2_WP_FIELDS],
-    CMN_ALTA_CHI_LT_G: [_CMN600_WP_FIELDS, _CMN650_WP_FIELDS, _CMN700_WP_FIELDS,
-                         _CMN_S3_R0_WP_FIELDS, _CMN_S3_R2_WP_FIELDS,
-                         _CMN_ALTA_CHI_LT_G_WP_FIELDS],
-    CMN_ALTA: [_CMN600_WP_FIELDS, _CMN650_WP_FIELDS, _CMN700_WP_FIELDS,
-                _CMN_S3_R0_WP_FIELDS, _CMN_S3_R2_WP_FIELDS, _CMN_ALTA_WP_FIELDS],
+    CMN_S3_CHI_F: [_CMN600_WP_FIELDS, _CMN650_WP_FIELDS, _CMN700_WP_FIELDS,
+                      _CMN_S3_R0_WP_FIELDS, _CMN_S3_R2_WP_FIELDS,
+                      _CMN_S3_CHI_F_WP_FIELDS],
+    CMN_S4: [_CMN_S4_WP_FIELDS],
 }
 
 
@@ -497,13 +538,18 @@ def product_key_for_config(cfg):
     The key selects one product layout from _WP_PRODUCT_TABLES. CMN S3 needs
     revision handling because r2 changes watchpoint field positions.
     """
-    if cfg.product_id == cmn_config.PART_CMN_ALTA:
-        if cfg.chi_version is not None and cfg.chi_version < 7:
-            return CMN_ALTA_CHI_LT_G
-        return CMN_ALTA
+    if cfg.product_id == cmn_config.PART_CMN_S4:
+        if cfg.chi_version is not None and cfg.chi_version != 7:
+            raise ValueError("CMN S4 watchpoint matching requires CHI-G")
+        return CMN_S4
     if cfg.product_id == cmn_config.PART_CMN_S3:
-        assert cfg.revision_major is not None, "CMN S3 needs to know revision"
-        return CMN_S3_R2 if cfg.revision_major >= 2 else CMN_S3_R0
+        if cfg.revision_major is None:
+            raise ValueError("CMN S3 watchpoint matching requires a revision")
+        if cfg.revision_major >= 2:
+            if cfg.chi_version == 6:
+                return CMN_S3_CHI_F
+            return CMN_S3_R2
+        return CMN_S3_R0
     return _PRODUCT_KEY_BY_ID[cfg.product_id]
 
 
@@ -608,6 +654,11 @@ def fields_for_product(cfg, chn):
     fields = {}
     for field in names.keys():
         positions = by_channel[chn].get(field, [])
+        if chn == SNP and product_key in [CMN_S3_R2, CMN_S3_CHI_F] and cfg.pa_width is not None:
+            if field == "addr":
+                positions = [(1, 0 if product_key == CMN_S3_R2 else 11, cfg.pa_width - 3)]
+            elif field == "mpam" and product_key == CMN_S3_R2:
+                positions = [(1, cfg.pa_width - 3, 15)]
         if field == "mpam" and cfg.mpam_enabled is False:
             positions = []
         fields[field] = _meta(chn, field, positions)

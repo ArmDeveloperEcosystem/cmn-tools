@@ -1,4 +1,6 @@
 GROUP por_sbsx_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_sbsx_node_info
 RESET 0x7 0xffffffffffff
 DESC Provides component identification information.
@@ -79,19 +81,19 @@ DESC Enables corrected error interrupt as specified in por_sbsx_errfr.CFI
 R 0x3010 64 - S por_sbsx_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_sbsx_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_sbsx_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3018 64 - S por_sbsx_erraddr
 RESET 0x0 0x8000ffffffffffff
@@ -142,19 +144,19 @@ DESC Enables corrected error interrupt as specified in por_sbsx_errfr_NS.CFI
 R 0x3110 64 - - por_sbsx_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_sbsx_erraddr_NS contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_sbsx_errmisc_NS valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3118 64 - - por_sbsx_erraddr_NS
 RESET 0x0 0x8000ffffffffffff
@@ -176,6 +178,8 @@ F 28 3 SIZE
 DESC Error transaction size
 ENDGROUP
 GROUP por_dt_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_dt_node_info
 RESET 0x3 0xffffffffffff
 DESC Provides component identification information.
@@ -435,6 +439,8 @@ F 32 8 cidr3
 DESC Component ID 3
 ENDGROUP
 GROUP por_cxla_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_cxla_node_info
 RESET 0x102 0xffffffffffff
 DESC Provides component identification information.
@@ -891,6 +897,8 @@ F 48 16 pmevcntsr3
 DESC PMU event counter 3 shadow register
 ENDGROUP
 GROUP por_rnd_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_rnd_node_info
 RESET 0xd 0xffffffffffff
 DESC Provides component identification information.
@@ -1196,6 +1204,8 @@ F 24 5 pmu_event3_id
 DESC RN-D PMU Event 3 ID; see pmu_event0_id for encodings
 ENDGROUP
 GROUP por_hnf_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_hnf_node_info
 RESET 0x5 0xffffffffffff
 DESC Provides component identification information.
@@ -3559,19 +3569,19 @@ DESC Enables corrected error interrupt as specified in por_hnf_errfr.CFI
 R 0x3010 64 - S por_hnf_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_hnf_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_hnf_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3018 64 - S por_hnf_erraddr
 RESET 0x0 0x8000ffffffffffff
@@ -3642,19 +3652,19 @@ DESC Enables corrected error interrupt as specified in por_hnf_errfr_NS.CFI
 R 0x3110 64 - - por_hnf_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_hnf_erraddr_NS contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_hnf_errmisc_NS valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3118 64 - - por_hnf_erraddr_NS
 RESET 0x0 0x8000ffffffffffff
@@ -3682,6 +3692,8 @@ F 0 4 ERRSRC
 DESC Error source 4'b0001: Data single-bit ECC 4'b0010: Data double-bit ECC 4'b0011: Single-bit ECC overflow 4'b0100: Tag single-bit ECC 4'b0101: Tag double-bit ECC 4'b0111: SF tag single-bit ECC 4'b1000: SF tag double-bit ECC 4'b1010: Data parity error 4'b1011: Data parity and poison 4'b1100: NDE
 ENDGROUP
 GROUP por_dn_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_dn_node_info
 RESET 0x1 0xffffffffffff
 DESC Provides component identification information.
@@ -4185,6 +4197,8 @@ F 32 4 pmu_occup1_id
 DESC PMU occupancy event selector ID 4'b0000: All 4'b0001: DVM ops 4'b0010: DVM syncs
 ENDGROUP
 GROUP por_cxg_ha_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_cxg_ha_node_info
 RESET 0x101 0xffffffffffff
 DESC Provides component identification information.
@@ -4833,19 +4847,19 @@ DESC Enables corrected error interrupt as specified in por_cxg_ha_errfr.CFI
 R 0x3010 64 - S por_cxg_ha_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_cxg_ha_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_cxg_ha_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3018 64 - S por_cxg_ha_erraddr
 RESET 0x0 0x8000ffffffffffff
@@ -4894,19 +4908,19 @@ DESC Enables corrected error interrupt as specified in por_cxg_ha_errfr.CFI
 R 0x3110 64 - S por_cxg_ha_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_cxg_ha_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_cxg_ha_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3118 64 - S por_cxg_ha_erraddr_NS
 RESET 0x0 0x8000ffffffffffff
@@ -4926,6 +4940,8 @@ F 0 2 ERRSRC
 DESC Source of the parity error 2'b00: Read data buffer 0 2'b01: Read data buffer 1 2'b10: Write data buffer 0 2'b11: Write data buffer 1
 ENDGROUP
 GROUP por_cxg_ra_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_cxg_ra_node_info
 RESET 0x100 0xffffffffffff
 DESC Provides component identification information.
@@ -5767,6 +5783,8 @@ F 32 4 pmu_occup1_id
 DESC PMU occupancy event selector ID
 ENDGROUP
 GROUP por_rni_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_rni_node_info
 RESET 0xa 0xffffffffffff
 DESC Provides component identification information.
@@ -6054,6 +6072,8 @@ F 24 5 pmu_event3_id
 DESC RN-I PMU Event 3 ID; see pmu_event0_id for encodings
 ENDGROUP
 GROUP por_mxp_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_mxp_node_info
 RESET 0x6 0xffffffffffff
 DESC Provides component identification information.
@@ -6399,7 +6419,7 @@ DESC When set, trace packet is not delivered out of ATB, and FIFO entry holds th
 R 0x2118 64 - - por_dtm_fifo_entry_ready
 RESET 0x0 0xf
 DESC Controls status of DTM FIFO entries.
-F 0 4 ready
+F 0 4 ready W1C
 DESC Indicates which DTM FIFO entries are ready; write a 1 to clear Bit [3]: Entry 3 ready when set Bit [2]: Entry 2 ready when set Bit [1]: Entry 1 ready when set Bit [0]: Entry 0 ready when set
 R 0x2120 64 ROV - por_dtm_fifo_entry0_0
 RESET 0x0 0xffffffffffffffff
@@ -6416,7 +6436,7 @@ RESET 0x0 0xffffffff
 DESC Contains DTM FIFO entry 0 data.
 F 0 16 fifo_data2
 DESC Entry data bit vector 143:128
-F 16 16 fifo_cycle_count
+F 16 16 fifo_cycle_count RO
 DESC Entry cycle count bit vector 15:0
 R 0x2138 64 ROV - por_dtm_fifo_entry1_0
 RESET 0x0 0xffffffffffffffff
@@ -6691,19 +6711,19 @@ DESC Enables corrected error interrupt as specified in por_mxp_errfr.CFI
 R 0x3010 64 - S por_mxp_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_mxp_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3028 64 - S por_mxp_errmisc
 RESET 0x0 0x7ff0000003f7ff7
@@ -6757,19 +6777,19 @@ DESC Enables corrected error interrupt as specified in por_mxp_errfr_NS.CFI
 R 0x3110 64 - - por_mxp_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register.
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid 1'b0: Address is not valid
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_mxp_errmisc_NS valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
 R 0x3128 64 - - por_mxp_errmisc_NS
 RESET 0x0 0x7ff0000003f7ff7
@@ -6784,6 +6804,8 @@ F 0 3 ERRSRC
 DESC Error source Bits [2:1]: Transaction type 2'b00: REQ 2'b01: RSP 2'b10: SNP 2'b11: DAT Bit [0]: Port 1'b0: Port 0 1'b1: Port 1
 ENDGROUP
 GROUP por_cfgm_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_cfgm_node_info
 RESET 0x2 0xffffffffffff
 DESC Provides component identification information.
@@ -8172,7 +8194,7 @@ DESC Interrupt mask
 R 0x1008 64 - S por_ppu_int_status
 RESET 0x0 0xffffffffffffffff
 DESC Provides HN-F PPU event interrupt status.
-F 0 64 hnf_ppu_status
+F 0 64 hnf_ppu_status W1C
 DESC Interrupt status
 R 0x1010 64 - S por_ppu_qactive_hyst
 RESET 0x10 0xffff
@@ -8345,6 +8367,8 @@ F 32 8 cidr3
 DESC Component ID 3
 ENDGROUP
 GROUP por_rnsam_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_rnsam_node_info
 RESET 0xf 0xffffffffffff
 DESC Provides component identification information.
@@ -9324,6 +9348,8 @@ F 0 11 sn_nodeid_60
 DESC Hashed target SN node ID 60
 ENDGROUP
 GROUP por_hni_registers
+BASE 0x0
+RANGE 0x4000
 R 0x0 64 RO - por_hni_node_info
 RESET 0x4 0xffffffffffff
 DESC Provides component identification information.
@@ -9507,19 +9533,19 @@ DESC Enables corrected error interrupt as specified in por_hni_errfr.CFI
 R 0x3010 64 - S por_hni_errstatus
 RESET 0x0 0xed800000
 DESC Functions as the error status register. AV and MV bits must be cleared in the same cycle, otherwise the error record does not have a consistent view.
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_hni_errmisc valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_hni_erraddr contains a physical address for that recorded error 1'b0: Address is not valid
 R 0x3018 64 - S por_hni_erraddr
 RESET 0x0 0x8000ffffffffffff
@@ -9576,19 +9602,19 @@ DESC Enables corrected error interrupt as specified in por_hni_errfr_NS.CFI
 R 0x3110 64 - - por_hni_errstatus_NS
 RESET 0x0 0xed800000
 DESC Functions as the non-secure error status register.
-F 23 1 DE
+F 23 1 DE W1C
 DESC Deferred errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error is not corrected and is deferred 1'b0: No errors deferred
-F 24 1 CE
+F 24 1 CE W1C
 DESC Corrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one transient corrected error recorded 1'b0: No corrected errors recorded
-F 26 1 MV
+F 26 1 MV W1C
 DESC por_hni_errmisc_NS valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Miscellaneous registers are valid 1'b0: Miscellaneous registers are not valid
-F 27 1 OF
+F 27 1 OF W1C
 DESC Overflow; asserted when multiple errors of the highest priority type are detected; write a 1 to clear 1'b1: More than one error detected 1'b0: Only one error of the highest priority type detected as described by UE/DE/CE fields
-F 29 1 UE
+F 29 1 UE W1C
 DESC Uncorrected errors; writes to this bit are ignored if the OF bit is set to 1, and is not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error detected that is not corrected and is not deferred to a slave 1'b0: No uncorrected errors detected
-F 30 1 V
+F 30 1 V W1C
 DESC Register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and are not cleared to 0 in the same write; write a 1 to clear 1'b1: At least one error recorded; register is valid 1'b0: No errors recorded
-F 31 1 AV
+F 31 1 AV W1C
 DESC Address register valid; writes to this bit are ignored if any of the UE, DE, or CE bits are set to 1, and the highest priority are not cleared to 0 in the same write; write a 1 to clear 1'b1: Address is valid; por_hni_erraddr_NS contains a physical address for that recorded error 1'b0: Address is not valid
 R 0x3118 64 - - por_hni_erraddr_NS
 RESET 0x0 0x8000ffffffffffff

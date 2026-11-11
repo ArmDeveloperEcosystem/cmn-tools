@@ -29,8 +29,9 @@ def configure_dtcs_for_atb(opts, cmn_mesh, dtsl_cmn_trace_controller):
     # apply the unique ATB IDs set from DTSL
     sourcesForMesh = dtsl_cmn_trace_controller.getMeshDTCTraceSources()[cmn_mesh.D.cmn_mesh_name]
     assert len(sourcesForMesh) >= 1
+    dtcs = list(cmn_mesh.DTCs())
     for dtsl_dtc_trace_source in sourcesForMesh:
-        dtc = cmn_mesh.debug_nodes[dtsl_dtc_trace_source.getDTCDomainNumber()]
+        dtc = dtcs[dtsl_dtc_trace_source.getDTCDomainNumber()]
         dtc.write64(cmn_devmem.CMN_DTC_TRACECTRL, tracectl)
         dtc.set_atb_traceid(dtsl_dtc_trace_source.getStreamID())
         if opts.verbose:

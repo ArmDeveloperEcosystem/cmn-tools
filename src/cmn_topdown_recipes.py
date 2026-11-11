@@ -58,8 +58,10 @@ RECIPE_PREFETCH = {
 }
 
 
+# cpu-bus: CPU bandwidth by CPU BUS_ACCESS events: counting every RXDAT/TXDAT flit, not just first/critical ones
+# TBD: assumes 32-byte bus interface, i.e. 2 DAT flits per line
 RECIPE_BANDWIDTH_CPU = {
-    "name": "CPU bandwidth",
+    "name": "CPU bandwidth (CPU PMU BUS_ACCESS... events)",
     "categories": ["read", "write"],
     "rate_bandwidth": 32,
     "measure": [
@@ -98,30 +100,164 @@ def rnf_opcodes(ports, wp, prefix=""):
 
 
 RECIPE_BANDWIDTH_RNF = {
-    "name": "CPU/SLC bandwidth at CPU",
+    "name": "CPU/SLC bandwidth at CPU (REQ, excluding retries)",
     "categories": ["read", "write clean", "write dirty"],
     "rate_bandwidth": 64,
     "measure": rnf_opcodes(CMN_PROP_RNF, "watchpoint_up"),
 }
 
 
+#
+# Measure bandwidth on the DAT channel - all reads, and all writes including
+#
+# We select dataid=0 which should be good for all bus widths as long as we're
+# doing full-line transfers. The recipe will overestiamte for sub-line transfers.
+#
+RECIPE_BANDWIDTH_RNF_DAT = {
+    "name": "CPU data bandwidth (DAT)",
+    "categories": ["read", "write"],
+    "rate_bandwidth": 64,
+    "measure": [
+        {"measure": "read",  "ports": CMN_PROP_RNF, "watchpoint_down": {"chn": cmnwatch.DAT, "dataid": 0}},
+        {"measure": "write", "ports": CMN_PROP_RNF, "watchpoint_up":   {"chn": cmnwatch.DAT, "dataid": 0}},
+    ]
+}
+
+
+RECIPE_BANDWIDTH_RNF_DAT_QOS = {
+    "name": "CPU data bandwidth (DAT with QoS)",
+    "categories": ["read 14", "read 10", "write 14", "write 10"],
+    "rate_bandwidth": 64,
+    "measure": [
+        {"measure": "read 14",  "ports": CMN_PROP_RNF, "watchpoint_down": {"chn": cmnwatch.DAT, "dataid": 0, "qos": 14}},
+        {"measure": "read 10",  "ports": CMN_PROP_RNF, "watchpoint_down": {"chn": cmnwatch.DAT, "dataid": 0, "qos": 10}},
+        {"measure": "write 14", "ports": CMN_PROP_RNF, "watchpoint_up":   {"chn": cmnwatch.DAT, "dataid": 0, "qos": 14}},
+        {"measure": "write 10", "ports": CMN_PROP_RNF, "watchpoint_up":   {"chn": cmnwatch.DAT, "dataid": 0, "qos": 10}},
+    ]
+}
+
+
+def opcodes(ports, wp, ops):
+    other = [{"measure": "other", "ports": ports, wp: {"allowretry": 1}}]
+    return other + [{"measure": op+",-other", "ports": ports, wp: {"opcode": op, "allowretry": 1}} for op in ops]
+
+
+# Opcode categories - not all of these result in moving data, e.g. a WriteEvictOrEvict lets the completer choose.
+# MakeUnique can be used to upgrade line held as Shared, and also to claim a line prior to a streaming write -
+# we can't distinguish those in the watchpoints.
+# Not covered: atomics, sub-line device access
+
+read_opcodes =  ["ReadNotSharedDirty", "ReadUnique", "ReadPreferUnique", "MakeUnique", "ReadNoSnp"]
+
+write_opcodes = ["WriteEvictFull", "WriteEvictOrEvict", "WriteBackFull", "WriteCleanFull", "WriteUniqueFull"]
+
+other_opcodes = ["Evict", "PrefetchTgt"]
+
+
+# cpu-opcodes
+RECIPE_RNF_OPCODES = {
+    "name": "CPU opcodes",
+    "measure": opcodes(CMN_PROP_RNF, "watchpoint_up", read_opcodes + write_opcodes + other_opcodes)
+}
+
+
+# cpu-qos: Classify RN-F requests by QoS, using the default values used by current Neoverse cores.
+# Higher values indicate higher priority - although an interconnect may apply coarser bands.
+# Cores may have an override register (CPUBUSQOS) that can vary these values.
+# There is no distinction between demand load and L1 prefetch, or between data and instructions.
+RECIPE_BANDWIDTH_RNF_QOS = {
+    "name": "CPU read bandwidth at interconnect, classified by QoS",
+    "categories": ["demand/L1", "demand/L1 for write", "L2 prefetch", "L2 prefetch for write"],
+    "rate_bandwidth": 64,
+    "measure": [
+        {"measure": "demand/L1",             "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "ReadNotSharedDirty", "qos": 0xe, "allowretry": 1}},
+        {"measure": "demand/L1 for write",   "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "ReadUnique", "qos": 0xe, "allowretry": 1}},
+        {"measure": "demand/L1 for write",   "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "ReadPreferUnique", "qos": 0xe, "allowretry": 1}},
+        {"measure": "L2 prefetch",           "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "ReadNotSharedDirty", "qos": 0xa, "allowretry": 1}},
+        {"measure": "L2 prefetch for write", "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "ReadUnique", "qos": 0xa, "allowretry": 1}},
+        {"measure": "L2 prefetch for write", "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "ReadPreferUnique", "qos": 0xa, "allowretry": 1}},
+        {"measure": "make unique",           "ports": CMN_PROP_RNF, "watchpoint_up": {"opcode": "MakeUnique", "allowretry": 1}},
+    ]
+}
+
+
+# cpu-qos-all
+RECIPE_RNF_QOS_ALL = {
+    "name": "CPU request QoS banding",
+    "categories": ["15", "14", "10", "1", "other"],
+    "measure": [
+        {"measure": "15,-other", "ports": CMN_PROP_RNF, "watchpoint_up": {"qos": 15}},
+        {"measure": "14,-other", "ports": CMN_PROP_RNF, "watchpoint_up": {"qos": 14}},
+        {"measure": "10,-other", "ports": CMN_PROP_RNF, "watchpoint_up": {"qos": 10}},
+        {"measure": "1,-other",  "ports": CMN_PROP_RNF, "watchpoint_up": {"qos": 1}},
+        {"measure": "other",  "ports": CMN_PROP_RNF, "watchpoint_up": {}},
+    ]
+}
+
+
+# This will count requests seen at SLC, either local RNs, or forwarded via CCGs.
+# This is subject to double-counting on multi-mesh systems.
 RECIPE_BANDWIDTH_HNF = {
-    "name": "CPU/SLC bandwidth at SLC",
+    "name": "Requester/CCG bandwidth at SLC",
     "categories": ["read", "write clean", "write dirty"],
     "rate_bandwidth": 64,
     "measure": rnf_opcodes(CMN_PROP_HNF, "watchpoint_down"),
 }
 
 
-# Measure DRAM read and write bandwidth by looking at requests downloaded from the interconnect to the DMCs.
-RECIPE_BANDWIDTH_DRAM = {
-    "name": "DRAM bandwidth at controller",
-    "categories": ["read", "write"],
+# cmn_events will translate these into local_all - i.e. excluding requests on behalf of remote mesh
+RECIPE_BANDWIDTH_HNF_MC = {
+    "name": "SLC local bandwidth to memory controller or CCG",
+    "categories": ["all"],
     "rate_bandwidth": 64,
     "measure": [
-        {"measure": "read", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnp", "allowretry": 1}},
-        {"measure": "read", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnpSep", "allowretry": 1}},
-        {"measure": "write", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "WriteNoSnpFull", "allowretry": 1}},
+        {"measure": "all", "event": "hnf_mc_reqs"},
+        {"measure": "-all", "event": "hnf_mc_retries"},
+    ]
+}
+
+
+# Specific to HN-S where we can separate requests by local vs remote origin
+RECIPE_BANDWIDTH_HNF_MC_C2C = {
+    "name": "SLC bandwidth to memory controller",
+    "categories": ["local to mem", "local to other", "remote to mem", "remote to other"],
+    "rate_bandwidth": 64,
+    "measure": [
+        {"measure": "local to mem,-local to other", "event": "hns_mc_reqs_local_sn"},
+        {"measure": "local to other", "event": "hns_mc_reqs_local_all"},
+        {"measure": "remote to mem,-remote to other", "event": "hns_mc_reqs_remote_sn"},
+        {"measure": "remote to other", "event": "hns_mc_reqs_remote_all"},
+    ]
+}
+
+
+RECIPE_BANDWIDTH_HNF_REQ = {
+    "name": "SLC outgoing requests (excluding retries)",
+    "categories": ["read", "write", "evict", "make unique", "other"],
+    "rate_bandwidth": 64,
+    "measure": [
+        {"measure": "read,-other", "ports": CMN_PROP_HNF, "watchpoint_up": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnp", "allowretry": 1}},
+        {"measure": "read,-other", "ports": CMN_PROP_HNF, "watchpoint_up": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnpSep", "allowretry": 1}},
+        {"measure": "read,-other", "ports": CMN_PROP_HNF, "watchpoint_up": {"chn": cmnwatch.REQ, "opcode": "ReadNotSharedDirty", "allowretry": 1}},
+        {"measure": "write,-other", "ports": CMN_PROP_HNF, "watchpoint_up": {"chn": cmnwatch.REQ, "opcode": "WriteNoSnpFull", "allowretry": 1}},
+        {"measure": "write,-other", "ports": CMN_PROP_HNF, "watchpoint_up": {"chn": cmnwatch.REQ, "opcode": "WriteBackFull", "allowretry": 1}},
+        {"measure": "evict,-other", "ports": CMN_PROP_HNF, "watchpoint_up": {"chn": cmnwatch.REQ, "opcode": "Evict", "allowretry": 1}},
+        {"measure": "make unique,-other", "ports": CMN_PROP_HNF, "watchpoint_up": {"chn": cmnwatch.REQ, "opcode": "MakeUnique", "allowretry": 1}},
+        {"measure": "other", "ports": CMN_PROP_HNF, "watchpoint_up": {"chn": cmnwatch.REQ, "allowretry": 1}},
+    ],
+}
+
+
+# Measure DRAM read and write bandwidth by looking at requests downloaded from the interconnect to the DMCs.
+RECIPE_BANDWIDTH_DRAM = {
+    "name": "DRAM bandwidth at memory controller",
+    "categories": ["read", "write", "other"],
+    "rate_bandwidth": 64,
+    "measure": [
+        {"measure": "read,-other", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnp", "allowretry": 1}},
+        {"measure": "read,-other", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "ReadNoSnpSep", "allowretry": 1}},
+        {"measure": "write,-other", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "opcode": "WriteNoSnpFull", "allowretry": 1}},
+        {"measure": "other", "ports": CMN_PROP_SNF, "watchpoint_down": {"chn": cmnwatch.REQ, "allowretry": 1}},
     ],
 }
 
@@ -159,7 +295,7 @@ RECIPE_BANDWIDTH_C2C_DAT = {
 
 RECIPE_BANDWIDTH = {
     "name": "Bandwidth",
-    "subrecipes": [RECIPE_BANDWIDTH_CPU, RECIPE_BANDWIDTH_RNF, RECIPE_BANDWIDTH_HNF, RECIPE_BANDWIDTH_DRAM, RECIPE_BANDWIDTH_C2C],
+    "subrecipes": [RECIPE_BANDWIDTH_CPU, RECIPE_BANDWIDTH_RNF, RECIPE_BANDWIDTH_RNF_DAT, RECIPE_BANDWIDTH_HNF, RECIPE_BANDWIDTH_HNF_MC, RECIPE_BANDWIDTH_HNF_REQ, RECIPE_BANDWIDTH_DRAM, RECIPE_BANDWIDTH_C2C],
 }
 
 
@@ -174,7 +310,7 @@ RECIPE_RETRIES_HNF = {
 
 
 RECIPE_RETRIES_SNF = {
-    "name": "Retried requests from SLC to DRAM",
+    "name": "Retried requests from SLC to DRAM/CCG",
     "categories": ["retry", "non-retry"],
     "measure": [
         {"measure": "non-retry", "event": "hnf_mc_reqs"},
@@ -239,6 +375,15 @@ BUILTIN_LEVELS = {
     "retries": RECIPE_RETRIES,
     "retries-home": RECIPE_RETRIES_HNF,
     "retries-dram": RECIPE_RETRIES_SNF,
+    "hn-mc": RECIPE_BANDWIDTH_HNF_MC,
+    "hn-mc-c2c": RECIPE_BANDWIDTH_HNF_MC_C2C,
+    "hn-req": RECIPE_BANDWIDTH_HNF_REQ,
+    "cpu-bus": RECIPE_BANDWIDTH_CPU,           # CPU: BUS_ACCESS events
+    "cpu-dat": RECIPE_BANDWIDTH_RNF_DAT,       # CMN: DAT upload/download
+    "cpu-dat-qos": RECIPE_BANDWIDTH_RNF_DAT_QOS,   # CMN: DAT upload/download (with QoS 14/10)
+    "cpu-qos": RECIPE_BANDWIDTH_RNF_QOS,       # CMN: use QoS to distinguish demand and prefetch
+    "cpu-qos-all": RECIPE_RNF_QOS_ALL,         # CMN: RN-F REQ QoS breakdown
+    "cpu-opcodes": RECIPE_RNF_OPCODES,         # CMN: opcode breakdown
     "cbusy": RECIPE_CBUSY,
     "cbusy-home": RECIPE_CBUSY_HNF,
     "cbusy-dram": RECIPE_CBUSY_SNF,

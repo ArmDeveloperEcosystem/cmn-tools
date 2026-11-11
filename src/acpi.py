@@ -10,6 +10,10 @@ Generally requires root privilege, if directly accessing tables in /sys/firmware
 
 https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/21_ACPI_Data_Tables_and_Table_Def_Language/ACPI_Data_Tables.html
 
+IORT: Arm "DEN0049 IO Remapping Table"
+
+MPAM: Arm "DEN0065 System Resource Partitioning and Monitoring"
+
 For human-readable dumping of ACPI tables, install the acpica-tools package,
 and use 'acpidump', 'acpixtract' and 'iasl'. Note that this will only decode
 tables standardized in the ACPI specification, not vendor-defined tables
@@ -334,26 +338,6 @@ class SLIT(ACPITable):
             print()
 
 
-class SRATStruct:
-    def __init__(self, itype):
-        self.type = itype
-
-    def __str__(self):
-        if self.type == 0:
-            s = "cpu pd=%u apic_id=%u" % (self.pd, self.apic_id)
-        elif self.type == 1:
-            s = "mem pd=%u base=%x size=%x" % (self.pd, self.base, self.size)
-        elif self.type == 2:
-            s = "x2apic id=%d" % (self.x2apic_id)
-        elif self.type == 3:
-            s = "gicc pd=%u acpi_uid=%d" % (self.pd, self.acpi_uid)
-        elif self.type == 4:
-            s = "its pd=%u its_id=%d" % (self.pd, self.its_id)
-        else:
-            s = "type=%d?" % (self.type)
-        return s
-
-
 class GAS:
     """
     Generic Address Specifier
@@ -414,6 +398,25 @@ class PCCT(ACPITable):
         for sp in self.pcc_spaces:
             print(sp)
 
+
+class SRATStruct:
+    def __init__(self, itype):
+        self.type = itype
+
+    def __str__(self):
+        if self.type == 0:
+            s = "cpu pd=%u apic_id=%u" % (self.pd, self.apic_id)
+        elif self.type == 1:
+            s = "mem pd=%u base=0x%x size=0x%x" % (self.pd, self.base, self.size)
+        elif self.type == 2:
+            s = "x2apic id=%d" % (self.x2apic_id)
+        elif self.type == 3:
+            s = "gicc pd=%u acpi_uid=%d" % (self.pd, self.acpi_uid)
+        elif self.type == 4:
+            s = "its pd=%u its_id=%d" % (self.pd, self.its_id)
+        else:
+            s = "type=%d?" % (self.type)
+        return s
 
 
 class SRAT(ACPITable):
@@ -539,7 +542,7 @@ class MSCResource:
             s += self._ltypes[self.location_type]
         else:
             s += "type 0x%x?" % self.location_type
-        s += " (0x%x,0x%x)" % (self.loc1, self.loc2)
+        s += " loc=(0x%x,0x%x)" % (self.loc1, self.loc2)
         if self.deps:
             s += " depends: " + str(self.deps)
         return s
@@ -548,7 +551,9 @@ class MSCResource:
 class MPAM(ACPITable):
     """
     MPAM: Memory Partitioning and Monitoring
-    This table is defined by Arm Platform Design Document DEN0065B.
+    This table is defined by Arm Platform Design Document:
+      DEN0065A: rev 1
+      DEN0065B: rev 2
     """
     def __init__(self, fn=None, handle=None, sig=b"MPAM", system=None):
         ACPITable.__init__(self, fn, handle=handle, sig=sig, system=system)
@@ -637,6 +642,94 @@ class MCFG(ACPITable):
             print("  %s" % c)
 
 
+class IORT(ACPITable):
+    """
+    IORT: I/O Remapping Table (Arm specific)
+
+    Represents the I/O topology of a system
+    """
+    def __init__(self, fn=None, handle=None, sig=b"IORT", system=None):
+        ACPITable.__init__(self, fn, handle=handle, sig=sig, system=system)
+        s = self.f.read(8)
+        (n_node, off) = struct.unpack("<II", s[:8])
+        s = self.f.read(off-44)
+        print("IORT revision %u" % self.rev)
+        while True:
+            node_off = off
+            s = self.f.read(3)
+            if not s:
+                break
+            assert len(s) == 3
+            (type, nlen) = struct.unpack("<BH", s)
+            s += self.f.read(nlen-3)
+            off += nlen
+            type_strs = {
+                0: "ITS Group",
+                1: "Component",
+                2: "Root complex",
+                3: "SMMUv1/2",
+                4: "SMMUv3",
+                5: "PMCG",
+                6: "Memory range",
+                7: "IWB",
+            }
+            (_, _, rev, uid, nids, noff) = struct.unpack("<BHBIII", s[0:16])
+            if self.rev == 0:
+                # In older IORTs, there is no node UID
+                uid = None
+            elif self.rev == 1:
+                # In DEN0049E (version 0), the UID was a 16-bit field at offset 6
+                uid >>= 16
+            print("  0x%04x  %16s" % (node_off, type_strs.get(type, ("?%u" % type))), end="")
+            # At some point, the node revision was deprecated, but we print it anyway
+            print(" r%u" % (rev), end="")
+            # The uid is a "Unique identifier that can eb used to locate (the node) in the parent table."
+            if uid is not None:
+                print("  0x%04x" % (uid), end="")
+            if type == 0:
+                # ITS Group
+                n_its = struct.unpack("<I", s[16:20])[0]
+                print("  n=%d" % n_its, end="")
+            elif type == 2:
+                # Root complex
+                (_, ats, seg, lim, _, _) = struct.unpack("<QIIBBH", s[16:36])
+                (cca, ah, _, maf) = struct.unpack("<IBHB", s[16:24])
+                print("  cca=%d ah=%d maf=%d seg=%04x" % (cca, ah, maf, seg), end="")
+            elif type == 4:
+                # SMMUv3
+                (base, flags, _, _, model, event, PRI, GERR, sync, prox) = struct.unpack("<QIIQIIIIII", s[16:64])
+                print("  0x%x" % (base), end="")
+                if model > 0:
+                    print(" model=%d" % model, end="")
+                if event > 0:
+                    print(" Event=%d" % event, end="")
+                if PRI > 0:
+                    print(" PRI=%d" % PRI, end="")
+                if GERR > 0:
+                    print(" GERR=%d" % GERR, end="")
+                if sync > 0:
+                    print(" sync=%d" % sync, end="")
+                if flags & 0x08:
+                    print(" proximity=%d" % prox, end="")
+            elif type == 5:
+                # PMCG
+                (page0, ofl, node, page1) = struct.unpack("<QIIQ", s[16:40])
+                print("  0x%x %d node=0x%x" % (page0, ofl, node), end="")
+                if page1:
+                    print(" page1=0x%x" % (page1), end="")
+            if nids > 0:
+                ids = []
+                # ID map shows how to convert from e.g. a RID in PCIe to a StreamID in SMMU
+                for i in range(0, nids):
+                    ix = s[noff+(i*20):noff+((i+1)*20)]
+                    (lo, n, ob, onode, flags) = struct.unpack("<IIIII", ix)
+                    print(" [%#x..%#x->%#x 0x%x" % (lo, lo+n, ob, onode), end="")
+                    if flags & 1:
+                        print(" single", end="")
+                    print("]", end="")
+            print()
+
+
 def ACPI(fn, system=None):
     """
     Open an ACPI file, returning an ACPITable or subclass thereof.
@@ -659,6 +752,8 @@ def ACPI(fn, system=None):
             return MCFG(fn, handle=f, sig=sig, system=system)
         elif sig == b"MPAM":
             return MPAM(fn, handle=f, sig=sig, system=system)
+        elif sig == b"IORT":
+            return IORT(fn, handle=f, sig=sig, system=system)
         else:
             # Other tables not handled specially
             return ACPITable(fn, handle=f, sig=sig, system=system)

@@ -239,7 +239,8 @@ class CMNDecoder:
             # | 31:30 chn_num | 29:28 VC | - | 25:24 WP | 23:19 size | 18:8 nodeid | 7:5 0b01x | 4 cc | 3:1 type | 0 lossy |
             type = BITS(h, 1, 3)
             WP = BITS(h, 24, 2)
-            DEV = 0
+            DEV = BITS(h, 8, 3)
+            nodeid &= ~7
             VC = BITS(h, 28, 2)
             chn_num = BITS(h, 30, 2)
         # Decode the payload, according to the CMN version.

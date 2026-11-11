@@ -48,6 +48,28 @@ Show field output:
 
     python src/cmn_regdump.py --fields
 
+Descriptive register output includes its access and volatility code: `RW` for read/write
+and non-volatile, `V` for read/write and volatile, or `RO`, `ROV`, `WO`, `WOV`.
+Fields show a prefix only for properties that differ from their register:
+`(RO)` or `(WO)` for different access, `(NV)` for a non-volatile field in a
+volatile register, and `(RO,NV)` when both differ. For example:
+
+```text
+  0000  000000000000000f  CONTROL_STATUS (V)
+    [0]                          (NV) enable = 1
+    [1]                           (RO) ready = 1
+    [2]                          (RO,NV) cfg = 1
+    [3]                               active = 1
+```
+
+The same prefixes appear in aggregate output and definition searches.
+When a field is requested by name, its parent properties are shown as
+`(register V)`, for example. Flat output omits register and field property
+annotations.
+Write-one-to-clear registers and fields also show `W1C` in descriptive
+output, combined with other annotations, for example `(V,W1C)` or
+`(NV,W1C)`. Fields omit `W1C` when it is already shown on their register.
+
 Show register and field descriptions:
 
     python src/cmn_regdump.py --descriptions
@@ -256,6 +278,63 @@ CMN product and revision. The files are in:
 
 If a different directory is needed when using CMNRegDumper from another
 script, pass regdefs_dir to the CMNRegDumper constructor.
+
+In a `.regdefs` file, register lines use
+`R <offset> <bits> <access> <security> <name> [W1C]`. Access codes combine software
+access and volatility: `NV` (also accepted as `-`) means read/write and
+non-volatile, `V` means read/write and volatile, and `RO`, `ROV`, `WO`, `WOV`
+describe read-only or write-only access with the same optional `V` suffix.
+Register lines retain the compact `-` spelling when written.
+
+Field lines use `F <position> <width> <name> [<access>] [W1C]`. Omit the access token
+to inherit both properties from the register. An explicit token specifies
+both properties and is only written when they differ. Field overrides use
+`NV` for read/write and non-volatile; the reader also accepts the legacy `-`
+spelling with the same meaning. For example:
+
+```text
+R 0x0 32 V - CONTROL_STATUS
+F 0 1 enable NV
+F 1 1 ready ROV
+F 2 6 count
+```
+
+Here `enable` is read/write and non-volatile, `ready` is read-only and
+volatile, and `count` inherits read/write and volatile. A field cannot allow
+access forbidden by its register or be volatile in a non-volatile register;
+these combinations are rejected. Existing files remain valid and gain no
+extra tokens when rewritten. Files containing field overrides require an
+updated reader; older readers do not accept the optional token.
+
+These inheritance rules are specific to regdefs. When converting another
+format, its own defaults must first be applied to determine each field's
+effective properties, then any differences from the register are written
+as explicit overrides.
+
+The optional `W1C` token marks a write-one-to-clear register or field.
+On a field it can appear with or without an access override, and applies
+to fields of any width:
+
+```text
+R 0x8 64 V - ERROR_STATUS
+F 0 16 errors W1C
+F 16 8 software_flags NV W1C
+R 0x10 64 V - ERROR_CLEAR W1C
+F 0 16 errors
+```
+
+Each written one clears its corresponding bit; written zeroes leave those
+bits unchanged, as specified by IP-XACT `modifiedWriteValue=oneToClear`.
+See [IEEE 1685-2014 clarification of modifiedWriteValue](https://www.accellera.org/images/downloads/standards/ip-xact/IPXACT-2014-issues-April_2020.pdf).
+Fields inherit W1C from a register marked W1C, so the marker need not be
+repeated on those fields. Otherwise, omitting the marker leaves the register
+or field unmarked. A read-only register or field cannot be W1C.
+
+The model exposes a boolean `is_w1c` flag on `Register` and `RegField`.
+The readers translate IP-XACT `oneToClear` to this flag; other
+`modifiedWriteValue` modes are unsupported and rejected during conversion.
+The flag records write behavior; it does not change cmn_regdump.py's existing
+read/modify/write operations.
 
 
 Examples

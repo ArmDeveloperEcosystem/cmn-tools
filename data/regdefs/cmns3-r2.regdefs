@@ -17680,10 +17680,10 @@ RESET 0x4 0xffff
 F 0 16 evtcount
 R 0xd500 32 - ROOT cmn_hns_amcntenset
 RESET 0x0 0x0
-F 0 5 p
+F 0 5 p W1C
 R 0xd520 32 - ROOT cmn_hns_amcntenclr
 RESET 0x0 0x0
-F 0 5 p
+F 0 5 p W1C
 R 0xd700 32 RO ROOT cmn_hns_amcfgr
 RESET 0x3f04 0xf1c13fff
 F 28 4 ncg
@@ -17836,18 +17836,18 @@ R 0xe010 64 - ROOT cmn_hns_errstatus
 RESET 0x0 0xfff0ffff
 RGO cmn_hns_rcr.ras
 SGO cmn_hns_scr.ras
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 28 1 er
-F 27 1 of
-F 26 1 mv
-F 24 2 ce
-F 23 1 de
-F 22 1 pn
-F 20 2 uet
-F 8 8 ierr
-F 0 8 serr
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 28 1 er W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 2 ce W1C
+F 23 1 de W1C
+F 22 1 pn W1C
+F 20 2 uet W1C
+F 8 8 ierr W1C
+F 0 8 serr W1C
 R 0xe018 64 - ROOT cmn_hns_erraddr
 RESET 0x0 0xc80fffffffffffff
 RGO cmn_hns_rcr.ras
@@ -17907,18 +17907,18 @@ F 8 1 cfi
 F 10 1 dui
 R 0xe050 64 - - cmn_hns_errstatus_ns
 RESET 0x0 0xfff0ffff
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 28 1 er
-F 27 1 of
-F 26 1 mv
-F 24 2 ce
-F 23 1 de
-F 22 1 pn
-F 20 2 uet
-F 8 8 ierr
-F 0 8 serr
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 28 1 er W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 2 ce W1C
+F 23 1 de W1C
+F 22 1 pn W1C
+F 20 2 uet W1C
+F 8 8 ierr W1C
+F 0 8 serr W1C
 R 0xe058 64 - - cmn_hns_erraddr_ns
 RESET 0x0 0xc80fffffffffffff
 F 0 52 addr
@@ -21075,20 +21075,20 @@ F 2 1 lnk0_link_up
 F 3 1 lnk0_snoopdomain_req
 F 4 4 lnk0_num_reqcrds
 F 8 4 lnk0_num_datcrds
-F 15 1 lnk0_rspmsg_send_exp_agentid
-F 16 1 lnk0_smp_mode_en
+F 15 1 lnk0_rspmsg_send_exp_agentid NV
+F 16 1 lnk0_smp_mode_en NV
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk0_send_compack
-F 18 1 lnk0_en_cbusy_prop
-F 19 1 lnk0_en_datasource_prop
-F 20 1 lnk0_en_devevent_prop
-F 21 1 lnk0_en_loopback_prop
-F 22 1 lnk0_en_pbha_prop
-F 23 1 lnk0_en_strongnc_prop
-F 24 1 lnk0_req_rsvdc_ovrd_en
-F 25 1 lnk0_dat_rsvdc_ovrd_en
-F 32 10 lnk0_num_reqcrds_fixed_count
-F 42 10 lnk0_num_datcrds_fixed_count
+F 17 1 lnk0_send_compack NV
+F 18 1 lnk0_en_cbusy_prop NV
+F 19 1 lnk0_en_datasource_prop NV
+F 20 1 lnk0_en_devevent_prop NV
+F 21 1 lnk0_en_loopback_prop NV
+F 22 1 lnk0_en_pbha_prop NV
+F 23 1 lnk0_en_strongnc_prop NV
+F 24 1 lnk0_req_rsvdc_ovrd_en NV
+F 25 1 lnk0_dat_rsvdc_ovrd_en NV
+F 32 10 lnk0_num_reqcrds_fixed_count NV
+F 42 10 lnk0_num_datcrds_fixed_count NV
 F 52 1 lnk0_prop_exchange_done
 R 0x1908 64 ROV ROOT por_ccg_ha_cxprtcl_link0_status
 RESET 0x2 0x7
@@ -21103,20 +21103,20 @@ F 2 1 lnk1_link_up
 F 3 1 lnk1_snoopdomain_req
 F 4 4 lnk1_num_reqcrds
 F 8 4 lnk1_num_datcrds
-F 15 1 lnk1_rspmsg_send_exp_agentid
-F 16 1 lnk1_smp_mode_en
+F 15 1 lnk1_rspmsg_send_exp_agentid NV
+F 16 1 lnk1_smp_mode_en NV
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk1_send_compack
-F 18 1 lnk1_en_cbusy_prop
-F 19 1 lnk1_en_datasource_prop
-F 20 1 lnk1_en_devevent_prop
-F 21 1 lnk1_en_loopback_prop
-F 22 1 lnk1_en_pbha_prop
-F 23 1 lnk1_en_strongnc_prop
-F 24 1 lnk1_req_rsvdc_ovrd_en
-F 25 1 lnk1_dat_rsvdc_ovrd_en
-F 32 10 lnk1_num_reqcrds_fixed_count
-F 42 10 lnk1_num_datcrds_fixed_count
+F 17 1 lnk1_send_compack NV
+F 18 1 lnk1_en_cbusy_prop NV
+F 19 1 lnk1_en_datasource_prop NV
+F 20 1 lnk1_en_devevent_prop NV
+F 21 1 lnk1_en_loopback_prop NV
+F 22 1 lnk1_en_pbha_prop NV
+F 23 1 lnk1_en_strongnc_prop NV
+F 24 1 lnk1_req_rsvdc_ovrd_en NV
+F 25 1 lnk1_dat_rsvdc_ovrd_en NV
+F 32 10 lnk1_num_reqcrds_fixed_count NV
+F 42 10 lnk1_num_datcrds_fixed_count NV
 R 0x1918 64 ROV ROOT por_ccg_ha_cxprtcl_link1_status
 RESET 0x2 0x7
 F 0 1 lnk1_link_ack
@@ -21130,20 +21130,20 @@ F 2 1 lnk2_link_up
 F 3 1 lnk2_snoopdomain_req
 F 4 4 lnk2_num_reqcrds
 F 8 4 lnk2_num_datcrds
-F 15 1 lnk2_rspmsg_send_exp_agentid
-F 16 1 lnk2_smp_mode_en
+F 15 1 lnk2_rspmsg_send_exp_agentid NV
+F 16 1 lnk2_smp_mode_en NV
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk2_send_compack
-F 18 1 lnk2_en_cbusy_prop
-F 19 1 lnk2_en_datasource_prop
-F 20 1 lnk2_en_devevent_prop
-F 21 1 lnk2_en_loopback_prop
-F 22 1 lnk2_en_pbha_prop
-F 23 1 lnk2_en_strongnc_prop
-F 24 1 lnk2_req_rsvdc_ovrd_en
-F 25 1 lnk2_dat_rsvdc_ovrd_en
-F 32 10 lnk2_num_reqcrds_fixed_count
-F 42 10 lnk2_num_datcrds_fixed_count
+F 17 1 lnk2_send_compack NV
+F 18 1 lnk2_en_cbusy_prop NV
+F 19 1 lnk2_en_datasource_prop NV
+F 20 1 lnk2_en_devevent_prop NV
+F 21 1 lnk2_en_loopback_prop NV
+F 22 1 lnk2_en_pbha_prop NV
+F 23 1 lnk2_en_strongnc_prop NV
+F 24 1 lnk2_req_rsvdc_ovrd_en NV
+F 25 1 lnk2_dat_rsvdc_ovrd_en NV
+F 32 10 lnk2_num_reqcrds_fixed_count NV
+F 42 10 lnk2_num_datcrds_fixed_count NV
 R 0x1928 64 ROV ROOT por_ccg_ha_cxprtcl_link2_status
 RESET 0x2 0x7
 F 0 1 lnk2_link_ack
@@ -29679,17 +29679,17 @@ F 10 1 lnk0_excl_store_dwngrd
 F 11 1 lnk0_excl_resperr_ovrd
 F 12 2 lnk0_excl_resperr_value
 F 14 1 lnk0_spcl_cbkwr_crd_en
-F 15 1 lnk0_rspmsg_send_exp_agentid
-F 16 1 lnk0_smp_mode_en
+F 15 1 lnk0_rspmsg_send_exp_agentid NV
+F 16 1 lnk0_smp_mode_en NV
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk0_send_compack
-F 18 1 lnk0_dis_rmt_datasrc
-F 19 1 lnk0_dis_rmt_devevent
-F 20 2 lnk0_cbusy_prop_ctl
-F 22 1 lnk0_en_loopback_prop
-F 23 1 lnk0_en_pbha_prop
-F 24 1 lnk0_dat_rsvdc_ovrd_en
-F 25 1 lnk0_send_pftgt_en
+F 17 1 lnk0_send_compack NV
+F 18 1 lnk0_dis_rmt_datasrc NV
+F 19 1 lnk0_dis_rmt_devevent NV
+F 20 2 lnk0_cbusy_prop_ctl NV
+F 22 1 lnk0_en_loopback_prop NV
+F 23 1 lnk0_en_pbha_prop NV
+F 24 1 lnk0_dat_rsvdc_ovrd_en NV
+F 25 1 lnk0_send_pftgt_en NV
 F 32 10 lnk0_num_snpcrds_fixed_count
 R 0x4008 64 ROV ROOT por_ccg_ra_ccprtcl_link0_status
 RESET 0x2 0x1f
@@ -29711,17 +29711,17 @@ F 10 1 lnk1_excl_store_dwngrd
 F 11 1 lnk1_excl_resperr_ovrd
 F 12 2 lnk1_excl_resperr_value
 F 14 1 lnk1_spcl_cbkwr_crd_en
-F 15 1 lnk1_rspmsg_send_exp_agentid
-F 16 1 lnk1_smp_mode_en
+F 15 1 lnk1_rspmsg_send_exp_agentid NV
+F 16 1 lnk1_smp_mode_en NV
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk1_send_compack
-F 18 1 lnk1_dis_rmt_datasrc
-F 19 1 lnk1_dis_rmt_devevent
-F 20 2 lnk1_cbusy_prop_ctl
-F 22 1 lnk1_en_loopback_prop
-F 23 1 lnk1_en_pbha_prop
-F 24 1 lnk1_dat_rsvdc_ovrd_en
-F 25 1 lnk1_send_pftgt_en
+F 17 1 lnk1_send_compack NV
+F 18 1 lnk1_dis_rmt_datasrc NV
+F 19 1 lnk1_dis_rmt_devevent NV
+F 20 2 lnk1_cbusy_prop_ctl NV
+F 22 1 lnk1_en_loopback_prop NV
+F 23 1 lnk1_en_pbha_prop NV
+F 24 1 lnk1_dat_rsvdc_ovrd_en NV
+F 25 1 lnk1_send_pftgt_en NV
 F 32 10 lnk1_num_snpcrds_fixed_count
 R 0x4018 64 ROV ROOT por_ccg_ra_ccprtcl_link1_status
 RESET 0x2 0x1f
@@ -29743,17 +29743,17 @@ F 10 1 lnk2_excl_store_dwngrd
 F 11 1 lnk2_excl_resperr_ovrd
 F 12 2 lnk2_excl_resperr_value
 F 14 1 lnk2_spcl_cbkwr_crd_en
-F 15 1 lnk2_rspmsg_send_exp_agentid
-F 16 1 lnk2_smp_mode_en
+F 15 1 lnk2_rspmsg_send_exp_agentid NV
+F 16 1 lnk2_smp_mode_en NV
 PAR CCG_SMP_MODE_EN_PARAM
-F 17 1 lnk2_send_compack
-F 18 1 lnk2_dis_rmt_datasrc
-F 19 1 lnk2_dis_rmt_devevent
-F 20 2 lnk2_cbusy_prop_ctl
-F 22 1 lnk2_en_loopback_prop
-F 23 1 lnk2_en_pbha_prop
-F 24 1 lnk2_dat_rsvdc_ovrd_en
-F 25 1 lnk2_send_pftgt_en
+F 17 1 lnk2_send_compack NV
+F 18 1 lnk2_dis_rmt_datasrc NV
+F 19 1 lnk2_dis_rmt_devevent NV
+F 20 2 lnk2_cbusy_prop_ctl NV
+F 22 1 lnk2_en_loopback_prop NV
+F 23 1 lnk2_en_pbha_prop NV
+F 24 1 lnk2_dat_rsvdc_ovrd_en NV
+F 25 1 lnk2_send_pftgt_en NV
 F 32 10 lnk2_num_snpcrds_fixed_count
 R 0x4028 64 ROV ROOT por_ccg_ra_ccprtcl_link2_status
 RESET 0x2 0x1f
@@ -31170,18 +31170,18 @@ R 0xe010 64 - ROOT por_ccla_errstatus
 RESET 0x0 0xfff0ffff
 RGO por_ccla_rcr.ras_secure_access_override
 SGO por_ccla_scr.ras_secure_access_override
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 28 1 er
-F 27 1 of
-F 26 1 mv
-F 24 2 ce
-F 23 1 de
-F 22 1 pn
-F 20 2 uet
-F 8 8 ierr
-F 0 8 serr
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 28 1 er W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 2 ce W1C
+F 23 1 de W1C
+F 22 1 pn W1C
+F 20 2 uet W1C
+F 8 8 ierr W1C
+F 0 8 serr W1C
 R 0xe018 64 - ROOT por_ccla_erraddr
 RESET 0x0 0xc80fffffffffffff
 RGO por_ccla_rcr.ras_secure_access_override
@@ -31222,18 +31222,18 @@ F 8 1 cfi
 F 10 1 dui
 R 0xe050 64 - - por_ccla_errstatus_ns
 RESET 0x0 0xfff0ffff
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 28 1 er
-F 27 1 of
-F 26 1 mv
-F 24 2 ce
-F 23 1 de
-F 22 1 pn
-F 20 2 uet
-F 8 8 ierr
-F 0 8 serr
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 28 1 er W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 2 ce W1C
+F 23 1 de W1C
+F 22 1 pn W1C
+F 20 2 uet W1C
+F 8 8 ierr W1C
+F 0 8 serr W1C
 R 0xe058 64 - - por_ccla_erraddr_ns
 RESET 0x0 0xc80fffffffffffff
 F 0 52 addr
@@ -31365,20 +31365,16 @@ RESET 0x8000006080000020 0xffffffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 20 port_id_capabilities_and_control_offset
-F 20 11 rsvd
 F 31 1 portid_capabilities_and_control_offset_valid
 F 32 20 port_ingress_idroute_table_offset
-F 52 11 rsvd2
 F 63 1 port_ingress_id_routetable_offset_valid
 R 0xf710 64 RO ROOT por_ccla_c2c_port_register_offset_table_1
 RESET 0x80000200800000b0 0xffffffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 20 port_egress_idroute_table_offset
-F 20 11 rsvd
 F 31 1 port_egress_id_routetable_offset_valid
 F 32 20 port_logical_links_offset
-F 52 11 rsvd2
 F 63 1 port_logical_links_offset_valid
 R 0xf718 64 RO ROOT por_ccla_c2c_port_capabilities_and_control_header
 RESET 0x400000 0xffffffff
@@ -31409,9 +31405,7 @@ RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 8 portid
 F 8 4 numlinkends
-F 12 4 rsvd
 F 16 4 linkstate
-F 20 11 rsvd2
 F 31 1 valid
 R 0xf738 64 RO ROOT por_ccla_c2c_port_ingressid_route_table_header
 RESET 0x480000 0xffffffff
@@ -31424,7 +31418,6 @@ RESET 0x0 0xfffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 11 numportidrouteentries
-F 11 18 reserved
 F 29 1 commit
 F 30 1 lockoncommit
 F 31 1 res2
@@ -31436,22 +31429,18 @@ SGO por_ccla_scr.c2c_cfg
 F 0 1 valid_0
 F 1 1 tgttype_0
 F 2 2 loglink_0
-F 4 4 rsvd_0
 F 8 8 target_0
 F 16 1 valid_1
 F 17 1 tgttype_1
 F 18 2 loglink_1
-F 20 4 rsvd_1
 F 24 8 target_1
 F 32 1 valid_2
 F 33 1 tgttype_2
 F 34 2 loglink_2
-F 36 4 rsvd_2
 F 40 8 target_2
 F 48 1 valid_3
 F 49 1 tgttype_3
 F 50 2 loglink_3
-F 52 4 rsvd_3
 F 56 8 target_3
 R 0xf750 64 RO ROOT por_ccla_c2c_port_egressid_route_table_header
 RESET 0x480000 0xffffffff
@@ -31464,7 +31453,6 @@ RESET 0x0 0xfffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 11 numportidrouteentries
-F 11 18 reserved
 F 29 1 commit
 F 30 1 lockoncommit
 F 31 1 res2
@@ -31476,22 +31464,18 @@ SGO por_ccla_scr.c2c_cfg
 F 0 1 valid_0
 F 1 1 tgttype_0
 F 2 2 loglink_0
-F 4 4 rsvd_0
 F 8 8 target_0
 F 16 1 valid_1
 F 17 1 tgttype_1
 F 18 2 loglink_1
-F 20 4 rsvd_1
 F 24 8 target_1
 F 32 1 valid_2
 F 33 1 tgttype_2
 F 34 2 loglink_2
-F 36 4 rsvd_2
 F 40 8 target_2
 F 48 1 valid_3
 F 49 1 tgttype_3
 F 50 2 loglink_3
-F 52 4 rsvd_3
 F 56 8 target_3
 R 0xf768 64 RO ROOT por_ccla_c2c_logical_linkend_common_header
 RESET 0x400000 0xffffffff
@@ -31519,13 +31503,9 @@ RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 1 lle
 F 1 1 pe
-F 2 6 reserved
 F 8 2 acttrigger
-F 10 2 reserved5
 F 12 2 cohtrigger
-F 14 2 reserved6
 F 16 2 dvmtrigger
-F 18 14 rsvd2
 F 32 8 initstate
 F 40 2 activationstate
 F 42 2 res3
@@ -31544,7 +31524,6 @@ F 12 3 txrpmt4
 F 15 3 txrpmt5
 F 18 3 txrpmt6
 F 21 3 txrpmt7
-F 24 7 reserved
 F 31 1 txv
 F 32 3 rxrpmt0
 F 35 3 rxrpmt1
@@ -31554,7 +31533,6 @@ F 44 3 rxrpmt4
 F 47 3 rxrpmt5
 F 50 3 rxrpmt6
 F 53 3 rxrpmt7
-F 56 7 reserved2
 F 63 1 rxv
 R 0xf790 64 RO ROOT por_ccla_c2c_linkproperties_supported_uniform1_0
 RESET 0x21000 0x3fffff
@@ -31601,7 +31579,6 @@ RESET 0x100015114501 0xfffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 4 num_rp_req_rx
-F 4 4 reserved
 F 8 2 writepush_support_rx
 F 10 2 dvmpush_support_rx
 F 12 2 snoop_transactions_rx
@@ -31630,7 +31607,6 @@ RESET 0x100015114501 0xfffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 4 num_rp_req_rx
-F 4 4 reserved
 F 8 2 writepush_support_rx
 F 10 2 dvmpush_support_rx
 F 12 2 snoop_transactions_rx
@@ -31659,7 +31635,6 @@ RESET 0x101000000000 0xfffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 4 num_rp_req_rx
-F 4 4 reserved
 F 8 2 writepush_support_rx
 F 10 2 dvmpush_support_rx
 F 12 2 snoop_transactions_rx
@@ -31684,7 +31659,6 @@ RESET 0x101000000000 0xfffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 4 num_rp_req_rx
-F 4 4 reserved
 F 8 2 writepush_support_rx
 F 10 2 dvmpush_support_rx
 F 12 2 snoop_transactions_rx
@@ -31709,7 +31683,6 @@ RESET 0x100015114501 0xfffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 4 num_rp_req_tx
-F 4 4 reserved
 F 8 2 writepush_support_tx
 F 10 2 dvmpush_support_tx
 F 12 2 snoop_transactions_tx
@@ -31738,7 +31711,6 @@ RESET 0x100015114501 0xfffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 4 num_rp_req_tx
-F 4 4 reserved
 F 8 2 writepush_support_tx
 F 10 2 dvmpush_support_tx
 F 12 2 snoop_transactions_tx
@@ -31767,7 +31739,6 @@ RESET 0x101000000000 0xfffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 4 num_rp_req_tx
-F 4 4 reserved
 F 8 2 writepush_support_tx
 F 10 2 dvmpush_support_tx
 F 12 2 snoop_transactions_tx
@@ -31792,7 +31763,6 @@ RESET 0x101000000000 0xfffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 4 num_rp_req_tx
-F 4 4 reserved
 F 8 2 writepush_support_tx
 F 10 2 dvmpush_support_tx
 F 12 2 snoop_transactions_tx
@@ -31817,13 +31787,10 @@ RESET 0x10001000100 0x3ffffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 10 numcrdtrsp
-F 10 6 reserved
 F 16 10 numcrdtsnp
 PAR CCG_RA_NUM_SNPREQS_PARAM
-F 26 6 reserved2
 F 32 12 numcrdtdat
 PAR CCG_HA_DAT_PASS_BUFF_DEPTH_PARAM
-F 44 4 reserved3
 F 48 10 numcrdtmisc
 R 0xf800 64 - ROOT por_ccla_c2c_logical_linkend_0_mc_credit2
 RESET 0x100 0x1fff
@@ -31836,22 +31803,16 @@ RESET 0x10000 0x3fffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 6 numcrdtrp0
-F 6 10 reserved
 F 16 6 numcrdtrp1
-F 22 10 reserved2
 F 32 6 numcrdtrp2
-F 38 10 reserved3
 F 48 6 numcrdtrp3
 R 0xf810 64 - ROOT por_ccla_c2c_logical_linkend_0_mc_credit4
 RESET 0x0 0x3fffffffffffff
 RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 6 numcrdtrp0
-F 6 10 reserved
 F 16 6 numcrdtrp1
-F 22 10 reserved2
 F 32 6 numcrdtrp2
-F 38 10 reserved3
 F 48 6 numcrdtrp3
 R 0xf818 64 - ROOT por_ccla_c2c_logical_linkend_0_mc_credit5
 RESET 0x1000100000000 0x3ffffffffffffff
@@ -31859,12 +31820,9 @@ RGO por_ccla_rcr.c2c_cfg
 SGO por_ccla_scr.c2c_cfg
 F 0 10 numcrdtreqsh
 PAR CCG_HA_REQ_PASS_BUFF_DEPTH_PARAM-10'h1
-F 10 6 reserved
 F 16 10 numcrdtdatash
 PAR CCG_HA_DAT_PASS_BUFF_DEPTH_PARAM-10'h2
-F 26 6 reserved2
 F 32 10 numcrdtdatadp0
-F 42 6 reserved3
 F 48 10 numcrdtdatadp1
 R 0xf820 64 RO ROOT por_ccla_c2c_port_egressid_route_table_capabilities
 RESET 0x0 0x7ff
@@ -32885,874 +32843,874 @@ R 0x1a00 64 - ROOT por_ppu_int_status0
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status0
+F 0 64 hnf_ppu_status0 W1C
 R 0x1a08 64 - ROOT por_ppu_int_status1
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status1
+F 0 64 hnf_ppu_status1 W1C
 R 0x1a10 64 - ROOT por_ppu_int_status2
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status2
+F 0 64 hnf_ppu_status2 W1C
 R 0x1a18 64 - ROOT por_ppu_int_status3
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status3
+F 0 64 hnf_ppu_status3 W1C
 R 0x1a20 64 - ROOT por_ppu_int_status4
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status4
+F 0 64 hnf_ppu_status4 W1C
 R 0x1a28 64 - ROOT por_ppu_int_status5
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status5
+F 0 64 hnf_ppu_status5 W1C
 R 0x1a30 64 - ROOT por_ppu_int_status6
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status6
+F 0 64 hnf_ppu_status6 W1C
 R 0x1a38 64 - ROOT por_ppu_int_status7
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status7
+F 0 64 hnf_ppu_status7 W1C
 R 0x1a40 64 - ROOT por_ppu_int_status8
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status8
+F 0 64 hnf_ppu_status8 W1C
 R 0x1a48 64 - ROOT por_ppu_int_status9
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status9
+F 0 64 hnf_ppu_status9 W1C
 R 0x1a50 64 - ROOT por_ppu_int_status10
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status10
+F 0 64 hnf_ppu_status10 W1C
 R 0x1a58 64 - ROOT por_ppu_int_status11
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status11
+F 0 64 hnf_ppu_status11 W1C
 R 0x1a60 64 - ROOT por_ppu_int_status12
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status12
+F 0 64 hnf_ppu_status12 W1C
 R 0x1a68 64 - ROOT por_ppu_int_status13
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status13
+F 0 64 hnf_ppu_status13 W1C
 R 0x1a70 64 - ROOT por_ppu_int_status14
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status14
+F 0 64 hnf_ppu_status14 W1C
 R 0x1a78 64 - ROOT por_ppu_int_status15
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.ppu
 SGO por_cfgm_scr.ppu
-F 0 64 hnf_ppu_status15
+F 0 64 hnf_ppu_status15 W1C
 R 0x1a80 64 - S por_mpam_s_err_int_status0
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status0
+F 0 64 hnf_mpam_s_err_int_status0 W1C
 R 0x1a88 64 - S por_mpam_s_err_int_status1
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status1
+F 0 64 hnf_mpam_s_err_int_status1 W1C
 R 0x1a90 64 - S por_mpam_s_err_int_status2
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status2
+F 0 64 hnf_mpam_s_err_int_status2 W1C
 R 0x1a98 64 - S por_mpam_s_err_int_status3
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status3
+F 0 64 hnf_mpam_s_err_int_status3 W1C
 R 0x1aa0 64 - S por_mpam_s_err_int_status4
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status4
+F 0 64 hnf_mpam_s_err_int_status4 W1C
 R 0x1aa8 64 - S por_mpam_s_err_int_status5
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status5
+F 0 64 hnf_mpam_s_err_int_status5 W1C
 R 0x1ab0 64 - S por_mpam_s_err_int_status6
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status6
+F 0 64 hnf_mpam_s_err_int_status6 W1C
 R 0x1ab8 64 - S por_mpam_s_err_int_status7
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status7
+F 0 64 hnf_mpam_s_err_int_status7 W1C
 R 0x1ac0 64 - S por_mpam_s_err_int_status8
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status8
+F 0 64 hnf_mpam_s_err_int_status8 W1C
 R 0x1ac8 64 - S por_mpam_s_err_int_status9
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status9
+F 0 64 hnf_mpam_s_err_int_status9 W1C
 R 0x1ad0 64 - S por_mpam_s_err_int_status10
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status10
+F 0 64 hnf_mpam_s_err_int_status10 W1C
 R 0x1ad8 64 - S por_mpam_s_err_int_status11
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status11
+F 0 64 hnf_mpam_s_err_int_status11 W1C
 R 0x1ae0 64 - S por_mpam_s_err_int_status12
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status12
+F 0 64 hnf_mpam_s_err_int_status12 W1C
 R 0x1ae8 64 - S por_mpam_s_err_int_status13
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status13
+F 0 64 hnf_mpam_s_err_int_status13 W1C
 R 0x1af0 64 - S por_mpam_s_err_int_status14
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status14
+F 0 64 hnf_mpam_s_err_int_status14 W1C
 R 0x1af8 64 - S por_mpam_s_err_int_status15
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_s_err_int_status15
+F 0 64 hnf_mpam_s_err_int_status15 W1C
 R 0x1b00 64 - - por_mpam_ns_err_int_status0
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status0
+F 0 64 hnf_mpam_ns_err_int_status0 W1C
 R 0x1b08 64 - - por_mpam_ns_err_int_status1
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status1
+F 0 64 hnf_mpam_ns_err_int_status1 W1C
 R 0x1b10 64 - - por_mpam_ns_err_int_status2
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status2
+F 0 64 hnf_mpam_ns_err_int_status2 W1C
 R 0x1b18 64 - - por_mpam_ns_err_int_status3
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status3
+F 0 64 hnf_mpam_ns_err_int_status3 W1C
 R 0x1b20 64 - - por_mpam_ns_err_int_status4
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status4
+F 0 64 hnf_mpam_ns_err_int_status4 W1C
 R 0x1b28 64 - - por_mpam_ns_err_int_status5
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status5
+F 0 64 hnf_mpam_ns_err_int_status5 W1C
 R 0x1b30 64 - - por_mpam_ns_err_int_status6
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status6
+F 0 64 hnf_mpam_ns_err_int_status6 W1C
 R 0x1b38 64 - - por_mpam_ns_err_int_status7
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status7
+F 0 64 hnf_mpam_ns_err_int_status7 W1C
 R 0x1b40 64 - - por_mpam_ns_err_int_status8
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status8
+F 0 64 hnf_mpam_ns_err_int_status8 W1C
 R 0x1b48 64 - - por_mpam_ns_err_int_status9
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status9
+F 0 64 hnf_mpam_ns_err_int_status9 W1C
 R 0x1b50 64 - - por_mpam_ns_err_int_status10
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status10
+F 0 64 hnf_mpam_ns_err_int_status10 W1C
 R 0x1b58 64 - - por_mpam_ns_err_int_status11
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status11
+F 0 64 hnf_mpam_ns_err_int_status11 W1C
 R 0x1b60 64 - - por_mpam_ns_err_int_status12
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status12
+F 0 64 hnf_mpam_ns_err_int_status12 W1C
 R 0x1b68 64 - - por_mpam_ns_err_int_status13
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status13
+F 0 64 hnf_mpam_ns_err_int_status13 W1C
 R 0x1b70 64 - - por_mpam_ns_err_int_status14
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status14
+F 0 64 hnf_mpam_ns_err_int_status14 W1C
 R 0x1b78 64 - - por_mpam_ns_err_int_status15
 RESET 0x0 0xffffffffffffffff
-F 0 64 hnf_mpam_ns_err_int_status15
+F 0 64 hnf_mpam_ns_err_int_status15 W1C
 R 0x1b80 64 - ROOT por_mpam_rt_err_int_status0
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status0
+F 0 64 hnf_mpam_rt_err_int_status0 W1C
 R 0x1b88 64 - ROOT por_mpam_rt_err_int_status1
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status1
+F 0 64 hnf_mpam_rt_err_int_status1 W1C
 R 0x1b90 64 - ROOT por_mpam_rt_err_int_status2
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status2
+F 0 64 hnf_mpam_rt_err_int_status2 W1C
 R 0x1b98 64 - ROOT por_mpam_rt_err_int_status3
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status3
+F 0 64 hnf_mpam_rt_err_int_status3 W1C
 R 0x1ba0 64 - ROOT por_mpam_rt_err_int_status4
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status4
+F 0 64 hnf_mpam_rt_err_int_status4 W1C
 R 0x1ba8 64 - ROOT por_mpam_rt_err_int_status5
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status5
+F 0 64 hnf_mpam_rt_err_int_status5 W1C
 R 0x1bb0 64 - ROOT por_mpam_rt_err_int_status6
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status6
+F 0 64 hnf_mpam_rt_err_int_status6 W1C
 R 0x1bb8 64 - ROOT por_mpam_rt_err_int_status7
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status7
+F 0 64 hnf_mpam_rt_err_int_status7 W1C
 R 0x1bc0 64 - ROOT por_mpam_rt_err_int_status8
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status8
+F 0 64 hnf_mpam_rt_err_int_status8 W1C
 R 0x1bc8 64 - ROOT por_mpam_rt_err_int_status9
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status9
+F 0 64 hnf_mpam_rt_err_int_status9 W1C
 R 0x1bd0 64 - ROOT por_mpam_rt_err_int_status10
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status10
+F 0 64 hnf_mpam_rt_err_int_status10 W1C
 R 0x1bd8 64 - ROOT por_mpam_rt_err_int_status11
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status11
+F 0 64 hnf_mpam_rt_err_int_status11 W1C
 R 0x1be0 64 - ROOT por_mpam_rt_err_int_status12
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status12
+F 0 64 hnf_mpam_rt_err_int_status12 W1C
 R 0x1be8 64 - ROOT por_mpam_rt_err_int_status13
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status13
+F 0 64 hnf_mpam_rt_err_int_status13 W1C
 R 0x1bf0 64 - ROOT por_mpam_rt_err_int_status14
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status14
+F 0 64 hnf_mpam_rt_err_int_status14 W1C
 R 0x1bf8 64 - ROOT por_mpam_rt_err_int_status15
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rt_err_int_status15
+F 0 64 hnf_mpam_rt_err_int_status15 W1C
 R 0x1c00 64 - REALM por_mpam_rl_err_int_status0
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status0
+F 0 64 hnf_mpam_rl_err_int_status0 W1C
 R 0x1c08 64 - REALM por_mpam_rl_err_int_status1
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status1
+F 0 64 hnf_mpam_rl_err_int_status1 W1C
 R 0x1c10 64 - REALM por_mpam_rl_err_int_status2
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status2
+F 0 64 hnf_mpam_rl_err_int_status2 W1C
 R 0x1c18 64 - REALM por_mpam_rl_err_int_status3
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status3
+F 0 64 hnf_mpam_rl_err_int_status3 W1C
 R 0x1c20 64 - REALM por_mpam_rl_err_int_status4
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status4
+F 0 64 hnf_mpam_rl_err_int_status4 W1C
 R 0x1c28 64 - REALM por_mpam_rl_err_int_status5
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status5
+F 0 64 hnf_mpam_rl_err_int_status5 W1C
 R 0x1c30 64 - REALM por_mpam_rl_err_int_status6
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status6
+F 0 64 hnf_mpam_rl_err_int_status6 W1C
 R 0x1c38 64 - REALM por_mpam_rl_err_int_status7
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status7
+F 0 64 hnf_mpam_rl_err_int_status7 W1C
 R 0x1c40 64 - REALM por_mpam_rl_err_int_status8
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status8
+F 0 64 hnf_mpam_rl_err_int_status8 W1C
 R 0x1c48 64 - REALM por_mpam_rl_err_int_status9
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status9
+F 0 64 hnf_mpam_rl_err_int_status9 W1C
 R 0x1c50 64 - REALM por_mpam_rl_err_int_status10
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status10
+F 0 64 hnf_mpam_rl_err_int_status10 W1C
 R 0x1c58 64 - REALM por_mpam_rl_err_int_status11
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status11
+F 0 64 hnf_mpam_rl_err_int_status11 W1C
 R 0x1c60 64 - REALM por_mpam_rl_err_int_status12
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status12
+F 0 64 hnf_mpam_rl_err_int_status12 W1C
 R 0x1c68 64 - REALM por_mpam_rl_err_int_status13
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status13
+F 0 64 hnf_mpam_rl_err_int_status13 W1C
 R 0x1c70 64 - REALM por_mpam_rl_err_int_status14
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status14
+F 0 64 hnf_mpam_rl_err_int_status14 W1C
 R 0x1c78 64 - REALM por_mpam_rl_err_int_status15
 RESET 0x0 0xffffffffffffffff
 RGO por_cfgm_rcr.mpam
 SGO por_cfgm_scr.mpam
-F 0 64 hnf_mpam_rl_err_int_status15
+F 0 64 hnf_mpam_rl_err_int_status15 W1C
 R 0x4000 64 RO - por_errfr_0_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4010 64 - - por_errstatus_0_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4040 64 RO - por_errfr_1_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4050 64 - - por_errstatus_1_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4080 64 RO - por_errfr_2_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4090 64 - - por_errstatus_2_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x40c0 64 RO - por_errfr_3_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x40d0 64 - - por_errstatus_3_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4100 64 RO - por_errfr_4_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4110 64 - - por_errstatus_4_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4140 64 RO - por_errfr_5_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4150 64 - - por_errstatus_5_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4180 64 RO - por_errfr_6_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4190 64 - - por_errstatus_6_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x41c0 64 RO - por_errfr_7_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x41d0 64 - - por_errstatus_7_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4200 64 RO - por_errfr_8_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4210 64 - - por_errstatus_8_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4240 64 RO - por_errfr_9_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4250 64 - - por_errstatus_9_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4280 64 RO - por_errfr_10_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4290 64 - - por_errstatus_10_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x42c0 64 RO - por_errfr_11_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x42d0 64 - - por_errstatus_11_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4300 64 RO - por_errfr_12_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4310 64 - - por_errstatus_12_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4340 64 RO - por_errfr_13_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4350 64 - - por_errstatus_13_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4380 64 RO - por_errfr_14_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4390 64 - - por_errstatus_14_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x43c0 64 RO - por_errfr_15_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x43d0 64 - - por_errstatus_15_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4400 64 RO - por_errfr_16_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4410 64 - - por_errstatus_16_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4440 64 RO - por_errfr_17_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4450 64 - - por_errstatus_17_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4480 64 RO - por_errfr_18_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4490 64 - - por_errstatus_18_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x44c0 64 RO - por_errfr_19_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x44d0 64 - - por_errstatus_19_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4500 64 RO - por_errfr_20_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4510 64 - - por_errstatus_20_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4540 64 RO - por_errfr_21_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4550 64 - - por_errstatus_21_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4580 64 RO - por_errfr_22_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4590 64 - - por_errstatus_22_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x45c0 64 RO - por_errfr_23_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x45d0 64 - - por_errstatus_23_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4600 64 RO - por_errfr_24_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4610 64 - - por_errstatus_24_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4640 64 RO - por_errfr_25_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4650 64 - - por_errstatus_25_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4680 64 RO - por_errfr_26_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4690 64 - - por_errstatus_26_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x46c0 64 RO - por_errfr_27_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x46d0 64 - - por_errstatus_27_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4700 64 RO - por_errfr_28_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4710 64 - - por_errstatus_28_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4740 64 RO - por_errfr_29_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4750 64 - - por_errstatus_29_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4780 64 RO - por_errfr_30_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4790 64 - - por_errstatus_30_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x47c0 64 RO - por_errfr_31_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x47d0 64 - - por_errstatus_31_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4800 64 RO - por_errfr_32_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4810 64 - - por_errstatus_32_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4840 64 RO - por_errfr_33_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4850 64 - - por_errstatus_33_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4880 64 RO - por_errfr_34_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4890 64 - - por_errstatus_34_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x48c0 64 RO - por_errfr_35_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x48d0 64 - - por_errstatus_35_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4900 64 RO - por_errfr_36_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4910 64 - - por_errstatus_36_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4940 64 RO - por_errfr_37_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4950 64 - - por_errstatus_37_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4980 64 RO - por_errfr_38_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4990 64 - - por_errstatus_38_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x49c0 64 RO - por_errfr_39_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x49d0 64 - - por_errstatus_39_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4a00 64 RO - por_errfr_40_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4a10 64 - - por_errstatus_40_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4a40 64 RO - por_errfr_41_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4a50 64 - - por_errstatus_41_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4a80 64 RO - por_errfr_42_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4a90 64 - - por_errstatus_42_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4ac0 64 RO - por_errfr_43_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4ad0 64 - - por_errstatus_43_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4b00 64 RO - por_errfr_44_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4b10 64 - - por_errstatus_44_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4b40 64 RO - por_errfr_45_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4b50 64 - - por_errstatus_45_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4b80 64 RO - por_errfr_46_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4b90 64 - - por_errstatus_46_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4bc0 64 RO - por_errfr_47_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4bd0 64 - - por_errstatus_47_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4c00 64 RO - por_errfr_48_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4c10 64 - - por_errstatus_48_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4c40 64 RO - por_errfr_49_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4c50 64 - - por_errstatus_49_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4c80 64 RO - por_errfr_50_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4c90 64 - - por_errstatus_50_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4cc0 64 RO - por_errfr_51_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4cd0 64 - - por_errstatus_51_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4d00 64 RO - por_errfr_52_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4d10 64 - - por_errstatus_52_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4d40 64 RO - por_errfr_53_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4d50 64 - - por_errstatus_53_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4d80 64 RO - por_errfr_54_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4d90 64 - - por_errstatus_54_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4dc0 64 RO - por_errfr_55_sra_0
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x4dd0 64 - - por_errstatus_55_sra_0
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x4e00 64 RO - por_errgsr_sra_0
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -33804,504 +33762,504 @@ F 0 2 ed
 F 2 2 ert
 R 0x5010 64 - - por_errstatus_0_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5040 64 RO - por_errfr_1_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5050 64 - - por_errstatus_1_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5080 64 RO - por_errfr_2_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5090 64 - - por_errstatus_2_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x50c0 64 RO - por_errfr_3_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x50d0 64 - - por_errstatus_3_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5100 64 RO - por_errfr_4_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5110 64 - - por_errstatus_4_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5140 64 RO - por_errfr_5_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5150 64 - - por_errstatus_5_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5180 64 RO - por_errfr_6_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5190 64 - - por_errstatus_6_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x51c0 64 RO - por_errfr_7_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x51d0 64 - - por_errstatus_7_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5200 64 RO - por_errfr_8_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5210 64 - - por_errstatus_8_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5240 64 RO - por_errfr_9_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5250 64 - - por_errstatus_9_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5280 64 RO - por_errfr_10_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5290 64 - - por_errstatus_10_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x52c0 64 RO - por_errfr_11_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x52d0 64 - - por_errstatus_11_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5300 64 RO - por_errfr_12_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5310 64 - - por_errstatus_12_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5340 64 RO - por_errfr_13_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5350 64 - - por_errstatus_13_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5380 64 RO - por_errfr_14_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5390 64 - - por_errstatus_14_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x53c0 64 RO - por_errfr_15_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x53d0 64 - - por_errstatus_15_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5400 64 RO - por_errfr_16_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5410 64 - - por_errstatus_16_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5440 64 RO - por_errfr_17_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5450 64 - - por_errstatus_17_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5480 64 RO - por_errfr_18_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5490 64 - - por_errstatus_18_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x54c0 64 RO - por_errfr_19_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x54d0 64 - - por_errstatus_19_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5500 64 RO - por_errfr_20_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5510 64 - - por_errstatus_20_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5540 64 RO - por_errfr_21_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5550 64 - - por_errstatus_21_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5580 64 RO - por_errfr_22_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5590 64 - - por_errstatus_22_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x55c0 64 RO - por_errfr_23_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x55d0 64 - - por_errstatus_23_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5600 64 RO - por_errfr_24_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5610 64 - - por_errstatus_24_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5640 64 RO - por_errfr_25_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5650 64 - - por_errstatus_25_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5680 64 RO - por_errfr_26_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5690 64 - - por_errstatus_26_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x56c0 64 RO - por_errfr_27_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x56d0 64 - - por_errstatus_27_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5700 64 RO - por_errfr_28_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5710 64 - - por_errstatus_28_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5740 64 RO - por_errfr_29_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5750 64 - - por_errstatus_29_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5780 64 RO - por_errfr_30_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5790 64 - - por_errstatus_30_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x57c0 64 RO - por_errfr_31_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x57d0 64 - - por_errstatus_31_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5800 64 RO - por_errfr_32_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5810 64 - - por_errstatus_32_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5840 64 RO - por_errfr_33_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5850 64 - - por_errstatus_33_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5880 64 RO - por_errfr_34_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5890 64 - - por_errstatus_34_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x58c0 64 RO - por_errfr_35_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x58d0 64 - - por_errstatus_35_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5900 64 RO - por_errfr_36_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5910 64 - - por_errstatus_36_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5940 64 RO - por_errfr_37_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5950 64 - - por_errstatus_37_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5980 64 RO - por_errfr_38_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5990 64 - - por_errstatus_38_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x59c0 64 RO - por_errfr_39_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x59d0 64 - - por_errstatus_39_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5a00 64 RO - por_errfr_40_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5a10 64 - - por_errstatus_40_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5a40 64 RO - por_errfr_41_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5a50 64 - - por_errstatus_41_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5a80 64 RO - por_errfr_42_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5a90 64 - - por_errstatus_42_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5ac0 64 RO - por_errfr_43_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5ad0 64 - - por_errstatus_43_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5b00 64 RO - por_errfr_44_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5b10 64 - - por_errstatus_44_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5b40 64 RO - por_errfr_45_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5b50 64 - - por_errstatus_45_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5b80 64 RO - por_errfr_46_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5b90 64 - - por_errstatus_46_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5bc0 64 RO - por_errfr_47_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5bd0 64 - - por_errstatus_47_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5c00 64 RO - por_errfr_48_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5c10 64 - - por_errstatus_48_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5c40 64 RO - por_errfr_49_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5c50 64 - - por_errstatus_49_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5c80 64 RO - por_errfr_50_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5c90 64 - - por_errstatus_50_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5cc0 64 RO - por_errfr_51_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5cd0 64 - - por_errstatus_51_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5d00 64 RO - por_errfr_52_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5d10 64 - - por_errstatus_52_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5d40 64 RO - por_errfr_53_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5d50 64 - - por_errstatus_53_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5d80 64 RO - por_errfr_54_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5d90 64 - - por_errstatus_54_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5dc0 64 RO - por_errfr_55_sra_1
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x5dd0 64 - - por_errstatus_55_sra_1
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x5e00 64 RO - por_errgsr_sra_1
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -34353,504 +34311,504 @@ F 0 2 ed
 F 2 2 ert
 R 0x6010 64 - - por_errstatus_0_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6040 64 RO - por_errfr_1_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6050 64 - - por_errstatus_1_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6080 64 RO - por_errfr_2_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6090 64 - - por_errstatus_2_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x60c0 64 RO - por_errfr_3_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x60d0 64 - - por_errstatus_3_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6100 64 RO - por_errfr_4_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6110 64 - - por_errstatus_4_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6140 64 RO - por_errfr_5_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6150 64 - - por_errstatus_5_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6180 64 RO - por_errfr_6_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6190 64 - - por_errstatus_6_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x61c0 64 RO - por_errfr_7_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x61d0 64 - - por_errstatus_7_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6200 64 RO - por_errfr_8_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6210 64 - - por_errstatus_8_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6240 64 RO - por_errfr_9_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6250 64 - - por_errstatus_9_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6280 64 RO - por_errfr_10_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6290 64 - - por_errstatus_10_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x62c0 64 RO - por_errfr_11_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x62d0 64 - - por_errstatus_11_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6300 64 RO - por_errfr_12_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6310 64 - - por_errstatus_12_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6340 64 RO - por_errfr_13_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6350 64 - - por_errstatus_13_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6380 64 RO - por_errfr_14_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6390 64 - - por_errstatus_14_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x63c0 64 RO - por_errfr_15_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x63d0 64 - - por_errstatus_15_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6400 64 RO - por_errfr_16_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6410 64 - - por_errstatus_16_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6440 64 RO - por_errfr_17_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6450 64 - - por_errstatus_17_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6480 64 RO - por_errfr_18_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6490 64 - - por_errstatus_18_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x64c0 64 RO - por_errfr_19_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x64d0 64 - - por_errstatus_19_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6500 64 RO - por_errfr_20_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6510 64 - - por_errstatus_20_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6540 64 RO - por_errfr_21_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6550 64 - - por_errstatus_21_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6580 64 RO - por_errfr_22_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6590 64 - - por_errstatus_22_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x65c0 64 RO - por_errfr_23_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x65d0 64 - - por_errstatus_23_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6600 64 RO - por_errfr_24_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6610 64 - - por_errstatus_24_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6640 64 RO - por_errfr_25_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6650 64 - - por_errstatus_25_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6680 64 RO - por_errfr_26_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6690 64 - - por_errstatus_26_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x66c0 64 RO - por_errfr_27_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x66d0 64 - - por_errstatus_27_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6700 64 RO - por_errfr_28_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6710 64 - - por_errstatus_28_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6740 64 RO - por_errfr_29_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6750 64 - - por_errstatus_29_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6780 64 RO - por_errfr_30_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6790 64 - - por_errstatus_30_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x67c0 64 RO - por_errfr_31_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x67d0 64 - - por_errstatus_31_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6800 64 RO - por_errfr_32_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6810 64 - - por_errstatus_32_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6840 64 RO - por_errfr_33_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6850 64 - - por_errstatus_33_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6880 64 RO - por_errfr_34_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6890 64 - - por_errstatus_34_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x68c0 64 RO - por_errfr_35_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x68d0 64 - - por_errstatus_35_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6900 64 RO - por_errfr_36_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6910 64 - - por_errstatus_36_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6940 64 RO - por_errfr_37_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6950 64 - - por_errstatus_37_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6980 64 RO - por_errfr_38_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6990 64 - - por_errstatus_38_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x69c0 64 RO - por_errfr_39_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x69d0 64 - - por_errstatus_39_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6a00 64 RO - por_errfr_40_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6a10 64 - - por_errstatus_40_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6a40 64 RO - por_errfr_41_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6a50 64 - - por_errstatus_41_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6a80 64 RO - por_errfr_42_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6a90 64 - - por_errstatus_42_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6ac0 64 RO - por_errfr_43_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6ad0 64 - - por_errstatus_43_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6b00 64 RO - por_errfr_44_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6b10 64 - - por_errstatus_44_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6b40 64 RO - por_errfr_45_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6b50 64 - - por_errstatus_45_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6b80 64 RO - por_errfr_46_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6b90 64 - - por_errstatus_46_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6bc0 64 RO - por_errfr_47_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6bd0 64 - - por_errstatus_47_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6c00 64 RO - por_errfr_48_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6c10 64 - - por_errstatus_48_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6c40 64 RO - por_errfr_49_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6c50 64 - - por_errstatus_49_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6c80 64 RO - por_errfr_50_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6c90 64 - - por_errstatus_50_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6cc0 64 RO - por_errfr_51_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6cd0 64 - - por_errstatus_51_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6d00 64 RO - por_errfr_52_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6d10 64 - - por_errstatus_52_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6d40 64 RO - por_errfr_53_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6d50 64 - - por_errstatus_53_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6d80 64 RO - por_errfr_54_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6d90 64 - - por_errstatus_54_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6dc0 64 RO - por_errfr_55_sra_2
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x6dd0 64 - - por_errstatus_55_sra_2
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x6e00 64 RO - por_errgsr_sra_2
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -34902,504 +34860,504 @@ F 0 2 ed
 F 2 2 ert
 R 0x7010 64 - - por_errstatus_0_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7040 64 RO - por_errfr_1_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7050 64 - - por_errstatus_1_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7080 64 RO - por_errfr_2_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7090 64 - - por_errstatus_2_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x70c0 64 RO - por_errfr_3_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x70d0 64 - - por_errstatus_3_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7100 64 RO - por_errfr_4_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7110 64 - - por_errstatus_4_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7140 64 RO - por_errfr_5_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7150 64 - - por_errstatus_5_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7180 64 RO - por_errfr_6_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7190 64 - - por_errstatus_6_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x71c0 64 RO - por_errfr_7_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x71d0 64 - - por_errstatus_7_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7200 64 RO - por_errfr_8_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7210 64 - - por_errstatus_8_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7240 64 RO - por_errfr_9_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7250 64 - - por_errstatus_9_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7280 64 RO - por_errfr_10_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7290 64 - - por_errstatus_10_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x72c0 64 RO - por_errfr_11_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x72d0 64 - - por_errstatus_11_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7300 64 RO - por_errfr_12_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7310 64 - - por_errstatus_12_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7340 64 RO - por_errfr_13_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7350 64 - - por_errstatus_13_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7380 64 RO - por_errfr_14_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7390 64 - - por_errstatus_14_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x73c0 64 RO - por_errfr_15_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x73d0 64 - - por_errstatus_15_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7400 64 RO - por_errfr_16_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7410 64 - - por_errstatus_16_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7440 64 RO - por_errfr_17_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7450 64 - - por_errstatus_17_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7480 64 RO - por_errfr_18_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7490 64 - - por_errstatus_18_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x74c0 64 RO - por_errfr_19_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x74d0 64 - - por_errstatus_19_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7500 64 RO - por_errfr_20_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7510 64 - - por_errstatus_20_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7540 64 RO - por_errfr_21_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7550 64 - - por_errstatus_21_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7580 64 RO - por_errfr_22_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7590 64 - - por_errstatus_22_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x75c0 64 RO - por_errfr_23_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x75d0 64 - - por_errstatus_23_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7600 64 RO - por_errfr_24_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7610 64 - - por_errstatus_24_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7640 64 RO - por_errfr_25_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7650 64 - - por_errstatus_25_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7680 64 RO - por_errfr_26_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7690 64 - - por_errstatus_26_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x76c0 64 RO - por_errfr_27_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x76d0 64 - - por_errstatus_27_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7700 64 RO - por_errfr_28_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7710 64 - - por_errstatus_28_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7740 64 RO - por_errfr_29_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7750 64 - - por_errstatus_29_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7780 64 RO - por_errfr_30_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7790 64 - - por_errstatus_30_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x77c0 64 RO - por_errfr_31_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x77d0 64 - - por_errstatus_31_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7800 64 RO - por_errfr_32_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7810 64 - - por_errstatus_32_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7840 64 RO - por_errfr_33_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7850 64 - - por_errstatus_33_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7880 64 RO - por_errfr_34_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7890 64 - - por_errstatus_34_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x78c0 64 RO - por_errfr_35_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x78d0 64 - - por_errstatus_35_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7900 64 RO - por_errfr_36_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7910 64 - - por_errstatus_36_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7940 64 RO - por_errfr_37_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7950 64 - - por_errstatus_37_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7980 64 RO - por_errfr_38_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7990 64 - - por_errstatus_38_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x79c0 64 RO - por_errfr_39_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x79d0 64 - - por_errstatus_39_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7a00 64 RO - por_errfr_40_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7a10 64 - - por_errstatus_40_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7a40 64 RO - por_errfr_41_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7a50 64 - - por_errstatus_41_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7a80 64 RO - por_errfr_42_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7a90 64 - - por_errstatus_42_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7ac0 64 RO - por_errfr_43_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7ad0 64 - - por_errstatus_43_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7b00 64 RO - por_errfr_44_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7b10 64 - - por_errstatus_44_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7b40 64 RO - por_errfr_45_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7b50 64 - - por_errstatus_45_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7b80 64 RO - por_errfr_46_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7b90 64 - - por_errstatus_46_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7bc0 64 RO - por_errfr_47_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7bd0 64 - - por_errstatus_47_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7c00 64 RO - por_errfr_48_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7c10 64 - - por_errstatus_48_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7c40 64 RO - por_errfr_49_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7c50 64 - - por_errstatus_49_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7c80 64 RO - por_errfr_50_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7c90 64 - - por_errstatus_50_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7cc0 64 RO - por_errfr_51_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7cd0 64 - - por_errstatus_51_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7d00 64 RO - por_errfr_52_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7d10 64 - - por_errstatus_52_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7d40 64 RO - por_errfr_53_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7d50 64 - - por_errstatus_53_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7d80 64 RO - por_errfr_54_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7d90 64 - - por_errstatus_54_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7dc0 64 RO - por_errfr_55_sra_3
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x7dd0 64 - - por_errstatus_55_sra_3
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x7e00 64 RO - por_errgsr_sra_3
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -35451,504 +35409,504 @@ F 0 2 ed
 F 2 2 ert
 R 0x8010 64 - - por_errstatus_0_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8040 64 RO - por_errfr_1_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8050 64 - - por_errstatus_1_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8080 64 RO - por_errfr_2_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8090 64 - - por_errstatus_2_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x80c0 64 RO - por_errfr_3_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x80d0 64 - - por_errstatus_3_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8100 64 RO - por_errfr_4_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8110 64 - - por_errstatus_4_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8140 64 RO - por_errfr_5_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8150 64 - - por_errstatus_5_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8180 64 RO - por_errfr_6_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8190 64 - - por_errstatus_6_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x81c0 64 RO - por_errfr_7_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x81d0 64 - - por_errstatus_7_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8200 64 RO - por_errfr_8_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8210 64 - - por_errstatus_8_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8240 64 RO - por_errfr_9_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8250 64 - - por_errstatus_9_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8280 64 RO - por_errfr_10_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8290 64 - - por_errstatus_10_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x82c0 64 RO - por_errfr_11_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x82d0 64 - - por_errstatus_11_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8300 64 RO - por_errfr_12_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8310 64 - - por_errstatus_12_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8340 64 RO - por_errfr_13_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8350 64 - - por_errstatus_13_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8380 64 RO - por_errfr_14_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8390 64 - - por_errstatus_14_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x83c0 64 RO - por_errfr_15_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x83d0 64 - - por_errstatus_15_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8400 64 RO - por_errfr_16_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8410 64 - - por_errstatus_16_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8440 64 RO - por_errfr_17_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8450 64 - - por_errstatus_17_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8480 64 RO - por_errfr_18_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8490 64 - - por_errstatus_18_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x84c0 64 RO - por_errfr_19_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x84d0 64 - - por_errstatus_19_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8500 64 RO - por_errfr_20_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8510 64 - - por_errstatus_20_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8540 64 RO - por_errfr_21_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8550 64 - - por_errstatus_21_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8580 64 RO - por_errfr_22_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8590 64 - - por_errstatus_22_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x85c0 64 RO - por_errfr_23_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x85d0 64 - - por_errstatus_23_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8600 64 RO - por_errfr_24_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8610 64 - - por_errstatus_24_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8640 64 RO - por_errfr_25_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8650 64 - - por_errstatus_25_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8680 64 RO - por_errfr_26_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8690 64 - - por_errstatus_26_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x86c0 64 RO - por_errfr_27_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x86d0 64 - - por_errstatus_27_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8700 64 RO - por_errfr_28_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8710 64 - - por_errstatus_28_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8740 64 RO - por_errfr_29_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8750 64 - - por_errstatus_29_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8780 64 RO - por_errfr_30_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8790 64 - - por_errstatus_30_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x87c0 64 RO - por_errfr_31_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x87d0 64 - - por_errstatus_31_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8800 64 RO - por_errfr_32_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8810 64 - - por_errstatus_32_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8840 64 RO - por_errfr_33_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8850 64 - - por_errstatus_33_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8880 64 RO - por_errfr_34_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8890 64 - - por_errstatus_34_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x88c0 64 RO - por_errfr_35_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x88d0 64 - - por_errstatus_35_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8900 64 RO - por_errfr_36_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8910 64 - - por_errstatus_36_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8940 64 RO - por_errfr_37_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8950 64 - - por_errstatus_37_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8980 64 RO - por_errfr_38_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8990 64 - - por_errstatus_38_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x89c0 64 RO - por_errfr_39_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x89d0 64 - - por_errstatus_39_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8a00 64 RO - por_errfr_40_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8a10 64 - - por_errstatus_40_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8a40 64 RO - por_errfr_41_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8a50 64 - - por_errstatus_41_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8a80 64 RO - por_errfr_42_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8a90 64 - - por_errstatus_42_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8ac0 64 RO - por_errfr_43_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8ad0 64 - - por_errstatus_43_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8b00 64 RO - por_errfr_44_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8b10 64 - - por_errstatus_44_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8b40 64 RO - por_errfr_45_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8b50 64 - - por_errstatus_45_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8b80 64 RO - por_errfr_46_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8b90 64 - - por_errstatus_46_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8bc0 64 RO - por_errfr_47_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8bd0 64 - - por_errstatus_47_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8c00 64 RO - por_errfr_48_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8c10 64 - - por_errstatus_48_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8c40 64 RO - por_errfr_49_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8c50 64 - - por_errstatus_49_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8c80 64 RO - por_errfr_50_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8c90 64 - - por_errstatus_50_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8cc0 64 RO - por_errfr_51_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8cd0 64 - - por_errstatus_51_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8d00 64 RO - por_errfr_52_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8d10 64 - - por_errstatus_52_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8d40 64 RO - por_errfr_53_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8d50 64 - - por_errstatus_53_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8d80 64 RO - por_errfr_54_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8d90 64 - - por_errstatus_54_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8dc0 64 RO - por_errfr_55_sra_4
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x8dd0 64 - - por_errstatus_55_sra_4
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x8e00 64 RO - por_errgsr_sra_4
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -36000,504 +35958,504 @@ F 0 2 ed
 F 2 2 ert
 R 0x9010 64 - - por_errstatus_0_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9040 64 RO - por_errfr_1_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9050 64 - - por_errstatus_1_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9080 64 RO - por_errfr_2_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9090 64 - - por_errstatus_2_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x90c0 64 RO - por_errfr_3_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x90d0 64 - - por_errstatus_3_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9100 64 RO - por_errfr_4_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9110 64 - - por_errstatus_4_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9140 64 RO - por_errfr_5_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9150 64 - - por_errstatus_5_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9180 64 RO - por_errfr_6_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9190 64 - - por_errstatus_6_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x91c0 64 RO - por_errfr_7_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x91d0 64 - - por_errstatus_7_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9200 64 RO - por_errfr_8_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9210 64 - - por_errstatus_8_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9240 64 RO - por_errfr_9_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9250 64 - - por_errstatus_9_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9280 64 RO - por_errfr_10_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9290 64 - - por_errstatus_10_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x92c0 64 RO - por_errfr_11_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x92d0 64 - - por_errstatus_11_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9300 64 RO - por_errfr_12_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9310 64 - - por_errstatus_12_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9340 64 RO - por_errfr_13_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9350 64 - - por_errstatus_13_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9380 64 RO - por_errfr_14_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9390 64 - - por_errstatus_14_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x93c0 64 RO - por_errfr_15_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x93d0 64 - - por_errstatus_15_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9400 64 RO - por_errfr_16_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9410 64 - - por_errstatus_16_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9440 64 RO - por_errfr_17_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9450 64 - - por_errstatus_17_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9480 64 RO - por_errfr_18_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9490 64 - - por_errstatus_18_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x94c0 64 RO - por_errfr_19_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x94d0 64 - - por_errstatus_19_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9500 64 RO - por_errfr_20_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9510 64 - - por_errstatus_20_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9540 64 RO - por_errfr_21_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9550 64 - - por_errstatus_21_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9580 64 RO - por_errfr_22_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9590 64 - - por_errstatus_22_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x95c0 64 RO - por_errfr_23_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x95d0 64 - - por_errstatus_23_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9600 64 RO - por_errfr_24_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9610 64 - - por_errstatus_24_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9640 64 RO - por_errfr_25_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9650 64 - - por_errstatus_25_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9680 64 RO - por_errfr_26_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9690 64 - - por_errstatus_26_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x96c0 64 RO - por_errfr_27_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x96d0 64 - - por_errstatus_27_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9700 64 RO - por_errfr_28_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9710 64 - - por_errstatus_28_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9740 64 RO - por_errfr_29_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9750 64 - - por_errstatus_29_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9780 64 RO - por_errfr_30_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9790 64 - - por_errstatus_30_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x97c0 64 RO - por_errfr_31_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x97d0 64 - - por_errstatus_31_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9800 64 RO - por_errfr_32_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9810 64 - - por_errstatus_32_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9840 64 RO - por_errfr_33_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9850 64 - - por_errstatus_33_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9880 64 RO - por_errfr_34_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9890 64 - - por_errstatus_34_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x98c0 64 RO - por_errfr_35_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x98d0 64 - - por_errstatus_35_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9900 64 RO - por_errfr_36_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9910 64 - - por_errstatus_36_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9940 64 RO - por_errfr_37_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9950 64 - - por_errstatus_37_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9980 64 RO - por_errfr_38_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9990 64 - - por_errstatus_38_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x99c0 64 RO - por_errfr_39_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x99d0 64 - - por_errstatus_39_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9a00 64 RO - por_errfr_40_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9a10 64 - - por_errstatus_40_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9a40 64 RO - por_errfr_41_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9a50 64 - - por_errstatus_41_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9a80 64 RO - por_errfr_42_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9a90 64 - - por_errstatus_42_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9ac0 64 RO - por_errfr_43_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9ad0 64 - - por_errstatus_43_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9b00 64 RO - por_errfr_44_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9b10 64 - - por_errstatus_44_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9b40 64 RO - por_errfr_45_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9b50 64 - - por_errstatus_45_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9b80 64 RO - por_errfr_46_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9b90 64 - - por_errstatus_46_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9bc0 64 RO - por_errfr_47_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9bd0 64 - - por_errstatus_47_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9c00 64 RO - por_errfr_48_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9c10 64 - - por_errstatus_48_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9c40 64 RO - por_errfr_49_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9c50 64 - - por_errstatus_49_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9c80 64 RO - por_errfr_50_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9c90 64 - - por_errstatus_50_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9cc0 64 RO - por_errfr_51_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9cd0 64 - - por_errstatus_51_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9d00 64 RO - por_errfr_52_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9d10 64 - - por_errstatus_52_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9d40 64 RO - por_errfr_53_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9d50 64 - - por_errstatus_53_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9d80 64 RO - por_errfr_54_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9d90 64 - - por_errstatus_54_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9dc0 64 RO - por_errfr_55_sra_5
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0x9dd0 64 - - por_errstatus_55_sra_5
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0x9e00 64 RO - por_errgsr_sra_5
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -36549,504 +36507,504 @@ F 0 2 ed
 F 2 2 ert
 R 0xa010 64 - - por_errstatus_0_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa040 64 RO - por_errfr_1_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa050 64 - - por_errstatus_1_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa080 64 RO - por_errfr_2_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa090 64 - - por_errstatus_2_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa0c0 64 RO - por_errfr_3_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa0d0 64 - - por_errstatus_3_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa100 64 RO - por_errfr_4_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa110 64 - - por_errstatus_4_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa140 64 RO - por_errfr_5_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa150 64 - - por_errstatus_5_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa180 64 RO - por_errfr_6_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa190 64 - - por_errstatus_6_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa1c0 64 RO - por_errfr_7_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa1d0 64 - - por_errstatus_7_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa200 64 RO - por_errfr_8_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa210 64 - - por_errstatus_8_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa240 64 RO - por_errfr_9_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa250 64 - - por_errstatus_9_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa280 64 RO - por_errfr_10_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa290 64 - - por_errstatus_10_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa2c0 64 RO - por_errfr_11_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa2d0 64 - - por_errstatus_11_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa300 64 RO - por_errfr_12_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa310 64 - - por_errstatus_12_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa340 64 RO - por_errfr_13_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa350 64 - - por_errstatus_13_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa380 64 RO - por_errfr_14_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa390 64 - - por_errstatus_14_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa3c0 64 RO - por_errfr_15_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa3d0 64 - - por_errstatus_15_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa400 64 RO - por_errfr_16_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa410 64 - - por_errstatus_16_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa440 64 RO - por_errfr_17_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa450 64 - - por_errstatus_17_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa480 64 RO - por_errfr_18_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa490 64 - - por_errstatus_18_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa4c0 64 RO - por_errfr_19_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa4d0 64 - - por_errstatus_19_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa500 64 RO - por_errfr_20_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa510 64 - - por_errstatus_20_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa540 64 RO - por_errfr_21_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa550 64 - - por_errstatus_21_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa580 64 RO - por_errfr_22_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa590 64 - - por_errstatus_22_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa5c0 64 RO - por_errfr_23_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa5d0 64 - - por_errstatus_23_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa600 64 RO - por_errfr_24_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa610 64 - - por_errstatus_24_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa640 64 RO - por_errfr_25_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa650 64 - - por_errstatus_25_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa680 64 RO - por_errfr_26_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa690 64 - - por_errstatus_26_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa6c0 64 RO - por_errfr_27_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa6d0 64 - - por_errstatus_27_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa700 64 RO - por_errfr_28_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa710 64 - - por_errstatus_28_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa740 64 RO - por_errfr_29_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa750 64 - - por_errstatus_29_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa780 64 RO - por_errfr_30_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa790 64 - - por_errstatus_30_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa7c0 64 RO - por_errfr_31_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa7d0 64 - - por_errstatus_31_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa800 64 RO - por_errfr_32_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa810 64 - - por_errstatus_32_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa840 64 RO - por_errfr_33_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa850 64 - - por_errstatus_33_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa880 64 RO - por_errfr_34_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa890 64 - - por_errstatus_34_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa8c0 64 RO - por_errfr_35_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa8d0 64 - - por_errstatus_35_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa900 64 RO - por_errfr_36_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa910 64 - - por_errstatus_36_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa940 64 RO - por_errfr_37_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa950 64 - - por_errstatus_37_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa980 64 RO - por_errfr_38_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa990 64 - - por_errstatus_38_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xa9c0 64 RO - por_errfr_39_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xa9d0 64 - - por_errstatus_39_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xaa00 64 RO - por_errfr_40_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xaa10 64 - - por_errstatus_40_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xaa40 64 RO - por_errfr_41_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xaa50 64 - - por_errstatus_41_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xaa80 64 RO - por_errfr_42_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xaa90 64 - - por_errstatus_42_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xaac0 64 RO - por_errfr_43_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xaad0 64 - - por_errstatus_43_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xab00 64 RO - por_errfr_44_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xab10 64 - - por_errstatus_44_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xab40 64 RO - por_errfr_45_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xab50 64 - - por_errstatus_45_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xab80 64 RO - por_errfr_46_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xab90 64 - - por_errstatus_46_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xabc0 64 RO - por_errfr_47_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xabd0 64 - - por_errstatus_47_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xac00 64 RO - por_errfr_48_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xac10 64 - - por_errstatus_48_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xac40 64 RO - por_errfr_49_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xac50 64 - - por_errstatus_49_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xac80 64 RO - por_errfr_50_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xac90 64 - - por_errstatus_50_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xacc0 64 RO - por_errfr_51_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xacd0 64 - - por_errstatus_51_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xad00 64 RO - por_errfr_52_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xad10 64 - - por_errstatus_52_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xad40 64 RO - por_errfr_53_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xad50 64 - - por_errstatus_53_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xad80 64 RO - por_errfr_54_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xad90 64 - - por_errstatus_54_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xadc0 64 RO - por_errfr_55_sra_6
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xadd0 64 - - por_errstatus_55_sra_6
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xae00 64 RO - por_errgsr_sra_6
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -37098,504 +37056,504 @@ F 0 2 ed
 F 2 2 ert
 R 0xb010 64 - - por_errstatus_0_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb040 64 RO - por_errfr_1_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb050 64 - - por_errstatus_1_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb080 64 RO - por_errfr_2_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb090 64 - - por_errstatus_2_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb0c0 64 RO - por_errfr_3_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb0d0 64 - - por_errstatus_3_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb100 64 RO - por_errfr_4_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb110 64 - - por_errstatus_4_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb140 64 RO - por_errfr_5_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb150 64 - - por_errstatus_5_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb180 64 RO - por_errfr_6_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb190 64 - - por_errstatus_6_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb1c0 64 RO - por_errfr_7_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb1d0 64 - - por_errstatus_7_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb200 64 RO - por_errfr_8_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb210 64 - - por_errstatus_8_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb240 64 RO - por_errfr_9_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb250 64 - - por_errstatus_9_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb280 64 RO - por_errfr_10_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb290 64 - - por_errstatus_10_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb2c0 64 RO - por_errfr_11_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb2d0 64 - - por_errstatus_11_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb300 64 RO - por_errfr_12_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb310 64 - - por_errstatus_12_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb340 64 RO - por_errfr_13_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb350 64 - - por_errstatus_13_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb380 64 RO - por_errfr_14_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb390 64 - - por_errstatus_14_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb3c0 64 RO - por_errfr_15_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb3d0 64 - - por_errstatus_15_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb400 64 RO - por_errfr_16_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb410 64 - - por_errstatus_16_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb440 64 RO - por_errfr_17_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb450 64 - - por_errstatus_17_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb480 64 RO - por_errfr_18_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb490 64 - - por_errstatus_18_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb4c0 64 RO - por_errfr_19_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb4d0 64 - - por_errstatus_19_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb500 64 RO - por_errfr_20_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb510 64 - - por_errstatus_20_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb540 64 RO - por_errfr_21_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb550 64 - - por_errstatus_21_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb580 64 RO - por_errfr_22_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb590 64 - - por_errstatus_22_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb5c0 64 RO - por_errfr_23_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb5d0 64 - - por_errstatus_23_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb600 64 RO - por_errfr_24_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb610 64 - - por_errstatus_24_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb640 64 RO - por_errfr_25_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb650 64 - - por_errstatus_25_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb680 64 RO - por_errfr_26_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb690 64 - - por_errstatus_26_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb6c0 64 RO - por_errfr_27_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb6d0 64 - - por_errstatus_27_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb700 64 RO - por_errfr_28_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb710 64 - - por_errstatus_28_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb740 64 RO - por_errfr_29_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb750 64 - - por_errstatus_29_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb780 64 RO - por_errfr_30_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb790 64 - - por_errstatus_30_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb7c0 64 RO - por_errfr_31_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb7d0 64 - - por_errstatus_31_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb800 64 RO - por_errfr_32_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb810 64 - - por_errstatus_32_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb840 64 RO - por_errfr_33_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb850 64 - - por_errstatus_33_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb880 64 RO - por_errfr_34_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb890 64 - - por_errstatus_34_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb8c0 64 RO - por_errfr_35_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb8d0 64 - - por_errstatus_35_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb900 64 RO - por_errfr_36_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb910 64 - - por_errstatus_36_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb940 64 RO - por_errfr_37_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb950 64 - - por_errstatus_37_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb980 64 RO - por_errfr_38_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb990 64 - - por_errstatus_38_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xb9c0 64 RO - por_errfr_39_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xb9d0 64 - - por_errstatus_39_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xba00 64 RO - por_errfr_40_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xba10 64 - - por_errstatus_40_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xba40 64 RO - por_errfr_41_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xba50 64 - - por_errstatus_41_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xba80 64 RO - por_errfr_42_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xba90 64 - - por_errstatus_42_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbac0 64 RO - por_errfr_43_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbad0 64 - - por_errstatus_43_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbb00 64 RO - por_errfr_44_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbb10 64 - - por_errstatus_44_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbb40 64 RO - por_errfr_45_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbb50 64 - - por_errstatus_45_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbb80 64 RO - por_errfr_46_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbb90 64 - - por_errstatus_46_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbbc0 64 RO - por_errfr_47_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbbd0 64 - - por_errstatus_47_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbc00 64 RO - por_errfr_48_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbc10 64 - - por_errstatus_48_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbc40 64 RO - por_errfr_49_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbc50 64 - - por_errstatus_49_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbc80 64 RO - por_errfr_50_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbc90 64 - - por_errstatus_50_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbcc0 64 RO - por_errfr_51_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbcd0 64 - - por_errstatus_51_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbd00 64 RO - por_errfr_52_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbd10 64 - - por_errstatus_52_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbd40 64 RO - por_errfr_53_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbd50 64 - - por_errstatus_53_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbd80 64 RO - por_errfr_54_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbd90 64 - - por_errstatus_54_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbdc0 64 RO - por_errfr_55_sra_7
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xbdd0 64 - - por_errstatus_55_sra_7
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xbe00 64 RO - por_errgsr_sra_7
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -37647,504 +37605,504 @@ F 0 2 ed
 F 2 2 ert
 R 0xc010 64 - - por_errstatus_0_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc040 64 RO - por_errfr_1_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc050 64 - - por_errstatus_1_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc080 64 RO - por_errfr_2_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc090 64 - - por_errstatus_2_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc0c0 64 RO - por_errfr_3_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc0d0 64 - - por_errstatus_3_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc100 64 RO - por_errfr_4_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc110 64 - - por_errstatus_4_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc140 64 RO - por_errfr_5_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc150 64 - - por_errstatus_5_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc180 64 RO - por_errfr_6_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc190 64 - - por_errstatus_6_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc1c0 64 RO - por_errfr_7_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc1d0 64 - - por_errstatus_7_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc200 64 RO - por_errfr_8_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc210 64 - - por_errstatus_8_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc240 64 RO - por_errfr_9_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc250 64 - - por_errstatus_9_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc280 64 RO - por_errfr_10_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc290 64 - - por_errstatus_10_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc2c0 64 RO - por_errfr_11_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc2d0 64 - - por_errstatus_11_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc300 64 RO - por_errfr_12_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc310 64 - - por_errstatus_12_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc340 64 RO - por_errfr_13_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc350 64 - - por_errstatus_13_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc380 64 RO - por_errfr_14_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc390 64 - - por_errstatus_14_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc3c0 64 RO - por_errfr_15_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc3d0 64 - - por_errstatus_15_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc400 64 RO - por_errfr_16_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc410 64 - - por_errstatus_16_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc440 64 RO - por_errfr_17_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc450 64 - - por_errstatus_17_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc480 64 RO - por_errfr_18_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc490 64 - - por_errstatus_18_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc4c0 64 RO - por_errfr_19_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc4d0 64 - - por_errstatus_19_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc500 64 RO - por_errfr_20_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc510 64 - - por_errstatus_20_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc540 64 RO - por_errfr_21_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc550 64 - - por_errstatus_21_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc580 64 RO - por_errfr_22_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc590 64 - - por_errstatus_22_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc5c0 64 RO - por_errfr_23_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc5d0 64 - - por_errstatus_23_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc600 64 RO - por_errfr_24_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc610 64 - - por_errstatus_24_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc640 64 RO - por_errfr_25_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc650 64 - - por_errstatus_25_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc680 64 RO - por_errfr_26_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc690 64 - - por_errstatus_26_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc6c0 64 RO - por_errfr_27_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc6d0 64 - - por_errstatus_27_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc700 64 RO - por_errfr_28_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc710 64 - - por_errstatus_28_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc740 64 RO - por_errfr_29_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc750 64 - - por_errstatus_29_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc780 64 RO - por_errfr_30_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc790 64 - - por_errstatus_30_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc7c0 64 RO - por_errfr_31_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc7d0 64 - - por_errstatus_31_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc800 64 RO - por_errfr_32_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc810 64 - - por_errstatus_32_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc840 64 RO - por_errfr_33_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc850 64 - - por_errstatus_33_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc880 64 RO - por_errfr_34_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc890 64 - - por_errstatus_34_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc8c0 64 RO - por_errfr_35_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc8d0 64 - - por_errstatus_35_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc900 64 RO - por_errfr_36_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc910 64 - - por_errstatus_36_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc940 64 RO - por_errfr_37_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc950 64 - - por_errstatus_37_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc980 64 RO - por_errfr_38_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc990 64 - - por_errstatus_38_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xc9c0 64 RO - por_errfr_39_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xc9d0 64 - - por_errstatus_39_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xca00 64 RO - por_errfr_40_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xca10 64 - - por_errstatus_40_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xca40 64 RO - por_errfr_41_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xca50 64 - - por_errstatus_41_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xca80 64 RO - por_errfr_42_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xca90 64 - - por_errstatus_42_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcac0 64 RO - por_errfr_43_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcad0 64 - - por_errstatus_43_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcb00 64 RO - por_errfr_44_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcb10 64 - - por_errstatus_44_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcb40 64 RO - por_errfr_45_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcb50 64 - - por_errstatus_45_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcb80 64 RO - por_errfr_46_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcb90 64 - - por_errstatus_46_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcbc0 64 RO - por_errfr_47_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcbd0 64 - - por_errstatus_47_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcc00 64 RO - por_errfr_48_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcc10 64 - - por_errstatus_48_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcc40 64 RO - por_errfr_49_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcc50 64 - - por_errstatus_49_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcc80 64 RO - por_errfr_50_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcc90 64 - - por_errstatus_50_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xccc0 64 RO - por_errfr_51_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xccd0 64 - - por_errstatus_51_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcd00 64 RO - por_errfr_52_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcd10 64 - - por_errstatus_52_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcd40 64 RO - por_errfr_53_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcd50 64 - - por_errstatus_53_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcd80 64 RO - por_errfr_54_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcd90 64 - - por_errstatus_54_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xcdc0 64 RO - por_errfr_55_sra_8
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xcdd0 64 - - por_errstatus_55_sra_8
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xce00 64 RO - por_errgsr_sra_8
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -38196,504 +38154,504 @@ F 0 2 ed
 F 2 2 ert
 R 0xd010 64 - - por_errstatus_0_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd040 64 RO - por_errfr_1_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd050 64 - - por_errstatus_1_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd080 64 RO - por_errfr_2_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd090 64 - - por_errstatus_2_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd0c0 64 RO - por_errfr_3_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd0d0 64 - - por_errstatus_3_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd100 64 RO - por_errfr_4_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd110 64 - - por_errstatus_4_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd140 64 RO - por_errfr_5_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd150 64 - - por_errstatus_5_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd180 64 RO - por_errfr_6_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd190 64 - - por_errstatus_6_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd1c0 64 RO - por_errfr_7_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd1d0 64 - - por_errstatus_7_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd200 64 RO - por_errfr_8_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd210 64 - - por_errstatus_8_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd240 64 RO - por_errfr_9_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd250 64 - - por_errstatus_9_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd280 64 RO - por_errfr_10_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd290 64 - - por_errstatus_10_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd2c0 64 RO - por_errfr_11_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd2d0 64 - - por_errstatus_11_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd300 64 RO - por_errfr_12_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd310 64 - - por_errstatus_12_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd340 64 RO - por_errfr_13_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd350 64 - - por_errstatus_13_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd380 64 RO - por_errfr_14_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd390 64 - - por_errstatus_14_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd3c0 64 RO - por_errfr_15_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd3d0 64 - - por_errstatus_15_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd400 64 RO - por_errfr_16_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd410 64 - - por_errstatus_16_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd440 64 RO - por_errfr_17_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd450 64 - - por_errstatus_17_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd480 64 RO - por_errfr_18_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd490 64 - - por_errstatus_18_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd4c0 64 RO - por_errfr_19_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd4d0 64 - - por_errstatus_19_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd500 64 RO - por_errfr_20_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd510 64 - - por_errstatus_20_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd540 64 RO - por_errfr_21_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd550 64 - - por_errstatus_21_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd580 64 RO - por_errfr_22_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd590 64 - - por_errstatus_22_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd5c0 64 RO - por_errfr_23_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd5d0 64 - - por_errstatus_23_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd600 64 RO - por_errfr_24_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd610 64 - - por_errstatus_24_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd640 64 RO - por_errfr_25_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd650 64 - - por_errstatus_25_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd680 64 RO - por_errfr_26_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd690 64 - - por_errstatus_26_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd6c0 64 RO - por_errfr_27_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd6d0 64 - - por_errstatus_27_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd700 64 RO - por_errfr_28_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd710 64 - - por_errstatus_28_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd740 64 RO - por_errfr_29_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd750 64 - - por_errstatus_29_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd780 64 RO - por_errfr_30_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd790 64 - - por_errstatus_30_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd7c0 64 RO - por_errfr_31_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd7d0 64 - - por_errstatus_31_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd800 64 RO - por_errfr_32_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd810 64 - - por_errstatus_32_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd840 64 RO - por_errfr_33_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd850 64 - - por_errstatus_33_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd880 64 RO - por_errfr_34_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd890 64 - - por_errstatus_34_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd8c0 64 RO - por_errfr_35_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd8d0 64 - - por_errstatus_35_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd900 64 RO - por_errfr_36_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd910 64 - - por_errstatus_36_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd940 64 RO - por_errfr_37_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd950 64 - - por_errstatus_37_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd980 64 RO - por_errfr_38_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd990 64 - - por_errstatus_38_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xd9c0 64 RO - por_errfr_39_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xd9d0 64 - - por_errstatus_39_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xda00 64 RO - por_errfr_40_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xda10 64 - - por_errstatus_40_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xda40 64 RO - por_errfr_41_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xda50 64 - - por_errstatus_41_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xda80 64 RO - por_errfr_42_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xda90 64 - - por_errstatus_42_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdac0 64 RO - por_errfr_43_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdad0 64 - - por_errstatus_43_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdb00 64 RO - por_errfr_44_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdb10 64 - - por_errstatus_44_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdb40 64 RO - por_errfr_45_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdb50 64 - - por_errstatus_45_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdb80 64 RO - por_errfr_46_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdb90 64 - - por_errstatus_46_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdbc0 64 RO - por_errfr_47_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdbd0 64 - - por_errstatus_47_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdc00 64 RO - por_errfr_48_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdc10 64 - - por_errstatus_48_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdc40 64 RO - por_errfr_49_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdc50 64 - - por_errstatus_49_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdc80 64 RO - por_errfr_50_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdc90 64 - - por_errstatus_50_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdcc0 64 RO - por_errfr_51_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdcd0 64 - - por_errstatus_51_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdd00 64 RO - por_errfr_52_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdd10 64 - - por_errstatus_52_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdd40 64 RO - por_errfr_53_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdd50 64 - - por_errstatus_53_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xdd80 64 RO - por_errfr_54_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xdd90 64 - - por_errstatus_54_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xddc0 64 RO - por_errfr_55_sra_9
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xddd0 64 - - por_errstatus_55_sra_9
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xde00 64 RO - por_errgsr_sra_9
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -38745,504 +38703,504 @@ F 0 2 ed
 F 2 2 ert
 R 0xe010 64 - - por_errstatus_0_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe040 64 RO - por_errfr_1_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe050 64 - - por_errstatus_1_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe080 64 RO - por_errfr_2_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe090 64 - - por_errstatus_2_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe0c0 64 RO - por_errfr_3_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe0d0 64 - - por_errstatus_3_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe100 64 RO - por_errfr_4_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe110 64 - - por_errstatus_4_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe140 64 RO - por_errfr_5_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe150 64 - - por_errstatus_5_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe180 64 RO - por_errfr_6_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe190 64 - - por_errstatus_6_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe1c0 64 RO - por_errfr_7_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe1d0 64 - - por_errstatus_7_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe200 64 RO - por_errfr_8_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe210 64 - - por_errstatus_8_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe240 64 RO - por_errfr_9_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe250 64 - - por_errstatus_9_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe280 64 RO - por_errfr_10_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe290 64 - - por_errstatus_10_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe2c0 64 RO - por_errfr_11_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe2d0 64 - - por_errstatus_11_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe300 64 RO - por_errfr_12_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe310 64 - - por_errstatus_12_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe340 64 RO - por_errfr_13_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe350 64 - - por_errstatus_13_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe380 64 RO - por_errfr_14_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe390 64 - - por_errstatus_14_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe3c0 64 RO - por_errfr_15_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe3d0 64 - - por_errstatus_15_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe400 64 RO - por_errfr_16_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe410 64 - - por_errstatus_16_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe440 64 RO - por_errfr_17_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe450 64 - - por_errstatus_17_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe480 64 RO - por_errfr_18_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe490 64 - - por_errstatus_18_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe4c0 64 RO - por_errfr_19_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe4d0 64 - - por_errstatus_19_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe500 64 RO - por_errfr_20_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe510 64 - - por_errstatus_20_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe540 64 RO - por_errfr_21_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe550 64 - - por_errstatus_21_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe580 64 RO - por_errfr_22_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe590 64 - - por_errstatus_22_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe5c0 64 RO - por_errfr_23_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe5d0 64 - - por_errstatus_23_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe600 64 RO - por_errfr_24_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe610 64 - - por_errstatus_24_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe640 64 RO - por_errfr_25_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe650 64 - - por_errstatus_25_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe680 64 RO - por_errfr_26_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe690 64 - - por_errstatus_26_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe6c0 64 RO - por_errfr_27_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe6d0 64 - - por_errstatus_27_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe700 64 RO - por_errfr_28_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe710 64 - - por_errstatus_28_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe740 64 RO - por_errfr_29_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe750 64 - - por_errstatus_29_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe780 64 RO - por_errfr_30_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe790 64 - - por_errstatus_30_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe7c0 64 RO - por_errfr_31_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe7d0 64 - - por_errstatus_31_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe800 64 RO - por_errfr_32_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe810 64 - - por_errstatus_32_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe840 64 RO - por_errfr_33_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe850 64 - - por_errstatus_33_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe880 64 RO - por_errfr_34_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe890 64 - - por_errstatus_34_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe8c0 64 RO - por_errfr_35_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe8d0 64 - - por_errstatus_35_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe900 64 RO - por_errfr_36_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe910 64 - - por_errstatus_36_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe940 64 RO - por_errfr_37_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe950 64 - - por_errstatus_37_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe980 64 RO - por_errfr_38_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe990 64 - - por_errstatus_38_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xe9c0 64 RO - por_errfr_39_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xe9d0 64 - - por_errstatus_39_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xea00 64 RO - por_errfr_40_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xea10 64 - - por_errstatus_40_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xea40 64 RO - por_errfr_41_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xea50 64 - - por_errstatus_41_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xea80 64 RO - por_errfr_42_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xea90 64 - - por_errstatus_42_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xeac0 64 RO - por_errfr_43_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xead0 64 - - por_errstatus_43_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xeb00 64 RO - por_errfr_44_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xeb10 64 - - por_errstatus_44_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xeb40 64 RO - por_errfr_45_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xeb50 64 - - por_errstatus_45_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xeb80 64 RO - por_errfr_46_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xeb90 64 - - por_errstatus_46_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xebc0 64 RO - por_errfr_47_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xebd0 64 - - por_errstatus_47_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xec00 64 RO - por_errfr_48_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xec10 64 - - por_errstatus_48_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xec40 64 RO - por_errfr_49_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xec50 64 - - por_errstatus_49_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xec80 64 RO - por_errfr_50_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xec90 64 - - por_errstatus_50_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xecc0 64 RO - por_errfr_51_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xecd0 64 - - por_errstatus_51_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xed00 64 RO - por_errfr_52_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xed10 64 - - por_errstatus_52_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xed40 64 RO - por_errfr_53_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xed50 64 - - por_errstatus_53_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xed80 64 RO - por_errfr_54_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xed90 64 - - por_errstatus_54_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xedc0 64 RO - por_errfr_55_sra_10
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xedd0 64 - - por_errstatus_55_sra_10
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xee00 64 RO - por_errgsr_sra_10
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -39294,504 +39252,504 @@ F 0 2 ed
 F 2 2 ert
 R 0xf010 64 - - por_errstatus_0_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf040 64 RO - por_errfr_1_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf050 64 - - por_errstatus_1_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf080 64 RO - por_errfr_2_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf090 64 - - por_errstatus_2_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf0c0 64 RO - por_errfr_3_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf0d0 64 - - por_errstatus_3_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf100 64 RO - por_errfr_4_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf110 64 - - por_errstatus_4_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf140 64 RO - por_errfr_5_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf150 64 - - por_errstatus_5_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf180 64 RO - por_errfr_6_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf190 64 - - por_errstatus_6_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf1c0 64 RO - por_errfr_7_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf1d0 64 - - por_errstatus_7_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf200 64 RO - por_errfr_8_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf210 64 - - por_errstatus_8_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf240 64 RO - por_errfr_9_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf250 64 - - por_errstatus_9_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf280 64 RO - por_errfr_10_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf290 64 - - por_errstatus_10_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf2c0 64 RO - por_errfr_11_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf2d0 64 - - por_errstatus_11_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf300 64 RO - por_errfr_12_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf310 64 - - por_errstatus_12_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf340 64 RO - por_errfr_13_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf350 64 - - por_errstatus_13_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf380 64 RO - por_errfr_14_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf390 64 - - por_errstatus_14_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf3c0 64 RO - por_errfr_15_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf3d0 64 - - por_errstatus_15_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf400 64 RO - por_errfr_16_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf410 64 - - por_errstatus_16_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf440 64 RO - por_errfr_17_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf450 64 - - por_errstatus_17_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf480 64 RO - por_errfr_18_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf490 64 - - por_errstatus_18_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf4c0 64 RO - por_errfr_19_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf4d0 64 - - por_errstatus_19_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf500 64 RO - por_errfr_20_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf510 64 - - por_errstatus_20_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf540 64 RO - por_errfr_21_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf550 64 - - por_errstatus_21_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf580 64 RO - por_errfr_22_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf590 64 - - por_errstatus_22_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf5c0 64 RO - por_errfr_23_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf5d0 64 - - por_errstatus_23_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf600 64 RO - por_errfr_24_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf610 64 - - por_errstatus_24_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf640 64 RO - por_errfr_25_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf650 64 - - por_errstatus_25_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf680 64 RO - por_errfr_26_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf690 64 - - por_errstatus_26_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf6c0 64 RO - por_errfr_27_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf6d0 64 - - por_errstatus_27_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf700 64 RO - por_errfr_28_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf710 64 - - por_errstatus_28_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf740 64 RO - por_errfr_29_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf750 64 - - por_errstatus_29_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf780 64 RO - por_errfr_30_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf790 64 - - por_errstatus_30_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf7c0 64 RO - por_errfr_31_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf7d0 64 - - por_errstatus_31_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf800 64 RO - por_errfr_32_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf810 64 - - por_errstatus_32_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf840 64 RO - por_errfr_33_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf850 64 - - por_errstatus_33_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf880 64 RO - por_errfr_34_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf890 64 - - por_errstatus_34_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf8c0 64 RO - por_errfr_35_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf8d0 64 - - por_errstatus_35_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf900 64 RO - por_errfr_36_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf910 64 - - por_errstatus_36_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf940 64 RO - por_errfr_37_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf950 64 - - por_errstatus_37_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf980 64 RO - por_errfr_38_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf990 64 - - por_errstatus_38_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xf9c0 64 RO - por_errfr_39_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xf9d0 64 - - por_errstatus_39_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfa00 64 RO - por_errfr_40_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfa10 64 - - por_errstatus_40_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfa40 64 RO - por_errfr_41_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfa50 64 - - por_errstatus_41_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfa80 64 RO - por_errfr_42_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfa90 64 - - por_errstatus_42_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfac0 64 RO - por_errfr_43_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfad0 64 - - por_errstatus_43_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfb00 64 RO - por_errfr_44_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfb10 64 - - por_errstatus_44_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfb40 64 RO - por_errfr_45_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfb50 64 - - por_errstatus_45_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfb80 64 RO - por_errfr_46_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfb90 64 - - por_errstatus_46_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfbc0 64 RO - por_errfr_47_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfbd0 64 - - por_errstatus_47_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfc00 64 RO - por_errfr_48_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfc10 64 - - por_errstatus_48_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfc40 64 RO - por_errfr_49_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfc50 64 - - por_errstatus_49_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfc80 64 RO - por_errfr_50_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfc90 64 - - por_errstatus_50_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfcc0 64 RO - por_errfr_51_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfcd0 64 - - por_errstatus_51_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfd00 64 RO - por_errfr_52_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfd10 64 - - por_errstatus_52_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfd40 64 RO - por_errfr_53_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfd50 64 - - por_errstatus_53_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfd80 64 RO - por_errfr_54_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfd90 64 - - por_errstatus_54_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfdc0 64 RO - por_errfr_55_sra_11
 RESET 0x7 0xf
 F 0 2 ed
 F 2 2 ert
 R 0xfdd0 64 - - por_errstatus_55_sra_11
 RESET 0x0 0x61000000
-F 24 1 fhi
-F 29 1 eri
-F 30 1 v
+F 24 1 fhi W1C
+F 29 1 eri W1C
+F 30 1 v W1C
 R 0xfe00 64 RO - por_errgsr_sra_11
 RESET 0x0 0xffffffffffffff
 F 0 56 status
@@ -44016,8 +43974,8 @@ F 2 1 lnk0_link_up
 F 3 1 lnk0_snoopdomain_req
 F 4 4 lnk0_num_reqcrds
 F 8 4 lnk0_num_datcrds
-F 15 1 lnk0_rspmsg_send_exp_agentid
-F 16 1 lnk0_smp_mode_en
+F 15 1 lnk0_rspmsg_send_exp_agentid NV
+F 16 1 lnk0_smp_mode_en NV
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1908 64 ROV ROOT por_cxg_ha_cxprtcl_link0_status
 RESET 0x2 0x7
@@ -44032,8 +43990,8 @@ F 2 1 lnk1_link_up
 F 3 1 lnk1_snoopdomain_req
 F 4 4 lnk1_num_reqcrds
 F 8 4 lnk1_num_datcrds
-F 15 1 lnk1_rspmsg_send_exp_agentid
-F 16 1 lnk1_smp_mode_en
+F 15 1 lnk1_rspmsg_send_exp_agentid NV
+F 16 1 lnk1_smp_mode_en NV
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1918 64 ROV ROOT por_cxg_ha_cxprtcl_link1_status
 RESET 0x2 0x7
@@ -44048,8 +44006,8 @@ F 2 1 lnk2_link_up
 F 3 1 lnk2_snoopdomain_req
 F 4 4 lnk2_num_reqcrds
 F 8 4 lnk2_num_datcrds
-F 15 1 lnk2_rspmsg_send_exp_agentid
-F 16 1 lnk2_smp_mode_en
+F 15 1 lnk2_rspmsg_send_exp_agentid NV
+F 16 1 lnk2_smp_mode_en NV
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1928 64 ROV ROOT por_cxg_ha_cxprtcl_link2_status
 RESET 0x2 0x7
@@ -44187,13 +44145,13 @@ R 0xe910 64 - ROOT por_cxg_ha_errstatus
 RESET 0x0 0xed800000
 RGO por_cxg_ha_rcr.ras_secure_access_override
 SGO por_cxg_ha_scr.ras_secure_access_override
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 27 1 of
-F 26 1 mv
-F 24 1 ce
-F 23 1 de
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 1 ce W1C
+F 23 1 de W1C
 R 0xe918 64 - ROOT por_cxg_ha_erraddr
 RESET 0x0 0x800fffffffffffff
 RGO por_cxg_ha_rcr.ras_secure_access_override
@@ -44224,13 +44182,13 @@ F 3 1 fi
 F 8 1 cfi
 R 0xf910 64 - - por_cxg_ha_errstatus_ns
 RESET 0x0 0xed800000
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 27 1 of
-F 26 1 mv
-F 24 1 ce
-F 23 1 de
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 1 ce W1C
+F 23 1 de W1C
 R 0xf918 64 - - por_cxg_ha_erraddr_ns
 RESET 0x0 0x800fffffffffffff
 F 63 1 ns
@@ -48023,8 +47981,8 @@ F 10 1 lnk0_excl_store_dwngrd
 F 11 1 lnk0_excl_resperr_ovrd
 F 12 2 lnk0_excl_resperr_value
 F 14 1 lnk0_spcl_cbkwr_crd_en
-F 15 1 lnk0_rspmsg_send_exp_agentid
-F 16 1 lnk0_smp_mode_en
+F 15 1 lnk0_rspmsg_send_exp_agentid NV
+F 16 1 lnk0_smp_mode_en NV
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1908 64 ROV ROOT por_cxg_ra_cxprtcl_link0_status
 RESET 0x2 0xf
@@ -48045,8 +48003,8 @@ F 10 1 lnk1_excl_store_dwngrd
 F 11 1 lnk1_excl_resperr_ovrd
 F 12 2 lnk1_excl_resperr_value
 F 14 1 lnk1_spcl_cbkwr_crd_en
-F 15 1 lnk1_rspmsg_send_exp_agentid
-F 16 1 lnk1_smp_mode_en
+F 15 1 lnk1_rspmsg_send_exp_agentid NV
+F 16 1 lnk1_smp_mode_en NV
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1918 64 ROV ROOT por_cxg_ra_cxprtcl_link1_status
 RESET 0x2 0xf
@@ -48067,8 +48025,8 @@ F 10 1 lnk2_excl_store_dwngrd
 F 11 1 lnk2_excl_resperr_ovrd
 F 12 2 lnk2_excl_resperr_value
 F 14 1 lnk2_spcl_cbkwr_crd_en
-F 15 1 lnk2_rspmsg_send_exp_agentid
-F 16 1 lnk2_smp_mode_en
+F 15 1 lnk2_rspmsg_send_exp_agentid NV
+F 16 1 lnk2_smp_mode_en NV
 PAR CXG_SMP_MODE_EN_PARAM
 R 0x1928 64 ROV ROOT por_cxg_ra_cxprtcl_link2_status
 RESET 0x2 0xf
@@ -48866,18 +48824,14 @@ F 16 16 length
 R 0x2008 64 RO - por_c2capb_c2c_port_register_offset_table_0
 RESET 0x8000006080000020 0xffffffffffffffff
 F 0 20 port_id_capabilities_and_control_offset
-F 20 11 rsvd
 F 31 1 portid_capabilities_and_control_offset_valid
 F 32 20 port_ingress_idroute_table_offset
-F 52 11 rsvd2
 F 63 1 port_ingress_id_routetable_offset_valid
 R 0x2010 64 RO - por_c2capb_c2c_port_register_offset_table_1
 RESET 0x80000200800000b0 0xffffffffffffffff
 F 0 20 port_egress_idroute_table_offset
-F 20 11 rsvd
 F 31 1 port_egress_id_routetable_offset_valid
 F 32 20 port_logical_links_offset
-F 52 11 rsvd2
 F 63 1 port_logical_links_offset_valid
 R 0x2020 64 RO - por_c2capb_c2c_port_capabilities_and_control_header
 RESET 0x400000 0xffffffff
@@ -48900,9 +48854,7 @@ R 0x2040 64 - - por_c2capb_c2c_port_control_and_status
 RESET 0x20100 0xffffffff
 F 0 8 portid
 F 8 4 numlinkends
-F 12 4 rsvd
 F 16 4 linkstate
-F 20 11 rsvd2
 F 31 1 valid
 R 0x2060 64 RO - por_c2capb_c2c_port_ingressid_route_table_header
 RESET 0x480000 0xffffffff
@@ -48914,7 +48866,6 @@ F 0 11 numportidrouteentries
 R 0x2080 64 - - por_c2capb_c2c_port_ingressid_route_table_control_and_status
 RESET 0x0 0xfffffffff
 F 0 11 numportidrouteentries
-F 11 18 reserved
 F 29 1 commit
 F 30 1 lockoncommit
 F 31 1 res2
@@ -48924,22 +48875,18 @@ RESET 0x0 0xffffffffffffffff
 F 0 1 valid_0
 F 1 1 tgttype_0
 F 2 2 loglink_0
-F 4 4 rsvd_0
 F 8 8 target_0
 F 16 1 valid_1
 F 17 1 tgttype_1
 F 18 2 loglink_1
-F 20 4 rsvd_1
 F 24 8 target_1
 F 32 1 valid_2
 F 33 1 tgttype_2
 F 34 2 loglink_2
-F 36 4 rsvd_2
 F 40 8 target_2
 F 48 1 valid_3
 F 49 1 tgttype_3
 F 50 2 loglink_3
-F 52 4 rsvd_3
 F 56 8 target_3
 R 0x20b0 64 RO - por_c2capb_c2c_port_egressid_route_table_header
 RESET 0x480000 0xffffffff
@@ -48951,7 +48898,6 @@ F 0 11 numportidrouteentries
 R 0x20d0 64 - - por_c2capb_c2c_port_egressid_route_table_control_and_status
 RESET 0x0 0xfffffffff
 F 0 11 numportidrouteentries
-F 11 18 reserved
 F 29 1 commit
 F 30 1 lockoncommit
 F 31 1 res2
@@ -48961,22 +48907,18 @@ RESET 0x0 0xffffffffffffffff
 F 0 1 valid_0
 F 1 1 tgttype_0
 F 2 2 loglink_0
-F 4 4 rsvd_0
 F 8 8 target_0
 F 16 1 valid_1
 F 17 1 tgttype_1
 F 18 2 loglink_1
-F 20 4 rsvd_1
 F 24 8 target_1
 F 32 1 valid_2
 F 33 1 tgttype_2
 F 34 2 loglink_2
-F 36 4 rsvd_2
 F 40 8 target_2
 F 48 1 valid_3
 F 49 1 tgttype_3
 F 50 2 loglink_3
-F 52 4 rsvd_3
 F 56 8 target_3
 R 0x2200 64 RO - por_c2capb_c2c_logical_linkend_common_header
 RESET 0x400000 0xffffffff
@@ -48996,13 +48938,9 @@ R 0x2258 64 - - por_c2capb_c2c_logical_linkend_0_control_and_status
 RESET 0x2 0x3ffffffffffff
 F 0 1 lle
 F 1 1 pe
-F 2 6 reserved
 F 8 2 acttrigger
-F 10 2 reserved5
 F 12 2 cohtrigger
-F 14 2 reserved6
 F 16 2 dvmtrigger
-F 18 14 rsvd2
 F 32 8 initstate
 F 40 2 activationstate
 F 42 2 res3
@@ -49019,7 +48957,6 @@ F 12 3 txrpmt4
 F 15 3 txrpmt5
 F 18 3 txrpmt6
 F 21 3 txrpmt7
-F 24 7 reserved
 F 31 1 txv
 F 32 3 rxrpmt0
 F 35 3 rxrpmt1
@@ -49029,7 +48966,6 @@ F 44 3 rxrpmt4
 F 47 3 rxrpmt5
 F 50 3 rxrpmt6
 F 53 3 rxrpmt7
-F 56 7 reserved2
 F 63 1 rxv
 R 0x2280 64 RO - por_c2capb_c2c_linkproperties_supported_uniform1_0
 RESET 0x21000 0x3fffff
@@ -49042,7 +48978,6 @@ F 20 2 ide_support
 R 0x2290 64 RO - por_c2capb_c2c_linkproperties_supported_rx1_0
 RESET 0x100015114501 0xfffffffffffff
 F 0 4 num_rp_req_rx
-F 4 4 reserved
 F 8 2 writepush_support_rx
 F 10 2 dvmpush_support_rx
 F 12 2 snoop_transactions_rx
@@ -49069,7 +49004,6 @@ F 50 2 multireq_support_rx
 R 0x22a0 64 RO - por_c2capb_c2c_linkproperties_supported_tx1_0
 RESET 0x100015114501 0xfffffffffffff
 F 0 4 num_rp_req_tx
-F 4 4 reserved
 F 8 2 writepush_support_tx
 F 10 2 dvmpush_support_tx
 F 12 2 snoop_transactions_tx
@@ -49104,7 +49038,6 @@ F 20 2 ide_support
 R 0x22d0 64 - - por_c2capb_c2c_linkproperties_advertised_rx1_0
 RESET 0x100015114501 0xfffffffffffff
 F 0 4 num_rp_req_rx
-F 4 4 reserved
 F 8 2 writepush_support_rx
 F 10 2 dvmpush_support_rx
 F 12 2 snoop_transactions_rx
@@ -49131,7 +49064,6 @@ F 50 2 multireq_support_rx
 R 0x22e0 64 - - por_c2capb_c2c_linkproperties_advertised_tx1_0
 RESET 0x100015114501 0xfffffffffffff
 F 0 4 num_rp_req_tx
-F 4 4 reserved
 F 8 2 writepush_support_tx
 F 10 2 dvmpush_support_tx
 F 12 2 snoop_transactions_tx
@@ -49166,7 +49098,6 @@ F 20 2 ide_support
 R 0x2310 64 RO - por_c2capb_c2c_linkproperties_informed_rx1_0
 RESET 0x101000000000 0xfffffffffffff
 F 0 4 num_rp_req_rx
-F 4 4 reserved
 F 8 2 writepush_support_rx
 F 10 2 dvmpush_support_rx
 F 12 2 snoop_transactions_rx
@@ -49189,7 +49120,6 @@ F 50 2 multireq_support_rx
 R 0x2320 64 RO - por_c2capb_c2c_linkproperties_informed_tx1_0
 RESET 0x101000000000 0xfffffffffffff
 F 0 4 num_rp_req_tx
-F 4 4 reserved
 F 8 2 writepush_support_tx
 F 10 2 dvmpush_support_tx
 F 12 2 snoop_transactions_tx
@@ -49220,7 +49150,6 @@ F 20 2 ide_support
 R 0x2350 64 RO - por_c2capb_c2c_linkproperties_negotiated_rx1_0
 RESET 0x101000000000 0xfffffffffffff
 F 0 4 num_rp_req_rx
-F 4 4 reserved
 F 8 2 writepush_support_rx
 F 10 2 dvmpush_support_rx
 F 12 2 snoop_transactions_rx
@@ -49243,7 +49172,6 @@ F 50 2 multireq_support_rx
 R 0x2360 64 RO - por_c2capb_c2c_linkproperties_negotiated_tx1_0
 RESET 0x101000000000 0xfffffffffffff
 F 0 4 num_rp_req_tx
-F 4 4 reserved
 F 8 2 writepush_support_tx
 F 10 2 dvmpush_support_tx
 F 12 2 snoop_transactions_tx
@@ -49266,13 +49194,10 @@ F 50 2 multireq_support_tx
 R 0x2388 64 - - por_c2capb_c2c_logical_linkend_0_mc_credit1
 RESET 0x10001000100 0x3ffffffffffffff
 F 0 10 numcrdtrsp
-F 10 6 reserved
 F 16 10 numcrdtsnp
 PAR CCG_RA_NUM_SNPREQS_PARAM
-F 26 6 reserved2
 F 32 12 numcrdtdat
 PAR CCG_HA_DAT_PASS_BUFF_DEPTH_PARAM
-F 44 4 reserved3
 F 48 10 numcrdtmisc
 R 0x2390 64 - - por_c2capb_c2c_logical_linkend_0_mc_credit2
 RESET 0x0 0x1fff
@@ -49281,31 +49206,22 @@ PAR CCG_HA_REQ_PASS_BUFF_DEPTH_PARAM
 R 0x2398 64 - - por_c2capb_c2c_logical_linkend_0_mc_credit3
 RESET 0x10000 0x3fffffffffffff
 F 0 6 numcrdtrp0
-F 6 10 reserved
 F 16 6 numcrdtrp1
-F 22 10 reserved2
 F 32 6 numcrdtrp2
-F 38 10 reserved3
 F 48 6 numcrdtrp3
 R 0x23a0 64 - - por_c2capb_c2c_logical_linkend_0_mc_credit4
 RESET 0x0 0x3fffffffffffff
 F 0 6 numcrdtrp0
-F 6 10 reserved
 F 16 6 numcrdtrp1
-F 22 10 reserved2
 F 32 6 numcrdtrp2
-F 38 10 reserved3
 F 48 6 numcrdtrp3
 R 0x23a8 64 - - por_c2capb_c2c_logical_linkend_0_mc_credit5
 RESET 0x1000100000000 0x3ffffffffffffff
 F 0 10 numcrdtreqsh
 PAR CCG_HA_REQ_PASS_BUFF_DEPTH_PARAM-10'h1
-F 10 6 reserved
 F 16 10 numcrdtdatash
 PAR CCG_HA_DAT_PASS_BUFF_DEPTH_PARAM-10'h2
-F 26 6 reserved2
 F 32 10 numcrdtdatadp0
-F 42 6 reserved3
 F 48 10 numcrdtdatadp1
 ENDGROUP
 GROUP por_dn_registers
@@ -49354,7 +49270,6 @@ PAR POR_R2_ENABLE_PARAM
 F 1 1 disable_clk_gating
 F 2 1 filter_rnd_icache_ops
 PAR POR_R2_ENABLE_PARAM
-F 3 1 reserved
 F 4 1 disable_ddn
 F 5 1 disable_rxreq_crd_stealing
 R 0xc00 64 - ROOT por_dn_vmf0_ctrl
@@ -51373,18 +51288,18 @@ R 0xe010 64 - ROOT por_hni_errstatus
 RESET 0x0 0xfff0ffff
 RGO por_hni_rcr.ras
 SGO por_hni_scr.ras
-F 0 8 serr
-F 8 8 ierr
-F 20 2 uet
-F 22 1 pn
-F 23 1 de
-F 24 2 ce
-F 26 1 mv
-F 27 1 of
-F 28 1 er
-F 29 1 ue
-F 30 1 v
-F 31 1 av
+F 0 8 serr W1C
+F 8 8 ierr W1C
+F 20 2 uet W1C
+F 22 1 pn W1C
+F 23 1 de W1C
+F 24 2 ce W1C
+F 26 1 mv W1C
+F 27 1 of W1C
+F 28 1 er W1C
+F 29 1 ue W1C
+F 30 1 v W1C
+F 31 1 av W1C
 R 0xe018 64 - ROOT por_hni_erraddr
 RESET 0x0 0xc80fffffffffffff
 RGO por_hni_rcr.ras
@@ -51429,18 +51344,18 @@ F 8 1 cfi
 F 10 1 dui
 R 0xe050 64 - - por_hni_errstatus_ns
 RESET 0x0 0xfff0ffff
-F 0 8 serr
-F 8 8 ierr
-F 20 2 uet
-F 22 1 pn
-F 23 1 de
-F 24 2 ce
-F 26 1 mv
-F 27 1 of
-F 28 1 er
-F 29 1 ue
-F 30 1 v
-F 31 1 av
+F 0 8 serr W1C
+F 8 8 ierr W1C
+F 20 2 uet W1C
+F 22 1 pn W1C
+F 23 1 de W1C
+F 24 2 ce W1C
+F 26 1 mv W1C
+F 27 1 of W1C
+F 28 1 er W1C
+F 29 1 ue W1C
+F 30 1 v W1C
+F 31 1 av W1C
 R 0xe058 64 - - por_hni_erraddr_ns
 RESET 0x0 0xc80fffffffffffff
 F 0 52 paddr
@@ -51739,18 +51654,18 @@ R 0xe010 64 - ROOT por_mtu_errstatus
 RESET 0x0 0xfff0ffff
 RGO por_mtu_rcr.ras
 SGO por_mtu_scr.ras
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 28 1 er
-F 27 1 of
-F 26 1 mv
-F 24 2 ce
-F 23 1 de
-F 22 1 pn
-F 20 2 uet
-F 8 8 ierr
-F 0 8 serr
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 28 1 er W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 2 ce W1C
+F 23 1 de W1C
+F 22 1 pn W1C
+F 20 2 uet W1C
+F 8 8 ierr W1C
+F 0 8 serr W1C
 R 0xe018 64 - ROOT por_mtu_erraddr
 RESET 0x0 0xc80fffffffffffff
 RGO por_mtu_rcr.ras
@@ -51807,18 +51722,18 @@ F 8 1 cfi
 F 10 1 dui
 R 0xe050 64 - - por_mtu_errstatus_ns
 RESET 0x0 0xfff0ffff
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 28 1 er
-F 27 1 of
-F 26 1 mv
-F 24 2 ce
-F 23 1 de
-F 22 1 pn
-F 20 2 uet
-F 8 8 ierr
-F 0 8 serr
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 28 1 er W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 2 ce W1C
+F 23 1 de W1C
+F 22 1 pn W1C
+F 20 2 uet W1C
+F 8 8 ierr W1C
+F 0 8 serr W1C
 R 0xe058 64 - - por_mtu_erraddr_ns
 RESET 0x0 0xc80fffffffffffff
 F 0 52 addr
@@ -54152,7 +54067,7 @@ F 2 1 sample_profile_enable
 F 3 1 trace_no_atb
 R 0xa118 64 - - por_dtm_fifo_entry_ready
 RESET 0x0 0xf
-F 0 4 ready
+F 0 4 ready W1C
 R 0xa120 64 ROV - por_dtm_fifo_entry0_0
 RESET 0x0 0xffffffffffffffff
 F 0 64 fifo_data0
@@ -54329,7 +54244,7 @@ F 2 1 sample_profile_enable
 F 3 1 trace_no_atb
 R 0xa318 64 - - por_dtm_fifo_entry_ready_dt1
 RESET 0x0 0xf
-F 0 4 ready
+F 0 4 ready W1C
 R 0xa320 64 ROV - por_dtm_fifo_entry0_0_dt1
 RESET 0x0 0xffffffffffffffff
 F 0 64 fifo_data0
@@ -54506,7 +54421,7 @@ F 2 1 sample_profile_enable
 F 3 1 trace_no_atb
 R 0xa518 64 - - por_dtm_fifo_entry_ready_dt2
 RESET 0x0 0xf
-F 0 4 ready
+F 0 4 ready W1C
 R 0xa520 64 ROV - por_dtm_fifo_entry0_0_dt2
 RESET 0x0 0xffffffffffffffff
 F 0 64 fifo_data0
@@ -54683,7 +54598,7 @@ F 2 1 sample_profile_enable
 F 3 1 trace_no_atb
 R 0xa718 64 - - por_dtm_fifo_entry_ready_dt3
 RESET 0x0 0xf
-F 0 4 ready
+F 0 4 ready W1C
 R 0xa720 64 ROV - por_dtm_fifo_entry0_0_dt3
 RESET 0x0 0xffffffffffffffff
 F 0 64 fifo_data0
@@ -54883,18 +54798,18 @@ R 0xe010 64 - ROOT por_mxp_errstatus
 RESET 0x0 0xfff0ffff
 RGO por_mxp_rcr.ras_secure_access_override
 SGO por_mxp_scr.ras_secure_access_override
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 28 1 er
-F 27 1 of
-F 26 1 mv
-F 24 2 ce
-F 23 1 de
-F 22 1 pn
-F 20 2 uet
-F 8 8 ierr
-F 0 8 serr
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 28 1 er W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 2 ce W1C
+F 23 1 de W1C
+F 22 1 pn W1C
+F 20 2 uet W1C
+F 8 8 ierr W1C
+F 0 8 serr W1C
 R 0xe018 64 - ROOT por_mxp_erraddr
 RESET 0x0 0xc80fffffffffffff
 RGO por_mxp_rcr.ras_secure_access_override
@@ -54939,18 +54854,18 @@ F 8 1 cfi
 F 10 1 dui
 R 0xe050 64 - - por_mxp_errstatus_ns
 RESET 0x0 0xfff0ffff
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 28 1 er
-F 27 1 of
-F 26 1 mv
-F 24 2 ce
-F 23 1 de
-F 22 1 pn
-F 20 2 uet
-F 8 8 ierr
-F 0 8 serr
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 28 1 er W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 2 ce W1C
+F 23 1 de W1C
+F 22 1 pn W1C
+F 20 2 uet W1C
+F 8 8 ierr W1C
+F 0 8 serr W1C
 R 0xe058 64 - - por_mxp_erraddr_ns
 RESET 0x0 0xc80fffffffffffff
 F 0 52 addr
@@ -74846,18 +74761,18 @@ R 0xe010 64 - ROOT por_sbsx_errstatus
 RESET 0x0 0xfff0ffff
 RGO por_sbsx_rcr.ras
 SGO por_sbsx_scr.ras
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 28 1 er
-F 27 1 of
-F 26 1 mv
-F 24 2 ce
-F 23 1 de
-F 22 1 pn
-F 20 2 uet
-F 8 8 ierr
-F 0 8 serr
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 28 1 er W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 2 ce W1C
+F 23 1 de W1C
+F 22 1 pn W1C
+F 20 2 uet W1C
+F 8 8 ierr W1C
+F 0 8 serr W1C
 R 0xe018 64 - ROOT por_sbsx_erraddr
 RESET 0x0 0xc80fffffffffffff
 RGO por_sbsx_rcr.ras
@@ -74899,18 +74814,18 @@ F 8 1 cfi
 F 10 1 dui
 R 0xe050 64 - - por_sbsx_errstatus_ns
 RESET 0x0 0xfff0ffff
-F 31 1 av
-F 30 1 v
-F 29 1 ue
-F 28 1 er
-F 27 1 of
-F 26 1 mv
-F 24 2 ce
-F 23 1 de
-F 22 1 pn
-F 20 2 uet
-F 8 8 ierr
-F 0 8 serr
+F 31 1 av W1C
+F 30 1 v W1C
+F 29 1 ue W1C
+F 28 1 er W1C
+F 27 1 of W1C
+F 26 1 mv W1C
+F 24 2 ce W1C
+F 23 1 de W1C
+F 22 1 pn W1C
+F 20 2 uet W1C
+F 8 8 ierr W1C
+F 0 8 serr W1C
 R 0xe058 64 - - por_sbsx_erraddr_ns
 RESET 0x0 0xc80fffffffffffff
 F 0 52 addr

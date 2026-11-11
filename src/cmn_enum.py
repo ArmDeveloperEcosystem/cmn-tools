@@ -78,10 +78,14 @@ CMN_NODE_SBSX    = 7      # CHI to ACE5-Lite bridge
 CMN_NODE_MPAM_S  = 8      # new in CMN-650
 CMN_NODE_MPAM_NS = 9      # new in CMN-650
 CMN_NODE_RNI     = 10     # I/O-coherent Request Node bridge
+CMN_NODE_PCG_IHB = 11
+CMN_NODE_RNP     = 12     # enhanced I/O requester
 CMN_NODE_RND     = 13     # RN-I that accepts DVM
 CMN_NODE_RNSAM   = 15
 CMN_NODE_MTSX    = 16
 CMN_NODE_HNP     = 17     # HN-I optimized for peer-to-peer traffic
+CMN_NODE_PCG_OHB = 18
+CMN_NODE_PCG_CLB = 32
 CMN_NODE_CXRA    = 0x100  # CCIX Request Agent (local home)
 CMN_NODE_CXHA    = 0x101  # CCIX Home Agent (local requester)
 CMN_NODE_CXLA    = 0x102  # CCIX Link Agent
@@ -106,6 +110,7 @@ cmn_node_properties = {
     CMN_NODE_MPAM_S      : CMN_PROP_MPAM,
     CMN_NODE_MPAM_NS     : CMN_PROP_MPAM,
     CMN_NODE_RNI         : CMN_PROP_RNI,
+    CMN_NODE_RNP         : CMN_PROP_RNI,
     CMN_NODE_RND         : CMN_PROP_RND,
     CMN_NODE_RNSAM       : CMN_PROP_SAM,
     CMN_NODE_MTSX        : CMN_PROP_DEV,    # TBD
@@ -127,8 +132,12 @@ cmn_node_properties = {
 cmn_node_type_strings = {
     0: "?0",
     1: "DN", 2: "CFG", 3: "DT", 4: "HN-I", 5: "HN-F", 6: "XP", 7: "SBSX",
-    8: "MPAM_S", 9: "MPAM_NS", 10: "RN-I", 13: "RN-D", 15: "RN-SAM",
+    8: "MPAM_S", 9: "MPAM_NS", 10: "RN-I",
+    11: "PCG-IHB", 12: "RN-P",                                           # S4
+    13: "RN-D", 15: "RN-SAM",
     16: "MTSX", 17: "HN-P",                                              # 7xx
+    18: "PCG-OHB",                                                       # S4
+    32: "PCG-CLB",                                                       # S4
     256: "CXRA", 257: "CXHA", 258: "CXLA",                               # 6xx
     0x103: "CCG-RA", 0x104: "CCG-HA", 0x105: "CCLA", 0x106: "CCLA-RNI",  # 7xx
     0x200: "HN-S", 0x201: "MPAM_S(S)", 0x202: "MPAM_NS(S)",
@@ -178,9 +187,9 @@ cmn_port_device_type_strings = {
     0x08: "HN-T",            # HN-I with debug/trace control (DTC)
     0x09: "HN-I",            # Home Node I/O, non-coherent
     0x0a: "HN-D",            # HN-T, plus CFG and DVM, power control etc.
-    0x0b: "HN-P",
+    0x0b: "HN-P",            # HN-I with trackers for PCIe peer-to-peer traffic
     0x0c: "SN-F",            # Memory controller
-    0x0d: "SBSX",            # CHI to AXI bridge
+    0x0d: "SBSX",            # CHI to AXI/ACE-Lite bridge
     0x0e: "HN-F",            # Home Node Full, fully coherent, with SLC and/or SF
     0x0f: "SN-F_E",
     0x10: "SN-F_D",
@@ -197,7 +206,7 @@ cmn_port_device_type_strings = {
     0x1b: "LCN",
     0x1c: "MTSX",
     0x1d: "HN-V",
-    0x1e: "CCG",
+    0x1e: "CCG",             # CHI to CXS bridge
     0x1f: "CCGSMP",          # TBC
     0x20: "RN-F_F",
     0x21: "RN-F_F_E",
@@ -205,6 +214,8 @@ cmn_port_device_type_strings = {
     0x23: "RN-F_G",          # TBC
     0x24: "RN-F_G_E",
     0x25: "SN-F_G",
+    0x26: "RN-P",
+    0x27: "PCG",             # PCIe to CHI Gateway
 }
 
 
@@ -245,6 +256,8 @@ CMN_PORT_DEVTYPE_SNF_CHIF       = 0x22
 CMN_PORT_DEVTYPE_RNF_CHIG       = 0x23
 CMN_PORT_DEVTYPE_RNF_CHIG_ESAM  = 0x24
 CMN_PORT_DEVTYPE_SNF_CHIG       = 0x25
+CMN_PORT_DEVTYPE_RNP            = 0x26
+CMN_PORT_DEVTYPE_PCG            = 0x27
 
 
 #
@@ -290,6 +303,8 @@ cmn_port_properties = {
     CMN_PORT_DEVTYPE_RNF_CHIG         : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_RNF_CHIG_ESAM    : (CMN_PROP_RNF | CMN_PROP_SAM),
     CMN_PORT_DEVTYPE_SNF_CHIG         : CMN_PROP_SNF,
+    CMN_PORT_DEVTYPE_RNP              : (CMN_PROP_RNI | CMN_PROP_SAM),    # tbc
+    CMN_PORT_DEVTYPE_PCG              : (CMN_PROP_CCG | CMN_PROP_RNI | CMN_PROP_HN | CMN_PROP_SAM),   # tbc
 }
 
 

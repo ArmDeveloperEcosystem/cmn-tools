@@ -69,7 +69,7 @@ def gen_debugmap(C):
                     # For consistency with the Linux driver, we prefer the DN/HN-I logical id.
                     id = None
                     for dev in dl:
-                        if C.id_xy(dev.id) != dev.XP().XY():
+                        if not dev.XP().is_valid_id(dev.id):
                             # Skip devices that are wrongly located (CXLA on CMN-600)
                             continue
                         nid = dev.logical_id()

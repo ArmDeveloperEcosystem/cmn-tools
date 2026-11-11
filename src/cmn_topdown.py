@@ -326,10 +326,11 @@ class TopdownRunner:
             for metric in plan.metrics:
                 for action in get_action_categories(metric.actions):
                     analysis.add_category(action)
-                events.append(metric.event)
+                event = self._cmn_event(metric.event) if metric.aggregate_cmn_event else metric.event
+                events.append(event)
                 action_sets.append(metric.actions)
                 if self.options.verbose:
-                    print("%s: add \"%s\" = %s" % (analysis, metric.actions, metric.event))
+                    print("%s: add \"%s\" = %s" % (analysis, metric.actions, event))
             rates = self.backend.perf_rate(events)
             for (actions, rate) in zip(action_sets, rates):
                 if self.options.verbose >= 2:
@@ -545,9 +546,12 @@ def port_watchpoint_events(port, watchpoint):
 
 def port_watchpoint_event(port, watchpoint, verbose=0):
     watchpoint_events = port_watchpoint_events(port, watchpoint)
-    if len(watchpoint_events) != 1:
+    if False and len(watchpoint_events) != 1:
         raise MeasurementError("watchpoint requires multiple groups and is not supported here: %s" % watchpoint_events)
-    event = watchpoint_events[0]
+    event = ','.join(watchpoint_events)
+    if len(watchpoint_events) > 1:
+        # ensure scheduled as a group
+        event = '{' + event + '}'
     if verbose >= 2:
         print("  event: %s" % event)
     return event
@@ -568,13 +572,18 @@ def recipe_load(name, recipe_paths=None):
 
 
 def default_measurement_time(system, verbose=0):
+    """
+    Estimate how much measurement time we'll need.
+    TBD: this really ought to take account of the complexity of the measurement plan,
+    i.e. the amount of rotation the kernel will need, or the number of chunks.
+    """
     if not getattr(system, "CMNs", None):
         return None
     if not system.CMNs:
         return None
     cmn0 = system.CMNs[0]
     mesh_size = cmn0.dimX * cmn0.dimY
-    measurement_time = 0.01 * mesh_size
+    measurement_time = 0.05 * mesh_size
     if verbose:
         print("Mesh size %ux%u: measurement time set to %.2fs" % (cmn0.dimX, cmn0.dimY, measurement_time))
     return measurement_time
@@ -607,7 +616,7 @@ def format_analysis(analysis, rate_bandwidth, options):
         else:
             value += " %6.3f" % analysis.proportion(category)
         value += dominance_marker(category == dom)
-        lines.append("  %-18s%s" % (category_name, value))
+        lines.append("  %-22s%s" % (category_name, value))
     if dom is not None:
         lines.append("Dominant category: %s" % dom)
     elif options.verbose:

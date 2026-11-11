@@ -21,6 +21,8 @@ Important CMN node types include:
    interfaces to other CMN interconnects.
 
 Full details of CMN can be found in Arm's product documentation.
+For significant changes across the family, see
+[CMN products and releases](README-cmn-products.md).
 
 
 CHI protocol

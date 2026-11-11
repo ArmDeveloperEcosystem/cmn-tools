@@ -3,7 +3,11 @@
     "title": "CoreSight ATB topology for CMN trace capture",
     "description": "Platform-specific CoreSight ATB connectivity supplementing separately discovered CMN topology.",
     "type": "object",
-    "required": ["version", "sources", "devices", "links", "captures"],
+    "required": ["version", "sources", "devices", "links"],
+    "anyOf": [
+        {"required": ["captures"]},
+        {"required": ["capture_options"]}
+    ],
     "additionalProperties": false,
     "properties": {
         "version": {
@@ -57,12 +61,16 @@
             }
         },
         "captures": {
-            "description": "Sink selected for each CMN DTC source",
+            "description": "Default sink selected for each CMN DTC source when no named option is selected",
+            "$ref": "#/definitions/captures"
+        },
+        "capture_options": {
+            "description": "Named source-to-sink capture specifications sharing the static topology. Names must be unique. If captures is absent, the first option is the default.",
             "type": "array",
             "minItems": 1,
             "uniqueItems": true,
             "items": {
-                "$ref": "#/definitions/capture"
+                "$ref": "#/definitions/captureOption"
             }
         }
     },
@@ -113,7 +121,7 @@
                     "$ref": "#/definitions/identifier"
                 },
                 "type": {
-                    "description": "CoreSight component programming model",
+                    "description": "CoreSight component programming model. A replicator is a programmable Arm ATB replicator with one input and two outputs. A tmc-etf selected as a capture sink uses circular buffer mode; other tmc-etf devices on the capture path use hardware FIFO mode. A tmc-etr sink captures into allocated system RAM.",
                     "type": "string",
                     "enum": [
                         "funnel",
@@ -177,15 +185,16 @@
             }
         },
         "deviceEndpoint": {
+            "description": "Device ATB endpoint. Port may be omitted for a single-port interface; the topology loader checks whether selection is required.",
             "type": "object",
-            "required": ["device", "port"],
+            "required": ["device"],
             "additionalProperties": false,
             "properties": {
                 "device": {
                     "$ref": "#/definitions/identifier"
                 },
                 "port": {
-                    "description": "Zero-based ATB port number",
+                    "description": "Zero-based ATB port number; defaults to zero on a single-port interface",
                     "type": "integer",
                     "minimum": 0
                 }
@@ -207,6 +216,30 @@
                 }
             }
         },
+        "captures": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+                "$ref": "#/definitions/capture"
+            }
+        },
+        "captureOption": {
+            "type": "object",
+            "required": ["name", "captures"],
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "$ref": "#/definitions/identifier"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "captures": {
+                    "$ref": "#/definitions/captures"
+                }
+            }
+        },
         "capture": {
             "type": "object",
             "required": ["source", "sink"],
@@ -216,6 +249,7 @@
                     "$ref": "#/definitions/identifier"
                 },
                 "sink": {
+                    "description": "Final capture device, not an intermediate FIFO",
                     "$ref": "#/definitions/identifier"
                 },
                 "description": {

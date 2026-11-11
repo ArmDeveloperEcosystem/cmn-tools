@@ -49,6 +49,46 @@ distinct CMN node object. External attachments such as RN-F and SN-F consume
 CHI ids and therefore appear as device slots, but may have no explicit CMN
 device node in the topology.
 
+### DN domains
+
+Each DN serves a DVM domain. A requester's device slot can record `dn_domain`,
+the logical ID of the DN to which it sends DVMOp requests. The field belongs
+to a device slot because an RN-F may have no explicit node in the topology;
+RN-D and CML gateway slots can use the same field. It is optional: absence
+means the domain has not been discovered. Zero is a valid domain. The matching
+DN is a node of type DN on the same mesh with that `logical_id`.
+
+The field appears in the port's `pdevices` entry, for example:
+
+```json
+"pdevices": [{"device_number": 0, "id": 256, "dn_domain": 2}]
+```
+
+`cmn_detect_dn_sam.py` reads the DN target ID from accessible requester
+RN-SAMs on CMN-700 and later, then resolves it to a DN logical ID. RN-Fs
+sharing a CAL use one RN-SAM; its domain is recorded for every RN-F device
+slot on that port. On systems where an RN-F's SAM is not accessible,
+`cmn_detect_dn.py` can infer its domain by counting that RN-F's DVMOp requests
+at DN ports through the Linux `arm_cmn` PMU driver while a workload generates
+them. It uses the saved topology and
+`perf`, without opening `/dev/mem`; PMU access permissions are still required.
+Both tools update the cached topology by default. An unresolved source
+keeps any previously recorded domain. The RN-SAM status register requires
+Secure or Root access unless an access override is enabled. The SAM reader
+reports unreadable SAMs and can run with `--no-update` to inspect results.
+It leaves stalled SAMs unresolved.
+
+The SAM reader includes CCG-RA gateways and legacy CXRA gateways. The recorded
+domain is local to the mesh: the two ends of a C2C link can have different
+DN logical IDs. As described in the CMN-700 TRM (102308), section 3.9.4,
+incoming DVM requests target the gateway's associated DN; that DN also
+forwards DVM messages to participating local gateways and peer DNs.
+
+Watchpoint discovery requires each candidate DN to have a distinct XP port
+and observable DVMOp traffic in each sampling round. A kernel driver that does
+not select the REQ channel instance carrying that traffic may leave the source
+unresolved.
+
 
 ## Top-Level Objects
 
@@ -217,6 +257,29 @@ other tools, including the CHI version, MTE and MPAM enablement, MPAM PARTID
 width, and physical-address, REQ-address and REQ-RSVDC widths. Unknown optional
 values are omitted from topology JSON.
 
+Product names in the mesh's JSON `version` field use display names such as
+`CMN S3` and `CMN S4`. Product-version options also accept hyphenated forms,
+including revision suffixes, such as `cmn-s3-r2p0` and `cmn-s4-r1p0`.
+
+An explicit S3 r5 selection is stored as `version: "CMN S3 r5p0"`. The
+separate `revision` field retains the observed peripheral revision code, if
+known. This avoids assigning a development implementation an unconfirmed
+code. `product_config.revision_major` and `gen` reflect the explicit selection.
+
+`product_config.dtm_ports`, stored as `config.dtm_ports`, records the
+integration's physical-port group size in multiple-DTM mode. S3 r5 and S4
+require an explicit value of 2 or 4 for live multiple-DTM discovery. Port
+numbering includes holes. `ports_per_dtm()` returns the selected group size;
+`dtm_port_base(index)` gives the first XP port in that group. See
+[product configuration inputs](README-cmn-products.md#live-capture-values-the-user-may-need-to-supply).
+
+Each mesh's `vc_num` records the number of channel instances in REQ, RSP,
+SNP, DAT order. For example, `[1, 2, 1, 2]` describes duplicated RSP and DAT
+channels. Both object models expose this attribute; it is `None` when an
+older topology description has no channel counts. JSON stores known counts
+in the mesh's `config.vc_num`. Register discovery already collects these
+counts, so exporting them requires no additional device reads.
+
 FIFO capture, latency capture and ATB decoding convert these settings through
 `cmn_flits.trace_config_from_cmn_config()`. The conversion preserves the
 product id, major revision, CHI version, MPAM enablement and flit-field widths.
@@ -259,8 +322,11 @@ An XP owns:
 - mesh-link information
 - in `cmn_devmem`, one or more DTMs and the logic to discover child nodes
 
-The XP is the anchor point for interpreting the low bits of CHI node ids into
-port number and device number.
+The XP groups its ports and their device slots. Each port records its base
+node id, so callers can resolve a device id through the topology.
+
+An offline device slot can record its own connected type when attachments on
+one XP port have different roles. Otherwise it inherits the port type.
 
 In the live model, `xp.DTMs()` yields the XP's `CMNDTM` objects. Each DTM's
 `ports()` method yields its associated `CMNPort` objects, and `port.dtm`
@@ -279,6 +345,11 @@ The live model returns one entry per DTM, in DTM-index order, using the DTM
 unit-info caches. The offline model returns one entry containing the saved
 XP domain. An unknown domain is represented by `None`.
 
+During a capture session, each live DTC's `_running` flag records whether the
+session has started trace for that DTC. This is separate from the DTC enable
+bit, which can be set during session activation. Starting or stopping selected
+DTCs also starts or stops the planned DTMs in their DTC domains.
+
 The JSON XP `dtc` field records the common DTC domain of its DTMs. JSON
 generation uses `xp.dtc_domains()` to check that all domains agree and reports
 an unsupported configuration if they differ. The offline model's singular
@@ -292,6 +363,12 @@ counts. Register offsets, bit-field layouts and exact state restoration belong
 in `cmn_devmem`. These operations are specific to the live model; the cached
 `cmn_base` topology does not emulate hardware programming.
 
+`dtm.port_base` is the first physical XP port handled by the DTM, set alongside
+`dtm.index` at construction. Add it to a DTM-local port number to obtain the
+XP-wide port number; subtract it for watchpoint programming. It is zero for
+DTM0, including single-DTM XPs, and accounts for the configured port grouping
+on multiple-DTM XPs.
+
 `dtm.dtm_save()` returns a `DTMState` containing control, PMU configuration,
 live local counter values, and all four watchpoints. It reads those registers
 once, without stopping the DTM or accessing its FIFO. The saved object belongs
@@ -299,11 +376,91 @@ to that DTM and is not a serialized topology record. Counter values are those
 observed while saving; saving/restoring cannot maintain another user's running
 measurement. The caller must own the affected debug/PMU blocks throughout.
 
-`dtm.dtm_update_control(enable=..., tag=..., sample=..., atb=...)` preserves
+`CMN.pmu_events` holds the event database selected for the mesh product and
+closest available release, or `None` when no database is available.
+`cmn_events.Events.get_event(node_type, event_number, pmu_index=0,
+filters={...})` accepts unshifted values keyed by hardware filter names.
+It normalizes node aliases and masked event IDs, returning an exact software
+alias when one is known or the base event with available filter labels.
+`Event.filters` contains hardware values; `Event.filter` and `Event.filter2`
+on software aliases are the separate Linux perf arguments. `Event.no_count`
+identifies a known selection that produces no count at its supplied settings.
+
+`dtm.device_pmu_event_sel(port, device, eix)` returns
+`(node, pmu_index, event_number, pmu_event_sel)`, or four `None` values if
+no device exports that event slot. The last item is the full selector register,
+including every filter field shared by its event slots.
+
+`dtm.pmu_event_input_selector(eis)` decodes a DTM counter input and returns
+a dictionary with `kind` (`watchpoint`, `xp`, `device` or `unknown`), `name`,
+`description`, `node`, `pmu_index`, `event_number`, `pmu_event_sel`, `event`
+and `decode_error`.
+Unresolved values are `None`. Device inputs include the full selector and
+the decoded `cmn_events.Event`; XP inputs include the extracted event number
+and name. `name` includes filter labels when no exact software alias exists.
+`dtm.pmu_event_input_selector_str(eis)` returns only its display description.
+Both forms perform the same register reads and respect discovery/isolation.
+For an accessible device whose event cannot be decoded, `decode_error` and
+the display description distinguish a missing database, missing node/PMU
+tables and an unknown code. `Events.event_lookup_error(node_type,
+event_number, pmu_index=0)` supplies these lookup diagnostics without
+accessing hardware; legacy filter mismatches have a separate explanation.
+
+`cmn_dtstat.collect_dtc_sources(C, structured=True)` groups configured DTM
+exports by DTC domain and counter, returning entries of the form
+`(dtm, local_counter, input_selector, source, notes)`. `source` is the
+dictionary above; without `structured=True` it is the display string.
+Disabled configurations remain present with status notes. Combined counters
+resolve through their first counter's input, and repeated inputs within a
+DTM are decoded once per scan.
+Pass `enabled_only=True` to skip PMU-disabled DTMs before reading their
+selected devices. DTM tracing can be disabled independently of the local PMU.
+
+`Events.decode_selector(node_type, event_number, selector, fields=None,
+pmu_index=0)` decodes that already-read selector using filter positions and
+widths loaded from the selected event file's `F` records.
+`Events.selector_fields(node_type, pmu_index=0)` returns that field mapping.
+The optional `fields` argument overrides the file's layout with a mapping
+from filter names to `(bit_position, width)` pairs. Used fields are decoded
+in bit-position order, and fields without positions in the file display as `?`.
+Neither decoding nor layout selection accesses hardware. Both DTM source
+descriptions and device PMU export listings use this decoder.
+
+The singular `get_event(..., filter=value)` argument remains for legacy
+CSV/sysfs data; it does not supply hardware filter values for a `.events`
+database. `decode_selector()` also handles legacy data, extracting its
+historical single filter byte from bits `[39:32]`.
+
+`dtm.dtm_update_control(enable=..., tag=..., tag_first=..., sample=..., atb=...)` preserves
 unspecified controls. `False` clears a feature; `None` leaves it unchanged.
 Supplying `control=saved.control` uses that saved word instead of reading the
 current register. The existing `dtm_set_control()` retains its original behavior
 of starting from the supplied word and OR-ing in requested features.
+
+`dtm.has_wp_tten()` reports whether watchpoints have individual TraceTag
+enables, without accessing hardware. The register mask is `CMN.DTM_WP_TTEN`,
+or `None` when that feature is absent. On S4 and later, use `DTMWatchpoint.tten`
+to enable TraceTag injection on an upload watchpoint while the DTM is disabled.
+The DTM-wide `tag=True` APIs reject S4 and later.
+`dtm_sets_tracetag()` also rejects S4 because its enable is in the watchpoint
+configuration; inspect the already-read watchpoint's `tten` instead.
+
+`dtm.has_tag_first()` reports first-match tagging support without accessing
+hardware. Its mask is `CMN.DTM_CONTROL_TRACE_TAG_FIRST_MATCH`, or `None` when
+absent. On supporting DTMs, `dtm_set_control(tag_first=True)` selects
+first-match tagging for all tag-enabled watchpoints. Construct the individual
+upload watchpoints with `DTMWatchpoint(..., tten=True)` and program them while
+the DTM is disabled. The shared control selects the mode; TTEN enables each
+watchpoint's tag injection. `dtm_update_control(tag_first=False)` selects
+tagging on every match, preserving other controls. Neither operation resets
+the hardware's first-match history.
+
+Capture bindings accept `cmn_capture.WatchBind(wp, port, tag="none")`,
+`tag="all"` or `tag="first"`; the existing `False` and `True` values mean
+`"none"` and `"all"`. The trace plan checks support and allocates compatible
+bindings together. First-match and all-match taggers require rotation on the
+same DTM, even when TTEN is available; either can share with an untagged
+binding when TTEN is available.
 
 Once the DTM is disabled:
 
@@ -521,6 +678,10 @@ When a CPU's LPID has not been discovered, the object uses `None` and the
 optional `lpid` field is omitted from its JSON description. An LPID of zero
 is represented explicitly and is distinct from an unknown LPID.
 
+Known placements can also be installed with `cmn_detect_cpu.py --map` or
+`--map-file`; these entries default to LPID zero when it is omitted. See
+[CPU location discovery](README-cpu-discovery.md#installing-known-cpu-mappings).
+
 This is why CPU mappings hang off device slots rather than device nodes:
 requesters are identified by CHI ids, and those ids belong to device slots.
 
@@ -543,6 +704,35 @@ For XP nodes, `coords()` returns `(X, Y, 0, 0)`.
 Ports record their base ids explicitly. Callers should prefer helper methods
 such as `port_at_id()`, `device_at_id()`, `base_id()`, `ids()` and `coords()`
 instead of deriving a port's base id by shifting its port number.
+The offline CMN indexes represented device ids by port and materialized
+`CMNDevice` objects by id. D0 and CAL slots can be represented before their
+device objects are materialized.
+XP node ids reserve three low bits. In the older device-id layout, those
+three bits are split into a port number and a device number within that port:
+either two port bits and one device bit, or one port bit and two device bits.
+FlatID instead numbers devices across the XP without encoding the port. Live
+discovery chooses `id_device_bits` from the largest device population on any
+XP: one bit for up to two devices, two for up to four, three for up to eight,
+and four for up to sixteen. The offline mesh records this width (default 3);
+its ports record base ids explicitly. The older layout sizes both coordinate
+fields from the larger mesh dimension, while FlatID sizes X and Y
+independently. Thus an XP and its devices can have different ids at
+the same `(X, Y)`. Cached JSON includes `config.id_device_bits` when the
+value differs from the default, `config.flatid` when FlatID is used, and
+`config.id_y_bits` when the recorded Y-coordinate field differs from the
+width inferred from the mesh dimensions.
+For FlatID or a nondefault `id_device_bits` value, ports need a recorded
+`base_id` or device slots; a port base cannot be inferred from its XP id.
+An explicitly supplied XP id is retained even if its coordinate fields have
+different widths from those inferred from the mesh dimensions. When no id is
+supplied, the offline model derives one from the coordinates.
+Use `xy_xp_id()` and `xp_id_xy()` for XP ids in either model;
+`xp_id_xy()` rejects ids with any of the low three bits set. The offline
+model also provides `xy_device_id()` and `device_id_xy()`, using
+`id_device_bits` for device ids. These conversions use the configured field
+widths. For an explicitly supplied ID with a different layout, inspect its
+XP or device object for the recorded coordinates. Live device lookups use
+the discovered slot objects.
 
 Missing mesh lookups use `None`: `CMN.XP()`, `CMN.port_at_id()` and
 `CMN.device_at_id()` do not assert merely because an id is absent.
@@ -596,7 +786,7 @@ roles:
   discovery, node-isolation handling, DTM/DTC control, and other hardware
   behavior.
 
-When adding features, prefer to preserve this split:
+When adding features, we aim to preserve this split:
 
 - topology concepts belong in the shared model
 - live register behavior belongs in `cmn_devmem`

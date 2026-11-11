@@ -11,6 +11,11 @@ from __future__ import print_function
 
 import sys
 
+try:
+    integer_types = (int, long)
+except NameError:
+    integer_types = (int,)
+
 import chi_spec
 
 
@@ -569,10 +574,12 @@ class CMNFlit:
                     if self.tagop != 0:
                         s += " tagop=%s" % tagop_str(self.tagop)
                 if self.tag is not None and (self.tag or self.tagop):
-                    # The Tag field for a 32-byte DAT flit is two 4-bit tags
-                    s += " tag=%02x" % self.tag
+                    # S4 reserves four tags, each with its own update bit.
+                    tag_width = 4 if self.group.cfg._cmn_base_type >= BASE_TYPE_S4 else 2
+                    s += " tag=%0*x" % (tag_width, self.tag)
                 if self.tu is not None and self.tu != 0:
-                    s += " tu=%s" % ["00", "01", "10", "11"][self.tu]
+                    tu_format = "04b" if self.group.cfg._cmn_base_type >= BASE_TYPE_S4 else "02b"
+                    s += " tu=%s" % format(self.tu, tu_format)
                 if self.poison != 0:
                     s += " poison=0x%x" % (self.poison)
             else:
@@ -641,12 +648,12 @@ assert bytes_as_int(b"\x12\x34\x56\x78\x9a") == 0x9a78563412
 assert bytes_as_int(bytearray(b"\x12\x34\x56\x78\x9a")) == 0x9a78563412
 
 
-def bytes_as_chunks(payload, size):
+def bytes_as_chunks(payload, size, valid_bits=None):
     """
     Iterate through chunks of a given bit width - an array of packed data.
     This is used for format 0/1/2 decode.
     """
-    n_chunks = (len(payload)*8) // size
+    n_chunks = min(len(payload)*8, valid_bits if valid_bits is not None else len(payload)*8) // size
     x = bytes_as_int(payload)
     for i in range(n_chunks):
         yield BITS(x, (n_chunks-i-1)*size, size)
@@ -657,6 +664,7 @@ PART_CMN650   = 0x436
 PART_CMN700   = 0x43c
 PART_CI700    = 0x43a
 PART_CMN_S3   = 0x43e
+PART_CMN_S4   = 0x410
 
 
 _cmn_product_names = {
@@ -665,6 +673,7 @@ _cmn_product_names = {
     PART_CMN700: "CMN-700",
     PART_CI700:  "CI-700",
     PART_CMN_S3: "CMN S3",
+    PART_CMN_S4: "CMN S4",
 }
 
 
@@ -674,6 +683,7 @@ _chi_version_default = {
     PART_CMN700: 5,
     PART_CI700:  5,
     PART_CMN_S3: 7,
+    PART_CMN_S4: 7,
 }
 
 
@@ -686,7 +696,7 @@ BASE_TYPE_600   = 0
 BASE_TYPE_650   = 1
 BASE_TYPE_700   = 2
 BASE_TYPE_S3    = 3
-BASE_TYPE_ALTA  = 4      # variant
+BASE_TYPE_S4    = 4
 
 
 _base_type_map = {
@@ -695,6 +705,7 @@ _base_type_map = {
     PART_CMN700:  BASE_TYPE_700,
     PART_CI700:   BASE_TYPE_700,
     PART_CMN_S3:  BASE_TYPE_S3,
+    PART_CMN_S4:  BASE_TYPE_S4,
 }
 
 
@@ -704,6 +715,8 @@ def trace_base_type(cmn_product_id, cmn_product_revision):
     """
     # CMN S3 r0 is like CMN-700 (12-bit MPAM id)
     _cmn_base_type = _base_type_map[cmn_product_id]
+    if cmn_product_id == PART_CMN_S3 and cmn_product_revision is None:
+        raise ValueError("CMN S3 trace decoding requires a revision")
     if cmn_product_id == PART_CMN_S3 and cmn_product_revision < 2:
         _cmn_base_type = BASE_TYPE_700
     return _cmn_base_type
@@ -725,7 +738,8 @@ class CMNTraceConfig:
         if cmn_product_id in [600, 650, 700]:
             # legacy compatibility
             cmn_product_id = {600: PART_CMN600, 650: PART_CMN650, 700: PART_CMN700}[cmn_product_id]
-        assert cmn_product_id in _cmn_product_names, "unexpected CMN product id: %s" % cmn_product_id
+        if cmn_product_id not in _cmn_product_names:
+            raise ValueError("unexpected CMN product id: %s" % cmn_product_id)
         self.cmn_product_id = cmn_product_id
         self.cmn_product_revision = cmn_product_revision
         if chi_version is None:
@@ -734,20 +748,28 @@ class CMNTraceConfig:
         self.has_MPAM = has_MPAM
         if pa_width is None:
             pa_width = 48 if cmn_product_id == PART_CMN600 else 52
-        assert 3 <= pa_width <= 52, "invalid physical address width: %s" % pa_width
+        if not isinstance(pa_width, integer_types) or isinstance(pa_width, bool) or not 3 <= pa_width <= 52:
+            raise ValueError("invalid physical address width: %s" % pa_width)
         self.pa_width = pa_width
         if req_pa_width is None:
             req_pa_width = 48 if cmn_product_id == PART_CMN600 else 52
-        assert 3 <= req_pa_width <= 52, (
-            "invalid REQ physical address width: %s" % req_pa_width)
+        if not isinstance(req_pa_width, integer_types) or isinstance(req_pa_width, bool) or not 3 <= req_pa_width <= 52:
+            raise ValueError("invalid REQ physical address width: %s" % req_pa_width)
         self.req_pa_width = req_pa_width
         if rsvdc_width is None:
             rsvdc_width = 8
-        assert 0 <= rsvdc_width <= 255, "invalid RSVDC width: %s" % rsvdc_width
+        if not isinstance(rsvdc_width, integer_types) or isinstance(rsvdc_width, bool) or not 0 <= rsvdc_width <= 255:
+            raise ValueError("invalid RSVDC width: %s" % rsvdc_width)
         self.rsvdc_width = rsvdc_width
         self._cmn_base_type = trace_base_type(self.cmn_product_id, self.cmn_product_revision)
-        # Assume CMN S3 r1 MPAM is 15-bit not 12-bit
+        if cmn_product_id == PART_CMN_S4 and chi_version != 7:
+            raise ValueError("CMN S4 trace decoding requires CHI-G")
+        self.nodeid_bits = 16 if self._cmn_base_type == BASE_TYPE_S4 else 11
+        if self._cmn_base_type in [BASE_TYPE_S3, BASE_TYPE_S4] and chi_version not in [6, 7]:
+            raise ValueError("CMN S3 r2/r5 and S4 trace decoding requires CHI-F or CHI-G")
         self._MPAM_bits = 0 if not self.has_MPAM else [0, 11, 11, 15, 15][self._cmn_base_type]
+        if self.has_MPAM and self._cmn_base_type in [BASE_TYPE_S3, BASE_TYPE_S4] and chi_version == 6:
+            self._MPAM_bits = 12
 
     def __str__(self):
         s = _cmn_product_names[self.cmn_product_id]
@@ -773,7 +795,12 @@ def trace_size_bits(cfg):
     """
     Trace payload size for different versions of CMN. This assumes no trailing-zero compression.
     """
-    return [144, 160, 176, 196][cfg._cmn_base_type]
+    if cfg._cmn_base_type in [BASE_TYPE_S3, BASE_TYPE_S4] and cfg.chi_version == 6:
+        return 176
+    return [144, 160, 176, 196, 211][cfg._cmn_base_type]
+
+
+DATA_FORMATS = [5, 6, 7, 3]             # 7 and 3 are new in CMN S4 for 512-bit DAT
 
 
 class CMNFlitGroup:
@@ -787,7 +814,7 @@ class CMNFlitGroup:
     """
     def __init__(self, cfg, format=None, VC=None, chn_num=0, payload=None, WP=None, DEV=None, cmn_seq=None, nodeid=None, lossy=False, cc=None, debug=False, packet_start_pos=None, trace_stream_id=None):
         self.cfg = cfg
-        self.txnid_bits = [8, 10, 12, 12][self.cfg._cmn_base_type]
+        self.txnid_bits = [8, 10, 12, 12, 12][self.cfg._cmn_base_type]
         self.txnid_fmt = "%02x" if self.txnid_bits <= 8 else "%03x"
         self.format = format    # CMN flit encoding format, needed for decode
         self.VC = VC            # REQ/RSP/SNP/DAT, needed for decode
@@ -892,14 +919,15 @@ class CMNFlitGroup:
                 if self.format == 0:
                     s += "TXNID: "
                 s += sep.join([f.long_str() for f in self.flits])
-            elif self.format in [5, 6]:
+            elif self.format in DATA_FORMATS:
                 # Data payload, either low or high 16 bytes of a DAT packet
                 # Should be 16 bytes: spec suggests trailing zeroes will be stripped,
                 # but in fact we see 22 bytes
                 data = self.payload[:16]
+                piece = DATA_FORMATS.index(self.format)
                 if len(data) < 16:
                     data += (b"\x00" * (16 - len(data)))
-                s += "DATA(%s):  %32s  |%s|" % (["lo", "hi"][self.format-5], bytes_hex(reversed(data)), bytes_chars(data))
+                s += "DATA(%s):  %32s  |%s|" % (["lo", "hi", "q2", "q3"][piece], bytes_hex(reversed(data)), bytes_chars(data))
             else:
                 s += "raw: %s (format=%s)" % (bytes_hex(self.payload), self.format)
         return s
@@ -915,27 +943,32 @@ class CMNFlitGroup:
         assert self.format is not None, "flit capture format must be known for decode"
         if self.format == 0:
             # TXNID only. CMN-600: 18 x 8-bit; CMN-650: 16 x 10-bit; CMN-700: 14 x 12-bit.
-            for txnid in bytes_as_chunks(payload, self.txnid_bits):
+            valid_bits = trace_size_bits(self.cfg)
+            if self.cfg._cmn_base_type == BASE_TYPE_S4:
+                valid_bits = 16 * self.txnid_bits
+            for txnid in bytes_as_chunks(payload, self.txnid_bits, valid_bits):
                 self.add_flit(CMNFlit(txnid=txnid))
         elif self.format == 1:
             # TXNID + opcode up to 9 times
             # Note for fuzzing: the opcode field is wider than might make sense for the CHI channel
-            osize = [6, 6, 7, 7][self.cfg._cmn_base_type]
-            csize = [16, 16, 19, 19][self.cfg._cmn_base_type]
-            for bb in bytes_as_chunks(payload, csize):
+            osize = [6, 6, 7, 7, 7][self.cfg._cmn_base_type]
+            csize = [16, 16, 19, 19, 19][self.cfg._cmn_base_type]
+            for bb in bytes_as_chunks(payload, csize, trace_size_bits(self.cfg)):
                 txnid = BITS(bb, 0, self.txnid_bits)
                 opcode = BITS(bb, self.txnid_bits, osize)
                 self.add_flit(CMNFlit(txnid=txnid, opcode=opcode))
         elif self.format == 2:
             # TXNID + opcode + source ID + target ID, up to 4 times
-            osize = [6, 6, 7, 7][self.cfg._cmn_base_type]
-            csize = [36, 40, 44, 44][self.cfg._cmn_base_type]
-            for p in bytes_as_chunks(payload, csize):
+            osize = [6, 6, 7, 7, 7][self.cfg._cmn_base_type]
+            csize = [36, 40, 44, 44, 54][self.cfg._cmn_base_type]
+            for p in bytes_as_chunks(payload, csize, trace_size_bits(self.cfg)):
                 txnid = BITS(p, 0, self.txnid_bits)
                 opcode = BITS(p, self.txnid_bits, osize)
-                srcid = BITS(p, self.txnid_bits+osize, 11)
-                tgtid = BITS(p, self.txnid_bits+osize+11, 11)
+                srcid = BITS(p, self.txnid_bits+osize, self.cfg.nodeid_bits)
+                tgtid = BITS(p, self.txnid_bits+osize+self.cfg.nodeid_bits, self.cfg.nodeid_bits)
                 self.add_flit(CMNFlit(txnid=txnid, opcode=opcode, srcid=srcid, tgtid=tgtid))
+        elif self.format == 4 and self.cfg._cmn_base_type in [BASE_TYPE_S3, BASE_TYPE_S4]:
+            self._decode_s3_s4(bytes_as_int(payload))
         elif self.format == 4:
             # decode according to "Trace data formats" table:
             #   CMN-600 Table 5-8 etc.
@@ -961,14 +994,6 @@ class CMNFlitGroup:
                     f.txnid = BITS(x,26,12)
                     f.opcode = BITS(x,62,7)
                     f.tracetag = BIT(x,98)
-                elif self.cfg._cmn_base_type in [BASE_TYPE_700, BASE_TYPE_S3]:
-                    f.txnid = BITS(x,26,12)
-                    f.opcode = BITS(x,62,7)
-                    f.tracetag = BIT(x,99)
-                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
-                    f.txnid = BITS(x,26,12)
-                    f.opcode = BITS(x,62,7)
-                    f.tracetag = BIT(x,147)
                 else:
                     assert False, "bad base type"
             elif self.VC == RSP:
@@ -982,14 +1007,10 @@ class CMNFlitGroup:
                     f.txnid = BITS(x,26,10)
                     f.opcode = BITS(x,36,4)
                     f.tracetag = BIT(x,65)
-                elif self.cfg._cmn_base_type in [BASE_TYPE_700, BASE_TYPE_S3]:
+                elif self.cfg._cmn_base_type == BASE_TYPE_700:
                     f.txnid = BITS(x,26,12)
                     f.opcode = BITS(x,38,5)
                     f.tracetag = BIT(x,70)
-                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
-                    f.txnid = BITS(x,26,12)
-                    f.opcode = BITS(x,38,5)
-                    f.tracetag = BIT(x,72)
                 else:
                     assert False, "bad base type"
             elif self.VC == SNP:
@@ -1007,14 +1028,6 @@ class CMNFlitGroup:
                     f.txnid = BITS(x,15,12)
                     f.opcode = BITS(x,50,5)
                     f.tracetag = BIT(x,58)
-                elif self.cfg._cmn_base_type == BASE_TYPE_S3:
-                    f.txnid = BITS(x,15,12)
-                    f.opcode = BITS(x,50,5)
-                    f.tracetag = BIT(x,59)
-                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
-                    f.txnid = BITS(x,15,12)
-                    f.opcode = BITS(x,50,5)
-                    f.tracetag = BITS(x,104)
                 else:
                     assert False, "bad base type"
             elif self.VC == DAT:
@@ -1031,11 +1044,7 @@ class CMNFlitGroup:
                 elif self.cfg._cmn_base_type == BASE_TYPE_700:
                     f.txnid = BITS(x,26,12)
                     f.opcode = BITS(x,49,4)
-                    f.tracetag = BIT(x,95)
-                elif self.cfg._cmn_base_type in [BASE_TYPE_S3, BASE_TYPE_ALTA]:
-                    f.txnid = BITS(x,26,12)
-                    f.opcode = BITS(x,49,4)
-                    f.tracetag = BIT(x,102)
+                    f.tracetag = BIT(x,93)        # TRM: 95
                 else:
                     assert False, "bad base type"
             else:
@@ -1111,55 +1120,6 @@ class CMNFlitGroup:
                         f.mpam = BITS(x,99,11)
                         f.addr = BITS(x,110,self.cfg.req_pa_width)
                         f.rsvdc = BITS(x,110+self.cfg.req_pa_width,self.cfg.rsvdc_width)
-                elif self.cfg._cmn_base_type == BASE_TYPE_S3:
-                    # CMN S3 r1
-                    f.returnnid = BITS(x,38,11)
-                    f.returntxnid = BITS(x,50,12)
-                    f.size = BITS(x,69,3)
-                    f.NS = BIT(x,72)
-                    f.NSE = BIT(x,73)
-                    f.likelyshared = BIT(x,74)
-                    f.allowretry = BIT(x,75)
-                    f.order = BITS(x,76,2)
-                    f.pcrdtype = BITS(x,78,4)
-                    f.memattr = BITS(x,82,4)
-                    f.snpattr = BIT(x,86)
-                    f.lpid = BITS(x,87,5)
-                    f.excl_snoopme = BIT(x,95)
-                    f.expcompack = BIT(x,96)
-                    f.tracetag = BIT(x,99)
-                    if not self.cfg.has_MPAM:
-                        f.mpam = None
-                        f.addr = BITS(x,121,self.cfg.req_pa_width)
-                        f.rsvdc = BITS(x,121+self.cfg.req_pa_width,self.cfg.rsvdc_width)
-                    else:
-                        f.mpam = BITS(x,100,15)
-                        f.addr = BITS(x,136,self.cfg.req_pa_width)
-                        f.rsvdc = BITS(x,136+self.cfg.req_pa_width,self.cfg.rsvdc_width)
-                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
-                    f.returnnid = BITS(x,38,11)
-                    f.returntxnid = BITS(x,50,12)
-                    f.size = BITS(x,69,3)
-                    f.NS = BIT(x,120)
-                    f.NSE = BIT(x,121)
-                    f.likelyshared = BIT(x,122)
-                    f.allowretry = BIT(x,123)
-                    f.order = BITS(x,124,2)
-                    f.pcrdtype = BITS(x,126,4)
-                    f.memattr = BITS(x,130,4)
-                    f.snpattr = BIT(x,134)
-                    f.lpid = 0     # Not present
-                    f.excl_snoopme = BIT(x,143)
-                    f.expcompack = BIT(x,144)
-                    f.tagop = BITS(x,145,2)
-                    f.tracetag = BIT(x,147)
-                    f.mpam = BITS(x,148,12)
-                    f.mecid = BITS(x,160,16)
-                    f.rsvdc = BITS(x,176,8)
-                    # addr now occurs in the middle of the flit.
-                    # We assume 48 bits, but may need to check.
-                    assert self.cfg.req_pa_width == 48
-                    f.addr = BITS(x,72,48)
                 else:
                     assert False, "bad base type"
             elif self.VC == RSP:
@@ -1180,7 +1140,7 @@ class CMNFlitGroup:
                     f.dbid = BITS(x,51,10)
                     f.pcrdtype = BITS(x,61,4)
                     f.devevent = BITS(x,66,2)
-                elif self.cfg._cmn_base_type in [BASE_TYPE_700, BASE_TYPE_S3]:
+                elif self.cfg._cmn_base_type == BASE_TYPE_700:
                     fws_ds = BITS(x,43,3)
                     f.resperr = BITS(x,46,2)
                     f.resp = BITS(x,48,3)
@@ -1188,15 +1148,6 @@ class CMNFlitGroup:
                     f.dbid = BITS(x,54,12)
                     f.pcrdtype = BITS(x,66,4)
                     f.devevent = BITS(x,71,2)
-                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
-                    f.resperr = BITS(x,43,2)
-                    f.resp = BITS(x,45,3)
-                    fws_ds = BITS(x,48,3)
-                    f.cbusy = BITS(x,51,3)
-                    f.dbid = BITS(x,54,12)
-                    f.pcrdtype = BITS(x,66,4)
-                    f.devevent = None
-                    f.tagop = BITS(x,70,2)
                 else:
                     assert False, "bad bsae type"
                 if f.opcode == 9:
@@ -1232,27 +1183,6 @@ class CMNFlitGroup:
                     else:
                         f.mpam = BITS(x,59,11)
                         f.addr = BITS(x,70,self.cfg.pa_width-3) << 3
-                elif self.cfg._cmn_base_type == BASE_TYPE_S3:
-                    f.fwdnid = BITS(x,27,11)
-                    f.fwdtxnid = BITS(x,38,10)
-                    f.NS = BIT(x,55)
-                    f.NSE = BIT(x,56)
-                    if not self.cfg.has_MPAM:
-                        f.addr = BITS(x,76,self.cfg.pa_width-3) << 3
-                        f.mpam = None
-                    else:
-                        f.mpam = BITS(x,60,15)
-                        f.addr = BITS(x,91,self.cfg.pa_width-3) << 3
-                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
-                    f.fwdnid = BITS(x,27,11)
-                    f.fwdtxnid = BITS(x,38,12)
-                    f.NS = BIT(x,100)
-                    f.NSE = BIT(x,101)
-                    assert self.cfg.pa_width == 48
-                    f.addr = BITS(x,55,self.cfg.pa_width-3) << 3
-                    assert self.cfg._MPAM_bits == 12
-                    f.mpam = BITS(x,105,12)
-                    f.mecid = BITS(x,117,16)
                 else:
                     assert False, "bad base type"
             elif self.VC == DAT:
@@ -1296,47 +1226,13 @@ class CMNFlitGroup:
                     f.dbid = BITS(x,65,12)
                     f.ccid = BITS(x,77,2)
                     f.dataid = BITS(x,79,2)
-                    f.rsvdc = BITS(x,96,8)
-                    f.poison = BITS(x,104,4)
-                    f.chunkv = BITS(x,108,2)
-                    f.devevent = BITS(x,110,2)
-                elif self.cfg._cmn_base_type == BASE_TYPE_S3:
-                    # S3 r2
-                    f.homenid = BITS(x,38,11)
-                    f.resperr = BITS(x,53,2)
-                    f.resp = BITS(x,55,3)
-                    fws_ds = BITS(x,58,8)
-                    f.cbusy = BITS(x,67,3)
-                    f.dbid = BITS(x,70,12)
-                    f.ccid = BITS(x,86,2)
-                    f.dataid = BITS(x,88,2)
-                    f.tagop = BITS(x,90,2)
-                    f.tag = BITS(x,92,8)
-                    f.tu = BITS(x,100,2)
-                    f.poison = BITS(x,103,4)
-                    f.chunkv = BITS(x,107,2)
-                    f.devevent = BITS(x,109,2)
-                    f.rsvdc = BITS(x,115,8)
-                elif self.cfg._cmn_base_type == BASE_TYPE_ALTA:
-                    f.homenid = BITS(x,38,11)
-                    f.resperr = BITS(x,53,2)
-                    f.resp = BITS(x,55,3)
-                    fws_ds = BITS(x,58,8)
-                    f.cbusy = BITS(x,67,3)
-                    f.mecid = BITS(x,70,16)
-                    #f.dbid = BITS(x,70,12)
-                    f.ccid = BITS(x,86,2)
-                    f.dataid = BITS(x,88,2)
-                    f.tagop = BITS(x,90,2)
-                    f.tag = BITS(x,92,8)
-                    f.tu = BITS(x,100,2)
-                    f.cah = BIT(x,103)
-                    f.numdat = BITS(x,104,2)
-                    f.replicate = BIT(x,106)
-                    #f.poison = BITS(x,103,4)
-                    #f.chunkv = BITS(x,107,2)
-                    #f.devevent = BITS(x,109,2)
-                    f.rsvdc = BITS(x,107,self.cfg.rsvdc_width)
+                    f.tagop = BITS(x,81,2)
+                    f.tag = BITS(x,83,8)
+                    f.tu = BITS(x,91,2)           # TRM: 94:81 (sic; width 4)
+                    f.rsvdc = BITS(x,102,8)       # TRM: 103:96
+                    f.poison = BITS(x,94,4)       # TRM: 107:104
+                    f.chunkv = BITS(x,98,2)       # TRM: 109:108
+                    f.devevent = BITS(x,100,2)    # TRM: 111:110
                 else:
                     assert False, "bad base type"
                 if f.opcode == 6:
@@ -1352,6 +1248,126 @@ class CMNFlitGroup:
                         f.datasource = None
             else:
                 assert False, "unreachable (bad channel %s)" % self.VC
+
+
+    def _decode_s3_s4(self, x):
+        """Decode full metadata for S3 r2/r5 and S4.
+
+        The formats have the same CHI field order, with wider fixed NodeID
+        and DAT metadata slots in S4. MPAM is omitted when disabled.
+        CHI field meanings are defined in Arm AMBA CHI specification IHI0050.
+        """
+        f = CMNFlit()
+        n = self.cfg.nodeid_bits
+        g = self.cfg.chi_version >= 7
+        mp = self.cfg._MPAM_bits
+        f.qos = BITS(x, 0, 4)
+        if self.VC == SNP:
+            f.srcid = BITS(x, 4, n)
+            f.tgtid = None
+            f.txnid = BITS(x, 4+n, 12)
+        else:
+            f.tgtid = BITS(x, 4, n)
+            f.srcid = BITS(x, 4+n, n)
+            f.txnid = BITS(x, 4+2*n, 12)
+        if self.VC == REQ:
+            b = 3*(n-11)
+            f.returnnid = BITS(x, 38+2*(n-11), n)
+            f.stashnidvalid = BIT(x, 49+b)
+            f.returntxnid = BITS(x, 50+b, 12)
+            f.opcode = BITS(x, 62+b, 7)
+            f.size = BITS(x, 69+b, 3)
+            f.NS = BIT(x, 72+b)
+            f.NSE = BIT(x, 73+b)
+            f.likelyshared = BIT(x, 74+b)
+            f.allowretry = BIT(x, 75+b)
+            f.order = BITS(x, 76+b, 2)
+            f.pcrdtype = BITS(x, 78+b, 4)
+            f.memattr = BITS(x, 82+b, 4)
+            f.snpattr = BIT(x, 86+b)
+            f.lpid = BITS(x, 87+b, 5)
+            f.groupidext = BITS(x, 92+b, 3)
+            f.excl_snoopme = BIT(x, 95+b)
+            f.expcompack = BIT(x, 96+b)
+            f.tagop = BITS(x, 97+b, 2)
+            f.tracetag = BIT(x, 99+b)
+            f.mpam = BITS(x, 100+b, mp) if mp else None
+            f.pbha = BITS(x, 100+b+mp, 4)
+            a = 104+b+mp
+            if g:
+                f.mecid = BITS(x, a, 16)
+                f.secsid = BIT(x, a+16)
+                a += 17
+            f.addr = BITS(x, a, self.cfg.req_pa_width)
+            # S4 CHI-G reserves all 52 address bits even for narrower PAs.
+            aw = 52 if n == 16 and g else self.cfg.req_pa_width
+            f.rsvdc = BITS(x, a+aw, 8)
+        elif self.VC == RSP:
+            b = 2*(n-11)
+            f.opcode = BITS(x, 38+b, 5)
+            f.fwdstate = BITS(x, 43+b, 3) if f.opcode == 9 else None
+            f.resperr = BITS(x, 46+b, 2)
+            f.resp = BITS(x, 48+b, 3)
+            f.cbusy = BITS(x, 51+b, 3)
+            f.dbid = BITS(x, 54+b, 12)
+            f.pcrdtype = BITS(x, 66+b, 4)
+            f.tracetag = BIT(x, 70+b)
+            f.devevent = BITS(x, 71+b, 2)
+            f.cg = BIT(x, 73+b)
+            f.tagop = BITS(x, 74+b, 2)
+            f.condcomp = BIT(x, 76+b)
+        elif self.VC == SNP:
+            b = 2*(n-11)
+            f.fwdnid = BITS(x, 27+(n-11), n)
+            f.fwdtxnid = BITS(x, 38+b, 12)
+            f.opcode = BITS(x, 50+b, 5)
+            f.NS = BIT(x, 55+b)
+            f.NSE = BIT(x, 56+b)
+            f.donotgotosd = BIT(x, 57+b)
+            f.rettosrc = BIT(x, 58+b)
+            f.tracetag = BIT(x, 59+b)
+            f.mpam = BITS(x, 60+b, mp) if mp else None
+            a = 60+b+mp
+            if g:
+                f.mecid = BITS(x, a, 16)
+                a += 16
+            f.addr = BITS(x, a, self.cfg.pa_width-3) << 3
+        elif self.VC == DAT:
+            b = 3*(n-11)
+            f.homenid = BITS(x, 38+2*(n-11), n)
+            f.opcode = BITS(x, 49+b, 4)
+            f.resperr = BITS(x, 53+b, 2)
+            f.resp = BITS(x, 55+b, 3)
+            fws = BITS(x, 58+b, 8 if g else 5)
+            if g:
+                f.datapull = BIT(x, 66+b)
+            f.cbusy = BITS(x, (67 if g else 63)+b, 3)
+            f.dbid = BITS(x, (70 if g else 66)+b, 16 if g else 12)
+            a = (86 if g else 78)+b
+            f.ccid = BITS(x, a, 2)
+            f.dataid = BITS(x, a+2, 2)
+            f.tagop = BITS(x, a+4, 2)
+            tw, uw, pw, cw = (16, 4, 8, 4) if n == 16 else (8, 2, 4, 2)
+            f.tag = BITS(x, a+6, tw)
+            f.tu = BITS(x, a+6+tw, uw)
+            a += 6+tw+uw
+            f.tracetag = BIT(x, a)
+            f.poison = BITS(x, a+1, pw)
+            f.chunkv = BITS(x, a+1+pw, cw)
+            a += 1+pw+cw
+            f.devevent = BITS(x, a, 2)
+            f.cah = BIT(x, a+2)
+            a += 3
+            if g:
+                f.numdat = BITS(x, a, 2)
+                f.replicate = BIT(x, a+2)
+                a += 3
+            f.rsvdc = BITS(x, a, 8)
+            f.fwdstate = fws if f.opcode == 6 else None
+            f.datasource = fws if f.opcode != 6 and (f.opcode in [4, 11, 1, 5] or fws) else None
+        else:
+            raise ValueError("CHI channel must be known for format-4 decode")
+        self.add_flit(f)
 
 
 class CMNFlitGroupDeduper:

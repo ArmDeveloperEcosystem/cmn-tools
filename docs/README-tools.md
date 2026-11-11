@@ -22,15 +22,30 @@ cmn_discover.py
 
 cmn_detect_cpu.py
   Discover where Linux CPUs sit in the CMN topology, updating the JSON
-  system description with CPU mappings.
+  system description with CPU mappings, or install known mappings manually.
 
   Use this after cmn_discover.py if you want later tools to accept
   selectors such as cpu#0.
 
       python src/cmn_detect_cpu.py --update
+      python src/cmn_detect_cpu.py --map 123=m0:0x380 31=delete
 
   See [README-cpu-discovery.md](README-cpu-discovery.md) for the discovery
-  approach, command-line workflows, and implementation.
+  approach, command-line workflows, and limitations.
+
+cmn_detect_dn_sam.py
+  Populate requester DN domains from accessible RN-SAM status registers on
+  CMN-700 and later. Domains are recorded as DN logical IDs.
+
+      sudo python src/cmn_detect_dn_sam.py
+      sudo python src/cmn_detect_dn_sam.py --no-update
+
+cmn_detect_dn.py
+  Infer an RN-F's DN domain by counting its DVMOp requests at DN ports with
+  Linux arm_cmn PMU watchpoints. Run a workload issuing DVMOps during sampling.
+
+      python src/cmn_detect_dn.py --rnf 0x100 --dry-run
+      sudo python src/cmn_detect_dn.py --rnf 0x100
 
 cmn_detect_c2c.py
   Infer chip-to-chip connections by tagging traffic to each source CCG and
@@ -207,6 +222,9 @@ cmn_dtstat.py
   counter pairs are also marked. DTMs whose domain cannot be determined
   (for example, CMN-600 with multiple DTCs) appear separately under `DTC?`.
   An isolated device cannot be decoded, but its DTM input selector is retained.
+  Undecoded device events distinguish a missing database, absent node/PMU
+  event tables, and unknown event codes. Device export listings identify
+  the selector's PMU index as well as its event slots.
 
   This is a read-only view of current hardware programming, using the same
   configuration access paths as `--dtms`. It does not stop counters or request
@@ -262,6 +280,13 @@ cmn_perfdecode.py
       python src/cmn_perfdecode.py --cmn-version=cmn-700 \
           'arm_cmn/watchpoint_up,wp_chn_sel=0,wp_val=0x80000000,wp_mask=0xfffffff01fffffff,wp_grp=0/'
 
+cmn_detect_mem_zones.py
+  Discover HN-F/HN-S and SN-F memory zones from REQ traffic using perf
+  watchpoints. Complete results are cached separately from the system JSON.
+
+      python src/cmn_detect_mem_zones.py --diagram --distance
+      python src/cmn_detect_mem_zones.py --table
+
 cmn_topdown.py
   Run top-down CMN traffic analysis using PMU events and recipes.
 
@@ -274,10 +299,11 @@ cmn_topdown.py
 cmn_events.py
   Inspect or generate CMN PMU event definition data.
 
-  Use this when working on event CSV files or checking event names
-  available from the event database.
+  List available event catalogues and counts, or check event names in
+  `.events` and legacy CSV files. Product lookup selects the closest release.
 
       python src/cmn_events.py --list
+      python src/cmn_events.py --cmn-product 43c --cmn-revision r2p0 --list
 
 
 Trace and capture
@@ -305,7 +331,7 @@ cmn_latency.py
 
 cmn_trace_atb.py
   Capture CMN trace through a platform's CoreSight ATB network into
-  on-chip trace buffers, then collect and decode it.
+  on-chip trace buffers or ETR system-memory buffers, then collect and decode it.
 
   Use this for self-hosted ATB capture when a platform-specific
   ``cmn-coresight-atb.json`` topology file is available.

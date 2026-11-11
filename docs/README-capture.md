@@ -17,6 +17,34 @@ For larger self-hosted captures routed through CoreSight ATB, see
 by Arm Debugger, see [README-capture-ATB.md](README-capture-ATB.md).
 
 
+Product and system configuration
+--------------------------------
+
+CMN products and their revisions share the same capture workflow, but differ
+in available features, watchpoint layouts and trace formats. The tools select
+these from the product, revision and system configuration. Use symbolic
+watchpoint expressions; raw match values and masks are not portable between
+all products, releases or configurations.
+
+The tool automatically discovers and uses the available identification and
+configuration values. You normally do not need to supply CHI version, MPAM
+enablement, address widths or channel counts for live capture. It may need
+you to provide options that it cannot determine, such as the port grouping
+when multiple debug/trace monitors (DTMs) share an XP. The
+[configuration input table](README-cmn-products.md#live-capture-values-the-user-may-need-to-supply)
+lists when each input is needed and what happens if it is omitted.
+
+For direct register tools, `CMN_PRODUCT_VERSION` can override product and
+revision identification and supply options such as `dtm_ports=4`. It applies
+to every mesh opened by the process, so select meshes with the same
+configuration. Keep that configuration with saved traces for offline
+decoding. Offline commands differ in their accepted options and defaults;
+see [offline decoding configuration](README-cmn-products.md#offline-decoding-configuration-and-defaults).
+
+See [CMN products and releases](README-cmn-products.md) for the feature
+progression, configuration choices and current product-specific limitations.
+
+
 CHI basics
 ----------
 CHI is the AMBA Coherent Hub Interface. It is the protocol used in
@@ -43,16 +71,18 @@ SNP or DAT). It can also match selected CHI fields.
 A watchpoint match causes the CHI flit header to be captured into
 a small FIFO in the XP. The --format option selects one of several
 different levels of detail that the FIFO can be programmed to capture.
-Depending on the level of detail, a different number of FIFO entries
-are available.
+More compact formats hold more captured flits in each FIFO entry.
 
-Format 0: transaction id x 18
+Format 0: transaction IDs
 
-Format 1: (opcode, transaction id) x 9
+Format 1: (opcode, transaction ID)
 
-Format 2: (srcid, tgtid, opcode, transaction id) x 4
+Format 2: (SrcID, TgtID, opcode, transaction ID)
 
 Format 4: (various CHI header fields) x 1
+
+The number of compact records per FIFO entry depends on the product and
+configuration; the decoder selects the appropriate layout.
 
 Format 4 is the default, and provides the most insights into what
 types of transactions and responses are occurring in the interconnect.
@@ -117,9 +147,8 @@ Setting up watchpoints
 ----------------------
 Watchpoints can be set up on multiple ports and channels.
 cmn_capture.py allows any number of watchpoints to be specified,
-but physically the CMN only implements a set number of watchpoints -
-usually four per crosspoint, where two are for upload (devices
-uploading packets into the interconnect) and two for download
+but physically each DTM implements four watchpoints, where two are for
+upload (devices uploading packets into the interconnect) and two for download
 (devices receiving packets from the interconnect).
 
 cmn_capture allows watchpoint expressions to specify a group of
@@ -215,17 +244,24 @@ match both, it will be captured in both.
 
 Watchpoint rotation
 -------------------
-In CMN, the mesh crosspoints only implemnet two upload and two
-download watchpoints; at any given time each of these is bound to
-a port and channel.
+Each DTM implements two upload and two download watchpoints; at any given
+time each of these is bound to a port and channel. An XP can have multiple
+DTMs, each serving a group of its ports.
 
 If more watchpoint expressions are specified than there are physical
 watchpoints, cmn_capture will attempt to continually rotate the
 requested watchpoints through the physical watchpoints.
 
 In some cases, a watchpoint expression might need two physical
-watchpoints (combined as a pair): this the case for some combinations
+watchpoints (combined as a pair): this is the case for some combinations
 of CHI field matches, and when capturing data (see below).
+
+Where TraceTag injection has a shared DTM enable, upload bindings with
+different tagging actions also require rotation. With individual watchpoint
+tag enables, an untagged binding can share with a tagging binding. Where the
+choice of tagging every match or only the first match is shared by the DTM,
+bindings requesting those two modes require rotation. The tool handles this
+according to the DTM's capabilities.
 
 
 Setup/inspect mode
@@ -260,13 +296,24 @@ when a watchpoint matches. Actions are specified as:
 | Action | wp type | what it does |
 |---|---:|---:|
 | data=&lt;format&gt; | DAT | data capture (see below) |
-| tracetag | up | set TraceTag |
+| tracetag or tracetag=all | up | set TraceTag on every match |
+| tracetag=first | up | use hardware first-match TraceTag injection, where supported |
+| tracetag=none | any | disable TraceTag injection, overriding `--set-tracetag` |
 | format=&lt;n&gt; | any | set capture format (default 4) |
 | format2=&lt;n&gt; | any | use an additional watchpoint (format 5 or 6) |
 | debug-trigger | any | generate debug trigger (ATB) |
 | cc | any | include cycle count |
 | nocc | any | don't include cycle count |
 | nogen | any | don't generate packet |
+
+For example, to tag the first matching upload at a selected port:
+
+    cmn_capture.py '(0,0,0)/up:req:opcode=ReadShared#tracetag=first'
+
+First-match tagging is rejected if the selected DTM lacks that capability.
+It controls tag injection, independently of trace packet generation. The tool
+does not reset the hardware's first-match history when starting another sample
+or rotating watchpoints.
 
 
 Data capture
@@ -276,11 +323,12 @@ packets, cmn_capture.py offers limited support for capturing data
 payloads from DAT packets, i.e. the actual data being transported
 across the interconnect.
 
-To use this feature, it is necessary to know something about how
-data payloads are carried in CMN.
+Data-capture formats depend on the product and configured DAT width.
+The formats below assume 256-bit DAT flits; reconstruction of full 512-bit
+DAT payloads is not currently supported.
 
-Each DAT packet carries up to 32 bytes of data. The 'active' data
-is naturally aligned within the payload, e.g. for a 4-byte write to
+With 256-bit DAT flits, each packet carries up to 32 bytes of data. The
+'active' data is naturally aligned within the payload, e.g. for a 4-byte write to
 address 0x8018, the value will be at offset 0x18. CMN can capture
 either the low 16 bytes or the high 16 bytes. So to capture data
 for a transaction to a known address, bit 4 of the address should
